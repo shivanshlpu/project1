@@ -230,3 +230,28 @@ VALUES
   ('loc-02', 'Max Super Speciality Hospital', '1 2, Press Enclave Marg, Saket, New Delhi', 28.5284, 77.2117, 100, 'HOSPITAL', 'usr-admin-shivansh'),
   ('loc-03', 'AIIMS Medical Clinic', 'Ansari Nagar East, New Delhi', 28.5672, 77.2100, 150, 'CLINIC', 'usr-admin-shivansh')
 ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- 11. ROW LEVEL SECURITY (RLS) POLICIES
+-- Closes all public PostgREST endpoints against unauthorized dumps.
+-- Backend queries using SUPABASE_SECRET_KEY (service_role) bypass RLS automatically.
+-- ==============================================================================
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dcr ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.device_authorizations ENABLE ROW LEVEL SECURITY;
+
+-- Explicitly allow full access to service_role for all tables
+CREATE POLICY "Service role full access on users" ON public.users FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on saved_locations" ON public.saved_locations FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on doctors" ON public.doctors FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on tasks" ON public.tasks FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on attendance" ON public.attendance FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on dcr" ON public.dcr FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on expenses" ON public.expenses FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access on device_authorizations" ON public.device_authorizations FOR ALL TO service_role USING (true) WITH CHECK (true);
+
