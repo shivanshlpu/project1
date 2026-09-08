@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNav, MobileTab } from './components/BottomNav';
@@ -65,6 +67,69 @@ export default function App() {
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
 
+  // Responsive device dimensions
+  const { width } = useWindowDimensions();
+  const isMobileScreen = width < 600;
+  const isTablet = width >= 600 && width < 1024;
+
+  // PWA Install Event & Detection
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(true);
+  const [isAppInstalled, setIsAppInstalled] = useState<boolean>(false);
+  const [isIOSWeb, setIsIOSWeb] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone;
+      if (isStandalone) {
+        setIsAppInstalled(true);
+      }
+
+      const ua = window.navigator.userAgent;
+      const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
+      if (isIOS && !isStandalone) {
+        setIsIOSWeb(true);
+      }
+
+      const handler = (e: any) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+      };
+      window.addEventListener('beforeinstallprompt', handler);
+      window.addEventListener('appinstalled', () => {
+        setIsAppInstalled(true);
+        setInstallPrompt(null);
+      });
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handler);
+      };
+    }
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === 'accepted') {
+        setIsAppInstalled(true);
+      }
+      setInstallPrompt(null);
+    } else if (isIOSWeb) {
+      Alert.alert(
+        'Install on iPhone / iPad',
+        'Tap the Share button at the bottom of Safari and select "Add to Home Screen".'
+      );
+    } else {
+      Alert.alert(
+        'Install AHTRI App',
+        'To install this app on your device, open your browser menu (three dots) and tap "Install app" or "Add to Home screen".'
+      );
+    }
+  };
+
   const handleManualSync = () => {
     setPendingDrafts(0);
     Alert.alert('Sync Complete', 'All offline drafts synchronized with server.');
@@ -97,11 +162,22 @@ export default function App() {
     ]);
   };
 
+  // Responsive container styles
+  const outerWrapperStyle = [
+    styles.appOuterWrapper,
+    isMobileScreen && { backgroundColor: '#FFFFFF', padding: 0 },
+  ];
+  const phoneContainerStyle = [
+    styles.phoneContainer,
+    isMobileScreen && { maxWidth: '100%' as any, borderRadius: 0, shadowOpacity: 0, elevation: 0 },
+    isTablet && { maxWidth: 720, borderRadius: 16 },
+  ];
+
   // If not logged in, render Login Screen
   if (!currentUser) {
     return (
-      <View style={styles.appOuterWrapper}>
-        <View style={styles.phoneContainer}>
+      <View style={outerWrapperStyle}>
+        <View style={phoneContainerStyle}>
           <SafeAreaView style={styles.safeArea}>
             <LoginScreen onLoginSuccess={handleLoginSuccess} />
           </SafeAreaView>
@@ -111,8 +187,8 @@ export default function App() {
   }
 
   return (
-    <View style={styles.appOuterWrapper}>
-      <View style={styles.phoneContainer}>
+    <View style={outerWrapperStyle}>
+      <View style={phoneContainerStyle}>
         <SafeAreaView style={styles.safeArea}>
           {/* App Header */}
           <View style={styles.topHeader}>
@@ -130,6 +206,13 @@ export default function App() {
 
             {/* Right Header Actions */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {/* Install PWA Button in Header */}
+              {!isAppInstalled && (installPrompt || isIOSWeb) && (
+                <TouchableOpacity style={styles.headerInstallBtn} onPress={handleInstallClick}>
+                  <Text style={styles.headerInstallBtnText}>Install</Text>
+                </TouchableOpacity>
+              )}
+
               {/* Offline / Online Network Toggle */}
               <TouchableOpacity
                 style={[styles.networkToggle, isOffline ? styles.offlineToggle : styles.onlineToggle]}
@@ -146,6 +229,31 @@ export default function App() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* PWA Install Notification Banner */}
+          {showInstallBanner && !isAppInstalled && (installPrompt || isIOSWeb) && (
+            <View style={styles.pwaBanner}>
+              <View style={styles.pwaTextGroup}>
+                <Text style={styles.pwaTitle}>Install AHTRI App (PWA)</Text>
+                <Text style={styles.pwaSubtitle}>
+                  {isIOSWeb
+                    ? 'Tap Safari Share -> "Add to Home Screen" to install.'
+                    : 'Install on your home screen for fast 1-tap launch & offline use.'}
+                </Text>
+              </View>
+              <View style={styles.pwaActionGroup}>
+                <TouchableOpacity style={styles.pwaInstallBtn} onPress={handleInstallClick}>
+                  <Text style={styles.pwaInstallBtnText}>Install</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.pwaDismissBtn}
+                  onPress={() => setShowInstallBanner(false)}
+                >
+                  <Text style={styles.pwaDismissBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* Offline Alert Banner */}
           <OfflineBanner isOffline={isOffline} pendingCount={pendingDrafts} />
@@ -212,6 +320,15 @@ export default function App() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* Install PWA App Button in Profile */}
+                  {!isAppInstalled && (
+                    <TouchableOpacity style={styles.installProfileBtn} onPress={handleInstallClick}>
+                      <Text style={styles.installProfileBtnText}>
+                        {isIOSWeb ? 'Add App to iPhone Home Screen' : 'Download / Install App on Phone'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                   <TouchableOpacity style={styles.logoutLargeBtn} onPress={handleLogout}>
                     <Text style={styles.logoutLargeBtnText}>Log Out Account</Text>
@@ -332,4 +449,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutLargeBtnText: { color: '#DC2626', fontWeight: '700', fontSize: 12 },
+  headerInstallBtn: {
+    backgroundColor: '#0F8B5A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    marginRight: 2,
+  },
+  headerInstallBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  pwaBanner: {
+    backgroundColor: '#0B2545',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  pwaTextGroup: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  pwaTitle: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  pwaSubtitle: {
+    color: '#94A3B8',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  pwaActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pwaInstallBtn: {
+    backgroundColor: '#0F8B5A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  pwaInstallBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  pwaDismissBtn: {
+    padding: 4,
+  },
+  pwaDismissBtnText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  installProfileBtn: {
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: 6,
+    backgroundColor: '#0F8B5A',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  installProfileBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
 });
