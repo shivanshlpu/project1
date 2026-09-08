@@ -1,0 +1,16 @@
+{
+  "name": "ahtri-ffa-workspace",
+  "version": "1.0.0",
+  "description": "AHTRI Field Force Automation (Pharma MR Tracking) Multi-Agent System",
+  "private": true,
+  "scripts": {
+    "graph:status": "node build-system/orchestrator.js status",
+    "graph:inspect": "node build-system/orchestrator.js inspect",
+    "graph:update": "node build-system/orchestrator.js update",
+    "graph:prompt": "node build-system/orchestrator.js prompt",
+    "backend:dev": "npm --prefix backend run start:dev",
+    "backend:test": "npm --prefix backend test",
+    "admin:dev": "npm --prefix admin-web run dev"
+  },
+  "devDependencies": {}
+}

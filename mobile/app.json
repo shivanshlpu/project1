@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "AHTRI FFA",
+    "slug": "ahtri-ffa-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2545"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ahtri.ffa"
+    },
+    "android": {
+      "package": "com.ahtri.ffa",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2545"
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow AHTRI FFA to verify your current location for task geofencing and attendance punch-in."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow AHTRI FFA to attach photos of clinic visits and expense bills."
+        }
+      ]
+    ]
+  }
+}

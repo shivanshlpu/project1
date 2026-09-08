@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ahtri_postgres
+    environment:
+      POSTGRES_USER: ahtri_user
+      POSTGRES_PASSWORD: ahtri_password
+      POSTGRES_DB: ahtri_ffa
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ahtri_user -d ahtri_ffa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ahtri_backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ahtri_user:ahtri_password@postgres:5432/ahtri_ffa?schema=public}
+      JWT_SECRET: ${JWT_SECRET:-ahtri_dev_jwt_secret_please_set_in_env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-ahtri_dev_refresh_secret_please_set_in_env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  admin-web:
+    build:
+      context: ./admin-web
+      dockerfile: Dockerfile
+    container_name: ahtri_admin_web
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - backend
+
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: ahtri_mobile
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      EXPO_PUBLIC_API_URL: http://localhost:3000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

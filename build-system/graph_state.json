@@ -1,0 +1,454 @@
+{
+  "project": "AHTRI FFA",
+  "version": "1.0.0",
+  "active_node": "N14_OFFLINE_SYNC",
+  "nodes": {
+    "N00_BUILD_SYSTEM": {
+      "id": "N00_BUILD_SYSTEM",
+      "name": "Build Graph Engine & Workspace Setup",
+      "owner_agent_role": "orchestrator",
+      "status": "DONE",
+      "depends_on": [],
+      "retry_count": 0,
+      "inputs": [
+        "AHTRI_FFA_Implementation_Plan.md"
+      ],
+      "outputs": [
+        "build-system/graph_state.json",
+        "build-system/orchestrator.js",
+        "build-system/skills/"
+      ],
+      "dof_checklist": [
+        "Graph state file defined with all 15 nodes and dependencies",
+        "Orchestrator runner CLI functional",
+        "Specialized skill files created for all agent roles",
+        "Security & CI/CD workflow defined"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Build system and graph initialized"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N01_AUTH": {
+      "id": "N01_AUTH",
+      "name": "Auth (Login / OTP / JWT / Refresh)",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N00_BUILD_SYSTEM"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 schema",
+        "Section 3 /auth endpoints"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "POST /auth/login returns access & refresh tokens",
+        "POST /auth/otp/request and verify work",
+        "POST /auth/refresh rotates token and invalidates previous refresh token",
+        "POST /auth/logout clears session",
+        "Unit & e2e test suite passing"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Auth, OTP, and token rotation verified with 5/5 unit tests passing"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N02_RBAC": {
+      "id": "N02_RBAC",
+      "name": "RBAC & Role Guards",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N01_AUTH"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 roles schema",
+        "Section 3 RBAC rules"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Roles & permissions schema seeded",
+        "@Roles() decorator created",
+        "RolesGuard verifies user role from JWT claims server-side",
+        "Out-of-role requests rejected with 403 Forbidden"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "RolesGuard verified server-side with 5/5 tests passing"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N03_USERS_TERRITORIES": {
+      "id": "N03_USERS_TERRITORIES",
+      "name": "Users & Territory Hierarchy",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N02_RBAC"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 schema (zones, regions, areas, territories, users)",
+        "Section 3 /users and /territories"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Zone, region, area, territory CRUD endpoints",
+        "User CRUD with manager and territory assignment",
+        "Soft-delete on users",
+        "Filtered listing by territory"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Users & Territories hierarchy, assignment, and soft-delete verified with 3/3 tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N04_TASKS_GEOFENCE": {
+      "id": "N04_TASKS_GEOFENCE",
+      "name": "Tasks & 20m Geofence Verification",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N03_USERS_TERRITORIES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 4.1 Geofence logic",
+        "Section 3 /tasks"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Task creation and assignment history",
+        "Server-side Haversine distance validation",
+        "Rejects start/complete when distance > geofence_radius_m (default 20m)",
+        "Rejects when gps_accuracy_m > 50m",
+        "All attempts (accepted & rejected) recorded in location_verifications"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Server-side Haversine geofencing verified <=20m and audit logging verified with 4/4 tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N05_ATTENDANCE": {
+      "id": "N05_ATTENDANCE",
+      "name": "Attendance (Check-in / Check-out)",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N03_USERS_TERRITORIES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 attendance schema",
+        "Section 3 /attendance"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "POST /attendance/check-in with coordinates & timestamp",
+        "POST /attendance/check-out with coordinates",
+        "GET /attendance/my returns monthly/daily records",
+        "Admin attendance query with user & date filters"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Check-in/out GPS recording and duplicate prevention verified with 4/4 tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N06_DOCTORS": {
+      "id": "N06_DOCTORS",
+      "name": "Doctors Master & Directory",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N03_USERS_TERRITORIES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 doctors schema",
+        "Section 3 /doctors"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Doctor CRUD with class (A, B, C) and potential score",
+        "Clinic/hospital coordinates recorded",
+        "Doctor list filterable by territory / area"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Doctors CRUD, classifications, coordinates, and filtering verified with 2/2 tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N07_VISITS_SIGNATURE": {
+      "id": "N07_VISITS_SIGNATURE",
+      "name": "Doctor Visits & Signature Capture",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N04_TASKS_GEOFENCE",
+        "N06_DOCTORS"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 doctor_visits & visit_details",
+        "Section 3 /visits"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "POST /visits/start logs start time, GPS, and accuracy",
+        "POST /visits/:id/end calculates duration, saves signature key, samples and products",
+        "GET /visits/my and admin listing"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Doctor visits, duration calculation, samples, and signature capture verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N08_DCR_AUTOPOPULATE": {
+      "id": "N08_DCR_AUTOPOPULATE",
+      "name": "DCR Auto-Population & Submission",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N07_VISITS_SIGNATURE"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 4.2 DCR auto-population",
+        "Section 3 /dcr"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "GET /dcr/today auto-aggregates today's doctor visits + verifications",
+        "MR submits subjective remarks, samples, order_taken",
+        "Status flow: DRAFT -> SUBMITTED -> APPROVED / CORRECTION_REQUESTED"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "DCR draft auto-population from visits and submission workflow verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N09_EXPENSES": {
+      "id": "N09_EXPENSES",
+      "name": "Expenses & Receipt Management",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N03_USERS_TERRITORIES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 expenses schema",
+        "Section 3 /expenses"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "POST /expenses with category (TA_DA, FOOD, ACCOMMODATION, CONVEYANCE, ENTERTAINMENT)",
+        "Receipt file key storage",
+        "Status tracking: PENDING, APPROVED, REJECTED"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Expenses submission, receipts, and approval engine linkage verified with 2/2 tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N10_APPROVALS_ENGINE": {
+      "id": "N10_APPROVALS_ENGINE",
+      "name": "Polymorphic Approvals Engine",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N08_DCR_AUTOPOPULATE",
+        "N09_EXPENSES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 4.3 Approvals engine",
+        "Section 3 /approvals"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Unified approvals table for LEAVE, EXPENSE, DCR_CORRECTION, TOUR_PLAN",
+        "Single ApprovalsService handles create, decide, and notifications",
+        "Role-scoped pending approvals query"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Polymorphic Approvals engine with cross-entity sync and notifications verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N11_MANAGER_DASHBOARD": {
+      "id": "N11_MANAGER_DASHBOARD",
+      "name": "Admin Web Manager Dashboard",
+      "owner_agent_role": "admin-web",
+      "status": "DONE",
+      "depends_on": [
+        "N04_TASKS_GEOFENCE",
+        "N05_ATTENDANCE",
+        "N06_DOCTORS",
+        "N08_DCR_AUTOPOPULATE",
+        "N10_APPROVALS_ENGINE"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 5 Design tokens (#1A3C6E, #0F8B5A, etc.)",
+        "Section 3 APIs"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "KPI Cards (today visits, attendance %, task completion, territory coverage)",
+        "MR Performance table with filters",
+        "MapMarkerView for non-live doctor/task locations",
+        "5 states handled: loading, empty, error, offline, success"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Manager Dashboard with KPI cards, MR table, map view, and 5-state coverage built and verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N12_NOTIFICATIONS_FCM": {
+      "id": "N12_NOTIFICATIONS_FCM",
+      "name": "Notifications & FCM Device Registration",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N04_TASKS_GEOFENCE",
+        "N09_EXPENSES",
+        "N10_APPROVALS_ENGINE"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 notifications schema",
+        "Section 3 /notifications"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Device registration endpoint POST /notifications/register-device",
+        "Event triggers for task assignment, approval status change, announcement",
+        "GET /notifications/my with read_at tracking"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "FCM registration and in-app triggers verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N13_REPORTS_EXPORT": {
+      "id": "N13_REPORTS_EXPORT",
+      "name": "Basic Reports & Export Engine",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N04_TASKS_GEOFENCE",
+        "N05_ATTENDANCE",
+        "N07_VISITS_SIGNATURE",
+        "N08_DCR_AUTOPOPULATE",
+        "N09_EXPENSES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 3 /reports",
+        "Section 9 Node 13 DoD"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "Aggregated reports for attendance, tasks, visits, DCR, expenses",
+        "Export format support: CSV, JSON, PDF",
+        "Admin filter by date range, MR, area"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Attendance, Tasks, Visits, DCR, and Expenses reporting with CSV/JSON export verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N14_OFFLINE_SYNC": {
+      "id": "N14_OFFLINE_SYNC",
+      "name": "Mobile Offline Sync Engine",
+      "owner_agent_role": "mobile",
+      "status": "DONE",
+      "depends_on": [
+        "N04_TASKS_GEOFENCE",
+        "N07_VISITS_SIGNATURE",
+        "N08_DCR_AUTOPOPULATE",
+        "N09_EXPENSES"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 4.4 Offline sync spec",
+        "Section 3 /sync"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "SQLite offline queue for drafts",
+        "Client UUID + timestamp idempotent push",
+        "POST /sync/push and GET /sync/pull reconciliation",
+        "Offline banner and sync status indicator"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Mobile offline SQLite queue with UUID idempotency and push/pull reconciliation verified"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    },
+    "N15_AUDIT_LOGS": {
+      "id": "N15_AUDIT_LOGS",
+      "name": "Immutable Audit Logging",
+      "owner_agent_role": "backend",
+      "status": "DONE",
+      "depends_on": [
+        "N01_AUTH",
+        "N02_RBAC",
+        "N03_USERS_TERRITORIES",
+        "N04_TASKS_GEOFENCE",
+        "N10_APPROVALS_ENGINE"
+      ],
+      "retry_count": 0,
+      "inputs": [
+        "Section 2 audit_logs schema",
+        "Section 3 /audit",
+        "Section 8 Security rules"
+      ],
+      "outputs": [],
+      "dof_checklist": [
+        "All mutation actions automatically logged with user_id, action, diff JSON, IP",
+        "Audit logs are immutable (no update/delete API exists)",
+        "Admin query with filtering"
+      ],
+      "qa_result": {
+        "status": "pass",
+        "summary": "Immutable audit logs with entity filtering verified with unit tests"
+      },
+      "security_flags": [],
+      "last_updated_by": "orchestrator"
+    }
+  }
+}

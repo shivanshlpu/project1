@@ -1,0 +1,777 @@
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import {
+  MapPin,
+  Search,
+  Plus,
+  Building,
+  Phone,
+  Calendar,
+  Layers,
+  CheckCircle2,
+  Filter,
+  UserCheck,
+  Compass,
+} from 'lucide-react';
+import { DoctorItem } from '../types';
+import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
+import { create3DMapPinHtml, PinCategory } from '../utils/mapPinGenerator';
+import {
+  getStoredSavedLocations,
+  persistSavedLocations,
+  syncSavedLocationsWithBackend,
+  getOperatingZones,
+  TerritoryZone,
+  calculateDistanceKm,
+} from '../utils/savedLocationsStore';
+import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+
+interface SavedLocationsViewProps {
+  onAssignTaskToLocation: (loc: {
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    geofence_radius_m: number;
+  }) => void;
+  targetLocationId?: string | null;
+  onClearTargetLocation?: () => void;
+  onLocationAcknowledge?: (id: string) => void;
+}
+
+export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
+  onAssignTaskToLocation,
+  targetLocationId,
+  onClearTargetLocation,
+  onLocationAcknowledge,
+}) => {
+  // Set of location IDs that the owner has already clicked/viewed
+  const [readLocationIds, setReadLocationIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('ahtri_read_locations');
+      return stored ? new Set(JSON.parse(stored)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  // Centralized Saved Locations across all territories (Delhi + Shahdol)
+  const [locations, setLocations] = useState<DoctorItem[]>(getStoredSavedLocations);
+  const [zones, setZones] = useState<TerritoryZone[]>(getOperatingZones);
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<DoctorItem | null>(null);
+
+  // Helper to check if a location has a NEW unread mark
+  const isLocationUnread = (loc: DoctorItem) => {
+    if (readLocationIds.has(loc.id)) return false;
+    return Boolean(loc.is_new);
+  };
+
+  // Mark a location as read / acknowledged (removes the "NEW" mark immediately)
+  const markLocationAsRead = (id: string) => {
+    setReadLocationIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('ahtri_read_locations', JSON.stringify(Array.from(next)));
+      } catch {
+        // Ignored
+      }
+      return next;
+    });
+
+    // Remove is_new flag in component state so UI updates instantly
+    setLocations((prev) =>
+      prev.map((loc) => (loc.id === id ? { ...loc, is_new: false } : loc)),
+    );
+
+    // Notify parent to decrement SubNav badge counter
+    onLocationAcknowledge?.(id);
+
+    // Persist acknowledgment to backend
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    fetch(`${apiUrl}/locations/${id}/acknowledge`, { method: 'POST' }).catch(() => {});
+  };
+
+  // Central handler for selecting a location (card click or pin click)
+  const handleSelectLocation = (loc: DoctorItem) => {
+    setSelectedLocation(loc);
+    mapInstanceRef.current?.flyTo([loc.latitude, loc.longitude], 16, { duration: 0.8 });
+    if (isLocationUnread(loc)) {
+      markLocationAsRead(loc.id);
+    }
+  };
+
+  // Live Auto-Fetch Locations from Backend (Without causing map zoom resets)
+  const fetchLocations = async () => {
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${apiUrl}/locations`);
+      if (res.ok) {
+        const data: DoctorItem[] = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setLocations((prev) => {
+            // Check if there is an actual difference to avoid continuous re-rendering
+            if (prev.length === data.length) {
+              const isIdentical = prev.every((p, idx) => {
+                const d = data[idx];
+                return (
+                  d &&
+                  p.id === d.id &&
+                  p.is_new === d.is_new &&
+                  p.visit_count === d.visit_count
+                );
+              });
+              if (isIdentical) return prev;
+            }
+            return data;
+          });
+        }
+      }
+    } catch {
+      // Fallback to current state
+    }
+  };
+
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setLocations(e.detail);
+      }
+    };
+    window.addEventListener('ahtri_locations_updated', handleUpdate);
+    fetchLocations();
+    const interval = setInterval(fetchLocations, 4000);
+    return () => {
+      window.removeEventListener('ahtri_locations_updated', handleUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const lastTargetIdRef = useRef<string | null>(null);
+  const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
+
+  // Compute locations inside a zone
+  const getLocationsInZone = (zone: TerritoryZone) => {
+    return locations.filter((loc) => {
+      const dist = calculateDistanceKm(zone.latitude, zone.longitude, loc.latitude, loc.longitude);
+      const inRadius = dist <= (zone.radiusKm || 5) * 1.5;
+      const zoneKey = zone.name.toLowerCase().split(' ')[0];
+      const inArea = loc.area_name && loc.area_name.toLowerCase().includes(zoneKey);
+      return inRadius || inArea;
+    });
+  };
+
+  const activeZone = zones.find((z) => z.id === selectedZoneId);
+  const zoneScopedLocations =
+    selectedZoneId === 'all'
+      ? locations
+      : activeZone
+      ? getLocationsInZone(activeZone)
+      : locations;
+
+  const filteredLocations = zoneScopedLocations.filter((l) => {
+    const matchesSearch =
+      l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.clinic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.address && l.address.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCat = selectedCategory === 'ALL' || l.category === selectedCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  // Initialize interactive overview map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      const map = createOptimizedMap(mapContainerRef.current).setView([28.535, 77.207], 13);
+      mapInstanceRef.current = map;
+
+      tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
+
+      markersGroupRef.current = L.layerGroup().addTo(map);
+    }
+
+    // Refresh markers
+    if (markersGroupRef.current) {
+      markersGroupRef.current.clearLayers();
+
+      filteredLocations.forEach((loc) => {
+        const isSelected = selectedLocation?.id === loc.id;
+        const pinCategory = (loc.category || 'CLINIC') as PinCategory;
+        const isLocNew = isLocationUnread(loc);
+
+        const pinHtml = create3DMapPinHtml({
+          category: pinCategory,
+          isSelected,
+          isNew: isLocNew,
+        });
+
+        const customIcon = L.divIcon({
+          html: pinHtml,
+          className: 'saved-location-3d-marker',
+          iconSize: isSelected ? [45, 59] : [38, 50],
+          iconAnchor: isSelected ? [22.5, 59] : [19, 50],
+          popupAnchor: [0, isSelected ? -56 : -48],
+        });
+
+        const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon });
+
+        const badgeBg =
+          loc.category === 'HOSPITAL'
+            ? '#FEE2E2'
+            : loc.category === 'PHARMACY'
+            ? '#DBEAFE'
+            : '#DCFCE7';
+
+        const badgeText =
+          loc.category === 'HOSPITAL'
+            ? '#991B1B'
+            : loc.category === 'PHARMACY'
+            ? '#1E40AF'
+            : '#166534';
+
+        marker.bindPopup(`
+          <div style="font-family:sans-serif;min-width:210px;padding:2px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+              <strong style="font-size:13px;color:#0F172A;line-height:1.2;">${loc.name}</strong>
+              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${badgeBg};color:${badgeText};">${loc.category === 'PHARMACY' ? 'CHEMIST' : (loc.category || 'CLINIC')}</span>
+            </div>
+            <p style="margin:2px 0 4px;font-size:11px;color:#475569;">${loc.clinic}</p>
+            <p style="margin:2px 0 6px;font-size:11px;color:#64748B;">${loc.address || ''}</p>
+            <div style="background:#F8FAFC;padding:6px 8px;border-radius:6px;border:1px solid #E2E8F0;font-size:11px;">
+              <span style="color:#64748B;font-size:10px;">Attribution:</span><br/>
+              <strong style="color:${loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E'};">${loc.created_by_name || (loc.created_by_role === 'MR' ? 'Field MR' : 'System Admin')}</strong>
+              <span style="font-size:10px;color:#94A3B8;"> • ${loc.created_by_role === 'MR' ? 'MR Discovery' : 'Owner Defined'}</span>
+            </div>
+          </div>
+        `);
+
+        marker.on('click', () => {
+          handleSelectLocation(loc);
+        });
+
+        markersGroupRef.current?.addLayer(marker);
+      });
+    }
+
+    setTimeout(() => {
+      mapInstanceRef.current?.invalidateSize();
+    }, 200);
+  }, [locations, selectedCategory, searchQuery, selectedLocation, readLocationIds, selectedZoneId]);
+
+  // Auto-focus on targetLocationId if provided from toast notification (RUN ONCE ONLY)
+  useEffect(() => {
+    if (!targetLocationId || targetLocationId === lastTargetIdRef.current) return;
+
+    const matched = locations.find((l) => l.id === targetLocationId);
+    if (matched) {
+      lastTargetIdRef.current = targetLocationId;
+      setSelectedLocation(matched);
+      mapInstanceRef.current?.flyTo([matched.latitude, matched.longitude], 16, { duration: 0.8 });
+      if (isLocationUnread(matched)) {
+        markLocationAsRead(matched.id);
+      }
+      if (onClearTargetLocation) {
+        onClearTargetLocation();
+      }
+    }
+  }, [targetLocationId, locations]);
+
+  // Update Tile Layer when satellite / street mode toggles
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    mapInstanceRef.current.removeLayer(tileLayerRef.current);
+    tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
+  }, [mapMode]);
+
+  // Handle saving new location from modal
+  const handleSaveLocation = async (newLoc: any) => {
+    const created: DoctorItem = {
+      id: `loc-${Date.now().toString().slice(-4)}`,
+      name: newLoc.name,
+      clinic: newLoc.clinic,
+      qualification: 'Registered Point of Care',
+      specialization: newLoc.category,
+      class: 'A',
+      potential_score: 90,
+      phone: newLoc.phone || 'N/A',
+      address: newLoc.address,
+      latitude: newLoc.latitude,
+      longitude: newLoc.longitude,
+      category: newLoc.category,
+      created_by_role: 'ADMIN',
+      created_by_name: 'System Admin (Owner)',
+      area_name: newLoc.address.includes('Shahdol') ? 'Shahdol District' : 'Delhi Territory',
+      visit_count: 0,
+    };
+
+    const nextLocations = [created, ...locations];
+    setLocations(nextLocations);
+    persistSavedLocations(nextLocations);
+    setSelectedLocation(created);
+    mapInstanceRef.current?.setView([created.latitude, created.longitude], 15);
+
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      await fetch(`${apiUrl}/locations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newLoc.clinic || newLoc.name,
+          doctor_name: newLoc.name,
+          category: newLoc.category,
+          address: newLoc.address,
+          latitude: newLoc.latitude,
+          longitude: newLoc.longitude,
+          phone: newLoc.phone,
+          mr_name: 'System Admin (Owner)',
+        }),
+      });
+      fetchLocations();
+    } catch {
+      // Local state already updated
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Top Banner Toolbar */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
+          flexShrink: 0,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>
+            Live Map & Saved Territory Locations
+          </h1>
+          <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
+            Mark doctor clinics, hospitals, and pharmacies on the live map. Saved locations can be assigned directly to MRs.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsPickerOpen(true)}
+          style={{
+            padding: '9px 16px',
+            background: '#0F8B5A',
+            color: '#FFFFFF',
+            borderRadius: '6px',
+            border: 'none',
+            fontWeight: '600',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 6px rgba(15, 139, 90, 0.25)',
+          }}
+        >
+          <Plus size={16} /> Mark New Location on Map
+        </button>
+      </div>
+
+      {/* Territory Zone Selector Chips Bar */}
+      <div
+        style={{
+          background: '#F8FAFC',
+          borderBottom: '1px solid #E2E8F0',
+          padding: '8px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          overflowX: 'auto',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748B', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <Compass size={14} color="#1A3C6E" /> OPERATIONAL ZONE:
+        </div>
+
+        {/* All Zones */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedZoneId('all');
+            mapInstanceRef.current?.flyTo([28.535, 77.207], 12);
+          }}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '16px',
+            border: selectedZoneId === 'all' ? '2px solid #1A3C6E' : '1px solid #CBD5E1',
+            background: selectedZoneId === 'all' ? '#EFF6FF' : '#FFFFFF',
+            color: selectedZoneId === 'all' ? '#1A3C6E' : '#475569',
+            fontSize: '11.5px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          All Territories ({locations.length})
+        </button>
+
+        {/* Zone chips */}
+        {zones.map((zone) => {
+          const isSelected = selectedZoneId === zone.id;
+          const count = getLocationsInZone(zone).length;
+
+          return (
+            <button
+              key={zone.id}
+              type="button"
+              onClick={() => {
+                setSelectedZoneId(zone.id);
+                mapInstanceRef.current?.flyTo([zone.latitude, zone.longitude], 13.5);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '16px',
+                border: isSelected ? `2px solid ${zone.color}` : '1px solid #CBD5E1',
+                background: isSelected ? `${zone.color}15` : '#FFFFFF',
+                color: isSelected ? zone.color : '#334155',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: zone.color }} />
+              <span>{zone.name}</span>
+              <span
+                style={{
+                  background: isSelected ? zone.color : '#F1F5F9',
+                  color: isSelected ? '#FFFFFF' : '#64748B',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Main Split Layout: Filter/List on Left, Live Leaflet Map on Right */}
+      <div className="saved-locations-split">
+        {/* Left Side: Directory List */}
+        <div className="saved-locations-list-col">
+          {/* Search & Category Filter */}
+          <div style={{ padding: '14px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: '#FFFFFF',
+                borderRadius: '6px',
+                border: '1px solid #CBD5E1',
+                padding: '0 10px',
+                marginBottom: '10px',
+              }}
+            >
+              <Search size={16} color="#64748B" />
+              <input
+                type="text"
+                placeholder="Search saved clinic or doctor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  padding: '8px 10px',
+                  fontSize: '12px',
+                  width: '100%',
+                }}
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+              {[
+                { id: 'ALL', label: 'All' },
+                { id: 'CLINIC', label: 'Clinics' },
+                { id: 'HOSPITAL', label: 'Hospitals' },
+                { id: 'PHARMACY', label: 'Pharmacies' },
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  onClick={() => {
+                    setSelectedCategory(pill.id);
+                    const matching = locations.filter(
+                      (l) => pill.id === 'ALL' || l.category === pill.id
+                    );
+                    if (matching.length > 0 && mapInstanceRef.current) {
+                      if (matching.length === 1) {
+                        mapInstanceRef.current.flyTo(
+                          [matching[0].latitude, matching[0].longitude],
+                          16,
+                          { duration: 0.8 }
+                        );
+                      } else {
+                        const bounds = L.latLngBounds(
+                          matching.map((l) => [l.latitude, l.longitude])
+                        );
+                        mapInstanceRef.current.fitBounds(bounds, {
+                          padding: [50, 50],
+                          maxZoom: 16,
+                        });
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '14px',
+                    border: 'none',
+                    fontSize: '11px',
+                    fontWeight: selectedCategory === pill.id ? '700' : '500',
+                    background: selectedCategory === pill.id ? '#1A3C6E' : '#E2E8F0',
+                    color: selectedCategory === pill.id ? '#FFFFFF' : '#475569',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List Cards */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+            {filteredLocations.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: '#64748B', fontSize: '13px' }}>
+                No locations match your search.
+              </div>
+            ) : (
+              filteredLocations.map((loc) => {
+                const isSelected = selectedLocation?.id === loc.id;
+                const isUnread = isLocationUnread(loc);
+
+                return (
+                  <div
+                    key={loc.id}
+                    onClick={() => handleSelectLocation(loc)}
+                    className={isUnread ? 'location-unread-card' : ''}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: isSelected
+                        ? '2px solid #0F8B5A'
+                        : isUnread
+                        ? '1px solid #10B981'
+                        : '1px solid #E2E8F0',
+                      background: isSelected ? '#F0FDF4' : isUnread ? '#F0FDF4' : '#FFFFFF',
+                      marginBottom: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isUnread ? '0 2px 8px rgba(16, 185, 129, 0.18)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            color: '#0F172A',
+                          }}
+                        >
+                          {loc.name}
+                        </span>
+                        {isUnread && (
+                          <span className="whatsapp-new-pill">
+                            <span className="whatsapp-new-dot" />
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: '700',
+                          background:
+                            loc.category === 'HOSPITAL'
+                              ? '#FEE2E2'
+                              : loc.category === 'PHARMACY'
+                              ? '#DBEAFE'
+                              : '#DCFCE7',
+                          color:
+                            loc.category === 'HOSPITAL'
+                              ? '#991B1B'
+                              : loc.category === 'PHARMACY'
+                              ? '#1E40AF'
+                              : '#166534',
+                        }}
+                      >
+                        {loc.category === 'PHARMACY' ? 'CHEMIST' : (loc.category || 'CLINIC')}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                      {loc.clinic}
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={12} color="#0F8B5A" />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {loc.address || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        <span style={{ fontSize: '11px', color: loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E', fontWeight: '700' }}>
+                          Marked by: {loc.created_by_name || (loc.created_by_role === 'MR' ? 'Field MR' : 'System Admin')}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#94A3B8' }}>
+                          {loc.created_by_role === 'MR' ? 'Field MR Discovery' : 'Owner Defined'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAssignTaskToLocation({
+                            name: loc.clinic || loc.name,
+                            address: loc.address || loc.clinic,
+                            latitude: loc.latitude,
+                            longitude: loc.longitude,
+                            geofence_radius_m: 50,
+                          });
+                        }}
+                        style={{
+                          padding: '3px 8px',
+                          background: '#1A3C6E',
+                          color: '#FFFFFF',
+                          borderRadius: '4px',
+                          border: 'none',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <Calendar size={11} /> Assign Task
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Leaflet Interactive Map */}
+        <div className="saved-locations-map-col">
+          <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+
+          {/* Map Controls: Satellite Mode Toggle */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              zIndex: 400,
+              background: '#FFFFFF',
+              borderRadius: '6px',
+              border: '1px solid #CBD5E1',
+              padding: '2px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex',
+            }}
+          >
+            <button
+              onClick={() => setMapMode('street')}
+              style={{
+                padding: '4px 10px',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
+                color: mapMode === 'street' ? '#FFFFFF' : '#475569',
+              }}
+            >
+              Street Map
+            </button>
+            <button
+              onClick={() => setMapMode('satellite')}
+              style={{
+                padding: '4px 10px',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
+                color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
+              }}
+            >
+              Satellite View
+            </button>
+          </div>
+
+          {/* Map Floating Summary Badge */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              zIndex: 400,
+              background: '#FFFFFF',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              border: '1px solid #E2E8F0',
+              fontSize: '12px',
+            }}
+          >
+            <div style={{ fontWeight: '700', color: '#0F172A', marginBottom: '2px' }}>
+              {filteredLocations.length} Saved Points of Care
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748B' }}>
+              Green: Clinics • Red: Hospitals • Blue: Pharmacies
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Map Location Picker Modal */}
+      <MapLocationPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSaveLocation={handleSaveLocation}
+        onAssignTaskHere={(loc) => {
+          handleSaveLocation(loc);
+          onAssignTaskToLocation(loc);
+        }}
+      />
+    </div>
+  );
+};
