@@ -10,6 +10,7 @@ web-build/
 out/
 .cache/
 coverage/
+*.tsbuildinfo
 
 # Environment Variables & Secrets (CRITICAL SECURITY)
 .env
