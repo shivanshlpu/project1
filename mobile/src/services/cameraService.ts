@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 export interface PhotoResult {
   uri: string;
@@ -30,7 +31,7 @@ export const CameraService = {
     quality?: number;
   }): Promise<PhotoResult | null> {
     // If running in Web environment (browser / mobile web)
-    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    if (Platform.OS === 'web' && typeof document !== 'undefined' && typeof window !== 'undefined') {
       return new Promise<PhotoResult | null>((resolve) => {
         const input = document.createElement('input');
         input.type = 'file';

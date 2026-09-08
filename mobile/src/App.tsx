@@ -1,3 +1,21 @@
+// Hermes native runtime safety polyfill
+if (typeof global !== 'undefined') {
+  if (typeof (global as any).document === 'undefined') {
+    (global as any).document = {
+      createElement: () => ({ style: {}, setAttribute: () => {}, appendChild: () => {}, removeChild: () => {} }),
+      documentElement: { style: {} },
+      head: { appendChild: () => {}, removeChild: () => {} },
+      body: { appendChild: () => {}, removeChild: () => {} },
+      getElementById: () => null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+  }
+  if (typeof (global as any).window === 'undefined') {
+    (global as any).window = global;
+  }
+}
+
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,

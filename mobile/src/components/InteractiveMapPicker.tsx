@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
-import L from 'leaflet';
-import { create3DMapPinHtml, PinCategory } from '../utils/mapPinGenerator';
+import { PinCategory } from '../utils/mapPinGenerator';
 import { LocationService } from '../services/locationService';
-import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
 interface InteractiveMapPickerProps {
   isOpen: boolean;
@@ -35,6 +34,13 @@ interface InteractiveMapPickerProps {
   }) => void;
 }
 
+const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
+  { id: 'CLINIC', label: 'Clinic', color: '#1B9AAA' },
+  { id: 'HOSPITAL', label: 'Hospital', color: '#E63946' },
+  { id: 'PHARMACY', label: 'Pharmacy', color: '#0F8B5A' },
+  { id: 'CHEMIST', label: 'Chemist', color: '#E76F51' },
+];
+
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   isOpen,
   onClose,
@@ -55,243 +61,41 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [doctorName, setDoctorName] = useState<string>(initialDoctorName);
   const [address, setAddress] = useState<string>(initialAddress);
   const [phone, setPhone] = useState<string>(initialPhone);
-
-  const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-  const accuracyCircleRef = useRef<L.Circle | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  if (!isOpen) return null;
 
-  // Inject Leaflet CSS on Web
-  useEffect(() => {
-    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css-bundle')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css-bundle';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-  }, []);
-
-  // Update Pin Icon helper
-  const getCustomPinIcon = (cat: PinCategory) => {
-    return L.divIcon({
-      className: 'ahtri-leaflet-pin',
-      html: create3DMapPinHtml({ category: cat, isSelected: true }),
-      iconSize: [46, 60],
-      iconAnchor: [23, 60],
-      popupAnchor: [0, -56],
-    });
-  };
-
-  // Initialize Leaflet Map
-  useEffect(() => {
-    if (!isOpen || !mapContainerRef.current) return;
-
-    if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current, {
-        zoomControl: false,
-      }).setView([initialLat, initialLng], 17);
-      mapInstanceRef.current = map;
-
-      // Add Zoom Control at top right
-      L.control.zoom({ position: 'topright' }).addTo(map);
-
-      // Add Resilient Multi-CDN Tile Layer
-      tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
-
-      // Draggable 3D Pin Marker
-      const marker = L.marker([initialLat, initialLng], {
-        icon: getCustomPinIcon(category),
-        draggable: true,
-      }).addTo(map);
-      markerRef.current = marker;
-
-      // When pin is dragged, update coordinates with 100% precision
-      marker.on('dragend', async () => {
-        const pos = marker.getLatLng();
-        const lat = Number(pos.lat.toFixed(6));
-        const lng = Number(pos.lng.toFixed(6));
-        setSelectedLat(lat);
-        setSelectedLng(lng);
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const data = await res.json();
-          if (data && data.display_name) {
-            setAddress(data.display_name);
-          }
-        } catch {
-          // Keep existing address
-        }
-      });
-
-      // When map is clicked anywhere, move pin directly there
-      map.on('click', async (e: L.LeafletMouseEvent) => {
-        const { lat, lng } = e.latlng;
-        const nLat = Number(lat.toFixed(6));
-        const nLng = Number(lng.toFixed(6));
-        setSelectedLat(nLat);
-        setSelectedLng(nLng);
-        marker.setLatLng([nLat, nLng]);
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${nLat}&lon=${nLng}`);
-          const data = await res.json();
-          if (data && data.display_name) {
-            setAddress(data.display_name);
-          }
-        } catch {
-          // Keep existing address
-        }
-      });
-    } else {
-      mapInstanceRef.current.setView([selectedLat, selectedLng], 17);
-      markerRef.current?.setLatLng([selectedLat, selectedLng]);
-    }
-
-    setTimeout(() => {
-      mapInstanceRef.current?.invalidateSize();
-    }, 250);
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [isOpen]);
-
-  // Handle Tile Mode Switch (Street / Satellite)
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    if (tileLayerRef.current) {
-      mapInstanceRef.current.removeLayer(tileLayerRef.current);
-    }
-    tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
-  }, [mapMode]);
-
-  // Handle Category Change (updates 3D pin on map)
-  useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setIcon(getCustomPinIcon(category));
-    }
-  }, [category]);
-
-  // Acquire Live Device GPS and center map
-  const handleAcquireDeviceGps = async () => {
+  const handleGetCurrentLocation = async () => {
     setIsLocatingGps(true);
     try {
-      const coords = await LocationService.getCurrentLocation();
-      let lat = 28.5245;
-      let lng = 77.2066;
-      let acc = 8.0;
-
-      if (coords) {
-        lat = Number(coords.latitude.toFixed(6));
-        lng = Number(coords.longitude.toFixed(6));
-        acc = coords.accuracy ? Number(coords.accuracy.toFixed(1)) : 6.5;
+      const loc = await LocationService.getCurrentLocation();
+      if (loc) {
+        setSelectedLat(Number(loc.coords.latitude.toFixed(6)));
+        setSelectedLng(Number(loc.coords.longitude.toFixed(6)));
+        if (loc.coords.accuracy) {
+          setGpsAccuracy(Number(loc.coords.accuracy.toFixed(1)));
+        }
+        Alert.alert(
+          'GPS Location Acquired',
+          `Coordinates: ${loc.coords.latitude.toFixed(5)}, ${loc.coords.longitude.toFixed(5)} (Accuracy: ±${loc.coords.accuracy?.toFixed(1) || '8'}m)`
+        );
       } else {
-        // Fallback offset
-        lat = Number((28.5245 + (Math.random() - 0.5) * 0.002).toFixed(6));
-        lng = Number((77.2066 + (Math.random() - 0.5) * 0.002).toFixed(6));
-        acc = 8.5;
+        Alert.alert('Location Error', 'Unable to retrieve high-accuracy GPS coordinates.');
       }
-
-      setSelectedLat(lat);
-      setSelectedLng(lng);
-      setGpsAccuracy(acc);
-
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([lat, lng], 19, { duration: 1.0 });
-
-        if (markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
-        }
-
-        // Draw accuracy circle
-        if (accuracyCircleRef.current) {
-          mapInstanceRef.current.removeLayer(accuracyCircleRef.current);
-        }
-        accuracyCircleRef.current = L.circle([lat, lng], {
-          radius: acc,
-          color: '#0052cc',
-          fillColor: '#60A5FA',
-          fillOpacity: 0.25,
-          weight: 1.5,
-        }).addTo(mapInstanceRef.current);
-      }
-    } catch {
-      // Fallback
+    } catch (err: any) {
+      Alert.alert('GPS Error', err?.message || 'Could not fetch device location');
     } finally {
       setIsLocatingGps(false);
     }
   };
 
-  // Search address / landmark
-  const handleSearchLandmark = async () => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return;
-
-    const landmarks: Record<string, [number, number]> = {
-      saket: [28.5245, 77.2066],
-      'apex heart': [28.5245, 77.2066],
-      'green park': [28.5585, 77.2028],
-      'little care': [28.5585, 77.2028],
-      'hauz khas': [28.5494, 77.2001],
-      'skin care': [28.5494, 77.2001],
-      'malviya nagar': [28.53, 77.215],
-      aiims: [28.5672, 77.21],
-      safdarjung: [28.57, 77.208],
-      southdelhi: [28.538, 77.206],
-    };
-
-    let targetCoords: [number, number] | null = null;
-    for (const key of Object.keys(landmarks)) {
-      if (q.includes(key) || key.includes(q)) {
-        targetCoords = landmarks[key];
-        break;
-      }
-    }
-
-    if (targetCoords) {
-      const [lat, lng] = targetCoords;
-      setSelectedLat(lat);
-      setSelectedLng(lng);
-      mapInstanceRef.current?.flyTo([lat, lng], 19, { duration: 0.8 });
-      markerRef.current?.setLatLng([lat, lng]);
+  const handleSave = () => {
+    if (!placeName.trim()) {
+      Alert.alert('Missing Name', 'Please enter a facility or clinic name.');
       return;
     }
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
-      );
-      const data = await res.json();
-      if (data && data.length > 0) {
-        const lat = Number(parseFloat(data[0].lat).toFixed(6));
-        const lng = Number(parseFloat(data[0].lon).toFixed(6));
-        setSelectedLat(lat);
-        setSelectedLng(lng);
-        mapInstanceRef.current?.flyTo([lat, lng], 19, { duration: 0.8 });
-        markerRef.current?.setLatLng([lat, lng]);
-        if (data[0].display_name) {
-          setAddress(data[0].display_name);
-        }
-        return;
-      }
-    } catch {
-      // Fallback
-    }
-
-    Alert.alert('Area Not Found', 'Could not locate this place. Please drag the pin on the map to your intended location.');
-  };
-
-  const handleSaveLocation = () => {
-    if (!placeName.trim()) {
-      Alert.alert('Required Field', 'Please enter the Clinic, Hospital, or Store name.');
+    if (!address.trim()) {
+      Alert.alert('Missing Address', 'Please provide an address for this location.');
       return;
     }
 
@@ -301,403 +105,359 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       category,
       latitude: selectedLat,
       longitude: selectedLng,
-      address: address.trim() || `${placeName.trim()}, South Delhi`,
+      address: address.trim(),
       phone: phone.trim() || undefined,
     });
+    onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <View style={styles.fullscreenModal}>
-      {/* Top Header */}
-      <View style={styles.modalHeader}>
-        <View>
-          <Text style={styles.headerTitle}>Pinpoint Exact Location</Text>
-          <Text style={styles.headerSubtitle}>
-            Drag the pin or tap anywhere on the map for 100% precision
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-          <Text style={styles.closeBtnText}>✕</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollBody} contentContainerStyle={{ paddingBottom: 24 }}>
-        {/* Search & Mode Switcher Bar */}
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search area (e.g. Saket, Hauz Khas)..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearchLandmark}
-          />
-          <TouchableOpacity style={styles.searchBtn} onPress={handleSearchLandmark}>
-            <Text style={styles.searchBtnText}>Go</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeToggleBtn, mapMode === 'satellite' && styles.modeToggleActive]}
-            onPress={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
-          >
-            <Text style={[styles.modeToggleText, mapMode === 'satellite' && styles.modeToggleTextActive]}>
-              {mapMode === 'street' ? 'Satellite' : 'Road Map'}
-            </Text>
+    <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={onClose}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Mark Facility Location</Text>
+            <Text style={styles.subtitle}>Geotag Clinic, Hospital, or Chemist</Text>
+          </View>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+            <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Interactive Leaflet Map Container */}
-        <View style={styles.mapFrame}>
-          {/* Web Leaflet Map Mount Point */}
-          <div
-            ref={mapContainerRef as any}
-            style={{
-              width: '100%',
-              height: '310px',
-              backgroundColor: '#E2E8F0',
-            }}
-          />
-
-          {/* Floating GPS Button */}
-          <TouchableOpacity
-            style={styles.floatingGpsBtn}
-            onPress={handleAcquireDeviceGps}
-            disabled={isLocatingGps}
-          >
-            {isLocatingGps ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.floatingGpsText}>Acquire Current GPS</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Live Coordinate Precision Readout */}
-        <View style={styles.coordsCard}>
-          <View style={styles.coordCol}>
-            <Text style={styles.coordLabel}>Exact Latitude</Text>
-            <Text style={styles.coordVal}>{selectedLat.toFixed(6)}° N</Text>
-          </View>
-          <View style={styles.coordDivider} />
-          <View style={styles.coordCol}>
-            <Text style={styles.coordLabel}>Exact Longitude</Text>
-            <Text style={styles.coordVal}>{selectedLng.toFixed(6)}° E</Text>
-          </View>
-          <View style={styles.coordDivider} />
-          <View style={styles.coordCol}>
-            <Text style={styles.coordLabel}>GPS Fix</Text>
-            <Text style={[styles.coordVal, { color: '#0F8B5A' }]}>±{gpsAccuracy}m</Text>
-          </View>
-        </View>
-
-        {/* Facility Classification Selector */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.inputLabel}>Facility Classification</Text>
-          <View style={styles.categoryPillsRow}>
-            {(
-              [
-                { id: 'CLINIC', label: 'Clinic' },
-                { id: 'HOSPITAL', label: 'Hospital' },
-                { id: 'PHARMACY', label: 'Chemist' },
-                { id: 'OFFICE', label: 'Diagnostic' },
-              ] as const
-            ).map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.catPill,
-                  category === cat.id && styles.catPillActive,
-                ]}
-                onPress={() => setCategory(cat.id as PinCategory)}
-              >
-                <Text
-                  style={[
-                    styles.catPillText,
-                    category === cat.id && styles.catPillTextActive,
-                  ]}
-                >
-                  {cat.label}
+        <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent}>
+          {/* GPS Coordinates Card */}
+          <View style={styles.gpsCard}>
+            <View style={styles.gpsRow}>
+              <View style={styles.gpsInfo}>
+                <Text style={styles.gpsLabel}>CURRENT GEOTAG COORDINATES</Text>
+                <Text style={styles.gpsCoords}>
+                  {selectedLat.toFixed(6)}° N, {selectedLng.toFixed(6)}° E
                 </Text>
+                <Text style={styles.gpsAccuracy}>GPS Accuracy: ±{gpsAccuracy}m</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.gpsBtn}
+                onPress={handleGetCurrentLocation}
+                disabled={isLocatingGps}
+              >
+                {isLocatingGps ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.gpsBtnText}>Update GPS</Text>
+                )}
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
 
-          {/* Place & Doctor Details */}
-          <Text style={styles.inputLabel}>Clinic / Hospital / Facility Name *</Text>
+          {/* Category Selector */}
+          <Text style={styles.sectionHeading}>Facility Type</Text>
+          <View style={styles.categoryRow}>
+            {CATEGORIES.map((cat) => {
+              const isSelected = category === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryTab,
+                    isSelected && { backgroundColor: cat.color, borderColor: cat.color },
+                  ]}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <Text
+                    style={[
+                      styles.categoryTabText,
+                      isSelected && { color: '#FFFFFF', fontWeight: '700' },
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Facility Name */}
+          <Text style={styles.inputLabel}>Facility / Clinic Name *</Text>
           <TextInput
             style={styles.textInput}
             value={placeName}
             onChangeText={setPlaceName}
-            placeholder="e.g. Apex Heart Centre"
+            placeholder="e.g. Metro Heart Clinic"
+            placeholderTextColor="#94A3B8"
           />
 
-          <Text style={styles.inputLabel}>Doctor Name (Optional)</Text>
+          {/* Doctor Name */}
+          <Text style={styles.inputLabel}>Key Doctor / Contact Person</Text>
           <TextInput
             style={styles.textInput}
             value={doctorName}
             onChangeText={setDoctorName}
-            placeholder="e.g. Dr. Rajesh Sharma"
+            placeholder="e.g. Dr. Rajesh Sharma, MD"
+            placeholderTextColor="#94A3B8"
           />
 
-          <Text style={styles.inputLabel}>Physical Address / Landmark</Text>
+          {/* Address */}
+          <Text style={styles.inputLabel}>Full Address *</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, styles.textArea]}
             value={address}
             onChangeText={setAddress}
-            placeholder="e.g. Ring Road, Saket, South Delhi"
+            placeholder="Street, Landmark, Area, City, Pincode"
+            placeholderTextColor="#94A3B8"
+            multiline
+            numberOfLines={3}
           />
 
-          <Text style={styles.inputLabel}>Contact Phone</Text>
+          {/* Phone */}
+          <Text style={styles.inputLabel}>Contact Phone Number</Text>
           <TextInput
             style={styles.textInput}
             value={phone}
             onChangeText={setPhone}
-            placeholder="+91 98111 22233"
+            placeholder="+91 98765 43210"
+            placeholderTextColor="#94A3B8"
             keyboardType="phone-pad"
           />
-        </View>
 
-        {/* Save & Cancel Actions */}
-        <View style={styles.actionsRow}>
+          {/* Coordinate Adjustment Inputs */}
+          <Text style={styles.sectionHeading}>Manual Coordinate Adjustment</Text>
+          <View style={styles.coordInputsRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.coordSubLabel}>Latitude</Text>
+              <TextInput
+                style={styles.coordInput}
+                value={String(selectedLat)}
+                onChangeText={(val) => {
+                  const n = parseFloat(val);
+                  if (!isNaN(n)) setSelectedLat(n);
+                }}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.coordSubLabel}>Longitude</Text>
+              <TextInput
+                style={styles.coordInput}
+                value={String(selectedLng)}
+                onChangeText={(val) => {
+                  const n = parseFloat(val);
+                  if (!isNaN(n)) setSelectedLng(n);
+                }}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Action Buttons */}
+        <View style={styles.footer}>
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveLocation}>
-            <Text style={styles.saveBtnText}>Save & Pinpoint Geotag</Text>
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+            <Text style={styles.saveBtnText}>Save Geotag Location</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  fullscreenModal: {
+  container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  modalHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    backgroundColor: '#0B2545',
   },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
-  headerSubtitle: {
-    fontSize: 10.5,
-    color: '#64748B',
+  subtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   closeBtnText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    color: '#64748B',
     fontWeight: '700',
   },
   scrollBody: {
     flex: 1,
-    padding: 12,
   },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  searchInput: {
-    flex: 1,
+  gpsCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12,
-    color: '#0F172A',
-  },
-  searchBtn: {
-    backgroundColor: '#0052cc',
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    borderRadius: 6,
-  },
-  searchBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  modeToggleBtn: {
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-    borderRadius: 6,
-  },
-  modeToggleActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
-  },
-  modeToggleText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  modeToggleTextActive: {
-    color: '#FFFFFF',
-  },
-  mapFrame: {
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    position: 'relative',
-    marginBottom: 10,
-    elevation: 2,
-  },
-  floatingGpsBtn: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    zIndex: 1000,
-    backgroundColor: '#0F8B5A',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  floatingGpsText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  coordsCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  },
+  gpsRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
   },
-  coordCol: {
+  gpsInfo: {
     flex: 1,
-    alignItems: 'center',
+    marginRight: 12,
   },
-  coordLabel: {
-    fontSize: 9.5,
+  gpsLabel: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  gpsCoords: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0B2545',
+    marginBottom: 2,
+  },
+  gpsAccuracy: {
+    fontSize: 11,
+    color: '#0F8B5A',
     fontWeight: '600',
   },
-  coordVal: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 2,
-    fontFamily: 'monospace',
-  },
-  coordDivider: {
-    width: 1,
-    height: 22,
-    backgroundColor: '#E2E8F0',
-  },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
+  gpsBtn: {
+    backgroundColor: '#134074',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 4,
-    marginTop: 8,
-  },
-  categoryPillsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 4,
-  },
-  catPill: {
-    flex: 1,
-    paddingVertical: 7,
-    borderRadius: 6,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  catPillActive: {
-    backgroundColor: '#0052cc',
-    borderColor: '#0052cc',
+  gpsBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
-  catPillText: {
-    fontSize: 11,
+  sectionHeading: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 10,
+    marginTop: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    marginBottom: 18,
+  },
+  categoryTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    marginHorizontal: 3,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  categoryTabText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#475569',
   },
-  catPillTextActive: {
-    color: '#FFFFFF',
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 6,
+    marginTop: 8,
   },
   textInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    fontSize: 12,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  textArea: {
+    height: 72,
+    textAlignVertical: 'top',
+  },
+  coordInputsRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  coordSubLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  coordInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
     color: '#0F172A',
   },
-  actionsRow: {
+  footer: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
     alignItems: 'center',
+    marginRight: 8,
   },
   cancelBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
   },
   saveBtn: {
     flex: 2,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#0F8B5A',
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: '#0B2545',
     alignItems: 'center',
-    shadowColor: '#0F8B5A',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    marginLeft: 8,
   },
   saveBtnText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
