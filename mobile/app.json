@@ -26,7 +26,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -53,6 +54,12 @@
           "photosPermission": "Allow AHTRI FFA to attach photos of clinic visits and expense bills."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "60909a48-8c02-4b10-ba38-404119640394"
+      }
+    },
+    "owner": "shiva900"
   }
 }
