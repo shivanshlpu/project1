@@ -38,7 +38,6 @@ import { DoctorDirectoryScreen } from './screens/DoctorDirectoryScreen';
 import { DoctorVisitScreen } from './screens/DoctorVisitScreen';
 import { AttendanceScreen } from './screens/AttendanceScreen';
 import { LoginScreen } from './screens/LoginScreen';
-import { ServerConfigModal } from './components/ServerConfigModal';
 import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './services/appUpdateService';
 import { UpdateModal } from './components/UpdateModal';
 
@@ -88,7 +87,6 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<MobileTab>('tasks');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
-  const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
@@ -269,13 +267,7 @@ export default function App() {
 
             {/* Right Header Actions */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {/* Server Connection Status & Config Button */}
-              <TouchableOpacity
-                style={styles.serverChipBtn}
-                onPress={() => setIsServerModalOpen(true)}
-              >
-                <Text style={styles.serverChipBtnText}>Server</Text>
-              </TouchableOpacity>
+
 
               {/* Install PWA Button in Header */}
               {!isAppInstalled && (installPrompt || isIOSWeb) && (
@@ -416,13 +408,7 @@ export default function App() {
                     )}
                   </TouchableOpacity>
 
-                  {/* Server Connection Config Button */}
-                  <TouchableOpacity
-                    style={styles.serverProfileBtn}
-                    onPress={() => setIsServerModalOpen(true)}
-                  >
-                    <Text style={styles.serverProfileBtnText}>Server Connection & Health Ping</Text>
-                  </TouchableOpacity>
+
 
                   <TouchableOpacity style={styles.logoutLargeBtn} onPress={handleLogout}>
                     <Text style={styles.logoutLargeBtnText}>Log Out Account</Text>
@@ -432,11 +418,7 @@ export default function App() {
             )}
           </View>
 
-          {/* Server Config Modal */}
-          <ServerConfigModal
-            isOpen={isServerModalOpen}
-            onClose={() => setIsServerModalOpen(false)}
-          />
+
 
           {/* In-App Auto-Update Modal */}
           <UpdateModal

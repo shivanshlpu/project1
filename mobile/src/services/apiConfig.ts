@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
 const STORAGE_KEYS = {
   TOKEN: '@ahtri_auth_token',
@@ -7,40 +6,22 @@ const STORAGE_KEYS = {
   SERVER_URL: '@ahtri_custom_server_url',
 };
 
-// Default fallback URLs:
-// - Physical Android via Wi-Fi / LAN: 10.48.153.83:3000
-// - Android Emulator: 10.0.2.2:3000
-// - Web / iOS: localhost:3000
-const LAN_HOST = '10.48.153.83';
-const EMULATOR_HOST = '10.0.2.2';
-const DEFAULT_HOST =
-  Platform.OS === 'android' ? LAN_HOST : 'localhost';
-
-export const DEFAULT_API_URL =
-  process.env.EXPO_PUBLIC_API_URL || `http://${DEFAULT_HOST}:3000`;
+// Permanent Production Render Backend Endpoint
+export const DEFAULT_API_URL = 'https://ahtri-backend.onrender.com';
 
 export const PRESET_SERVER_URLS = [
-  { label: 'LAN Wi-Fi Host', url: `http://${LAN_HOST}:3000`, desc: 'Direct connection to local development server' },
-  { label: 'Localhost (3000)', url: 'http://localhost:3000', desc: 'Standard local web and iOS dev port' },
-  { label: 'Android Emulator', url: `http://${EMULATOR_HOST}:3000`, desc: 'For Android Studio virtual devices' },
+  { label: 'Production Render Server', url: DEFAULT_API_URL, desc: 'Live enterprise cloud API' },
 ];
 
 export const ApiConfig = {
   async getBaseUrl(): Promise<string> {
-    try {
-      const customUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
-      if (customUrl && customUrl.trim()) {
-        return customUrl.trim();
-      }
-    } catch {
-      // Fallback
-    }
+    // Locked strictly to Render production server
     return DEFAULT_API_URL;
   },
 
-  async setBaseUrl(url: string): Promise<void> {
-    const trimmed = url.trim().replace(/\/+$/, '');
-    await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, trimmed);
+  async setBaseUrl(_url: string): Promise<void> {
+    // Locked: always maintain Render production server
+    await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, DEFAULT_API_URL);
   },
 
   async resetToDefault(): Promise<string> {
@@ -50,6 +31,8 @@ export const ApiConfig = {
 
   async getToken(): Promise<string | null> {
     try {
+      // Clean up legacy local dev IP if previously stored
+      await AsyncStorage.removeItem(STORAGE_KEYS.SERVER_URL);
       return await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
     } catch {
       return null;
@@ -63,6 +46,7 @@ export const ApiConfig = {
   async clearSession(): Promise<void> {
     await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
     await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+    await AsyncStorage.removeItem(STORAGE_KEYS.SERVER_URL);
   },
 
   async getAuthHeaders(): Promise<Record<string, string>> {
@@ -74,10 +58,10 @@ export const ApiConfig = {
   },
 
   async testConnection(targetUrl?: string): Promise<{ ok: boolean; message: string; data?: any }> {
-    const baseUrl = targetUrl ? targetUrl.trim().replace(/\/+$/, '') : await this.getBaseUrl();
+    const baseUrl = DEFAULT_API_URL;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const res = await fetch(`${baseUrl}/health`, {
         method: 'GET',
@@ -103,12 +87,12 @@ export const ApiConfig = {
       if (err.name === 'AbortError') {
         return {
           ok: false,
-          message: 'Connection timed out after 4 seconds. Ensure phone is on the same Wi-Fi.',
+          message: 'Connection timed out after 6 seconds.',
         };
       }
       return {
         ok: false,
-        message: err?.message || 'Could not reach server. Verify network and IP.',
+        message: err?.message || 'Could not reach server.',
       };
     }
   },

@@ -350,16 +350,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
   );
 
-  // Multi-CDN compliant tile URL generator
-  // Fastly Anycast CARTO CDN + Google Hybrid Satellite (zero volunteer server bans)
+  // Google Road Map & Google Hybrid Satellite (Zero watermark, crystal-clear high-res maps)
   const getTileUrl = (x: number, y: number) => {
+    const s = Math.abs(x + y) % 4;
     if (mapMode === 'satellite') {
-      const s = Math.abs(x + y) % 4;
       return `https://mt${s}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${zoom}`;
     }
-    const subdomains = ['a', 'b', 'c', 'd'];
-    const s = subdomains[Math.abs(x + y) % subdomains.length];
-    return `https://cartodb-basemaps-${s}.global.ssl.fastly.net/rastertiles/voyager/${zoom}/${x}/${y}.png`;
+    // Google Street Road Map (Clean roads, hospitals, clinics, landmarks - No Carto watermark)
+    return `https://mt${s}.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${zoom}`;
   };
 
   // Center 3x3 tiles surrounding the selected location for seamless panning

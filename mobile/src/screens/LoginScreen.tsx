@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { DeviceBindingService } from '../services/deviceBindingService';
 import { ApiConfig } from '../services/apiConfig';
-import { ServerConfigModal } from '../components/ServerConfigModal';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: {
@@ -30,7 +29,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [identifier, setIdentifier] = useState('mr@ahtri.com');
   const [password, setPassword] = useState('Password@123');
   const [phone, setPhone] = useState('9876543212');
-  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
 
   // Real Hardware Fingerprint of the running phone
   const [currentDeviceId, setCurrentDeviceId] = useState('dev-hw-s22-9f8a2c');
@@ -365,16 +363,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   // STEP 1: Standard Credentials Screen
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Top Server Connection Action Bar */}
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 6 }}>
-        <TouchableOpacity
-          style={styles.serverConfigTopBtn}
-          onPress={() => setIsServerModalOpen(true)}
-        >
-          <View style={styles.serverStatusDot} />
-          <Text style={styles.serverConfigTopBtnText}>Server Connection</Text>
-        </TouchableOpacity>
-      </View>
+
 
       {/* Brand Header */}
       <View style={styles.brandContainer}>
@@ -393,10 +382,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </Text>
       </View>
 
-      <ServerConfigModal
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-      />
+
 
       {/* Login Card */}
       <View style={styles.card}>

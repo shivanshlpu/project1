@@ -28,14 +28,7 @@ export const STREET_PROVIDERS: TileProvider[] = [
     maxNativeZoom: 19,
     maxZoom: 22,
   },
-  {
-    name: 'CartoVoyager',
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    maxNativeZoom: 20,
-    maxZoom: 22,
-  },
+
   {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
