@@ -347,6 +347,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [zoneMapMode, setZoneMapMode] = useState<'street' | 'satellite'>('street');
   const [zoneSidebarTab, setZoneSidebarTab] = useState<'locations' | 'tasks'>('locations');
+  const [isZoneMapInteracting, setIsZoneMapInteracting] = useState(false);
+  const [isZoneLegendOpen, setIsZoneLegendOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
   const [zoneSearchQuery, setZoneSearchQuery] = useState('');
   const [zoneCategoryFilter, setZoneCategoryFilter] = useState<'ALL' | 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE'>('ALL');
 
@@ -437,15 +439,32 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
   }, [savedLocations]);
 
+
+  const toggleZoneMapInteraction = () => {
+    if (!zoneMapInstanceRef.current) return;
+    if (isZoneMapInteracting) {
+      zoneMapInstanceRef.current.dragging.disable();
+      setIsZoneMapInteracting(false);
+    } else {
+      zoneMapInstanceRef.current.dragging.enable();
+      setIsZoneMapInteracting(true);
+    }
+  };
+
   // Initialize Zone Overview Map with Hardware Canvas Acceleration & Multi-CDN Fallback
   useEffect(() => {
     if (dashboardView !== 'zone_map' || !zoneMapContainerRef.current) return;
 
     if (!zoneMapInstanceRef.current) {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const map = createOptimizedMap(zoneMapContainerRef.current, {
-        zoomControl: true,
+        zoomControl: false,
+        dragging: !isMobile,
       }).setView([28.538, 77.206], 12);
       zoneMapInstanceRef.current = map;
+
+      // Position zoom controls in bottom-right to avoid overlapping top controls
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       map.on('movestart', () => {
         isUserInteractingRef.current = true;
@@ -458,13 +477,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
       zoneCirclesGroupRef.current = L.layerGroup().addTo(map);
       zoneMarkersGroupRef.current = L.layerGroup().addTo(map);
+
+      let resizeObserver: ResizeObserver | null = null;
+      if (zoneMapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+          zoneMapInstanceRef.current?.invalidateSize();
+        });
+        resizeObserver.observe(zoneMapContainerRef.current);
+      }
     }
 
     renderZoneMapEntities();
 
-    setTimeout(() => {
-      zoneMapInstanceRef.current?.invalidateSize();
-    }, 250);
+    setTimeout(() => zoneMapInstanceRef.current?.invalidateSize(), 50);
+    setTimeout(() => zoneMapInstanceRef.current?.invalidateSize(), 200);
+    setTimeout(() => zoneMapInstanceRef.current?.invalidateSize(), 500);
   }, [dashboardView]);
 
   // Update Zone Map Mode (Street / Satellite) with Resilient Layer
@@ -1168,7 +1195,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
+        <div className="tasks-header-actions-row">
           {/* View Mode Switcher: Zone Map vs Task Cards */}
           <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '7px', border: '1px solid #CBD5E1' }}>
             <button
@@ -1560,6 +1587,29 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </button>
                   </div>
 
+                  {/* Mobile Touch Pan Lock / Unlock Button */}
+                  <button
+                    type="button"
+                    onClick={toggleZoneMapInteraction}
+                    style={{
+                      padding: '4px 8px',
+                      background: isZoneMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: isZoneMapInteracting ? '#FFFFFF' : '#334155',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    }}
+                    title="Toggle whether touching the map drags the map or scrolls the page"
+                  >
+                    <span>{isZoneMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+                  </button>
+
                   {/* Reset Center */}
                   <button
                     type="button"
@@ -1585,7 +1635,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       gap: '4px',
                     }}
                   >
-                    <Crosshair size={12} /> Center Zone
+                    <Crosshair size={12} /> Center
                   </button>
                 </div>
               </div>
@@ -1593,10 +1643,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
               {/* Map Canvas */}
               <div
                 ref={zoneMapContainerRef}
+                className="tasks-zone-map-wrapper"
                 style={{
                   width: '100%',
-                  height: '520px',
-                  borderRadius: '6px',
+                  minHeight: '380px',
+                  borderRadius: '8px',
                   border: '1px solid #CBD5E1',
                   overflow: 'hidden',
                   position: 'relative',
@@ -1604,41 +1655,66 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 }}
               />
 
-              {/* Map Legend */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  flexWrap: 'wrap',
-                  fontSize: '11px',
-                  color: '#64748B',
-                  padding: '6px 10px',
-                  background: '#F8FAFC',
-                  borderRadius: '6px',
-                  border: '1px solid #E2E8F0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#0F8B5A', display: 'inline-block' }} />
-                  <span>Clinic (3D Pin)</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#DC2626', display: 'inline-block' }} />
-                  <span>Hospital (3D Pin)</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#D97706', display: 'inline-block' }} />
-                  <span>Pharmacy / Chemist (3D Pin)</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
-                  <span>Scheduled Task</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '16px', height: '0px', borderTop: '2px dashed #1A3C6E', display: 'inline-block' }} />
-                  <span>Zone Geofence Perimeter</span>
-                </div>
+              {/* Map Legend (Collapsible on Mobile) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsZoneLegendOpen(!isZoneLegendOpen)}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <span>ℹ️ Map Legend {isZoneLegendOpen ? '▲' : '▼'}</span>
+                </button>
+
+                {isZoneLegendOpen && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      fontSize: '11px',
+                      color: '#64748B',
+                      padding: '8px 12px',
+                      background: '#F8FAFC',
+                      borderRadius: '6px',
+                      border: '1px solid #E2E8F0',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#0F8B5A', display: 'inline-block' }} />
+                      <span>Clinic (3D Pin)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#DC2626', display: 'inline-block' }} />
+                      <span>Hospital (3D Pin)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#D97706', display: 'inline-block' }} />
+                      <span>Pharmacy / Chemist (3D Pin)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
+                      <span>Scheduled Task</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '14px', height: '0px', borderTop: '2px dashed #1A3C6E', display: 'inline-block' }} />
+                      <span>Zone Geofence Perimeter</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

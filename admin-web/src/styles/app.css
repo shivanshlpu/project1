@@ -1123,10 +1123,11 @@
 
   .saved-locations-map-col {
     order: 1;
-    height: 280px;
-    min-height: 280px;
+    height: 380px !important;
+    min-height: 360px !important;
     flex-shrink: 0;
     border-bottom: 1px solid #E2E8F0;
+    position: relative !important;
   }
 
   .saved-locations-list-col {
@@ -1717,7 +1718,30 @@
 .leaflet-container {
   background-color: #E2E8F0 !important;
   width: 100% !important;
+  font-family: inherit;
+}
+
+.map-picker-modal-box .leaflet-container,
+.saved-locations-map-col .leaflet-container {
   height: 100% !important;
+}
+
+/* Zone Map Container in Tasks View */
+.tasks-zone-map-wrapper {
+  width: 100%;
+  height: 500px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  overflow: hidden;
+  position: relative;
+  background: #E2E8F0;
+}
+
+@media (max-width: 1024px) {
+  .tasks-zone-map-wrapper {
+    height: 380px !important;
+    min-height: 360px !important;
+  }
 }
 
 /* Responsive Territory Geofences & Tasks Explorer Grid */
@@ -1752,3 +1776,21 @@
   }
 }
 
+
+/* Tasks Action Bar Responsive Wrap */
+.tasks-header-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .tasks-header-actions-row {
+    width: 100%;
+  }
+  .tasks-header-actions-row button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

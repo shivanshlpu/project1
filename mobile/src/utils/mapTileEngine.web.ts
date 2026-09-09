@@ -13,14 +13,6 @@ export interface TileProvider {
 
 export const STREET_PROVIDERS: TileProvider[] = [
   {
-    name: 'CartoVoyager',
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    maxNativeZoom: 20,
-    maxZoom: 22,
-  },
-  {
     name: 'GoogleStreet',
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
     subdomains: ['0', '1', '2', '3'],
@@ -34,6 +26,14 @@ export const STREET_PROVIDERS: TileProvider[] = [
     subdomains: [],
     attribution: 'Tiles &copy; Esri',
     maxNativeZoom: 19,
+    maxZoom: 22,
+  },
+  {
+    name: 'CartoVoyager',
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxNativeZoom: 20,
     maxZoom: 22,
   },
   {
@@ -153,6 +153,8 @@ export function createOptimizedMap(
   element: HTMLElement | string,
   options?: L.MapOptions
 ): L.Map {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return L.map(element, {
     preferCanvas: true,
     zoomAnimation: true,
@@ -162,6 +164,8 @@ export function createOptimizedMap(
     zoomSnap: 0.5,
     maxZoom: 22,
     minZoom: 3,
+    scrollWheelZoom: false,
+        touchZoom: !isMobile ? true : 'center',
     ...options,
   });
 }

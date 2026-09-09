@@ -13,20 +13,12 @@ export interface TileProvider {
 
 /**
  * Enterprise Street Tile Providers with Automatic Multi-CDN Fallback.
- * Tier 1: CARTO Voyager (Fastly Anycast CDN, modern aesthetic, zero referrer bans, enterprise reliability)
- * Tier 2: Google Street Map (Google tiles with high uptime & updated road data)
- * Tier 3: Esri World Street Map (AWS CloudFront global GIS CDN, high reliability)
- * Tier 4: OpenStreetMap Foundation CDN (Volunteer servers)
+ * Tier 1: Google Street Map (Clean, high-uptime, zero watermark, crystal-clear roads & places)
+ * Tier 2: Esri World Street Map (AWS CloudFront global GIS CDN, high reliability, zero watermark)
+ * Tier 3: CARTO Voyager (Fastly Anycast CDN fallback)
+ * Tier 4: OpenStreetMap Foundation CDN
  */
 export const STREET_PROVIDERS: TileProvider[] = [
-  {
-    name: 'CartoVoyager',
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxNativeZoom: 20,
-    maxZoom: 22,
-  },
   {
     name: 'GoogleStreet',
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
@@ -44,6 +36,14 @@ export const STREET_PROVIDERS: TileProvider[] = [
     maxZoom: 22,
   },
   {
+    name: 'CartoVoyager',
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxNativeZoom: 20,
+    maxZoom: 22,
+  },
+  {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
@@ -55,8 +55,8 @@ export const STREET_PROVIDERS: TileProvider[] = [
 
 /**
  * High-Resolution Satellite Providers with Automatic Multi-CDN Fallback.
- * Tier 1: Google Hybrid Satellite (Photographic satellite imagery with street & hospital/clinic overlay)
- * Tier 2: Esri World Imagery (Standard GIS satellite imagery, sub-meter resolution, AWS CDN)
+ * Tier 1: Google Hybrid Satellite (Sub-meter photography + street & clinic overlays, zero watermark)
+ * Tier 2: Esri World Imagery (Standard GIS satellite imagery, AWS CDN)
  */
 export const SATELLITE_PROVIDERS: TileProvider[] = [
   {
@@ -71,7 +71,7 @@ export const SATELLITE_PROVIDERS: TileProvider[] = [
     name: 'EsriWorldImagery',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     subdomains: [],
-    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+    attribution: 'Imagery &copy; Esri, Maxar',
     maxNativeZoom: 19,
     maxZoom: 22,
   },
@@ -79,8 +79,6 @@ export const SATELLITE_PROVIDERS: TileProvider[] = [
 
 /**
  * Custom Resilient Tile Layer with Real-Time Multi-Tier Error Recovery.
- * If any tile fails to load (403 forbidden, 429 rate limit, or network drop),
- * it seamlessly and instantly fetches the tile from the fallback provider.
  */
 export class ResilientTileLayer extends L.TileLayer {
   private providers: TileProvider[];
@@ -141,12 +139,10 @@ export class ResilientTileLayer extends L.TileLayer {
 
       tile.onerror = () => {
         this.consecutiveErrors++;
-        // If current primary fails 4 times consecutively, permanently failover to next provider
         if (this.consecutiveErrors >= 4 && this.activeProviderIndex < this.providers.length - 1) {
           this.activeProviderIndex = (this.activeProviderIndex + 1) % this.providers.length;
           this.consecutiveErrors = 0;
         }
-
         attemptsCount++;
         attemptIndex++;
         tryLoad();
@@ -160,9 +156,6 @@ export class ResilientTileLayer extends L.TileLayer {
   }
 }
 
-/**
- * Creates a resilient high-performance tile layer.
- */
 export function createResilientTileLayer(
   mode: MapMode,
   options?: L.TileLayerOptions
@@ -173,12 +166,14 @@ export function createResilientTileLayer(
 
 /**
  * Creates an optimized Leaflet Map instance with hardware-accelerated Canvas rendering,
- * smooth animation flags, and anti-lag buffer settings.
+ * smooth animation flags, and anti-lag mobile settings.
  */
 export function createOptimizedMap(
   element: HTMLElement | string,
   options?: L.MapOptions
 ): L.Map {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return L.map(element, {
     preferCanvas: true,
     zoomAnimation: true,
@@ -188,6 +183,9 @@ export function createOptimizedMap(
     zoomSnap: 0.5,
     maxZoom: 22,
     minZoom: 3,
+    // On phone screens, disable scroll-wheel and gesture hijacking by default
+    scrollWheelZoom: false,
+    touchZoom: !isMobile ? true : 'center',
     ...options,
   });
 }

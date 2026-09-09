@@ -158,6 +158,19 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const lastTargetIdRef = useRef<string | null>(null);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [isMapInteracting, setIsMapInteracting] = useState(false);
+
+  const toggleMapInteraction = () => {
+    if (!mapInstanceRef.current) return;
+    if (isMapInteracting) {
+      mapInstanceRef.current.dragging.disable();
+      setIsMapInteracting(false);
+    } else {
+      mapInstanceRef.current.dragging.enable();
+      setIsMapInteracting(true);
+    }
+  };
 
   // Compute locations inside a zone
   const getLocationsInZone = (zone: TerritoryZone) => {
@@ -690,73 +703,154 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         <div className="saved-locations-map-col">
           <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-          {/* Map Controls: Satellite Mode Toggle */}
+          {/* Top Floating Controls Bar */}
           <div
             style={{
               position: 'absolute',
-              top: 12,
-              left: 12,
+              top: 10,
+              left: 10,
+              right: 10,
               zIndex: 400,
-              background: '#FFFFFF',
-              borderRadius: '6px',
-              border: '1px solid #CBD5E1',
-              padding: '2px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              pointerEvents: 'none',
             }}
           >
-            <button
-              onClick={() => setMapMode('street')}
-              style={{
-                padding: '4px 10px',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
-                color: mapMode === 'street' ? '#FFFFFF' : '#475569',
-              }}
-            >
-              Street Map
-            </button>
-            <button
-              onClick={() => setMapMode('satellite')}
-              style={{
-                padding: '4px 10px',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
-                color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
-              }}
-            >
-              Satellite View
-            </button>
-          </div>
+            {/* Left Controls: Street vs Satellite & Touch Scroll Unlock */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', pointerEvents: 'auto' }}>
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  padding: '2px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                }}
+              >
+                <button
+                  onClick={() => setMapMode('street')}
+                  style={{
+                    padding: '4px 8px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
+                    color: mapMode === 'street' ? '#FFFFFF' : '#475569',
+                  }}
+                >
+                  Street
+                </button>
+                <button
+                  onClick={() => setMapMode('satellite')}
+                  style={{
+                    padding: '4px 8px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
+                    color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
+                  }}
+                >
+                  Satellite
+                </button>
+              </div>
 
-          {/* Map Floating Summary Badge */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              zIndex: 400,
-              background: '#FFFFFF',
-              borderRadius: '8px',
-              padding: '10px 14px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              border: '1px solid #E2E8F0',
-              fontSize: '12px',
-            }}
-          >
-            <div style={{ fontWeight: '700', color: '#0F172A', marginBottom: '2px' }}>
-              {filteredLocations.length} Saved Points of Care
+              {/* Mobile Touch Pan Lock / Unlock Button (Prevents page freeze) */}
+              <button
+                type="button"
+                onClick={toggleMapInteraction}
+                style={{
+                  background: isMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                  color: isMapInteracting ? '#FFFFFF' : '#334155',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Toggle whether map dragging captures your touch or lets you scroll the page"
+              >
+                <span>{isMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+              </button>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B' }}>
-              Green: Clinics • Red: Hospitals • Blue: Pharmacies
+
+            {/* Right Controls: Collapsible Points of Care Chip & Popover */}
+            <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+              <button
+                type="button"
+                onClick={() => setIsLegendOpen(!isLegendOpen)}
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  padding: '5px 9px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: '#1E293B',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>📍 {filteredLocations.length} Points</span>
+                <span style={{ fontSize: '10px' }}>{isLegendOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {/* Collapsible Dropdown Legend */}
+              {isLegendOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '32px',
+                    right: 0,
+                    background: '#FFFFFF',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '11.5px',
+                    minWidth: '200px',
+                    zIndex: 500,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontWeight: '800', color: '#0F172A' }}>Points of Care</span>
+                    <button
+                      onClick={() => setIsLegendOpen(false)}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '13px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0F8B5A' }} />
+                      <span>Clinics (Green)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#DC2626' }} />
+                      <span>Hospitals (Red)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D97706' }} />
+                      <span>Pharmacies (Orange)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
