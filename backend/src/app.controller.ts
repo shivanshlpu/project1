@@ -23,7 +23,7 @@ let currentAppVersion: AppVersionData = {
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://expo.dev/artifacts/eas/STernUOxw1uIVH1kMk5NwbbKfKgHY-rKm6Lq5mxsMbM.apk',
+    'https://expo.dev/artifacts/eas/Nw3kdnt3upYrJLLbnqZPdyQdQxYB1bPvIDE1n7saZV4.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   releaseDate: new Date().toISOString().split('T')[0],
   releaseNotes: [
