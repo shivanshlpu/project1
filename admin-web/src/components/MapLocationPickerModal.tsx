@@ -136,11 +136,17 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       markerRef.current.setIcon(updatedIcon);
     }
 
+    const handleResize = () => {
+      mapInstanceRef.current?.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+
     setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
     }, 200);
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -309,19 +315,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1000 }}>
-      <div
-        className="modal-box"
-        style={{
-          width: '92vw',
-          maxWidth: '1080px',
-          height: '88vh',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden',
-          borderRadius: '12px',
-        }}
-      >
+      <div className="modal-box map-picker-modal-box">
         {/* Header */}
         <div
           style={{
@@ -371,9 +365,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         </div>
 
         {/* Modal Body: Split Map & Form */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div className="modal-split-container">
           {/* Left Column: Live Map */}
-          <div style={{ flex: '1.4', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-map-col">
             {/* Search Bar Floating on Map */}
             <div
               style={{
@@ -548,18 +542,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
           </div>
 
           {/* Right Column: Location Details & Save Form */}
-          <div
-            style={{
-              flex: '1',
-              borderLeft: '1px solid #E2E8F0',
-              padding: '20px',
-              overflowY: 'auto',
-              background: '#FFFFFF',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}
-          >
+          <div className="modal-form-col">
             <div>
               <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                 Save Marked Location

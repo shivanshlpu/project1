@@ -10,11 +10,11 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
   const tabs = [
-    { id: 'tasks' as MobileTab, label: 'Tasks', code: 'TSK' },
-    { id: 'doctors' as MobileTab, label: 'Doctors', code: 'DOC' },
-    { id: 'visits' as MobileTab, label: 'Orders', code: 'ORD' },
-    { id: 'attendance' as MobileTab, label: 'Attendance', code: 'ATT' },
-    { id: 'profile' as MobileTab, label: 'Device', code: 'DEV' },
+    { id: 'tasks' as MobileTab, label: 'Tasks', icon: '✓' },
+    { id: 'doctors' as MobileTab, label: 'Doctors', icon: '+' },
+    { id: 'visits' as MobileTab, label: 'Orders', icon: '₹' },
+    { id: 'attendance' as MobileTab, label: 'Attendance', icon: '●' },
+    { id: 'profile' as MobileTab, label: 'Device', icon: 'ID' },
   ];
 
   return (
@@ -24,14 +24,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
         return (
           <TouchableOpacity
             key={tab.id}
-            style={styles.tabItem}
+            style={[styles.tabItem, isActive && styles.tabItemActive]}
             onPress={() => onSelectTab(tab.id)}
+            activeOpacity={0.7}
           >
-            <View style={[styles.codeBadge, isActive && styles.codeBadgeActive]}>
-              <Text style={[styles.codeText, isActive && styles.codeTextActive]}>
-                {tab.code}
+            {/* Top Active Bar */}
+            {isActive && <View style={styles.activeTopBar} />}
+
+            {/* Icon Circle */}
+            <View style={[styles.iconCircle, isActive && styles.iconCircleActive]}>
+              <Text style={[styles.iconText, isActive && styles.iconTextActive]}>
+                {tab.icon}
               </Text>
             </View>
+
+            {/* Label */}
             <Text
               style={[
                 styles.tabLabel,
@@ -51,42 +58,65 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
 const styles = StyleSheet.create({
   navBar: {
     flexDirection: 'row',
-    height: 60,
+    height: 62,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'space-around',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 8,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    height: '100%',
     flex: 1,
+    position: 'relative',
+    paddingTop: 4,
+    paddingBottom: 4,
   },
-  codeBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
+  tabItemActive: {
+    backgroundColor: 'rgba(27, 154, 170, 0.04)',
+  },
+  activeTopBar: {
+    position: 'absolute',
+    top: 0,
+    left: '20%',
+    right: '20%',
+    height: 3,
+    backgroundColor: '#0F8B5A',
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+  },
+  iconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#F1F5F9',
-    marginBottom: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
-  codeBadgeActive: {
+  iconCircleActive: {
     backgroundColor: '#0F8B5A',
   },
-  codeText: {
-    fontSize: 9.5,
+  iconText: {
+    fontSize: 12,
     fontWeight: '800',
     color: '#64748B',
-    letterSpacing: 0.5,
   },
-  codeTextActive: {
+  iconTextActive: {
     color: '#FFFFFF',
+    fontWeight: '900',
   },
   tabLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   labelActive: {
     color: '#0F8B5A',

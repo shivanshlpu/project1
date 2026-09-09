@@ -326,22 +326,22 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
           {/* Date Range Inputs */}
           <View style={styles.rowTwoCols}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>From Date (YYYY-MM-DD) *</Text>
+              <Text style={styles.label}>From Date *</Text>
               <TextInput
                 style={styles.input}
                 value={startDate}
                 onChangeText={setStartDate}
-                placeholder="2026-09-12"
+                placeholder="YYYY-MM-DD"
               />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>To Date (YYYY-MM-DD) *</Text>
+              <Text style={styles.label}>To Date *</Text>
               <TextInput
                 style={styles.input}
                 value={endDate}
                 onChangeText={setEndDate}
-                placeholder="2026-09-13"
+                placeholder="YYYY-MM-DD"
               />
             </View>
           </View>

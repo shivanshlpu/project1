@@ -202,7 +202,7 @@ export const DoctorVisitScreen: React.FC = () => {
         {/* IMMEDIATE MULTIPLE ORDERS SECTION */}
         <View style={styles.orderSection}>
           <View style={styles.orderHeaderRow}>
-            <View>
+            <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.orderSectionTitle}>Immediate Order Taking</Text>
               <Text style={styles.orderSectionSub}>
                 Book multiple products & stockist orders directly on-site
@@ -256,6 +256,7 @@ export const DoctorVisitScreen: React.FC = () => {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.chipsScroll}
+                  contentContainerStyle={{ paddingRight: 16 }}
                 >
                   {CATALOG_SUGGESTIONS.map((catItem, cIdx) => (
                     <TouchableOpacity
@@ -444,13 +445,16 @@ const styles = StyleSheet.create({
   orderSectionSub: { fontSize: 10, color: '#64748B', marginTop: 1 },
   addOrderHeaderBtn: {
     backgroundColor: '#1E40AF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addOrderHeaderBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   orderItemCard: {

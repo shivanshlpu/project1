@@ -20,10 +20,10 @@ export interface TileProvider {
  */
 export const STREET_PROVIDERS: TileProvider[] = [
   {
-    name: 'CartoVoyager',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: 'Map data © OpenStreetMap contributors, © CARTO',
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    attribution: 'Map data © OpenStreetMap contributors',
     maxNativeZoom: 19,
     maxZoom: 22,
   },
@@ -41,14 +41,6 @@ export const STREET_PROVIDERS: TileProvider[] = [
     subdomains: ['0', '1', '2', '3'],
     attribution: 'Map data © Google',
     maxNativeZoom: 20,
-    maxZoom: 22,
-  },
-  {
-    name: 'OpenStreetMap',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c'],
-    attribution: 'Map data © OpenStreetMap contributors',
-    maxNativeZoom: 19,
     maxZoom: 22,
   },
 ];
@@ -74,14 +66,6 @@ export const SATELLITE_PROVIDERS: TileProvider[] = [
     subdomains: ['0', '1', '2', '3'],
     attribution: 'Imagery © Google',
     maxNativeZoom: 20,
-    maxZoom: 22,
-  },
-  {
-    name: 'CartoVoyagerFallback',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: 'Map data © OpenStreetMap contributors, © CARTO',
-    maxNativeZoom: 19,
     maxZoom: 22,
   },
 ];

@@ -1641,3 +1641,101 @@
   will-change: transform;
 }
 
+/* Responsive Map Location Picker Modal for Mobile & Small Tablets */
+.map-picker-modal-box {
+  width: 92vw !important;
+  max-width: 1080px !important;
+  height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+}
+
+.modal-split-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.modal-map-col {
+  flex: 1.4;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-form-col {
+  flex: 1;
+  border-left: 1px solid #E2E8F0;
+  padding: 20px;
+  overflow-y: auto;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .map-picker-modal-box {
+    width: 96vw !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+  }
+
+  .modal-split-container {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+
+  .modal-map-col {
+    flex: none !important;
+    height: 310px !important;
+    min-height: 310px !important;
+    width: 100% !important;
+  }
+
+  .modal-form-col {
+    flex: 1 !important;
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid #E2E8F0 !important;
+    padding: 14px !important;
+    overflow-y: visible !important;
+  }
+}
+
+/* Responsive Territory Geofences & Tasks Explorer Grid */
+.tasks-geofence-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr);
+  gap: 16px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.tasks-geofence-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 1px solid #E2E8F0;
+  padding-left: 16px;
+}
+
+@media (max-width: 1024px) {
+  .tasks-geofence-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tasks-geofence-drawer {
+    border-left: none !important;
+    border-top: 1px solid #E2E8F0 !important;
+    padding-left: 0 !important;
+    padding-top: 14px !important;
+  }
+}
+

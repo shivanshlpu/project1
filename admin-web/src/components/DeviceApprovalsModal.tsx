@@ -483,14 +483,25 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', color: '#64748B' }}>
+        <div
+          style={{
+            marginTop: '16px',
+            paddingTop: '12px',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: '11px', color: '#64748B', flex: '1 1 180px', lineHeight: '1.4' }}>
             Hardware locking active. Only Owner (Shivansh Tiwari) can approve devices.
           </span>
           <button
             onClick={onClose}
             style={{
-              padding: '6px 16px',
+              padding: '7px 20px',
               borderRadius: '8px',
               background: '#0B2545',
               border: 'none',
@@ -498,6 +509,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
               fontSize: '12px',
               fontWeight: 700,
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             Done

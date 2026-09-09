@@ -1511,18 +1511,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           })()}
 
           {/* Interactive Zone Map & Locations Intelligence Explorer */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1.45fr) minmax(360px, 1fr)',
-              gap: '16px',
-              background: '#FFFFFF',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              padding: '16px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          >
+          <div className="tasks-geofence-grid">
             {/* Left: Map Container */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {/* Map Controls Header */}
@@ -1654,15 +1643,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
             </div>
 
             {/* Right: Zone Intelligence Drawer */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                borderLeft: '1px solid #E2E8F0',
-                paddingLeft: '16px',
-              }}
-            >
+            <div className="tasks-geofence-drawer">
               {/* Drawer Tabs */}
               <div style={{ display: 'flex', gap: '6px', borderBottom: '2px solid #E2E8F0', paddingBottom: '8px' }}>
                 {(() => {
@@ -1828,7 +1809,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
                                     {loc.clinic || loc.name}
                                   </div>
                                   <div style={{ fontSize: '11.5px', color: '#0F8B5A', fontWeight: '700', marginTop: '2px' }}>
-                                    {loc.doctor_name ? `Dr. ${loc.doctor_name}` : loc.specialization || 'Healthcare Centre'}
+                                    {loc.doctor_name
+                                      ? (loc.doctor_name.startsWith('Dr.') || loc.doctor_name.startsWith('Dr ')
+                                          ? loc.doctor_name
+                                          : `Dr. ${loc.doctor_name}`)
+                                      : loc.specialization || 'Healthcare Centre'}
                                   </div>
                                 </div>
                                 <span

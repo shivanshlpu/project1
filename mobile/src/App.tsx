@@ -37,6 +37,7 @@ import { DoctorDirectoryScreen } from './screens/DoctorDirectoryScreen';
 import { DoctorVisitScreen } from './screens/DoctorVisitScreen';
 import { AttendanceScreen } from './screens/AttendanceScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { ServerConfigModal } from './components/ServerConfigModal';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -84,6 +85,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<MobileTab>('tasks');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
+  const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
 
   // Responsive device dimensions
   const { width } = useWindowDimensions();
@@ -224,6 +226,14 @@ export default function App() {
 
             {/* Right Header Actions */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {/* Server Connection Status & Config Button */}
+              <TouchableOpacity
+                style={styles.serverChipBtn}
+                onPress={() => setIsServerModalOpen(true)}
+              >
+                <Text style={styles.serverChipBtnText}>Server</Text>
+              </TouchableOpacity>
+
               {/* Install PWA Button in Header */}
               {!isAppInstalled && (installPrompt || isIOSWeb) && (
                 <TouchableOpacity style={styles.headerInstallBtn} onPress={handleInstallClick}>
@@ -348,6 +358,14 @@ export default function App() {
                     </TouchableOpacity>
                   )}
 
+                  {/* Server Connection Config Button */}
+                  <TouchableOpacity
+                    style={styles.serverProfileBtn}
+                    onPress={() => setIsServerModalOpen(true)}
+                  >
+                    <Text style={styles.serverProfileBtnText}>Server Connection & Health Ping</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity style={styles.logoutLargeBtn} onPress={handleLogout}>
                     <Text style={styles.logoutLargeBtnText}>Log Out Account</Text>
                   </TouchableOpacity>
@@ -355,6 +373,12 @@ export default function App() {
               </ScrollView>
             )}
           </View>
+
+          {/* Server Config Modal */}
+          <ServerConfigModal
+            isOpen={isServerModalOpen}
+            onClose={() => setIsServerModalOpen(false)}
+          />
 
           {/* Bottom Navigation */}
           <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
@@ -406,6 +430,34 @@ const styles = StyleSheet.create({
   logoText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
   brandTitle: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   brandUser: { color: '#CBD5E1', fontSize: 10 },
+  serverChipBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  serverChipBtnText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '700',
+  },
+  serverProfileBtn: {
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  serverProfileBtnText: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   networkToggle: {
     paddingHorizontal: 8,
     paddingVertical: 3,
