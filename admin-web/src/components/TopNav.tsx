@@ -47,8 +47,25 @@ export const TopNav: React.FC<TopNavProps> = ({
   return (
     <header className="enterprise-navbar">
       <div className="nav-brand-cluster">
-        <div className="company-badge">
-          <Building size={18} color="#ffffff" />
+        <div
+          className="company-badge"
+          style={{
+            background: 'linear-gradient(135deg, #0F8B5A 0%, #1A3C6E 100%)',
+            borderRadius: '8px',
+            width: '34px',
+            height: '34px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(15, 139, 90, 0.35)',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="20" height="20" rx="5" fill="#1A3C6E" />
+            <path d="M12 6V18M6 12H18" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="12" cy="12" r="2.5" fill="#4ADE80" />
+          </svg>
         </div>
         <div className="brand-text-col">
           <span className="brand-org-name">{t.brandName}</span>

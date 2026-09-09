@@ -396,88 +396,35 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Top Banner Toolbar */}
-      <div className="enterprise-panel" style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Stethoscope size={18} color="#0052cc" />
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>
-                {t.doctorDirectoryTitle}
-              </h2>
-            </div>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748B' }}>
-              Master database of verified target doctors, geocoded clinic coordinates, and visit frequency audits.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between', marginTop: '8px' }}>
-            {/* Search Input */}
-            <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '0 8px', flex: '1 1 180px', minWidth: '140px' }}>
-              <Search size={14} color="#64748B" />
-              <input
-                type="text"
-                placeholder={t.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ border: 'none', outline: 'none', padding: '6px 8px', fontSize: '12px', width: '100%' }}
-              />
-            </div>
-
-            {/* Classification Filter */}
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {['ALL', 'A', 'B', 'C'].map((c) => (
-                <button
-                  key={c}
-                  className={`btn-enterprise sm ${selectedClass === c ? 'primary' : 'secondary'}`}
-                  onClick={() => setSelectedClass(c)}
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    borderRadius: '4px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {c === 'ALL' ? 'All Classes' : `Class ${c}`}
-                </button>
-              ))}
-            </div>
-
-            {/* WORKING ADD DOCTOR BUTTON */}
-            <button
-              className="btn-enterprise primary sm"
-              onClick={() => setIsAddDoctorOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', whiteSpace: 'nowrap' }}
-            >
-              <Plus size={14} />
-              <span>{t.addDoctor}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Map Section (With Real Satellite Imagery) */}
+      {/* Unified Doctor Directory & Territory Map Header Panel */}
       <div className="enterprise-panel" style={{ overflow: 'hidden' }}>
+        {/* Top Header Row: Title & Action Controls */}
         <div
           style={{
-            padding: '10px 16px',
-            background: '#F8FAFC',
+            padding: '12px 16px',
+            background: '#FFFFFF',
             borderBottom: '1px solid #E2E8F0',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Map size={16} color="#0F8B5A" />
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>
-              Territory Doctor Geolocation Map ({filteredDoctors.length} Plotted)
-            </span>
+            <Stethoscope size={18} color="#0052cc" />
+            <div>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0F172A' }}>
+                {t.doctorDirectoryTitle} ({filteredDoctors.length} Plotted)
+              </h2>
+              <p style={{ margin: 0, fontSize: '11px', color: '#64748B' }}>
+                Verified target doctors, geocoded clinic coordinates & detailing history
+              </p>
+            </div>
           </div>
 
-          {/* Pan Toggle & Satellite Mode Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Pan Toggle */}
             <button
               type="button"
               onClick={toggleMapInteraction}
@@ -486,52 +433,124 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                 color: isMapInteracting ? '#FFFFFF' : '#334155',
                 border: '1px solid #CBD5E1',
                 borderRadius: '6px',
-                padding: '3px 8px',
+                padding: '4px 9px',
                 fontSize: '11px',
                 fontWeight: '700',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
               }}
               title="Toggle whether touching the map drags the map or scrolls the page"
             >
               <span>{isMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
             </button>
 
+            {/* Satellite / Street Mode Toggle */}
             <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', padding: '2px' }}>
-            <button
-              onClick={() => setMapMode('street')}
-              style={{
-                padding: '3px 8px',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
-                color: mapMode === 'street' ? '#FFFFFF' : '#475569',
-              }}
-            >
-              {t.streetMode}
-            </button>
-            <button
-              onClick={() => setMapMode('satellite')}
-              style={{
-                padding: '3px 8px',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
-                color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
-              }}
-            >
-              {t.satelliteMode}
-            </button>
+              <button
+                type="button"
+                onClick={() => setMapMode('street')}
+                style={{
+                  padding: '3px 8px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
+                  color: mapMode === 'street' ? '#FFFFFF' : '#475569',
+                }}
+              >
+                Street Map
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapMode('satellite')}
+                style={{
+                  padding: '3px 8px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
+                  color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
+                }}
+              >
+                Satellite
+              </button>
             </div>
+
+            {/* Add Doctor Button */}
+            <button
+              className="btn-enterprise primary sm"
+              onClick={() => setIsAddDoctorOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', whiteSpace: 'nowrap' }}
+            >
+              <Plus size={14} />
+              <span>{t.addDoctor}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dedicated Toolbar DIRECTLY Above The Map: Search & Classification Filter */}
+        <div
+          style={{
+            padding: '10px 16px',
+            background: '#F8FAFC',
+            borderBottom: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          {/* Search Input Bar */}
+          <div
+            style={{
+              flex: '1 1 200px',
+              display: 'flex',
+              alignItems: 'center',
+              background: '#FFFFFF',
+              border: '1.5px solid #CBD5E1',
+              borderRadius: '6px',
+              padding: '0 10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            }}
+          >
+            <Search size={14} color="#64748B" />
+            <input
+              type="text"
+              placeholder="Search doctor name, clinic, specialization, area..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ border: 'none', outline: 'none', padding: '7px 8px', fontSize: '12.5px', width: '100%', background: 'transparent' }}
+            />
+          </div>
+
+          {/* Classification Filter Chips */}
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', marginRight: '4px' }}>Class:</span>
+            {['ALL', 'A', 'B', 'C'].map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`btn-enterprise sm ${selectedClass === c ? 'primary' : 'secondary'}`}
+                onClick={() => setSelectedClass(c)}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  borderRadius: '4px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {c === 'ALL' ? 'All' : `Class ${c}`}
+              </button>
+            ))}
           </div>
         </div>
 

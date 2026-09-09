@@ -255,30 +255,13 @@ export const App: React.FC = () => {
       {/* Floating AHTRI AI Operations Copilot Trigger */}
       <button
         onClick={() => setIsAiModalOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 9000,
-          background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
-          color: '#FFFFFF',
-          border: '1.5px solid rgba(255,255,255,0.3)',
-          borderRadius: '30px',
-          padding: '10px 18px',
-          boxShadow: '0 8px 24px rgba(26,60,110,0.35)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '13px',
-          fontWeight: '800',
-          letterSpacing: '0.3px',
-        }}
+        className="floating-ai-fab"
         title="Open AI Operations Copilot & Report Generator"
       >
         <Sparkles size={16} color="#38BDF8" />
-        <span>Ask AHTRI AI</span>
+        <span className="fab-text">Ask AHTRI AI</span>
         <span
+          className="fab-badge"
           style={{
             background: '#0F8B5A',
             color: '#FFFFFF',

@@ -2415,17 +2415,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div
                   style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '8px',
-                    background: '#1A3C6E',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #1A3C6E 0%, #0F8B5A 100%)',
                     color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    boxShadow: '0 3px 8px rgba(26,60,110,0.25)',
+                    flexShrink: 0,
                   }}
                 >
-                  <Stethoscope size={20} />
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="20" height="20" rx="5" fill="#1A3C6E" />
+                    <path d="M12 6V18M6 12H18" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="12" cy="12" r="2.5" fill="#4ADE80" />
+                  </svg>
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
@@ -2458,63 +2464,35 @@ export const TasksView: React.FC<TasksViewProps> = ({
             <div className="tasks-modal-split">
               {/* LEFT SIDE: EMBEDDED INTERACTIVE LEAFLET SATELLITE MAP */}
               <div className="tasks-modal-map-col">
-                {/* Floating Search, Pan Lock & Mode Bar */}
+                {/* 1. Dedicated Search Bar OUTSIDE The Map Surface */}
                 <div
                   style={{
-                    position: 'absolute',
-                    top: 12,
-                    left: 12,
-                    right: 12,
-                    zIndex: 400,
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
+                    padding: '10px 14px',
+                    background: '#F8FAFC',
+                    borderBottom: '1px solid #CBD5E1',
+                    flexShrink: 0,
                   }}
                 >
-                  {/* Touch Pan Lock/Unlock Toggle */}
-                  <button
-                    type="button"
-                    onClick={toggleModalMapInteraction}
-                    style={{
-                      background: isModalMapInteracting ? '#0F8B5A' : '#FFFFFF',
-                      color: isModalMapInteracting ? '#FFFFFF' : '#334155',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '8px',
-                      padding: '8px 10px',
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    }}
-                    title="Toggle whether map dragging captures your touch or lets you scroll the modal"
-                  >
-                    <span>{isModalMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
-                  </button>
                   <form
                     onSubmit={handleSearchOnMap}
                     style={{
-                      flex: 1,
                       display: 'flex',
                       background: '#FFFFFF',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                      borderRadius: '6px',
+                      border: '1.5px solid #CBD5E1',
                       overflow: 'hidden',
-                      border: '1px solid #CBD5E1',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', color: '#64748B' }}>
-                      <Search size={16} />
+                      <Search size={15} />
                     </div>
                     <input
                       type="text"
-                      placeholder="Search clinic, hospital, address, or landmark..."
+                      placeholder="Search clinic, hospital, chemist, shop, or landmark..."
                       value={searchMapQuery}
                       onChange={(e) => setSearchMapQuery(e.target.value)}
-                      style={{ flex: 1, border: 'none', outline: 'none', padding: '9px 0', fontSize: '12.5px' }}
+                      style={{ flex: 1, border: 'none', outline: 'none', padding: '8px 0', fontSize: '12.5px', background: 'transparent' }}
                     />
                     <button
                       type="submit"
@@ -2532,46 +2510,84 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       {isSearchingMap ? '...' : 'Search'}
                     </button>
                   </form>
-
-                  {/* Satellite / Street View Toggle */}
-                  <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '2px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('street')}
-                      style={{
-                        padding: '4px 10px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
-                        color: mapMode === 'street' ? '#FFFFFF' : '#475569',
-                      }}
-                    >
-                      Street
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('satellite')}
-                      style={{
-                        padding: '4px 10px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
-                        color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
-                      }}
-                    >
-                      Satellite
-                    </button>
-                  </div>
                 </div>
 
-                {/* Leaflet Map DOM Node */}
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+                {/* 2. Interactive Map View with Pure Unobstructed Surface */}
+                <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: '340px' }}>
+                  {/* Top Right Controls Overlay: Street/Satellite & Pan Toggle */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      zIndex: 400,
+                      display: 'flex',
+                      gap: '6px',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {/* Touch Pan Lock/Unlock Toggle */}
+                    <button
+                      type="button"
+                      onClick={toggleModalMapInteraction}
+                      style={{
+                        background: isModalMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                        color: isModalMapInteracting ? '#FFFFFF' : '#334155',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      }}
+                      title="Toggle whether map dragging captures your touch or lets you scroll the modal"
+                    >
+                      <span>{isModalMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+                    </button>
+
+                    {/* Satellite / Street View Toggle */}
+                    <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', padding: '2px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setMapMode('street')}
+                        style={{
+                          padding: '3px 8px',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
+                          color: mapMode === 'street' ? '#FFFFFF' : '#475569',
+                        }}
+                      >
+                        Street
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMapMode('satellite')}
+                        style={{
+                          padding: '3px 8px',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
+                          color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
+                        }}
+                      >
+                        Satellite
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Leaflet Map DOM Node */}
+                  <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
                 {/* Collapsible Pin Details Card */}
                 <div
@@ -2695,6 +2711,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
               </div>
 
               {/* RIGHT SIDE: RICH STRUCTURED TASK FORM */}

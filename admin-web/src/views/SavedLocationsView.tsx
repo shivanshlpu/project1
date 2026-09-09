@@ -369,7 +369,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', paddingBottom: '30px' }}>
       {/* Top Banner Toolbar */}
       <div
         style={{
@@ -498,6 +498,47 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             </button>
           );
         })}
+      </div>
+
+      {/* Mobile Quick Jump to Directory List Bar */}
+      <div
+        style={{
+          background: '#EFF6FF',
+          borderBottom: '1px solid #DBEAFE',
+          padding: '8px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+        }}
+      >
+        <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>📍</span>
+          <span>{filteredLocations.length} Saved Points Plotted Across Map</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const listEl = document.querySelector('.saved-locations-list-col');
+            if (listEl) {
+              listEl.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          style={{
+            background: '#1A3C6E',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '5px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          }}
+        >
+          📋 View Saved Directory List ▾
+        </button>
       </div>
 
       {/* Main Split Layout: Filter/List on Left, Live Leaflet Map on Right */}
