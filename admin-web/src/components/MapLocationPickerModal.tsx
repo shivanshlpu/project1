@@ -473,15 +473,16 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   return (
     <div className="modal-overlay" style={{ zIndex: 1000 }}>
       <div className="modal-box map-picker-modal-box">
-        {/* Header */}
+        {/* Modal Header */}
         <div
           style={{
+            background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+            color: '#FFFFFF',
             padding: '16px 20px',
-            borderBottom: '1px solid #E2E8F0',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#F8FAFC',
+            alignItems: 'center',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -490,34 +491,57 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                background: '#1A3C6E',
-                color: '#FFFFFF',
+                background: 'rgba(255,255,255,0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                color: '#38BDF8',
               }}
             >
               <MapPin size={20} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0F172A' }}>
-                Interactive Live Map & Location Picker
-              </h2>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
-                Free live global map • Search, click anywhere to pin coordinates, or save doctor clinics
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#FFFFFF' }}>
+                  Interactive Live Map & Location Picker
+                </h3>
+                <span
+                  style={{
+                    background: '#059669',
+                    color: '#FFFFFF',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  LIVE GPS • MASTER DIRECTORY
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
+                Search, click anywhere to pin coordinates, or save doctor clinics
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             style={{
-              background: 'transparent',
+              background: 'rgba(255, 255, 255, 0.1)',
               border: 'none',
+              borderRadius: '6px',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
-              color: '#64748B',
+              color: '#FFFFFF',
+              transition: 'background 0.2s ease',
             }}
+            title="Close Map Picker"
           >
-            <X size={22} />
+            <X size={18} />
           </button>
         </div>
 

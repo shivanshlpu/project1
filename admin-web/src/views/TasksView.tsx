@@ -2403,41 +2403,50 @@ export const TasksView: React.FC<TasksViewProps> = ({
             {/* Modal Header */}
             <div
               style={{
-                padding: '16px 24px',
-                borderBottom: '1px solid #E2E8F0',
+                background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+                color: '#FFFFFF',
+                padding: '16px 20px',
                 display: 'flex',
-                alignItems: 'center',
                 justifyContent: 'space-between',
-                background: '#F8FAFC',
+                alignItems: 'center',
                 flexShrink: 0,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #1A3C6E 0%, #0F8B5A 100%)',
-                    color: '#FFFFFF',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 3px 8px rgba(26,60,110,0.25)',
-                    flexShrink: 0,
+                    color: '#38BDF8',
                   }}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="2" width="20" height="20" rx="5" fill="#1A3C6E" />
-                    <path d="M12 6V18M6 12H18" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx="12" cy="12" r="2.5" fill="#4ADE80" />
-                  </svg>
+                  <Calendar size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
-                    {t.assignTaskModalTitle}
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#FFFFFF' }}>
+                      {t.assignTaskModalTitle}
+                    </h3>
+                    <span
+                      style={{
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      DIRECT DISPATCH ACTIVE
+                    </span>
+                  </div>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
                     {t.assignTaskModalDesc}
                   </p>
                 </div>
@@ -2446,17 +2455,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 style={{
-                  background: 'transparent',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '22px',
-                  color: '#64748B',
+                  borderRadius: '6px',
+                  width: '32px',
+                  height: '32px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#FFFFFF',
+                  transition: 'background 0.2s ease',
                 }}
+                title="Close"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 

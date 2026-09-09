@@ -152,7 +152,8 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          padding: '24px',
+          padding: 0,
+          overflow: 'hidden',
           borderRadius: '16px',
           border: '1px solid #E2E8F0',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.08)',
@@ -163,27 +164,52 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+            color: '#FFFFFF',
+            padding: '16px 20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: '#EBF8FF',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#0052CC',
+                color: '#38BDF8',
               }}
             >
-              <Smartphone size={22} />
+              <Smartphone size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0B2545' }}>
-                Device Authorizations & 6-Digit OTPs
-              </h3>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Device Authorizations & 6-Digit OTPs
+                </h3>
+                <span
+                  style={{
+                    background: '#059669',
+                    color: '#FFFFFF',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  LIVE SECURITY GATEWAY
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
                 Owner Approval Control: Authorize new employee phones to prevent unauthorized access
               </p>
             </div>
@@ -191,17 +217,26 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
           <button
             onClick={onClose}
             style={{
-              background: '#F1F5F9',
+              background: 'rgba(255, 255, 255, 0.1)',
               border: 'none',
-              borderRadius: '8px',
-              padding: '6px',
+              borderRadius: '6px',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
-              color: '#475569',
+              color: '#FFFFFF',
+              transition: 'background 0.2s ease',
             }}
+            title="Close"
           >
             <X size={18} />
           </button>
         </div>
+
+        {/* Modal Inner Body */}
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
         {/* Live Auto-Refresh Notice & Tabs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -514,6 +549,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
           >
             Done
           </button>
+        </div>
         </div>
       </div>
     </div>
