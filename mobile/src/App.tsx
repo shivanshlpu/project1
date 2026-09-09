@@ -40,6 +40,7 @@ import { AttendanceScreen } from './screens/AttendanceScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './services/appUpdateService';
 import { UpdateModal } from './components/UpdateModal';
+import { ServerStatusPill } from './components/ServerStatusPill';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -275,6 +276,8 @@ export default function App() {
                   <Text style={styles.headerInstallBtnText}>Install</Text>
                 </TouchableOpacity>
               )}
+
+              <ServerStatusPill compact />
 
               {/* Offline / Online Network Toggle */}
               <TouchableOpacity

@@ -11,6 +11,7 @@ import {
   Modal,
   Image,
   PanResponder,
+  Animated,
   Dimensions,
 } from 'react-native';
 import { PinCategory } from '../utils/mapPinGenerator';
@@ -313,25 +314,63 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     onClose();
   };
 
-  // Drag Gesture with PanResponder for smooth finger dragging on map
+    // Real-time animated drag translation
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [isDraggingMap, setIsDraggingMap] = useState(false);
+
+  // Fluid Touch PanResponder: Real-time finger tracking without parent scroll interception
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
         onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 4 || Math.abs(gesture.dy) > 4,
+          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
+
+        onPanResponderGrant: () => {
+          setIsDraggingMap(true);
+          pan.setOffset({ x: 0, y: 0 });
+          pan.setValue({ x: 0, y: 0 });
+        },
+
+        onPanResponderMove: (_, gesture) => {
+          // Live real-time tile tracking under finger
+          pan.setValue({ x: gesture.dx, y: gesture.dy });
+        },
+
         onPanResponderRelease: (_, gesture) => {
-          // Convert pixels to lat/lng delta based on zoom
+          setIsDraggingMap(false);
+
+          // If finger moved less than 5px, treat as a direct tap-to-reposition
+          if (Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
+            pan.setValue({ x: 0, y: 0 });
+            return;
+          }
+
+          // Convert drag pixels to coordinates
           const scale = Math.pow(2, zoom);
           const dLng = (-gesture.dx * 360) / (256 * scale);
           const dLat = (gesture.dy * 180) / (256 * scale);
 
-          if (Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3) {
-            const nextLat = Math.max(-85, Math.min(85, selectedLat + dLat));
-            const nextLng = Math.max(-180, Math.min(180, selectedLng + dLng));
-            setSelectedLat(Number(nextLat.toFixed(6)));
-            setSelectedLng(Number(nextLng.toFixed(6)));
-          }
+          const nextLat = Math.max(-85, Math.min(85, selectedLat + dLat));
+          const nextLng = Math.max(-180, Math.min(180, selectedLng + dLng));
+
+          const nLat = Number(nextLat.toFixed(6));
+          const nLng = Number(nextLng.toFixed(6));
+
+          setSelectedLat(nLat);
+          setSelectedLng(nLng);
+          resolveAddressFromCoords(nLat, nLng);
+
+          // Reset animated offset for newly centered tiles
+          pan.setValue({ x: 0, y: 0 });
+        },
+
+        onPanResponderTerminate: () => {
+          setIsDraggingMap(false);
+          pan.setValue({ x: 0, y: 0 });
         },
       }),
     [zoom, selectedLat, selectedLng]
@@ -486,7 +525,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
 
             {/* Map Canvas with 3x3 Stitched Tiles & Touch Pan Gesture */}
             <View style={styles.mapCanvas} {...panResponder.panHandlers}>
-              <View style={styles.tilesGrid}>
+              <Animated.View style={[styles.tilesGrid, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>
                 {tileOffsets.map((offset, i) => {
                   const x = centerTileX + offset.dx;
                   const y = centerTileY + offset.dy;
@@ -500,7 +539,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                     />
                   );
                 })}
-              </View>
+              </Animated.View>
 
               {/* Grid Lines Visual Crosshair */}
               <View style={styles.crosshairH} pointerEvents="none" />
@@ -535,53 +574,23 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Directional Pan Buttons & GPS Lock */}
-              <View style={styles.panControlCluster}>
-                <TouchableOpacity
-                  style={[styles.panBtn, styles.panUp]}
-                  onPress={() => handlePan('up')}
-                >
-                  <Text style={styles.panArrowText}>▲</Text>
-                </TouchableOpacity>
-                <View style={styles.panMiddleRow}>
-                  <TouchableOpacity
-                    style={[styles.panBtn, styles.panLeft]}
-                    onPress={() => handlePan('left')}
-                  >
-                    <Text style={styles.panArrowText}>◀</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.panBtn, styles.panCenter]}
-                    onPress={handleGetCurrentLocation}
-                  >
-                    {isLocatingGps ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.panCenterText}>GPS</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.panBtn, styles.panRight]}
-                    onPress={() => handlePan('right')}
-                  >
-                    <Text style={styles.panArrowText}>▶</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity
-                  style={[styles.panBtn, styles.panDown]}
-                  onPress={() => handlePan('down')}
-                >
-                  <Text style={styles.panArrowText}>▼</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Bottom Map Floating Coordinates Bar */}
-              <View style={styles.mapCoordsBadge}>
-                <Text style={styles.mapCoordsText}>
-                  {selectedLat.toFixed(6)}°, {selectedLng.toFixed(6)}°
-                </Text>
-                <Text style={styles.mapAccuracyText}>±{gpsAccuracy}m</Text>
-              </View>
+              {/* Floating GPS Action Button (Google Maps Style) */}
+              <TouchableOpacity
+                style={styles.floatingGpsBtn}
+                onPress={handleGetCurrentLocation}
+                disabled={isLocatingGps}
+                activeOpacity={0.8}
+                
+              >
+                {isLocatingGps ? (
+                  <ActivityIndicator size="small" color="#1A3C6E" />
+                ) : (
+                  <View style={styles.gpsIconInner}>
+                    <Text style={styles.gpsIconText}>🎯</Text>
+                    <Text style={styles.gpsLabelText}>GPS</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -700,6 +709,54 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
 };
 
 const styles = StyleSheet.create({
+  floatingGpsBtn: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+  },
+  gpsIconInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  gpsIconText: {
+    fontSize: 14,
+  },
+  gpsLabelText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#0284C7',
+    letterSpacing: 0.3,
+  },
+  mapHintStrip: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 12,
+  },
+  mapHintText: {
+    fontSize: 11,
+    color: '#1E40AF',
+    textAlign: 'center',
+  },
+
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

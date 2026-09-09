@@ -69,8 +69,40 @@ export const AppUpdateService = {
   /**
    * Check backend for newer application versions
    */
-  async checkForUpdates(): Promise<UpdateCheckResult> {
+    /**
+   * Check if the backend server link is actively established and healthy.
+   * Updates must NOT be shown unless the server connection is established.
+   */
+  async isServerConnected(): Promise<boolean> {
     try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+      const res = await fetch(`${baseUrl}/health`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+    async checkForUpdates(): Promise<UpdateCheckResult> {
+    try {
+      // 1. Verify server connectivity first: do NOT show update if server is unreachable
+      const connected = await this.isServerConnected();
+      if (!connected) {
+        return {
+          hasUpdate: false,
+          isMandatory: false,
+          currentVersion: CURRENT_APP_VERSION,
+          error: 'Backend server connection is not established yet. Update check suppressed.',
+        };
+      }
       const baseUrl = await ApiConfig.getBaseUrl();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { DeviceBindingService } from '../services/deviceBindingService';
 import { ApiConfig } from '../services/apiConfig';
+import { ServerStatusPill } from '../components/ServerStatusPill';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: {
@@ -283,6 +284,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </View>
 
         <View style={styles.card}>
+          {/* Server Connection Status (Non-editable, Read-Only) */}
+          <ServerStatusPill />
+
           <Text style={styles.cardTitle}>Enter 6-Digit Owner OTP</Text>
           <Text style={styles.cardSubtitle}>
             Representative: <Text style={{ fontWeight: '700', color: '#0F172A' }}>{identifier}</Text>
