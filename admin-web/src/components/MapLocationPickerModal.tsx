@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import {
   Search,
+  Coffee,
+  Store,
+  Utensils,
+  Layers,
   MapPin,
   X,
   Save,
@@ -65,6 +69,8 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   const [phone, setPhone] = useState('');
   const [geofenceRadius, setGeofenceRadius] = useState<number>(50); // 50m default
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+  const [nearbyPois, setNearbyPois] = useState<Array<{ name: string; type: string; lat: number; lng: number }>>([]);
+  const [isSearchingPois, setIsSearchingPois] = useState(false);
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [isMapInteracting, setIsMapInteracting] = useState(false);
@@ -241,26 +247,80 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       mapInstanceRef.current.panTo([lat, lng]);
     }
 
-    // Live Reverse Geocode via OpenStreetMap Nominatim (100% free)
+    // Live Reverse Geocode via OpenStreetMap Nominatim + Smart POI Discovery
     try {
       setIsReverseGeocoding(true);
+      setIsSearchingPois(true);
+
+      // 1. Fetch street address details
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`,
+        { headers: { 'User-Agent': 'AHTRI-FFA/1.0' } }
       );
+      
+      let reverseName = '';
       if (res.ok) {
         const data = await res.json();
         if (data && data.display_name) {
           setAddress(data.display_name);
-          if (!locationName) {
-            const shortName = data.name || (data.address && (data.address.amenity || data.address.hospital || data.address.road)) || 'Marked Clinic';
-            setLocationName(shortName);
+          
+          // Check if reverse geocode already hit a named establishment (not just a road)
+          const isRoadOnly = !data.name || /^(road|residential|highway|unclassified|tertiary|secondary|primary)$/i.test(data.addresstype || '') || /(rd|road|street|marg|lane|gali|highway|ave|avenue)$/i.test(data.name || '');
+          if (!isRoadOnly && data.name) {
+            reverseName = data.name;
           }
         }
       }
+
+      // 2. Smart POI Discovery: Search nearby shops, tea stalls, cafes, restaurants, clinics within 90m
+      const delta = 0.001; // ~90 meters
+      const minLng = lng - delta;
+      const maxLng = lng + delta;
+      const minLat = lat - delta;
+      const maxLat = lat + delta;
+
+      const poiUrl = `https://nominatim.openstreetmap.org/search?format=json&viewbox=${minLng},${maxLat},${maxLng},${minLat}&bounded=1&q=amenity+or+shop+or+restaurant+or+cafe+or+food+or+tea+or+clinic+or+hospital+or+pharmacy`;
+      
+      try {
+        const poiRes = await fetch(poiUrl, { headers: { 'User-Agent': 'AHTRI-FFA/1.0' } });
+        if (poiRes.ok) {
+          const poiList = await poiRes.json();
+          if (Array.isArray(poiList) && poiList.length > 0) {
+            const validPois = poiList
+              .filter((p: any) => p.name && !/(road|street|lane|marg)$/i.test(p.name))
+              .map((p: any) => ({
+                name: p.name,
+                type: p.type || p.class || 'place',
+                lat: parseFloat(p.lat),
+                lng: parseFloat(p.lon),
+              }));
+
+            setNearbyPois(validPois);
+
+            // Automatically pick the nearest shop/clinic if reverse geocoding only found a street name
+            if (!reverseName && validPois.length > 0) {
+              reverseName = validPois[0].name;
+            }
+          } else {
+            setNearbyPois([]);
+          }
+        }
+      } catch (poiErr) {
+        console.warn('POI search error:', poiErr);
+      }
+
+      // Set best identified place name (e.g. "Apna Chai Wala")
+      if (reverseName) {
+        setLocationName(reverseName);
+      } else if (!locationName) {
+        setLocationName('Marked Facility');
+      }
+
     } catch (err) {
       console.warn('Reverse geocode failed:', err);
     } finally {
       setIsReverseGeocoding(false);
+      setIsSearchingPois(false);
     }
   };
 
@@ -463,46 +523,45 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
 
         {/* Modal Body: Split Map & Form */}
         <div className="modal-split-container">
-          {/* Left Column: Live Map */}
-          <div className="modal-map-col">
-            {/* Search Bar Floating on Map */}
+          {/* Left Column: Live Map with External Search & Pure Map Canvas */}
+          <div className="modal-map-col" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px' }}>
+            {/* 1. Dedicated Search Bar OUTSIDE The Map Surface */}
             <div
               style={{
-                position: 'absolute',
-                top: 14,
-                left: 14,
-                right: 14,
-                zIndex: 400,
-                display: 'flex',
-                gap: '8px',
+                padding: '10px 14px',
+                background: '#F8FAFC',
+                borderBottom: '1px solid #CBD5E1',
+                flexShrink: 0,
+                position: 'relative',
+                zIndex: 60,
               }}
             >
               <form
                 onSubmit={handleLiveSearch}
                 style={{
-                  flex: 1,
                   display: 'flex',
                   background: '#FFFFFF',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
+                  border: '1.5px solid #CBD5E1',
                   overflow: 'hidden',
-                  border: '1px solid #CBD5E1',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
                 }}
               >
-                <div style={{ padding: '0 12px', display: 'flex', alignItems: 'center', color: '#64748B' }}>
-                  <Search size={18} />
+                <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', color: '#64748B' }}>
+                  <Search size={16} />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search live address, hospital, doctor clinic, landmark..."
+                  placeholder="Search clinic, hospital, shop, tea stall, landmark, or GPS coordinates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     flex: 1,
                     border: 'none',
                     outline: 'none',
-                    padding: '10px 0',
-                    fontSize: '13px',
+                    padding: '9px 0',
+                    fontSize: '12.5px',
+                    background: 'transparent',
                   }}
                 />
                 <button
@@ -513,7 +572,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
                     background: '#1A3C6E',
                     color: '#FFFFFF',
                     border: 'none',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -521,97 +580,162 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
                     gap: '4px',
                   }}
                 >
-                  {isSearching ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
+                  {isSearching ? <Loader2 size={13} className="animate-spin" /> : 'Search'}
                 </button>
               </form>
 
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                title="Locate Me (GPS)"
-                style={{
-                  width: '42px',
-                  background: '#FFFFFF',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: '#0F8B5A',
-                }}
-              >
-                <Crosshair size={20} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
-                title={mapMode === 'street' ? 'Switch to Satellite' : 'Switch to Road Map'}
-                style={{
-                  padding: '0 12px',
-                  background: mapMode === 'satellite' ? '#1A3C6E' : '#FFFFFF',
-                  color: mapMode === 'satellite' ? '#FFFFFF' : '#334155',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {mapMode === 'street' ? 'Satellite' : 'Road Map'}
-              </button>
+              {/* Live Search Suggestions Dropdown */}
+              {searchResults.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 14,
+                    right: 14,
+                    zIndex: 600,
+                    background: '#FFFFFF',
+                    borderRadius: '8px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+                    border: '1px solid #CBD5E1',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    marginTop: '4px',
+                  }}
+                >
+                  {searchResults.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleSelectSearchResult(item)}
+                      style={{
+                        padding: '9px 12px',
+                        borderBottom: '1px solid #F1F5F9',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#1E293B',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                    >
+                      <MapPin size={13} color="#0F8B5A" />
+                      <div>
+                        <div style={{ fontWeight: '700' }}>{item.name}</div>
+                        <div style={{ fontSize: '10.5px', color: '#64748B' }}>{item.display_name}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Live Search Suggestions Dropdown */}
-            {searchResults.length > 0 && (
+            {/* 2. Pure Map Canvas with Pan Lock/Unlock & Satellite Overlay Controls */}
+            <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: '340px' }}>
+              {/* Top Controls Overlay: Pan On/Off, Street/Satellite, GPS */}
               <div
                 style={{
                   position: 'absolute',
-                  top: 64,
-                  left: 14,
-                  right: 64,
+                  top: 10,
+                  right: 10,
                   zIndex: 400,
-                  background: '#FFFFFF',
-                  borderRadius: '8px',
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
-                  border: '1px solid #E2E8F0',
-                  maxHeight: '220px',
-                  overflowY: 'auto',
+                  display: 'flex',
+                  gap: '6px',
+                  alignItems: 'center',
                 }}
               >
-                {searchResults.map((item, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleSelectSearchResult(item)}
-                    style={{
-                      padding: '10px 14px',
-                      borderBottom: '1px solid #F1F5F9',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      color: '#1E293B',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
-                  >
-                    <MapPin size={14} color="#0F8B5A" />
-                    <span>{item.display_name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+                {/* Pan On / Off Toggle Button (Essential for phone screen picking) */}
+                <button
+                  type="button"
+                  onClick={toggleMapInteraction}
+                  style={{
+                    background: isMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                    color: isMapInteracting ? '#FFFFFF' : '#334155',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    padding: '5px 9px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                  }}
+                  title="Toggle whether map captures touch or lets you scroll the modal"
+                >
+                  <span>{isMapInteracting ? 'Pan Active (Drag Map)' : 'Pan Locked (Scroll Modal)'}</span>
+                </button>
 
-            {/* Leaflet DOM Node */}
-            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+                {/* Satellite / Road Map Mode Switcher */}
+                <div
+                  style={{
+                    display: 'flex',
+                    background: '#FFFFFF',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    padding: '2px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setMapMode('street')}
+                    style={{
+                      padding: '3px 8px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      background: mapMode === 'street' ? '#1A3C6E' : 'transparent',
+                      color: mapMode === 'street' ? '#FFFFFF' : '#475569',
+                    }}
+                  >
+                    Street
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMapMode('satellite')}
+                    style={{
+                      padding: '3px 8px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      background: mapMode === 'satellite' ? '#1A3C6E' : 'transparent',
+                      color: mapMode === 'satellite' ? '#FFFFFF' : '#475569',
+                    }}
+                  >
+                    Satellite
+                  </button>
+                </div>
+
+                {/* GPS Locate Button */}
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    cursor: 'pointer',
+                    color: '#0F8B5A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                  }}
+                  title="Center on My Device GPS"
+                >
+                  <Crosshair size={14} />
+                </button>
+              </div>
+
+              {/* Leaflet Map DOM Node */}
+              <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '340px' }} />
 
             {/* Bottom Floating Coordinate Bar */}
             <div
@@ -635,6 +759,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
               <span>Lng: <strong>{selectedLng.toFixed(6)}</strong></span>
               <span>Radius: <strong>{geofenceRadius}m</strong></span>
               {isReverseGeocoding && <span style={{ color: '#FCD34D' }}>Resolving address...</span>}
+            </div>
             </div>
           </div>
 

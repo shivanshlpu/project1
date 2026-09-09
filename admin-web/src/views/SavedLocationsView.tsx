@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import {
   MapPin,
+  List,
   Search,
   Plus,
   Building,
@@ -228,7 +229,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     return matchesSearch && matchesCat;
   });
 
-  // Initialize interactive overview map
+  // Initialize interactive overview map with ResizeObserver and multi-phase rendering
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -250,6 +251,14 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
       markersGroupRef.current = L.layerGroup().addTo(map);
+
+      // Add ResizeObserver to prevent blank white maps on mobile layout reflow
+      if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
+        const ro = new ResizeObserver(() => {
+          mapInstanceRef.current?.invalidateSize();
+        });
+        ro.observe(mapContainerRef.current);
+      }
     }
 
     // Refresh markers
@@ -319,9 +328,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       });
     }
 
+    setTimeout(() => mapInstanceRef.current?.invalidateSize(), 80);
     setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
-    }, 200);
+      fitAllMarkers();
+    }, 250);
+    setTimeout(() => mapInstanceRef.current?.invalidateSize(), 600);
   }, [locations, selectedCategory, searchQuery, selectedLocation, readLocationIds, selectedZoneId]);
 
   // Auto-focus on targetLocationId if provided from toast notification (RUN ONCE ONLY)
@@ -567,7 +579,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
-          📋 View Saved Directory List ▾
+          View Saved Directory List
         </button>
       </div>
 
@@ -785,7 +797,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
         {/* Right Side: Leaflet Interactive Map */}
         <div className="saved-locations-map-col">
-          <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+          <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '420px' }} />
 
           {/* Top Floating Controls Bar */}
           <div

@@ -253,13 +253,14 @@ export const App: React.FC = () => {
         onAcknowledgeAll={handleAcknowledgeAllLocations}
       />
       {/* Floating AHTRI AI Operations Copilot Trigger */}
-      <button
+      {!isAiModalOpen && (
+        <button
         onClick={() => setIsAiModalOpen(true)}
         className="floating-ai-fab"
         title="Open AI Operations Copilot & Report Generator"
       >
         <Sparkles size={16} color="#38BDF8" />
-        <span className="fab-text">Ask AHTRI AI</span>
+        <span className="fab-text">Ask Aura</span>
         <span
           className="fab-badge"
           style={{
@@ -271,9 +272,10 @@ export const App: React.FC = () => {
             fontWeight: '700',
           }}
         >
-          RAG
+          AURA
         </span>
       </button>
+      )}
 
       {/* AI Assistant Modal */}
       <AiAssistantModal

@@ -56,7 +56,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   const [history, setHistory] = useState<Array<{ type: 'user' | 'ai'; text: string; data?: AiQueryResponse }>>([
     {
       type: 'ai',
-      text: '👋 **Hello! I am your AHTRI AI Operations Copilot.**\n\nI query the ground-truth database directly to give you accurate operational insights. You can ask me questions like:\n- *"How many tasks are completed?"*\n- *"What is the work status across all MRs?"*\n- *"Show doctor visit summary for this week"*\n\nOr choose a quick prompt below to begin.',
+      text: '**Hello! I am your Aura — Enterprise Intelligence Agent.**\n\nI query the ground-truth database directly to give you accurate operational insights. You can ask me questions like:\n- *"How many tasks are completed?"*\n- *"What is the work status across all MRs?"*\n- *"Show doctor visit summary for this week"*\n\nOr choose a quick prompt below to begin.',
     },
   ]);
 
@@ -258,7 +258,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>
-                  AHTRI AI Operations Copilot
+                  Aura — Enterprise Intelligence Agent
                 </h3>
                 <span
                   style={{
@@ -271,7 +271,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
                     letterSpacing: '0.5px',
                   }}
                 >
-                  LIVE RAG
+                  AURA COPILOT • DB CONNECTED
                 </span>
               </div>
               <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
@@ -397,10 +397,10 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
           }}
         >
           {[
-            '📋 How many tasks are completed?',
-            '🏥 What is the work status across all MRs?',
-            '🩺 Show doctor visit coverage summary',
-            '⏱️ Team attendance & clock-in status',
+            'How many tasks are completed?',
+            'What is the work status across all MRs?',
+            'Show doctor visit coverage summary',
+            'Team attendance & clock-in status',
           ].map((q, idx) => (
             <button
               key={idx}

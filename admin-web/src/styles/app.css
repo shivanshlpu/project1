@@ -1127,8 +1127,8 @@
 
   .saved-locations-map-col {
     order: 1 !important;
-    height: 310px !important;
-    min-height: 300px !important;
+    height: 440px !important;
+    min-height: 420px !important;
     width: 100% !important;
     flex-shrink: 0 !important;
     border-bottom: 1.5px solid #CBD5E1;
@@ -1808,7 +1808,7 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 9000;
+  z-index: 800;
   background: linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%);
   color: #FFFFFF;
   border: 1.5px solid rgba(255, 255, 255, 0.3);
