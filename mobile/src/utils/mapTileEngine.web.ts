@@ -13,46 +13,54 @@ export interface TileProvider {
 
 export const STREET_PROVIDERS: TileProvider[] = [
   {
-    name: 'OpenStreetMap',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c'],
-    attribution: 'Map data © OpenStreetMap contributors',
-    maxNativeZoom: 19,
-    maxZoom: 22,
-  },
-  {
-    name: 'EsriWorldStreet',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    attribution: 'Map data © Esri, DeLorme, NAVTEQ',
-    maxNativeZoom: 19,
+    name: 'CartoVoyager',
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxNativeZoom: 20,
     maxZoom: 22,
   },
   {
     name: 'GoogleStreet',
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
     subdomains: ['0', '1', '2', '3'],
-    attribution: 'Map data © Google',
+    attribution: 'Map data &copy; Google',
     maxNativeZoom: 20,
+    maxZoom: 22,
+  },
+  {
+    name: 'EsriWorldStreet',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [],
+    attribution: 'Tiles &copy; Esri',
+    maxNativeZoom: 19,
+    maxZoom: 22,
+  },
+  {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    attribution: 'Map data &copy; OpenStreetMap contributors',
+    maxNativeZoom: 19,
     maxZoom: 22,
   },
 ];
 
 export const SATELLITE_PROVIDERS: TileProvider[] = [
   {
-    name: 'EsriWorldImagery',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, USDA FSA, USGS, Aerogrid, IGN, IGP',
-    maxNativeZoom: 19,
+    name: 'GoogleHybridSatellite',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    subdomains: ['0', '1', '2', '3'],
+    attribution: 'Imagery &copy; Google',
+    maxNativeZoom: 20,
     maxZoom: 22,
   },
   {
-    name: 'GoogleSatellite',
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    subdomains: ['0', '1', '2', '3'],
-    attribution: 'Imagery © Google',
-    maxNativeZoom: 20,
+    name: 'EsriWorldImagery',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [],
+    attribution: 'Imagery &copy; Esri, Maxar',
+    maxNativeZoom: 19,
     maxZoom: 22,
   },
 ];
@@ -71,7 +79,7 @@ export class ResilientTileLayer extends L.TileLayer {
       subdomains: primary.subdomains,
       keepBuffer: 8,
       updateWhenZooming: false,
-      updateWhenIdle: true,
+      updateWhenIdle: false,
       crossOrigin: true,
       ...options,
     });
@@ -116,11 +124,10 @@ export class ResilientTileLayer extends L.TileLayer {
 
       tile.onerror = () => {
         this.consecutiveErrors++;
-        if (this.consecutiveErrors >= 6 && this.activeProviderIndex < this.providers.length - 1) {
+        if (this.consecutiveErrors >= 4 && this.activeProviderIndex < this.providers.length - 1) {
           this.activeProviderIndex = (this.activeProviderIndex + 1) % this.providers.length;
           this.consecutiveErrors = 0;
         }
-
         attemptsCount++;
         attemptIndex++;
         tryLoad();

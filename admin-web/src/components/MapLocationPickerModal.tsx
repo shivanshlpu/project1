@@ -141,12 +141,24 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     };
     window.addEventListener('resize', handleResize);
 
-    setTimeout(() => {
-      mapInstanceRef.current?.invalidateSize();
-    }, 200);
+    let resizeObserver: ResizeObserver | null = null;
+    if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        mapInstanceRef.current?.invalidateSize();
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    const t1 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 50);
+    const t2 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 180);
+    const t3 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 450);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -235,31 +247,92 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   }, [geofenceRadius]);
 
-  // Handle live search with OpenStreetMap Nominatim
+  // High-Accuracy Live Search (Photon POI for medical shops/hospitals + Nominatim + GPS Coords)
   const handleLiveSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
+    if (!query) return;
 
     setIsSearching(true);
+
+    // 1. Check if user entered direct GPS coordinates: "lat, lng" or "lat lng"
+    const coordMatch = query.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        updatePosition(lat, lng);
+        mapInstanceRef.current?.setView([lat, lng], 17);
+        setIsSearching(false);
+        return;
+      }
+    }
+
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`,
+      // 2. Query Photon POI API (Specialized in places, clinics, pharmacies, hospitals & shops)
+      const photonRes = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`,
       );
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data);
-        if (data.length > 0) {
-          const first = data[0];
-          const lat = parseFloat(first.lat);
-          const lon = parseFloat(first.lon);
-          updatePosition(lat, lon);
-          setLocationName(first.name || searchQuery);
-          setAddress(first.display_name);
-          mapInstanceRef.current?.setView([lat, lon], 16);
+      let parsedResults: any[] = [];
+
+      if (photonRes.ok) {
+        const pData = await photonRes.json();
+        if (pData?.features && pData.features.length > 0) {
+          parsedResults = pData.features.map((f: any) => {
+            const props = f.properties || {};
+            const name = props.name || props.street || query;
+            const fullAddr = [
+              props.name,
+              props.housenumber ? `#${props.housenumber}` : null,
+              props.street,
+              props.district || props.city,
+              props.state,
+              props.postcode,
+            ]
+              .filter(Boolean)
+              .join(', ');
+
+            return {
+              name,
+              display_name: fullAddr || name,
+              lat: f.geometry.coordinates[1],
+              lon: f.geometry.coordinates[0],
+              category: props.osm_value || 'PLACE',
+            };
+          });
         }
       }
+
+      // 3. Fallback to Nominatim if Photon yields no results
+      if (parsedResults.length === 0) {
+        const nomRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6`,
+        );
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (Array.isArray(nomData)) {
+            parsedResults = nomData.map((item: any) => ({
+              name: item.name || item.display_name.split(',')[0],
+              display_name: item.display_name,
+              lat: parseFloat(item.lat),
+              lon: parseFloat(item.lon),
+              category: 'PLACE',
+            }));
+          }
+        }
+      }
+
+      setSearchResults(parsedResults);
+
+      if (parsedResults.length > 0) {
+        const first = parsedResults[0];
+        updatePosition(first.lat, first.lon);
+        setLocationName(first.name);
+        setAddress(first.display_name);
+        mapInstanceRef.current?.setView([first.lat, first.lon], 16);
+      }
     } catch (err) {
-      console.error('Search geocode error:', err);
+      console.error('Live search error:', err);
     } finally {
       setIsSearching(false);
     }

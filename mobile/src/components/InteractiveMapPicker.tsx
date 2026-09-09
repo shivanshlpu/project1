@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Alert,
   Modal,
   Image,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { PinCategory } from '../utils/mapPinGenerator';
 import { LocationService } from '../services/locationService';
@@ -37,9 +39,9 @@ interface InteractiveMapPickerProps {
 
 const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
   { id: 'CLINIC', label: 'Clinic', color: '#1B9AAA' },
-  { id: 'HOSPITAL', label: 'Hospital', color: '#E63946' },
+  { id: 'HOSPITAL', label: 'Hospital', color: '#DC2626' },
   { id: 'PHARMACY', label: 'Pharmacy', color: '#0F8B5A' },
-  { id: 'OFFICE', label: 'Chemist / Lab', color: '#E76F51' },
+  { id: 'OFFICE', label: 'Chemist / Lab', color: '#D97706' },
 ];
 
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
@@ -57,25 +59,34 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [selectedLat, setSelectedLat] = useState<number>(initialLat);
   const [selectedLng, setSelectedLng] = useState<number>(initialLng);
   const [zoom, setZoom] = useState<number>(16);
+  const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(8.0);
   const [category, setCategory] = useState<PinCategory>(initialCategory);
   const [placeName, setPlaceName] = useState<string>(initialName);
   const [doctorName, setDoctorName] = useState<string>(initialDoctorName);
   const [address, setAddress] = useState<string>(initialAddress);
   const [phone, setPhone] = useState<string>(initialPhone);
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // State flags
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState<boolean>(false);
-  const [mapTileError, setMapTileError] = useState<boolean>(false);
 
   // Auto reverse-geocode whenever coordinates change significantly
   const resolveAddressFromCoords = async (lat: number, lng: number) => {
     try {
       setIsResolvingAddress(true);
+      // Primary: Nominatim with custom header
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
         {
           headers: {
-            'User-Agent': 'AHTRI-FFA-Mobile/1.0',
+            'User-Agent': 'AHTRI-FFA-Mobile/2.0 (Pharma Field Force Automation)',
+            Accept: 'application/json',
           },
         }
       );
@@ -88,10 +99,29 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               data.name ||
               data.address?.amenity ||
               data.address?.hospital ||
+              data.address?.pharmacy ||
+              data.address?.clinic ||
               data.address?.road ||
               '';
             if (suggested) setPlaceName(suggested);
           }
+          return;
+        }
+      }
+
+      // Fallback: Photon Reverse
+      const photonRes = await fetch(
+        `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`
+      );
+      if (photonRes.ok) {
+        const pData = await photonRes.json();
+        if (pData?.features && pData.features.length > 0) {
+          const props = pData.features[0].properties;
+          const full = [props.name, props.street, props.city || props.district, props.state]
+            .filter(Boolean)
+            .join(', ');
+          if (full) setAddress(full);
+          if (!placeName && props.name) setPlaceName(props.name);
         }
       }
     } catch {
@@ -99,6 +129,117 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     } finally {
       setIsResolvingAddress(false);
     }
+  };
+
+  // High-accuracy live POI search (Hospitals, Medical Stores, Clinics, Landmarks)
+  const handleSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setIsSearching(true);
+
+    // 1. Direct coordinate format: "28.5245, 77.2066"
+    const coordMatch = query.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        resolveAddressFromCoords(lat, lng);
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+    }
+
+    try {
+      // 2. Query Photon POI API (indexes OSM shops, clinics, hospitals, chemists with instant text search)
+      const photonRes = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`
+      );
+      let parsed: any[] = [];
+
+      if (photonRes.ok) {
+        const pData = await photonRes.json();
+        if (pData?.features && pData.features.length > 0) {
+          parsed = pData.features.map((f: any) => {
+            const p = f.properties || {};
+            const name = p.name || p.street || query;
+            const fullAddr = [
+              p.name,
+              p.housenumber ? `#${p.housenumber}` : null,
+              p.street,
+              p.district || p.city,
+              p.state,
+              p.postcode,
+            ]
+              .filter(Boolean)
+              .join(', ');
+
+            return {
+              name,
+              display_name: fullAddr || name,
+              lat: f.geometry.coordinates[1],
+              lon: f.geometry.coordinates[0],
+              category: p.osm_value || 'place',
+            };
+          });
+        }
+      }
+
+      // 3. Fallback to Nominatim if Photon yields no results
+      if (parsed.length === 0) {
+        const nomRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6`,
+          {
+            headers: {
+              'User-Agent': 'AHTRI-FFA-Mobile/2.0 (Pharma Field Force Automation)',
+              Accept: 'application/json',
+            },
+          }
+        );
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (Array.isArray(nomData)) {
+            parsed = nomData.map((item: any) => ({
+              name: item.name || item.display_name.split(',')[0],
+              display_name: item.display_name,
+              lat: parseFloat(item.lat),
+              lon: parseFloat(item.lon),
+              category: 'place',
+            }));
+          }
+        }
+      }
+
+      setSearchResults(parsed);
+
+      if (parsed.length > 0) {
+        const first = parsed[0];
+        setSelectedLat(first.lat);
+        setSelectedLng(first.lon);
+        if (!placeName) setPlaceName(first.name);
+        setAddress(first.display_name);
+      } else {
+        Alert.alert(
+          'Location Search',
+          `No places found for "${query}". You can drop the pin anywhere on the map or enter coordinates directly.`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Search Notice', 'Could not complete place search. Verify internet connection.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectSearchResult = (item: any) => {
+    setSelectedLat(item.lat);
+    setSelectedLng(item.lon);
+    setPlaceName(item.name);
+    setAddress(item.display_name);
+    setSearchResults([]);
   };
 
   const handleGetCurrentLocation = async () => {
@@ -116,10 +257,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           setSelectedLat(nLat);
           setSelectedLng(nLng);
           setGpsAccuracy(Number(acc.toFixed(1)));
-          setMapTileError(false);
           resolveAddressFromCoords(nLat, nLng);
           Alert.alert(
-            'GPS Location Acquired',
+            'GPS Location Locked',
             `Coordinates: ${nLat.toFixed(5)}, ${nLng.toFixed(5)} (Accuracy: ±${acc.toFixed(1)}m)`
           );
         }
@@ -134,7 +274,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   };
 
   const handlePan = (direction: 'up' | 'down' | 'left' | 'right') => {
-    const delta = 0.001; // ~100 meters
+    const delta = 0.0012; // ~120 meters
     let newLat = selectedLat;
     let newLng = selectedLng;
 
@@ -143,16 +283,12 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     if (direction === 'left') newLng -= delta;
     if (direction === 'right') newLng += delta;
 
-    const nLat = Number(newLat.toFixed(6));
-    const nLng = Number(newLng.toFixed(6));
-    setSelectedLat(nLat);
-    setSelectedLng(nLng);
-    setMapTileError(false);
+    setSelectedLat(Number(newLat.toFixed(6)));
+    setSelectedLng(Number(newLng.toFixed(6)));
   };
 
   const handleZoom = (delta: number) => {
     setZoom((prev) => Math.min(18, Math.max(13, prev + delta)));
-    setMapTileError(false);
   };
 
   const handleSave = () => {
@@ -177,19 +313,61 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     onClose();
   };
 
+  // Drag Gesture with PanResponder for smooth finger dragging on map
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 4 || Math.abs(gesture.dy) > 4,
+        onPanResponderRelease: (_, gesture) => {
+          // Convert pixels to lat/lng delta based on zoom
+          const scale = Math.pow(2, zoom);
+          const dLng = (-gesture.dx * 360) / (256 * scale);
+          const dLat = (gesture.dy * 180) / (256 * scale);
+
+          if (Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3) {
+            const nextLat = Math.max(-85, Math.min(85, selectedLat + dLat));
+            const nextLng = Math.max(-180, Math.min(180, selectedLng + dLng));
+            setSelectedLat(Number(nextLat.toFixed(6)));
+            setSelectedLng(Number(nextLng.toFixed(6)));
+          }
+        },
+      }),
+    [zoom, selectedLat, selectedLng]
+  );
+
   if (!isOpen) return null;
 
   const activeCategoryConfig =
     CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
 
-  // Slippy tile math for high-resolution OpenStreetMap tile preview
+  // Slippy tile math for center coordinates
   const n = Math.pow(2, zoom);
-  const tileX = Math.floor(((selectedLng + 180) / 360) * n);
+  const centerTileX = Math.floor(((selectedLng + 180) / 360) * n);
   const latRad = (selectedLat * Math.PI) / 180;
-  const tileY = Math.floor(
+  const centerTileY = Math.floor(
     ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
   );
-  const tileUrl = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+
+  // Multi-CDN compliant tile URL generator
+  // Fastly Anycast CARTO CDN + Google Hybrid Satellite (zero volunteer server bans)
+  const getTileUrl = (x: number, y: number) => {
+    if (mapMode === 'satellite') {
+      const s = Math.abs(x + y) % 4;
+      return `https://mt${s}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${zoom}`;
+    }
+    const subdomains = ['a', 'b', 'c', 'd'];
+    const s = subdomains[Math.abs(x + y) % subdomains.length];
+    return `https://cartodb-basemaps-${s}.global.ssl.fastly.net/rastertiles/voyager/${zoom}/${x}/${y}.png`;
+  };
+
+  // Center 3x3 tiles surrounding the selected location for seamless panning
+  const tileOffsets = [
+    { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 },
+    { dx: -1, dy: 0 },  { dx: 0, dy: 0 },  { dx: 1, dy: 0 },
+    { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 },
+  ];
 
   return (
     <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={onClose}>
@@ -205,43 +383,133 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* LIVE PLACE SEARCH BAR */}
+          <View style={styles.searchCard}>
+            <View style={styles.searchInputRow}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search clinic, hospital, chemist, shop, area..."
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearSearchBtn}
+                  onPress={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                  }}
+                >
+                  <Text style={styles.clearSearchText}>✕</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.searchSubmitBtn}
+                onPress={handleSearch}
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.searchSubmitText}>Search</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Live Search Suggestions Dropdown */}
+            {searchResults.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsHeader}>Select Matched Location:</Text>
+                {searchResults.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSelectSearchResult(item)}
+                  >
+                    <View style={styles.suggestionIconBox}>
+                      <Text style={{ fontSize: 13 }}>
+                        {item.category?.toLowerCase().includes('hospital')
+                          ? '🏥'
+                          : item.category?.toLowerCase().includes('pharmacy')
+                          ? '💊'
+                          : '📍'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.suggestionName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={styles.suggestionAddr} numberOfLines={2}>
+                        {item.display_name}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           {/* VISUAL INTERACTIVE MAP SECTION */}
           <View style={styles.mapCard}>
             <View style={styles.mapHeaderRow}>
               <View style={styles.mapBadge}>
                 <View style={[styles.statusDot, { backgroundColor: activeCategoryConfig.color }]} />
-                <Text style={styles.mapBadgeText}>Live Map • Zoom {zoom}x</Text>
+                <Text style={styles.mapBadgeText}>
+                  {mapMode === 'satellite' ? 'Satellite View' : 'Road Map'} • Zoom {zoom}x
+                </Text>
               </View>
-              {isResolvingAddress && (
-                <Text style={styles.resolvingText}>Resolving Address...</Text>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.modeToggleBtn,
+                    mapMode === 'satellite' && styles.modeToggleBtnActive,
+                  ]}
+                  onPress={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
+                >
+                  <Text
+                    style={[
+                      styles.modeToggleText,
+                      mapMode === 'satellite' && styles.modeToggleTextActive,
+                    ]}
+                  >
+                    {mapMode === 'street' ? '🛰️ Satellite' : '🗺️ Road'}
+                  </Text>
+                </TouchableOpacity>
+                {isResolvingAddress && (
+                  <Text style={styles.resolvingText}>Resolving...</Text>
+                )}
+              </View>
             </View>
 
-            {/* Map Canvas with Center Pin & Crosshair */}
-            <View style={styles.mapCanvas}>
-              {!mapTileError ? (
-                <Image
-                  source={{ uri: tileUrl }}
-                  style={styles.mapImage}
-                  resizeMode="cover"
-                  onError={() => setMapTileError(true)}
-                />
-              ) : (
-                <View style={styles.mapFallbackContainer}>
-                  <Text style={styles.mapFallbackText}>Global Geotag Map Canvas</Text>
-                  <Text style={styles.mapFallbackSub}>
-                    {selectedLat.toFixed(5)}° N, {selectedLng.toFixed(5)}° E
-                  </Text>
-                </View>
-              )}
+            {/* Map Canvas with 3x3 Stitched Tiles & Touch Pan Gesture */}
+            <View style={styles.mapCanvas} {...panResponder.panHandlers}>
+              <View style={styles.tilesGrid}>
+                {tileOffsets.map((offset, i) => {
+                  const x = centerTileX + offset.dx;
+                  const y = centerTileY + offset.dy;
+                  const url = getTileUrl(x, y);
+                  return (
+                    <Image
+                      key={`${mapMode}-${zoom}-${x}-${y}-${i}`}
+                      source={{ uri: url }}
+                      style={styles.gridTile}
+                      resizeMode="cover"
+                    />
+                  );
+                })}
+              </View>
 
               {/* Grid Lines Visual Crosshair */}
-              <View style={styles.crosshairH} />
-              <View style={styles.crosshairV} />
+              <View style={styles.crosshairH} pointerEvents="none" />
+              <View style={styles.crosshairV} pointerEvents="none" />
 
               {/* 3D Center Pin Overlay */}
-              <View style={styles.pinOverlay}>
+              <View style={styles.pinOverlay} pointerEvents="none">
                 <View
                   style={[
                     styles.pinHead,
@@ -269,7 +537,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Directional Pan Buttons */}
+              {/* Directional Pan Buttons & GPS Lock */}
               <View style={styles.panControlCluster}>
                 <TouchableOpacity
                   style={[styles.panBtn, styles.panUp]}
@@ -288,7 +556,11 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                     style={[styles.panBtn, styles.panCenter]}
                     onPress={handleGetCurrentLocation}
                   >
-                    <Text style={styles.panCenterText}>GPS</Text>
+                    {isLocatingGps ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.panCenterText}>GPS</Text>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.panBtn, styles.panRight]}
@@ -348,7 +620,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             style={styles.textInput}
             value={placeName}
             onChangeText={setPlaceName}
-            placeholder="e.g. Metro Heart Clinic"
+            placeholder="e.g. Apex Heart Centre, Metro Pharmacy"
             placeholderTextColor="#94A3B8"
           />
 
@@ -474,6 +746,96 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 36,
   },
+  searchCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    padding: 6,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    paddingHorizontal: 8,
+    fontSize: 14,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+    paddingVertical: 8,
+  },
+  clearSearchBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  searchSubmitBtn: {
+    backgroundColor: '#0B2545',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 4,
+  },
+  searchSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 6,
+    maxHeight: 180,
+  },
+  suggestionsHeader: {
+    fontSize: 10.5,
+    color: '#64748B',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  suggestionIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  suggestionName: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  suggestionAddr: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
   mapCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -491,8 +853,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#F1F5F9',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -512,13 +874,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
   },
-  resolvingText: {
+  modeToggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modeToggleBtnActive: {
+    backgroundColor: '#0B2545',
+    borderColor: '#0B2545',
+  },
+  modeToggleText: {
     fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  modeToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  resolvingText: {
+    fontSize: 10.5,
     color: '#0F8B5A',
     fontWeight: '600',
   },
   mapCanvas: {
-    height: 220,
+    height: 270,
     width: '100%',
     backgroundColor: '#E2E8F0',
     position: 'relative',
@@ -526,23 +908,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  mapImage: {
-    width: '100%',
-    height: '100%',
+  tilesGrid: {
+    width: 384,
+    height: 384,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    position: 'absolute',
   },
-  mapFallbackContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapFallbackText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  mapFallbackSub: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
+  gridTile: {
+    width: 128,
+    height: 128,
+    backgroundColor: '#CBD5E1',
   },
   crosshairH: {
     position: 'absolute',
@@ -562,7 +938,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    pointerEvents: 'none',
   },
   pinHead: {
     width: 32,

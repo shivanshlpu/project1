@@ -27,6 +27,7 @@ import {
   Alert,
   Platform,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNav, MobileTab } from './components/BottomNav';
@@ -38,6 +39,8 @@ import { DoctorVisitScreen } from './screens/DoctorVisitScreen';
 import { AttendanceScreen } from './screens/AttendanceScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { ServerConfigModal } from './components/ServerConfigModal';
+import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './services/appUpdateService';
+import { UpdateModal } from './components/UpdateModal';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -86,6 +89,46 @@ export default function App() {
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
   const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
+  const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+
+  // Auto-check for over-the-air in-app updates on boot
+  useEffect(() => {
+    const checkUpdate = async () => {
+      try {
+        const res = await AppUpdateService.checkForUpdates();
+        if (res.hasUpdate && res.info) {
+          setUpdateInfo(res.info);
+          setIsUpdateModalOpen(true);
+        }
+      } catch {
+        // Silent catch on boot
+      }
+    };
+    const timer = setTimeout(checkUpdate, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleManualUpdateCheck = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const res = await AppUpdateService.checkForUpdates();
+      if (res.hasUpdate && res.info) {
+        setUpdateInfo(res.info);
+        setIsUpdateModalOpen(true);
+      } else {
+        Alert.alert(
+          'App is Up to Date',
+          `AHTRI FFA Mobile v${CURRENT_APP_VERSION} is the latest version available.`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Notice', 'Could not connect to update server. Please check your network.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   // Responsive device dimensions
   const { width } = useWindowDimensions();
@@ -358,6 +401,21 @@ export default function App() {
                     </TouchableOpacity>
                   )}
 
+                  {/* Check for App Updates Button */}
+                  <TouchableOpacity
+                    style={styles.updateProfileBtn}
+                    onPress={handleManualUpdateCheck}
+                    disabled={isCheckingUpdate}
+                  >
+                    {isCheckingUpdate ? (
+                      <ActivityIndicator size="small" color="#15803D" />
+                    ) : (
+                      <Text style={styles.updateProfileBtnText}>
+                        🚀 Check for Updates (Installed v{CURRENT_APP_VERSION})
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
                   {/* Server Connection Config Button */}
                   <TouchableOpacity
                     style={styles.serverProfileBtn}
@@ -378,6 +436,15 @@ export default function App() {
           <ServerConfigModal
             isOpen={isServerModalOpen}
             onClose={() => setIsServerModalOpen(false)}
+          />
+
+          {/* In-App Auto-Update Modal */}
+          <UpdateModal
+            isOpen={isUpdateModalOpen}
+            onClose={() => setIsUpdateModalOpen(false)}
+            updateInfo={updateInfo}
+            currentVersion={CURRENT_APP_VERSION}
+            isMandatory={updateInfo?.forceUpdate}
           />
 
           {/* Bottom Navigation */}
@@ -442,6 +509,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9.5,
     fontWeight: '700',
+  },
+  updateProfileBtn: {
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  updateProfileBtnText: {
+    color: '#15803D',
+    fontWeight: '700',
+    fontSize: 12,
   },
   serverProfileBtn: {
     width: '100%',

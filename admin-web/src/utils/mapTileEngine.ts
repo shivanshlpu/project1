@@ -13,59 +13,66 @@ export interface TileProvider {
 
 /**
  * Enterprise Street Tile Providers with Automatic Multi-CDN Fallback.
- * Tier 1: CARTO Voyager (Cloudflare/Fastly Anycast CDN, modern aesthetic, zero referrer bans)
- * Tier 2: Esri World Street Map (AWS CloudFront global GIS CDN, high reliability)
- * Tier 3: Google Street Map (Google tiles with auto error interception)
- * Tier 4: OpenStreetMap Foundation CDN
+ * Tier 1: CARTO Voyager (Fastly Anycast CDN, modern aesthetic, zero referrer bans, enterprise reliability)
+ * Tier 2: Google Street Map (Google tiles with high uptime & updated road data)
+ * Tier 3: Esri World Street Map (AWS CloudFront global GIS CDN, high reliability)
+ * Tier 4: OpenStreetMap Foundation CDN (Volunteer servers)
  */
 export const STREET_PROVIDERS: TileProvider[] = [
   {
-    name: 'OpenStreetMap',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c'],
-    attribution: 'Map data © OpenStreetMap contributors',
-    maxNativeZoom: 19,
-    maxZoom: 22,
-  },
-  {
-    name: 'EsriWorldStreet',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    attribution: 'Map data © Esri, DeLorme, NAVTEQ',
-    maxNativeZoom: 19,
+    name: 'CartoVoyager',
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxNativeZoom: 20,
     maxZoom: 22,
   },
   {
     name: 'GoogleStreet',
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
     subdomains: ['0', '1', '2', '3'],
-    attribution: 'Map data © Google',
+    attribution: 'Map data &copy; Google',
     maxNativeZoom: 20,
+    maxZoom: 22,
+  },
+  {
+    name: 'EsriWorldStreet',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [],
+    attribution: 'Tiles &copy; Esri',
+    maxNativeZoom: 19,
+    maxZoom: 22,
+  },
+  {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    attribution: 'Map data &copy; OpenStreetMap contributors',
+    maxNativeZoom: 19,
     maxZoom: 22,
   },
 ];
 
 /**
  * High-Resolution Satellite Providers with Automatic Multi-CDN Fallback.
- * Tier 1: Esri World Imagery (Standard GIS satellite imagery, sub-meter resolution, AWS CDN, no domain bans)
- * Tier 2: Google Hybrid Satellite
- * Tier 3: CARTO Voyager High-Contrast Fallback
+ * Tier 1: Google Hybrid Satellite (Photographic satellite imagery with street & hospital/clinic overlay)
+ * Tier 2: Esri World Imagery (Standard GIS satellite imagery, sub-meter resolution, AWS CDN)
  */
 export const SATELLITE_PROVIDERS: TileProvider[] = [
+  {
+    name: 'GoogleHybridSatellite',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    subdomains: ['0', '1', '2', '3'],
+    attribution: 'Imagery &copy; Google',
+    maxNativeZoom: 20,
+    maxZoom: 22,
+  },
   {
     name: 'EsriWorldImagery',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     subdomains: [],
-    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, USDA FSA, USGS, Aerogrid, IGN, IGP',
+    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
     maxNativeZoom: 19,
-    maxZoom: 22,
-  },
-  {
-    name: 'GoogleSatellite',
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    subdomains: ['0', '1', '2', '3'],
-    attribution: 'Imagery © Google',
-    maxNativeZoom: 20,
     maxZoom: 22,
   },
 ];
@@ -134,8 +141,8 @@ export class ResilientTileLayer extends L.TileLayer {
 
       tile.onerror = () => {
         this.consecutiveErrors++;
-        // If current primary fails 6 times consecutively, permanently failover to next provider for future tiles
-        if (this.consecutiveErrors >= 6 && this.activeProviderIndex < this.providers.length - 1) {
+        // If current primary fails 4 times consecutively, permanently failover to next provider
+        if (this.consecutiveErrors >= 4 && this.activeProviderIndex < this.providers.length - 1) {
           this.activeProviderIndex = (this.activeProviderIndex + 1) % this.providers.length;
           this.consecutiveErrors = 0;
         }

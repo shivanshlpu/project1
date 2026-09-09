@@ -152,11 +152,23 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       markerRef.current?.setLatLng([selectedLat, selectedLng]);
     }
 
-    setTimeout(() => {
-      mapInstanceRef.current?.invalidateSize();
-    }, 250);
+    let resizeObserver: ResizeObserver | null = null;
+    if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        mapInstanceRef.current?.invalidateSize();
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    const t1 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 50);
+    const t2 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
+    const t3 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 500);
 
     return () => {
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -230,44 +242,53 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   };
 
-  // Search address / landmark
+  // High-accuracy live POI search for hospitals, clinics, medical stores, and landmarks
   const handleSearchLandmark = async () => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
     if (!q) return;
 
-    const landmarks: Record<string, [number, number]> = {
-      saket: [28.5245, 77.2066],
-      'apex heart': [28.5245, 77.2066],
-      'green park': [28.5585, 77.2028],
-      'little care': [28.5585, 77.2028],
-      'hauz khas': [28.5494, 77.2001],
-      'skin care': [28.5494, 77.2001],
-      'malviya nagar': [28.53, 77.215],
-      aiims: [28.5672, 77.21],
-      safdarjung: [28.57, 77.208],
-      southdelhi: [28.538, 77.206],
-    };
-
-    let targetCoords: [number, number] | null = null;
-    for (const key of Object.keys(landmarks)) {
-      if (q.includes(key) || key.includes(q)) {
-        targetCoords = landmarks[key];
-        break;
+    // Check direct GPS coordinates (e.g. "28.5245, 77.2066")
+    const coordMatch = q.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        mapInstanceRef.current?.flyTo([lat, lng], 19, { duration: 0.8 });
+        markerRef.current?.setLatLng([lat, lng]);
+        return;
       }
     }
 
-    if (targetCoords) {
-      const [lat, lng] = targetCoords;
-      setSelectedLat(lat);
-      setSelectedLng(lng);
-      mapInstanceRef.current?.flyTo([lat, lng], 19, { duration: 0.8 });
-      markerRef.current?.setLatLng([lat, lng]);
-      return;
-    }
-
     try {
+      // 1. Query Photon POI search
+      const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
+      if (photonRes.ok) {
+        const pData = await photonRes.json();
+        if (pData?.features && pData.features.length > 0) {
+          const first = pData.features[0];
+          const lat = Number(first.geometry.coordinates[1].toFixed(6));
+          const lng = Number(first.geometry.coordinates[0].toFixed(6));
+          const props = first.properties || {};
+          const fullAddr = [props.name, props.street, props.district || props.city, props.state]
+            .filter(Boolean)
+            .join(', ');
+
+          setSelectedLat(lat);
+          setSelectedLng(lng);
+          mapInstanceRef.current?.flyTo([lat, lng], 19, { duration: 0.8 });
+          markerRef.current?.setLatLng([lat, lng]);
+          if (!placeName && props.name) setPlaceName(props.name);
+          if (fullAddr) setAddress(fullAddr);
+          return;
+        }
+      }
+
+      // 2. Fallback to Nominatim
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
+        { headers: { 'User-Agent': 'AHTRI-FFA-Mobile/2.0' } }
       );
       const data = await res.json();
       if (data && data.length > 0) {
@@ -279,6 +300,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         markerRef.current?.setLatLng([lat, lng]);
         if (data[0].display_name) {
           setAddress(data[0].display_name);
+        }
+        if (!placeName) {
+          setPlaceName(data[0].name || q);
         }
         return;
       }

@@ -1680,31 +1680,44 @@
 
 @media (max-width: 768px) {
   .map-picker-modal-box {
-    width: 96vw !important;
-    height: 94vh !important;
-    max-height: 94vh !important;
+    width: 100vw !important;
+    height: 96vh !important;
+    max-height: 96vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    margin: 0 !important;
+    align-self: flex-end !important;
   }
 
   .modal-split-container {
     flex-direction: column !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .modal-map-col {
     flex: none !important;
-    height: 310px !important;
-    min-height: 310px !important;
+    height: 50vh !important;
+    min-height: 360px !important;
     width: 100% !important;
+    position: relative !important;
   }
 
   .modal-form-col {
     flex: 1 !important;
     width: 100% !important;
     border-left: none !important;
-    border-top: 1px solid #E2E8F0 !important;
-    padding: 14px !important;
+    border-top: 1px solid #CBD5E1 !important;
+    padding: 16px !important;
     overflow-y: visible !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
   }
+}
+
+.leaflet-container {
+  background-color: #E2E8F0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Responsive Territory Geofences & Tasks Explorer Grid */
