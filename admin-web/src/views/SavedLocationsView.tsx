@@ -98,6 +98,32 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   };
 
   // Central handler for selecting a location (card click or pin click)
+    // Handler to switch zone and pan map to that zone
+  const handleSelectZone = (zoneId: string) => {
+    setSelectedZoneId(zoneId);
+    if (zoneId === 'all') {
+      fitAllMarkers();
+    } else {
+      const z = zones.find((item) => item.id === zoneId);
+      if (z && mapInstanceRef.current) {
+        mapInstanceRef.current.setView([z.latitude, z.longitude], 13);
+      }
+    }
+  };
+
+  const fitAllMarkers = () => {
+    if (!mapInstanceRef.current || !markersGroupRef.current) return;
+    try {
+      const layers = markersGroupRef.current.getLayers();
+      if (layers.length > 0) {
+        const bounds = L.featureGroup(layers as L.Marker[]).getBounds();
+        if (bounds.isValid()) {
+          mapInstanceRef.current.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        }
+      }
+    } catch {}
+  };
+
   const handleSelectLocation = (loc: DoctorItem) => {
     setSelectedLocation(loc);
     mapInstanceRef.current?.flyTo([loc.latitude, loc.longitude], 16, { duration: 0.8 });
@@ -231,6 +257,10 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       markersGroupRef.current.clearLayers();
 
       filteredLocations.forEach((loc) => {
+        const lat = Number(loc.latitude);
+        const lng = Number(loc.longitude);
+        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+
         const isSelected = selectedLocation?.id === loc.id;
         const pinCategory = (loc.category || 'CLINIC') as PinCategory;
         const isLocNew = isLocationUnread(loc);
@@ -249,7 +279,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           popupAnchor: [0, isSelected ? -56 : -48],
         });
 
-        const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon });
+        const marker = L.marker([lat, lng], { icon: customIcon });
 
         const badgeBg =
           loc.category === 'HOSPITAL'
