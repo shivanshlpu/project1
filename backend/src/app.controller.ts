@@ -38,7 +38,7 @@ export class AppController {
     const minimumVersion = process.env.MIN_APP_VERSION || '1.0.0';
     const downloadUrl =
       process.env.APP_APK_URL ||
-      'https://github.com/shivanshlpu/Darji/releases/download/v1.0.1/ahtri-ffa-release.apk';
+      'https://expo.dev/artifacts/eas/STernUOxw1uIVH1kMk5NwbbKfKgHY-rKm6Lq5mxsMbM.apk';
     const forceUpdate = process.env.FORCE_APP_UPDATE === 'true';
 
     return {
