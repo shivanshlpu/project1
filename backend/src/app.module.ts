@@ -13,6 +13,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { AuditModule, AuditInterceptor } from './modules/audit/audit.module';
 import { LocationsModule } from './modules/locations/locations.module';
@@ -34,6 +35,7 @@ import { AppController } from './app.controller';
     ApprovalsModule,
     NotificationsModule,
     ReportsModule,
+    AiAssistantModule,
     SyncModule,
     AuditModule,
     LocationsModule,

@@ -67,6 +67,20 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
+  const [isMapInteracting, setIsMapInteracting] = useState(false);
+
+  const toggleMapInteraction = () => {
+    if (!mapInstanceRef.current) return;
+    if (isMapInteracting) {
+      mapInstanceRef.current.dragging.disable();
+      mapInstanceRef.current.touchZoom.disable();
+      setIsMapInteracting(false);
+    } else {
+      mapInstanceRef.current.dragging.enable();
+      mapInstanceRef.current.touchZoom.enable();
+      setIsMapInteracting(true);
+    }
+  };
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Initialize Map
@@ -74,8 +88,18 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     if (!isOpen || !mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current).setView([selectedLat, selectedLng], 16);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const map = createOptimizedMap(mapContainerRef.current, {
+        zoomControl: false,
+        dragging: !isMobile,
+        touchZoom: !isMobile,
+      }).setView([selectedLat, selectedLng], 16);
       mapInstanceRef.current = map;
+      if (isMobile) {
+        map.dragging.disable();
+        map.touchZoom.disable();
+      }
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 

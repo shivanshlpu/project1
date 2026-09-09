@@ -91,6 +91,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const circleRef = useRef<L.Circle | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
+  const [isPinBoxExpanded, setIsPinBoxExpanded] = useState(false);
+  const [isMapInteracting, setIsMapInteracting] = useState(false);
+
+  const toggleMapInteraction = () => {
+    if (!mapInstanceRef.current) return;
+    if (isMapInteracting) {
+      mapInstanceRef.current.dragging.disable();
+      mapInstanceRef.current.touchZoom.disable();
+      setIsMapInteracting(false);
+    } else {
+      mapInstanceRef.current.dragging.enable();
+      mapInstanceRef.current.touchZoom.enable();
+      setIsMapInteracting(true);
+    }
+  };
 
   const [searchCityQuery, setSearchCityQuery] = useState('');
   const [isSearchingCity, setIsSearchingCity] = useState(false);
@@ -214,8 +229,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (activeTab !== 'city' || !mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current).setView([currentCityPin.lat, currentCityPin.lng], 11);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const map = createOptimizedMap(mapContainerRef.current, {
+        dragging: !isMobile,
+        touchZoom: !isMobile,
+      }).setView([currentCityPin.lat, currentCityPin.lng], 11);
       mapInstanceRef.current = map;
+      if (isMobile) {
+        map.dragging.disable();
+        map.touchZoom.disable();
+      }
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
@@ -927,8 +950,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </p>
               </div>
 
-              {/* Satellite / Street Map Toggle */}
-              <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', padding: '2px' }}>
+              {/* Satellite / Street Map Toggle & Mobile Pan Lock */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={toggleMapInteraction}
+                  style={{
+                    background: isMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                    color: isMapInteracting ? '#FFFFFF' : '#334155',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  }}
+                  title="Toggle whether touching the map drags the map or scrolls the page"
+                >
+                  <span>{isMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+                </button>
+
+                <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', padding: '2px' }}>
                 <button
                   onClick={() => setMapMode('street')}
                   style={{
@@ -959,6 +1005,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 >
                   {t.satelliteMode}
                 </button>
+                </div>
               </div>
             </div>
 
@@ -993,79 +1040,156 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="enterprise-panel" style={{ overflow: 'hidden', height: '480px', position: 'relative' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-              {/* Floating Pinpoint Info Box */}
+              {/* Collapsible Compact Branch Save Pill / Drawer */}
               <div
                 style={{
                   position: 'absolute',
                   bottom: 14,
                   left: 14,
+                  right: 14,
+                  maxWidth: '380px',
                   zIndex: 500,
-                  background: 'rgba(15, 23, 42, 0.92)',
-                  backdropFilter: 'blur(8px)',
-                  color: '#FFFFFF',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  maxWidth: '340px',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.3)',
+                  pointerEvents: 'auto',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38BDF8', fontSize: '13px', fontWeight: '800' }}>
-                  <MapPin size={15} />
-                  <span>{currentCityPin.cityName}</span>
-                </div>
-                <div style={{ fontSize: '11px', color: '#CBD5E1', marginTop: '2px' }}>
-                  {currentCityPin.state}, {currentCityPin.country}
-                </div>
-                <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#94A3B8', marginTop: '6px' }}>
-                  <span>Lat: <strong style={{ color: '#FFFFFF' }}>{currentCityPin.lat.toFixed(4)}</strong></span>
-                  <span>Lng: <strong style={{ color: '#FFFFFF' }}>{currentCityPin.lng.toFixed(4)}</strong></span>
-                </div>
-                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#CBD5E1' }}>Branch Type:</span>
-                    <select
-                      value={newCityBranchTag}
-                      onChange={(e) => setNewCityBranchTag(e.target.value as BranchTagType)}
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        background: '#1E293B',
-                        color: '#38BDF8',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <option value="SUB_CITY_BRANCH">Sub-City Branch</option>
-                      <option value="REGIONAL_HUB">Regional Hub</option>
-                      <option value="ZONAL_DEPOT">Zonal Depot</option>
-                      <option value="HEADQUARTERS">Headquarters (HQ)</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: '600' }}>
-                      Radius: {currentCityPin.radiusKm} km
-                    </span>
-                    <button
-                      onClick={handleSaveMarkedCity}
+                {!isPinBoxExpanded ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsPinBoxExpanded(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      background: 'rgba(15, 23, 42, 0.92)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#FFFFFF',
+                      borderRadius: '30px',
+                      padding: '8px 14px',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                      cursor: 'pointer',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                    }}
+                    title="Tap to configure branch type and save"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                      <MapPin size={14} color="#38BDF8" />
+                      <span style={{ fontSize: '12px', fontWeight: '800', color: '#38BDF8', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {currentCityPin.cityName}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#CBD5E1', whiteSpace: 'nowrap' }}>
+                        ({currentCityPin.radiusKm}km)
+                      </span>
+                    </div>
+                    <span
                       style={{
                         background: '#0F8B5A',
                         color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '5px 12px',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
                         fontSize: '11px',
                         fontWeight: '700',
-                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      + Save City / Branch
-                    </button>
+                      ⚙️ Save Branch ▾
+                    </span>
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#FFFFFF',
+                      borderRadius: '10px',
+                      padding: '12px 16px',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38BDF8', fontSize: '13px', fontWeight: '800' }}>
+                        <MapPin size={15} />
+                        <span>{currentCityPin.cityName}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsPinBoxExpanded(false)}
+                        style={{
+                          background: 'rgba(255,255,255,0.15)',
+                          border: 'none',
+                          color: '#CBD5E1',
+                          borderRadius: '4px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕ Minimize
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#CBD5E1' }}>
+                      {currentCityPin.state}, {currentCityPin.country}
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                      <span>Lat: <strong style={{ color: '#FFFFFF' }}>{currentCityPin.lat.toFixed(4)}</strong></span>
+                      <span>Lng: <strong style={{ color: '#FFFFFF' }}>{currentCityPin.lng.toFixed(4)}</strong></span>
+                    </div>
+
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#CBD5E1', fontWeight: '600' }}>Branch Type:</span>
+                        <select
+                          value={newCityBranchTag}
+                          onChange={(e) => setNewCityBranchTag(e.target.value as BranchTagType)}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            background: '#1E293B',
+                            color: '#38BDF8',
+                            border: '1px solid rgba(255,255,255,0.25)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="SUB_CITY_BRANCH">Sub-City Branch</option>
+                          <option value="REGIONAL_HUB">Regional Hub</option>
+                          <option value="ZONAL_DEPOT">Zonal Depot</option>
+                          <option value="HEADQUARTERS">Headquarters (HQ)</option>
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: '700' }}>
+                          Radius: {currentCityPin.radiusKm} km
+                        </span>
+                        <button
+                          onClick={() => {
+                            handleSaveMarkedCity();
+                            setIsPinBoxExpanded(false);
+                          }}
+                          style={{
+                            background: '#0F8B5A',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '5px',
+                            padding: '6px 14px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(15,139,90,0.4)',
+                          }}
+                        >
+                          + Save City / Branch
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

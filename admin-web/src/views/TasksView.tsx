@@ -573,7 +573,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           <div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.3;">${loc.address}</div>
           <div style="margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:700;background:#EFF6FF;color:#1A3C6E;padding:2px 6px;border-radius:4px;">${loc.category || 'CLINIC'}</span>
-            <button onclick="window.__assignTaskToLocation('${loc.id}')" style="background:#1A3C6E;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Assign Task</button>
+            <button onclick="window.__assignTaskToLocation('${loc.id}')" style="background:#1A3C6E;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Plan Visit Here</button>
           </div>
         </div>
       `;
@@ -619,6 +619,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [searchMapQuery, setSearchMapQuery] = useState('');
+  const [isModalPinCardExpanded, setIsModalPinCardExpanded] = useState(false);
+  const [isModalMapInteracting, setIsModalMapInteracting] = useState(false);
+
+  const toggleModalMapInteraction = () => {
+    if (!mapInstanceRef.current) return;
+    if (isModalMapInteracting) {
+      mapInstanceRef.current.dragging.disable();
+      mapInstanceRef.current.touchZoom.disable();
+      setIsModalMapInteracting(false);
+    } else {
+      mapInstanceRef.current.dragging.enable();
+      mapInstanceRef.current.touchZoom.enable();
+      setIsModalMapInteracting(true);
+    }
+  };
   const [isSearchingMap, setIsSearchingMap] = useState(false);
 
   // Listen for prefilled location changes
@@ -795,8 +810,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
     if (!isCreateModalOpen || !mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current).setView([taskLat, taskLng], 16);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const map = createOptimizedMap(mapContainerRef.current, {
+        zoomControl: false,
+        dragging: !isMobile,
+        touchZoom: !isMobile,
+      }).setView([taskLat, taskLng], 16);
       mapInstanceRef.current = map;
+      if (isMobile) {
+        map.dragging.disable();
+        map.touchZoom.disable();
+      }
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
@@ -2433,18 +2458,42 @@ export const TasksView: React.FC<TasksViewProps> = ({
             <div className="tasks-modal-split">
               {/* LEFT SIDE: EMBEDDED INTERACTIVE LEAFLET SATELLITE MAP */}
               <div className="tasks-modal-map-col">
-                {/* Floating Search & Mode Bar */}
+                {/* Floating Search, Pan Lock & Mode Bar */}
                 <div
                   style={{
                     position: 'absolute',
-                    top: 14,
-                    left: 14,
-                    right: 14,
+                    top: 12,
+                    left: 12,
+                    right: 12,
                     zIndex: 400,
                     display: 'flex',
                     gap: '8px',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
                   }}
                 >
+                  {/* Touch Pan Lock/Unlock Toggle */}
+                  <button
+                    type="button"
+                    onClick={toggleModalMapInteraction}
+                    style={{
+                      background: isModalMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                      color: isModalMapInteracting ? '#FFFFFF' : '#334155',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}
+                    title="Toggle whether map dragging captures your touch or lets you scroll the modal"
+                  >
+                    <span>{isModalMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+                  </button>
                   <form
                     onSubmit={handleSearchOnMap}
                     style={{
@@ -2524,7 +2573,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 {/* Leaflet Map DOM Node */}
                 <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-                {/* Floating Bottom Card */}
+                {/* Collapsible Pin Details Card */}
                 <div
                   style={{
                     position: 'absolute',
@@ -2532,57 +2581,119 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     left: 14,
                     right: 14,
                     zIndex: 400,
-                    background: 'rgba(15, 23, 42, 0.94)',
-                    backdropFilter: 'blur(6px)',
-                    color: '#FFFFFF',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    fontSize: '11.5px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    pointerEvents: 'auto',
                   }}
                 >
-                  <div>
-                    {matchedSavedLocation ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <span style={{ background: '#059669', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '800', letterSpacing: '0.5px' }}>
-                          VERIFIED SAVED POINT
+                  {!isModalPinCardExpanded ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsModalPinCardExpanded(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        background: 'rgba(15, 23, 42, 0.93)',
+                        backdropFilter: 'blur(8px)',
+                        color: '#FFFFFF',
+                        padding: '8px 14px',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255,255,255,0.25)',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                        cursor: 'pointer',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                      title="Tap to see coordinates and details"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                        <MapPin size={14} color="#38BDF8" />
+                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#38BDF8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {taskLocationName || 'Custom Location'}
                         </span>
-                        <span style={{ color: '#6EE7B7', fontSize: '11px', fontWeight: '600' }}>
-                          Protected: Will NOT duplicate or re-mark
+                        <span style={{ fontSize: '10.5px', color: '#CBD5E1', whiteSpace: 'nowrap' }}>
+                          • {taskRadius}m
                         </span>
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <span style={{ background: '#D97706', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '800' }}>
-                          CUSTOM PIN POINT
-                        </span>
-                        <span style={{ color: '#FDE68A', fontSize: '11px', fontWeight: '500' }}>
-                          Coordinates: {taskLat.toFixed(4)}, {taskLng.toFixed(4)}
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ fontWeight: '800', color: '#38BDF8', fontSize: '13px' }}>
-                      {taskLocationName}
-                    </div>
-                    <div style={{ color: '#CBD5E1', fontSize: '10.5px', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '340px' }}>
-                      {taskAddress}
-                    </div>
-                    <div style={{ color: '#94A3B8', fontSize: '10.5px', marginTop: '2px' }}>
-                      Lat: <strong>{taskLat.toFixed(4)}</strong> • Lng: <strong>{taskLng.toFixed(4)}</strong>
-                    </div>
-                  </div>
+                      <span style={{ fontSize: '11px', color: '#6EE7B7', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        📍 Pin Details ▴
+                      </span>
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.95)',
+                        backdropFilter: 'blur(8px)',
+                        color: '#FFFFFF',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        fontSize: '11.5px',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        {matchedSavedLocation ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ background: '#059669', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '800' }}>
+                              VERIFIED SAVED POINT
+                            </span>
+                            <span style={{ color: '#6EE7B7', fontSize: '11px', fontWeight: '600' }}>
+                              Protected: Will NOT duplicate
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ background: '#D97706', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '800' }}>
+                              CUSTOM PIN POINT
+                            </span>
+                            <span style={{ color: '#FDE68A', fontSize: '11px', fontWeight: '500' }}>
+                              {taskLat.toFixed(4)}, {taskLng.toFixed(4)}
+                            </span>
+                          </div>
+                        )}
 
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ background: '#0F8B5A', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
-                      Perimeter: {taskRadius}m
-                    </span>
-                    <div style={{ color: '#94A3B8', fontSize: '10px', marginTop: '4px' }}>
-                      * Click or drag pin to re-mark
+                        <button
+                          type="button"
+                          onClick={() => setIsModalPinCardExpanded(false)}
+                          style={{
+                            background: 'rgba(255,255,255,0.15)',
+                            border: 'none',
+                            color: '#CBD5E1',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕ Minimize
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                        <div>
+                          <div style={{ fontWeight: '800', color: '#38BDF8', fontSize: '13px' }}>
+                            {taskLocationName}
+                          </div>
+                          <div style={{ color: '#CBD5E1', fontSize: '10.5px', marginTop: '2px' }}>
+                            {taskAddress}
+                          </div>
+                          <div style={{ color: '#94A3B8', fontSize: '10.5px', marginTop: '2px' }}>
+                            Lat: <strong>{taskLat.toFixed(4)}</strong> • Lng: <strong>{taskLng.toFixed(4)}</strong>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <span style={{ background: '#0F8B5A', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
+                            Perimeter: {taskRadius}m
+                          </span>
+                          <div style={{ color: '#94A3B8', fontSize: '10px', marginTop: '4px' }}>
+                            * Drag pin to re-mark
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

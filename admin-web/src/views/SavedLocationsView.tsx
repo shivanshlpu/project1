@@ -165,9 +165,11 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     if (!mapInstanceRef.current) return;
     if (isMapInteracting) {
       mapInstanceRef.current.dragging.disable();
+      mapInstanceRef.current.touchZoom.disable();
       setIsMapInteracting(false);
     } else {
       mapInstanceRef.current.dragging.enable();
+      mapInstanceRef.current.touchZoom.enable();
       setIsMapInteracting(true);
     }
   };
@@ -205,8 +207,19 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current).setView([28.535, 77.207], 13);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const map = createOptimizedMap(mapContainerRef.current, {
+        zoomControl: false,
+        dragging: !isMobile,
+        touchZoom: !isMobile,
+      }).setView([28.535, 77.207], 13);
       mapInstanceRef.current = map;
+      if (isMobile) {
+        map.dragging.disable();
+        map.touchZoom.disable();
+      }
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 

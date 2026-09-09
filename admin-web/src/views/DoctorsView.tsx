@@ -140,6 +140,20 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
+  const [isMapInteracting, setIsMapInteracting] = useState(false);
+
+  const toggleMapInteraction = () => {
+    if (!mapInstanceRef.current) return;
+    if (isMapInteracting) {
+      mapInstanceRef.current.dragging.disable();
+      mapInstanceRef.current.touchZoom.disable();
+      setIsMapInteracting(false);
+    } else {
+      mapInstanceRef.current.dragging.enable();
+      mapInstanceRef.current.touchZoom.enable();
+      setIsMapInteracting(true);
+    }
+  };
 
   // New Doctor Form State
   const [newDocName, setNewDocName] = useState('');
@@ -170,8 +184,19 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = createOptimizedMap(mapContainerRef.current).setView([28.538, 77.206], 13);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const map = createOptimizedMap(mapContainerRef.current, {
+        zoomControl: false,
+        dragging: !isMobile,
+        touchZoom: !isMobile,
+      }).setView([28.538, 77.206], 13);
       mapInstanceRef.current = map;
+      if (isMobile) {
+        map.dragging.disable();
+        map.touchZoom.disable();
+      }
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
@@ -386,28 +411,35 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between', marginTop: '8px' }}>
             {/* Search Input */}
-            <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '0 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '0 8px', flex: '1 1 180px', minWidth: '140px' }}>
               <Search size={14} color="#64748B" />
               <input
                 type="text"
                 placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ border: 'none', outline: 'none', padding: '6px 8px', fontSize: '12px' }}
+                style={{ border: 'none', outline: 'none', padding: '6px 8px', fontSize: '12px', width: '100%' }}
               />
             </div>
 
             {/* Classification Filter */}
-            <div style={{ display: 'flex', gap: '4px' }}>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
               {['ALL', 'A', 'B', 'C'].map((c) => (
                 <button
                   key={c}
                   className={`btn-enterprise sm ${selectedClass === c ? 'primary' : 'secondary'}`}
                   onClick={() => setSelectedClass(c)}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  {c === 'ALL' ? t.allClasses : `Class ${c}`}
+                  {c === 'ALL' ? 'All Classes' : `Class ${c}`}
                 </button>
               ))}
             </div>
@@ -416,7 +448,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             <button
               className="btn-enterprise primary sm"
               onClick={() => setIsAddDoctorOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', whiteSpace: 'nowrap' }}
             >
               <Plus size={14} />
               <span>{t.addDoctor}</span>
@@ -444,8 +476,31 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             </span>
           </div>
 
-          {/* Satellite Mode Toggle */}
-          <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', padding: '2px' }}>
+          {/* Pan Toggle & Satellite Mode Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={toggleMapInteraction}
+              style={{
+                background: isMapInteracting ? '#0F8B5A' : '#FFFFFF',
+                color: isMapInteracting ? '#FFFFFF' : '#334155',
+                border: '1px solid #CBD5E1',
+                borderRadius: '6px',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+              title="Toggle whether touching the map drags the map or scrolls the page"
+            >
+              <span>{isMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+            </button>
+
+            <div style={{ display: 'flex', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #CBD5E1', padding: '2px' }}>
             <button
               onClick={() => setMapMode('street')}
               style={{
@@ -476,6 +531,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             >
               {t.satelliteMode}
             </button>
+            </div>
           </div>
         </div>
 

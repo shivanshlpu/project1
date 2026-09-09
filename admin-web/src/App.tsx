@@ -11,6 +11,8 @@ import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
 import { LoginView } from './views/LoginView';
 import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
+import { AiAssistantModal } from './components/AiAssistantModal';
+import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
 import { Language } from './utils/i18n';
 import './styles/app.css';
@@ -58,6 +60,7 @@ export const App: React.FC = () => {
 
   // Owner Device Authorizations & 6-Digit OTP State
   const [isDeviceApprovalsOpen, setIsDeviceApprovalsOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [deviceApprovalsCount, setDeviceApprovalsCount] = useState(0);
 
   // New MR-Marked Field Locations Notification State
@@ -168,13 +171,8 @@ export const App: React.FC = () => {
   };
 
   const handleAssignNewCall = () => {
-    setAssignedLocationTarget({
-      name: 'Apex Heart Centre (Saket)',
-      address: 'Ring Road, Saket, South Delhi',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      geofence_radius_m: 50,
-    });
+    // Open clean task modal without hardcoded mock location
+    setAssignedLocationTarget(null);
     setManagerTab('tasks');
   };
 
@@ -253,6 +251,51 @@ export const App: React.FC = () => {
         onViewOnMap={handleViewLocationOnMap}
         onAcknowledge={handleAcknowledgeLocation}
         onAcknowledgeAll={handleAcknowledgeAllLocations}
+      />
+      {/* Floating AHTRI AI Operations Copilot Trigger */}
+      <button
+        onClick={() => setIsAiModalOpen(true)}
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 9000,
+          background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+          color: '#FFFFFF',
+          border: '1.5px solid rgba(255,255,255,0.3)',
+          borderRadius: '30px',
+          padding: '10px 18px',
+          boxShadow: '0 8px 24px rgba(26,60,110,0.35)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '13px',
+          fontWeight: '800',
+          letterSpacing: '0.3px',
+        }}
+        title="Open AI Operations Copilot & Report Generator"
+      >
+        <Sparkles size={16} color="#38BDF8" />
+        <span>Ask AHTRI AI</span>
+        <span
+          style={{
+            background: '#0F8B5A',
+            color: '#FFFFFF',
+            borderRadius: '10px',
+            fontSize: '9.5px',
+            padding: '1px 6px',
+            fontWeight: '700',
+          }}
+        >
+          RAG
+        </span>
+      </button>
+
+      {/* AI Assistant Modal */}
+      <AiAssistantModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
       />
     </div>
   );
