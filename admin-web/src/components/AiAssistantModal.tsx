@@ -619,7 +619,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
               }}
             >
               <Send size={14} />
-              <span>Ask AI</span>
+              <span>Ask Aura</span>
             </button>
           </form>
         </div>
