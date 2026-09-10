@@ -187,6 +187,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const lastTargetIdRef = useRef<string | null>(null);
+  const initialFitDoneRef = useRef<boolean>(false);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isMapInteracting, setIsMapInteracting] = useState(false);
@@ -196,10 +197,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     if (isMapInteracting) {
       mapInstanceRef.current.dragging.disable();
       mapInstanceRef.current.touchZoom.disable();
+      mapInstanceRef.current.scrollWheelZoom.disable();
       setIsMapInteracting(false);
     } else {
       mapInstanceRef.current.dragging.enable();
       mapInstanceRef.current.touchZoom.enable();
+      mapInstanceRef.current.scrollWheelZoom.enable();
       setIsMapInteracting(true);
     }
   };
@@ -359,10 +362,14 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     setTimeout(() => mapInstanceRef.current?.invalidateSize(), 80);
     setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
-      fitAllMarkers();
+      // Only fit-all on the very first render to avoid resetting the user's zoom/pan
+      if (!initialFitDoneRef.current) {
+        fitAllMarkers();
+        initialFitDoneRef.current = true;
+      }
     }, 250);
     setTimeout(() => mapInstanceRef.current?.invalidateSize(), 600);
-  }, [locations, selectedCategory, searchQuery, selectedLocation, readLocationIds, selectedZoneId]);
+  }, [locations, selectedCategory, searchQuery, readLocationIds, selectedZoneId]);
 
   // Auto-focus on targetLocationId if provided from toast notification (RUN ONCE ONLY)
   useEffect(() => {
