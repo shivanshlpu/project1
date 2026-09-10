@@ -36,7 +36,7 @@ export interface DownloadProgressPayload {
 export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void;
 
 // Current version installed on this device (matches app.json version)
-export const CURRENT_APP_VERSION = '1.0.1';
+export const CURRENT_APP_VERSION = '1.0.3';
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',

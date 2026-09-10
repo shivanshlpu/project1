@@ -22,8 +22,8 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.2',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '3', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.4',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '5', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
@@ -104,10 +104,8 @@ export class AppController {
   /**
    * Check latest version metadata
    */
-  @Get('api/app/version')
-  @Head('api/app/version')
-  @Get('app/version')
-  @Head('app/version')
+  @Get(['api/app/version', 'app/version'])
+  @Head(['api/app/version', 'app/version'])
   getAppVersion() {
     return currentAppVersion;
   }
@@ -116,25 +114,24 @@ export class AppController {
    * Set new APK link or version on the server dynamically from Admin Panel
    * Saves to persistent file storage so server restarts never lose the link.
    */
-  @Post('api/app/version')
-  @Post('app/version')
+  @Post(['api/app/version', 'app/version'])
   updateAppVersion(@Body() body: Partial<AppVersionData>) {
     if (body.downloadUrl && body.downloadUrl.trim()) {
-      const newUrl = body.downloadUrl.trim();
-      if (newUrl !== currentAppVersion.downloadUrl) {
-        currentAppVersion.downloadUrl = newUrl;
-        // Auto-increment version if admin didn't specify one
-        if (!body.latestVersion) {
-          const parts = (currentAppVersion.latestVersion || '1.0.1').split('.');
-          const lastIndex = Math.max(0, parts.length - 1);
-          const nextPatch = (parseInt(parts[lastIndex] || '0', 10) || 0) + 1;
-          parts[lastIndex] = String(nextPatch);
-          currentAppVersion.latestVersion = parts.join('.');
-          currentAppVersion.latestVersionCode = (currentAppVersion.latestVersionCode || 1) + 1;
-        }
-      }
+      currentAppVersion.downloadUrl = body.downloadUrl.trim();
     }
-    if (body.latestVersion) currentAppVersion.latestVersion = body.latestVersion.trim();
+
+    if (body.latestVersion && body.latestVersion.trim()) {
+      currentAppVersion.latestVersion = body.latestVersion.trim();
+    } else {
+      // Auto-increment version if admin didn't specify one
+      const parts = (currentAppVersion.latestVersion || '1.0.3').split('.');
+      const lastIndex = Math.max(0, parts.length - 1);
+      const nextPatch = (parseInt(parts[lastIndex] || '0', 10) || 0) + 1;
+      parts[lastIndex] = String(nextPatch);
+      currentAppVersion.latestVersion = parts.join('.');
+      currentAppVersion.latestVersionCode = (currentAppVersion.latestVersionCode || 4) + 1;
+    }
+
     if (body.latestVersionCode) currentAppVersion.latestVersionCode = Number(body.latestVersionCode);
     if (body.minimumVersion) currentAppVersion.minimumVersion = body.minimumVersion.trim();
     if (typeof body.forceUpdate === 'boolean') currentAppVersion.forceUpdate = body.forceUpdate;
@@ -157,13 +154,23 @@ export class AppController {
 
   /**
    * Direct APK Download Stream / 302 Redirect
-   * Allows downloading directly from https://ahtri-backend.onrender.com/app/latest-apk
+   * Allows downloading directly from:
+   * - https://ahtri-backend.onrender.com/download
+   * - https://ahtri-backend.onrender.com/download-apk
+   * - https://ahtri-backend.onrender.com/app/latest-apk
+   * - https://ahtri-backend.onrender.com/api/app/latest-apk
    */
-  @Get('api/app/latest-apk')
-  @Get('app/latest-apk')
-  @Get('download-apk')
-  @Get('latest-apk')
-  @Get('download')
+  @Get([
+    'api/app/latest-apk',
+    'app/latest-apk',
+    'download-apk',
+    'latest-apk',
+    'download',
+    'api/download-apk',
+    'api/latest-apk',
+    'api/download',
+    'app/download',
+  ])
   downloadLatestApk(@Res() res: Response) {
     if (!currentAppVersion.downloadUrl) {
       return res.status(HttpStatus.NOT_FOUND).json({ error: 'No APK download URL configured.' });

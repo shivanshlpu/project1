@@ -241,6 +241,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
   const [updateNotice, setUpdateNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copiedDownloadUrl, setCopiedDownloadUrl] = useState(false);
+  const [copiedServerUrl, setCopiedServerUrl] = useState(false);
   const [isTestingServerConnection, setIsTestingServerConnection] = useState(false);
 
   // Fetch active version configuration from server
@@ -328,7 +329,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const cleanUrl = targetServerUrl.replace(/\/+$/, '');
       const payload = {
+        latestVersion: updateData.latestVersion?.trim() || '1.0.4',
+        latestVersionCode: Number(updateData.latestVersionCode) || 5,
         downloadUrl: updateData.downloadUrl.trim(),
+        forceUpdate: updateData.forceUpdate,
         isActive: updateData.isActive,
         publishedBy: managerName || 'Admin',
       };
@@ -1681,16 +1685,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* 5. APP UPDATE LINK TAB */}
       {activeTab === 'updates' && (
-        <div className="enterprise-panel" style={{ padding: '28px', maxWidth: '640px' }}>
+        <div className="enterprise-panel" style={{ padding: '28px', maxWidth: '720px' }}>
           <div style={{ marginBottom: '20px', borderBottom: '1px solid #E2E8F0', paddingBottom: '14px' }}>
             <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <UploadCloud size={20} color="#1A3C6E" />
-              {lang === 'hi' ? 'मोबाइल ऐप अपडेट लिंक' : 'Mobile App Update'}
+              {lang === 'hi' ? 'मोबाइल ऐप अपडेट और कर्मचारी शेयरिंग' : 'Mobile App Update & Employee Sharing'}
             </h2>
             <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: '#64748B' }}>
               {lang === 'hi'
-                ? 'नया ऐप लिंक यहाँ डालें। सर्वर तुरंत सभी कर्मचारियों के मोबाइल में नया अपडेट दिखाएगा।'
-                : 'Paste the new app download link here to notify all employee phones about the update.'}
+                ? 'नया ऐप लिंक कर्मचारियों को भेजें या ऐप में सीधे ऑटो-अपडेट पॉपअप सक्रिय करें।'
+                : 'Send the latest APK update link to field employees or trigger the in-app auto-update popup.'}
             </p>
           </div>
 
@@ -1715,10 +1719,165 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
+          {/* Quick Share with Field Employees Box */}
+          <div
+            style={{
+              background: '#F0FDF4',
+              border: '1.5px solid #86EFAC',
+              borderRadius: '10px',
+              padding: '16px 18px',
+              marginBottom: '22px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Smartphone size={18} color="#166534" />
+                <strong style={{ fontSize: '14px', color: '#166534' }}>
+                  {lang === 'hi' ? 'कर्मचारियों को भेजने हेतु डायरेक्ट डाउनलोड लिंक' : 'Direct Download Link for Employees'}
+                </strong>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '800', background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: '12px' }}>
+                Active v{updateData.latestVersion || '1.0.4'}
+              </span>
+            </div>
+            <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#14532D' }}>
+              {lang === 'hi'
+                ? 'यह लिंक किसी भी कर्मचारी के फोन में डायरेक्ट APK डाउनलोड शुरू करेगा (बिना किसी परेशानी के):'
+                : 'This direct permanent link starts downloading the APK immediately when clicked on an Android phone:'}
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                readOnly
+                value="https://ahtri-backend.onrender.com/api/app/latest-apk"
+                style={{
+                  flex: 1,
+                  minWidth: '240px',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #86EFAC',
+                  background: '#FFFFFF',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  color: '#0F172A',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText('https://ahtri-backend.onrender.com/api/app/latest-apk');
+                  setCopiedServerUrl(true);
+                  setTimeout(() => setCopiedServerUrl(false), 2500);
+                }}
+                style={{
+                  padding: '9px 16px',
+                  background: copiedServerUrl ? '#166534' : '#0F8B5A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {copiedServerUrl ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedServerUrl ? (lang === 'hi' ? 'कॉपी हो गया!' : 'Copied!') : (lang === 'hi' ? 'लिंक कॉपी करें' : 'Copy Link')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const shareMsg = `AHTRI FFA Mobile App Update (v${updateData.latestVersion || '1.0.4'}):\nClick here to download and install the new APK:\nhttps://ahtri-backend.onrender.com/api/app/latest-apk`;
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMsg)}`, '_blank');
+                }}
+                style={{
+                  padding: '9px 16px',
+                  background: '#25D366',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>💬 {lang === 'hi' ? 'WhatsApp पर भेजें' : 'Share on WhatsApp'}</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#166534' }}>
+              <DownloadCloud size={13} />
+              <span>
+                {lang === 'hi'
+                  ? 'कर्मचारी इस लिंक को WhatsApp या SMS से खोलकर तुरंत नया APK इनस्टॉल कर सकते हैं।'
+                  : 'Employees can click this link from WhatsApp or SMS to directly download and install.'}
+              </span>
+            </div>
+          </div>
+
           <form onSubmit={handleBroadcastUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
+                  {lang === 'hi' ? 'संस्करण संख्या (Version) *' : 'Target Version *'}
+                </label>
+                <input
+                  type="text"
+                  value={updateData.latestVersion}
+                  onChange={(e) => setUpdateData({ ...updateData, latestVersion: e.target.value })}
+                  placeholder="1.0.4"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                  }}
+                  required
+                />
+                <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '3px' }}>
+                  {lang === 'hi'
+                    ? 'कर्मचारियों के फोन पर 1.0.3 है, इसलिए 1.0.4 रखने पर तुरंत अपडेट का विकल्प दिखेगा।'
+                    : 'Set higher than 1.0.3 (e.g. 1.0.4) so employee phones trigger the update prompt.'}
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
+                  {lang === 'hi' ? 'संस्करण कोड (Version Code)' : 'Version Code'}
+                </label>
+                <input
+                  type="number"
+                  value={updateData.latestVersionCode}
+                  onChange={(e) => setUpdateData({ ...updateData, latestVersionCode: Number(e.target.value) })}
+                  placeholder="5"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                  }}
+                />
+              </div>
+            </div>
+
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-                {lang === 'hi' ? 'ऐप डाउनलोड लिंक (APK URL) *' : 'App Download Link (URL) *'}
+                {lang === 'hi' ? 'डायरेक्ट APK फ़ाइल लिंक (EAS/Cloud Storage URL) *' : 'Direct APK File URL (EAS Artifact) *'}
               </label>
               <input
                 type="url"
@@ -1742,18 +1901,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
               <div>
                 <div style={{ fontWeight: '700', fontSize: '13px', color: '#0F172A' }}>
-                  {lang === 'hi' ? 'कर्मचारियों को अपडेट दिखाएं' : 'Notify Employees in App'}
+                  {lang === 'hi' ? 'ऐप खोलते ही कर्मचारियों को डाउनलोड विकल्प दिखाएं' : 'Show In-App Download Popup to Employees'}
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#64748B' }}>
                   {updateData.isActive
-                    ? (lang === 'hi' ? 'चालू: ऐप खोलते ही कर्मचारियों को अपडेट का विकल्प मिलेगा।' : 'Active: Employees will see the update popup when opening the app.')
-                    : (lang === 'hi' ? 'बंद: अपडेट का विकल्प अभी नहीं दिखेगा।' : 'Paused: Update prompts are currently suppressed.')}
+                    ? (lang === 'hi' ? 'सक्रिय: ऐप खोलते ही कर्मचारियों को अपडेट डाउनलोड का पॉपअप मिलेगा।' : 'Active: Employees will see the download update modal upon opening the app.')
+                    : (lang === 'hi' ? 'स्थगित: अपडेट पॉपअप अभी बंद है।' : 'Paused: Update prompts are currently suppressed.')}
                 </div>
               </div>
               <input
                 type="checkbox"
                 checked={updateData.isActive}
                 onChange={(e) => setUpdateData({ ...updateData, isActive: e.target.checked })}
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '13px', color: '#0F172A' }}>
+                  {lang === 'hi' ? 'अनिवार्य अपडेट (Force Mandatory Update)' : 'Mandatory Update (Lock app until updated)'}
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                  {updateData.forceUpdate
+                    ? (lang === 'hi' ? 'अनिवार्य: कर्मचारी बिना अपडेट किए ऐप इस्तेमाल नहीं कर पाएंगे।' : 'Mandatory: Employees must update before proceeding.')
+                    : (lang === 'hi' ? 'वैकल्पिक: कर्मचारी बाद में भी अपडेट कर सकते हैं।' : 'Optional: Employees can update or dismiss.')}
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={updateData.forceUpdate}
+                onChange={(e) => setUpdateData({ ...updateData, forceUpdate: e.target.checked })}
                 style={{ width: '20px', height: '20px', cursor: 'pointer' }}
               />
             </div>
@@ -1773,7 +1951,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 }}
               >
                 <Save size={16} />
-                <span>{isSavingUpdateInfo ? (lang === 'hi' ? 'सहेज रहे हैं...' : 'Publishing...') : (lang === 'hi' ? 'अपडेट प्रकाशित करें' : 'Publish Update')}</span>
+                <span>
+                  {isSavingUpdateInfo
+                    ? (lang === 'hi' ? 'प्रसारित कर रहे हैं...' : 'Publishing...')
+                    : (lang === 'hi' ? 'सभी कर्मचारियों को अपडेट भेजें' : 'Broadcast Update to All Employees')}
+                </span>
               </button>
             </div>
           </form>

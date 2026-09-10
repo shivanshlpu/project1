@@ -1,8 +1,8 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.3",
-  "latestVersionCode": 4,
+  "latestVersion": "1.0.4",
+  "latestVersionCode": 5,
   "minimumVersion": "1.0.0",
   "downloadUrl": "https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk",
   "forceUpdate": false,
