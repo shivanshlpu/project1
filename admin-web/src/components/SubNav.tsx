@@ -10,10 +10,11 @@ import {
   Download,
   Plus,
   Settings,
+  Sparkles,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 
-export type ManagerTab = 'overview' | 'tasks' | 'locations' | 'members' | 'doctors' | 'approvals' | 'reports' | 'settings';
+export type ManagerTab = 'overview' | 'tasks' | 'locations' | 'members' | 'doctors' | 'approvals' | 'reports' | 'ai' | 'settings';
 
 interface SubNavProps {
   currentTab: ManagerTab;
@@ -53,6 +54,7 @@ export const SubNav: React.FC<SubNavProps> = ({
       badge: pendingApprovalsCount,
     },
     { id: 'reports' as ManagerTab, label: t.tabReports, Icon: FileDown },
+    { id: 'ai' as ManagerTab, label: t.tabAi || 'AI Command Hub', Icon: Sparkles },
     { id: 'settings' as ManagerTab, label: t.tabSettings, Icon: Settings },
   ];
 

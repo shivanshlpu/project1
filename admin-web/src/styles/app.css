@@ -1832,23 +1832,109 @@
 
 @media (max-width: 768px) {
   .floating-ai-fab {
-    bottom: 14px;
-    right: 14px;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    padding: 0;
-    justify-content: center;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.45);
+    display: none !important; /* Replaced by first-class AI Command Hub tab */
   }
-  .floating-ai-fab .fab-text {
+
+  /* Mobile Enterprise TopBar */
+  .enterprise-navbar {
+    height: 48px;
+    padding: 0 12px;
+  }
+  .global-search-box {
     display: none;
   }
-  .floating-ai-fab .fab-badge {
-    position: absolute;
-    top: -3px;
-    right: -3px;
-    font-size: 8.5px;
-    padding: 1px 4px;
+  .brand-org-name {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .brand-org-sub {
+    display: none;
+  }
+  .nav-brand-cluster {
+    gap: 8px;
+  }
+  .company-badge {
+    width: 28px;
+    height: 28px;
+  }
+  .lang-toggle-btn {
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+  }
+
+  /* Mobile SubNav Bar & Horizontal Scrollable Tabs */
+  .subnav-bar {
+    height: auto !important;
+    min-height: 44px;
+    padding: 6px 8px !important;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .subnav-left {
+    width: 100%;
+    gap: 0 !important;
+  }
+  .page-headline {
+    display: none !important;
+  }
+  .nav-tabs-inline {
+    width: 100%;
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px !important;
+    padding-bottom: 2px;
+  }
+  .nav-tabs-inline::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-tab-link {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+    border-radius: 6px !important;
+  }
+  .subnav-right {
+    display: none !important;
+  }
+
+  /* Mobile Canvas */
+  .workspace-canvas {
+    padding: 12px 10px !important;
+  }
+
+  /* Metric Strips */
+  .metric-tiles-strip {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+  .metric-tile {
+    padding: 12px !important;
+  }
+  .metric-tile-value {
+    font-size: 18px !important;
+  }
+  .metric-tile-header {
+    font-size: 10px !important;
+  }
+
+  /* Responsive Grid Adjustments */
+  .responsive-grid-2col,
+  .responsive-grid-3col,
+  .responsive-grid-4col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Responsive Tables */
+  .table-responsive-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
   }
 }
+

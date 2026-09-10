@@ -50,26 +50,30 @@ export const TopNav: React.FC<TopNavProps> = ({
         <div
           className="company-badge"
           style={{
-            background: 'linear-gradient(135deg, #0F8B5A 0%, #1A3C6E 100%)',
+            background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
             borderRadius: '8px',
-            width: '34px',
-            height: '34px',
+            width: '32px',
+            height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(15, 139, 90, 0.35)',
+            boxShadow: '0 2px 5px rgba(26, 60, 110, 0.25)',
             flexShrink: 0,
+            border: '1px solid rgba(255, 255, 255, 0.2)',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="20" height="20" rx="5" fill="#1A3C6E" />
-            <path d="M12 6V18M6 12H18" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
-            <circle cx="12" cy="12" r="2.5" fill="#4ADE80" />
+            <path d="M10 4H14V10H20V14H14V20H10V14H4V10H10V4Z" fill="#FFFFFF" />
+            <circle cx="12" cy="12" r="2.2" fill="#10B981" />
           </svg>
         </div>
         <div className="brand-text-col">
-          <span className="brand-org-name">{t.brandName}</span>
-          <span className="brand-org-sub">{t.brandSub}</span>
+          <span className="brand-org-name" style={{ fontSize: '13.5px', fontWeight: 800, letterSpacing: '0.03em', color: '#0F172A' }}>
+            {t.brandName}
+          </span>
+          <span className="brand-org-sub" style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 500, letterSpacing: '0.01em' }}>
+            {t.brandSub}
+          </span>
         </div>
       </div>
 

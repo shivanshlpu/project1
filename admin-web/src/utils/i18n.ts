@@ -3,8 +3,8 @@ export type Language = 'en' | 'hi';
 export const translations = {
   en: {
     // Brand & Top Navigation
-    brandName: 'AHTRI PHARMACEUTICALS',
-    brandSub: 'Field Force Automation • Enterprise Edition',
+    brandName: 'AHTRI PHARMA',
+    brandSub: 'Enterprise Field Operations',
     managerMode: 'Manager Command Center',
     salesmanMode: 'Field Salesman (MR) App',
     searchPlaceholder: 'Search doctors, tasks, MRs...',
@@ -22,6 +22,7 @@ export const translations = {
     tabApprovals: 'Approvals Hub',
     tabReports: 'Reports & Export',
     tabSettings: 'Settings & Control',
+    tabAi: 'AI Command Hub',
 
     // Header Actions
     exportSummary: 'Export Summary',
@@ -168,8 +169,8 @@ export const translations = {
   },
   hi: {
     // Brand & Top Navigation
-    brandName: 'आहतरी फार्मास्यूटिकल्स',
-    brandSub: 'फील्ड फोर्स ऑटोमेशन • एंटरप्राइज संस्करण',
+    brandName: 'आहतरी फार्मा',
+    brandSub: 'एंटरप्राइज फील्ड ऑपरेशंस',
     managerMode: 'प्रबंधक कमांड सेंटर',
     salesmanMode: 'फील्ड प्रतिनिधि (MR) ऐप',
     searchPlaceholder: 'डॉक्टर, कार्य, प्रतिनिधि खोजें...',
@@ -182,11 +183,12 @@ export const translations = {
     tabOverview: 'प्रदर्शन अवलोकन',
     tabTasks: 'कार्य एजेंडा और ऑडिट',
     tabLocations: 'लाइव मैप और सहेजे गए स्थान',
-    tabMembers: 'प्रतिनिधि सदस्य और फोन सुरक्षा',
+    tabMembers: 'कर्मचारी हब (गतिविधि एवं अवकाश)',
     tabDoctors: 'डॉक्टर निर्देशिका',
     tabApprovals: 'अनुमोदन केंद्र',
     tabReports: 'रिपोर्ट और निर्यात',
     tabSettings: 'सेटिंग्स और नियंत्रण',
+    tabAi: 'एआई कमांड हब',
 
     // Header Actions
     exportSummary: 'सारांश निर्यात करें',

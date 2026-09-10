@@ -10,8 +10,8 @@ import { ApprovalsView } from './views/ApprovalsView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
 import { LoginView } from './views/LoginView';
+import { AiChatView } from './views/AiChatView';
 import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
-import { AiAssistantModal } from './components/AiAssistantModal';
 import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
 import { Language } from './utils/i18n';
@@ -60,7 +60,6 @@ export const App: React.FC = () => {
 
   // Owner Device Authorizations & 6-Digit OTP State
   const [isDeviceApprovalsOpen, setIsDeviceApprovalsOpen] = useState(false);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [deviceApprovalsCount, setDeviceApprovalsCount] = useState(0);
 
   // New MR-Marked Field Locations Notification State
@@ -236,6 +235,15 @@ export const App: React.FC = () => {
         {managerTab === 'doctors' && <DoctorsView lang={lang} />}
         {managerTab === 'approvals' && <ApprovalsView />}
         {managerTab === 'reports' && <ReportsView lang={lang} />}
+        {managerTab === 'ai' && (
+          <AiChatView
+            lang={lang}
+            onNavigateTab={(tab) => {
+              if (tab !== 'tasks') setAssignedLocationTarget(null);
+              setManagerTab(tab as any);
+            }}
+          />
+        )}
         {managerTab === 'settings' && (
           <SettingsView
             lang={lang}
@@ -259,36 +267,30 @@ export const App: React.FC = () => {
         onAcknowledge={handleAcknowledgeLocation}
         onAcknowledgeAll={handleAcknowledgeAllLocations}
       />
-      {/* Floating AHTRI AI Operations Copilot Trigger */}
-      {!isAiModalOpen && (
+      {/* Floating AHTRI AI Operations Copilot Trigger -> Switches directly to AI Command Page */}
+      {managerTab !== 'ai' && (
         <button
-        onClick={() => setIsAiModalOpen(true)}
-        className="floating-ai-fab"
-        title="Open AI Operations Copilot & Report Generator"
-      >
-        <Sparkles size={16} color="#38BDF8" />
-        <span className="fab-text">Ask Aura</span>
-        <span
-          className="fab-badge"
-          style={{
-            background: '#0F8B5A',
-            color: '#FFFFFF',
-            borderRadius: '10px',
-            fontSize: '9.5px',
-            padding: '1px 6px',
-            fontWeight: '700',
-          }}
+          onClick={() => setManagerTab('ai')}
+          className="floating-ai-fab"
+          title="Open AI Command Hub"
         >
-          AURA
-        </span>
-      </button>
+          <Sparkles size={16} color="#38BDF8" />
+          <span className="fab-text">Ask Aura AI</span>
+          <span
+            className="fab-badge"
+            style={{
+              background: '#0F8B5A',
+              color: '#FFFFFF',
+              borderRadius: '10px',
+              fontSize: '9.5px',
+              padding: '1px 6px',
+              fontWeight: '700',
+            }}
+          >
+            AURA
+          </span>
+        </button>
       )}
-
-      {/* AI Assistant Modal */}
-      <AiAssistantModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-      />
     </div>
   );
 };
