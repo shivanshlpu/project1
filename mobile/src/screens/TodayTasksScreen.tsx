@@ -353,29 +353,55 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return;
     }
 
-    const dist = getTaskDistance(task);
-    if (dist === null) {
+    // 1. Ensure we have fresh, live GPS coordinates
+    let currentCoords = deviceCoords;
+    if (!currentCoords) {
+      const fresh = await LocationService.getCurrentLocation();
+      if (fresh) {
+        const acc = fresh.accuracy ? Math.round(fresh.accuracy) : 10;
+        currentCoords = {
+          latitude: fresh.latitude,
+          longitude: fresh.longitude,
+          accuracy: acc,
+        };
+        setDeviceCoords(currentCoords);
+        setLiveGpsInfo(`${fresh.latitude.toFixed(4)}, ${fresh.longitude.toFixed(4)} (±${acc}m)`);
+      }
+    }
+
+    if (!currentCoords) {
       Alert.alert(
         'GPS Sensor Syncing',
-        'Acquiring your real-time satellite GPS coordinates. Please wait a moment...',
+        'Acquiring your real-time location coordinates. Please wait a moment...',
       );
       await handleReadLiveGPS(false);
       return;
     }
 
-    if (dist > task.geofence_radius_m) {
+    const dist = LocationService.calculateDistanceMeters(
+      currentCoords.latitude,
+      currentCoords.longitude,
+      task.latitude,
+      task.longitude,
+    );
+
+    const accuracy = currentCoords.accuracy || 10;
+    // Effective radius: at least 100m base + GPS accuracy buffer up to 60m for dense clinic structures
+    const baseRadius = Math.max(task.geofence_radius_m || 50, 100);
+    const effectiveRadius = baseRadius + Math.min(accuracy, 60);
+
+    if (dist > effectiveRadius) {
       Alert.alert(
-        'Geofence Lockout (Out of Range)',
-        `You are currently ${formatDistance(dist)} away from ${task.location_name}.\n\nYou must be physically within ${task.geofence_radius_m}m of the doctor's clinic to start this visit.`,
+        'Geofence Range Notice',
+        `You are currently ${formatDistance(dist)} away from ${task.location_name}.\n\nAllowed range for this facility: ${Math.round(effectiveRadius)}m.\n\nIf you are already inside the clinic, tap "Refresh GPS Location" above to update your phone's sensor.`,
       );
       return;
     }
 
-    const accuracy = deviceCoords?.accuracy || 10;
-    if (accuracy > 50) {
+    if (accuracy > 150) {
       Alert.alert(
-        'Poor GPS Fix',
-        `GPS accuracy is ±${accuracy}m. Move to open sky for a fix <= 50m.`,
+        'GPS Accuracy Weak',
+        `GPS accuracy is ±${accuracy}m. Tap "Refresh GPS Location" to sync a stronger fix.`,
       );
       return;
     }

@@ -22,7 +22,26 @@ export const LocationService = {
   },
 
   /**
-   * Retrieve current high-accuracy device GPS coordinates
+   * Ensure hardware GPS & Google Network Location services are enabled
+   */
+  async ensureLocationServices(): Promise<boolean> {
+    try {
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        try {
+          await Location.enableNetworkProviderAsync();
+        } catch {
+          // Ignore if user dismisses or platform unsupported
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Retrieve current device GPS coordinates with indoor fallback
    */
   async getCurrentLocation(): Promise<LocationCoords | null> {
     try {
@@ -31,22 +50,50 @@ export const LocationService = {
         return null;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+      await this.ensureLocationServices();
+
+      // 1. First attempt: High-accuracy GPS with 6s timeout race
+      const highAccuracyPromise = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
       });
 
-      return {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        timestamp: position.timestamp,
-      };
+      const timeoutPromise = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 6000)
+      );
+
+      const highResult = await Promise.race([highAccuracyPromise, timeoutPromise]);
+      if (highResult && highResult.coords) {
+        return {
+          latitude: highResult.coords.latitude,
+          longitude: highResult.coords.longitude,
+          accuracy: highResult.coords.accuracy,
+          timestamp: highResult.timestamp,
+        };
+      }
+
+      // 2. Second attempt: Balanced indoor accuracy (Google Fused Provider using Wi-Fi + Cell towers)
+      const balancedResult = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      if (balancedResult && balancedResult.coords) {
+        return {
+          latitude: balancedResult.coords.latitude,
+          longitude: balancedResult.coords.longitude,
+          accuracy: balancedResult.coords.accuracy,
+          timestamp: balancedResult.timestamp,
+        };
+      }
     } catch (error) {
-      console.warn('Failed to retrieve current GPS location:', error);
-      // Fallback to last known position if current GPS lock is slow indoors
-      try {
-        const lastKnown = await Location.getLastKnownPositionAsync();
-        if (lastKnown) {
+      console.warn('Current GPS location retrieval fallback:', error);
+    }
+
+    // 3. Fallback: Last known recent position (within 10 minutes)
+    try {
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown && lastKnown.coords) {
+        const isRecent = Date.now() - (lastKnown.timestamp || 0) < 10 * 60 * 1000;
+        if (isRecent) {
           return {
             latitude: lastKnown.coords.latitude,
             longitude: lastKnown.coords.longitude,
@@ -54,11 +101,12 @@ export const LocationService = {
             timestamp: lastKnown.timestamp,
           };
         }
-      } catch {
-        // Fallback exhausted
       }
-      return null;
+    } catch {
+      // Fallback exhausted
     }
+
+    return null;
   },
 
   /**

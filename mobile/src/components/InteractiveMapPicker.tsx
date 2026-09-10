@@ -45,6 +45,8 @@ const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
   { id: 'OFFICE', label: 'Chemist / Lab', color: '#D97706' },
 ];
 
+const TILE_SIZE = 256;
+
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   isOpen,
   onClose,
@@ -68,6 +70,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [address, setAddress] = useState<string>(initialAddress);
   const [phone, setPhone] = useState<string>(initialPhone);
 
+  // Fullscreen map mode toggle
+  const [isFullscreenMap, setIsFullscreenMap] = useState<boolean>(false);
+
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -77,62 +82,86 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState<boolean>(false);
 
-  // Auto reverse-geocode whenever coordinates change significantly
-  const resolveAddressFromCoords = async (lat: number, lng: number) => {
-    try {
-      setIsResolvingAddress(true);
-      // Primary: Nominatim with custom header
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-        {
-          headers: {
-            'User-Agent': 'AHTRI-FFA-Mobile/2.0 (Pharma Field Force Automation)',
-            Accept: 'application/json',
-          },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.display_name) {
-          setAddress(data.display_name);
-          if (!placeName) {
-            const suggested =
-              data.name ||
-              data.address?.amenity ||
-              data.address?.hospital ||
-              data.address?.pharmacy ||
-              data.address?.clinic ||
-              data.address?.road ||
-              '';
-            if (suggested) setPlaceName(suggested);
-          }
-          return;
-        }
-      }
+  // Map canvas layout measurement
+  const [canvasLayout, setCanvasLayout] = useState<{ width: number; height: number }>({
+    width: 380,
+    height: 290,
+  });
 
-      // Fallback: Photon Reverse
-      const photonRes = await fetch(
-        `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`
-      );
-      if (photonRes.ok) {
-        const pData = await photonRes.json();
-        if (pData?.features && pData.features.length > 0) {
-          const props = pData.features[0].properties;
-          const full = [props.name, props.street, props.city || props.district, props.state]
-            .filter(Boolean)
-            .join(', ');
-          if (full) setAddress(full);
-          if (!placeName && props.name) setPlaceName(props.name);
-        }
-      }
-    } catch {
-      // Keep existing address on network failure
-    } finally {
-      setIsResolvingAddress(false);
-    }
+  // Animated pin drop bounce
+  const pinBounceAnim = useRef(new Animated.Value(0)).current;
+  const triggerPinBounce = () => {
+    pinBounceAnim.setValue(-18);
+    Animated.spring(pinBounceAnim, {
+      toValue: 0,
+      friction: 4,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
   };
 
-  // High-accuracy live POI search (Hospitals, Medical Stores, Clinics, Landmarks)
+  // Debounced reverse-geocoding
+  const reverseGeocodeTimer = useRef<any>(null);
+  const resolveAddressFromCoords = (lat: number, lng: number) => {
+    if (reverseGeocodeTimer.current) {
+      clearTimeout(reverseGeocodeTimer.current);
+    }
+    reverseGeocodeTimer.current = setTimeout(async () => {
+      try {
+        setIsResolvingAddress(true);
+        // Primary: Nominatim reverse geocode
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+          {
+            headers: {
+              'User-Agent': 'AHTRI-FFA-Mobile/2.0 (Pharma Field Force Automation)',
+              Accept: 'application/json',
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.display_name) {
+            setAddress(data.display_name);
+            if (!placeName) {
+              const suggested =
+                data.name ||
+                data.address?.amenity ||
+                data.address?.hospital ||
+                data.address?.pharmacy ||
+                data.address?.clinic ||
+                data.address?.road ||
+                '';
+              if (suggested) setPlaceName(suggested);
+            }
+            return;
+          }
+        }
+
+        // Fallback: Photon Reverse
+        const photonRes = await fetch(
+          `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`
+        );
+        if (photonRes.ok) {
+          const pData = await photonRes.json();
+          if (pData?.features && pData.features.length > 0) {
+            const props = pData.features[0].properties;
+            const full = [props.name, props.street, props.city || props.district, props.state]
+              .filter(Boolean)
+              .join(', ');
+            if (full) setAddress(full);
+            if (!placeName && props.name) setPlaceName(props.name);
+          }
+        }
+      } catch {
+        // Keep existing address on network error
+      } finally {
+        setIsResolvingAddress(false);
+      }
+    }, 400);
+  };
+
+  // High-accuracy live POI search
   const handleSearch = async () => {
     const query = searchQuery.trim();
     if (!query) return;
@@ -148,6 +177,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         setSelectedLat(lat);
         setSelectedLng(lng);
         resolveAddressFromCoords(lat, lng);
+        triggerPinBounce();
         setSearchResults([]);
         setIsSearching(false);
         return;
@@ -155,7 +185,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
 
     try {
-      // 2. Query Photon POI API (indexes OSM shops, clinics, hospitals, chemists with instant text search)
       const photonRes = await fetch(
         `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`
       );
@@ -189,7 +218,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         }
       }
 
-      // 3. Fallback to Nominatim if Photon yields no results
       if (parsed.length === 0) {
         const nomRes = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6`,
@@ -222,13 +250,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         setSelectedLng(first.lon);
         if (!placeName) setPlaceName(first.name);
         setAddress(first.display_name);
+        triggerPinBounce();
       } else {
         Alert.alert(
           'Location Search',
-          `No places found for "${query}". You can drop the pin anywhere on the map or enter coordinates directly.`
+          `No places found for "${query}". You can tap anywhere on the map or drag the pin directly.`
         );
       }
-    } catch (err: any) {
+    } catch {
       Alert.alert('Search Notice', 'Could not complete place search. Verify internet connection.');
     } finally {
       setIsSearching(false);
@@ -241,6 +270,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     setPlaceName(item.name);
     setAddress(item.display_name);
     setSearchResults([]);
+    triggerPinBounce();
   };
 
   const handleGetCurrentLocation = async () => {
@@ -248,9 +278,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     try {
       const loc = await LocationService.getCurrentLocation();
       if (loc) {
-        const lat = (loc as any).coords?.latitude ?? loc.latitude;
-        const lng = (loc as any).coords?.longitude ?? loc.longitude;
-        const acc = (loc as any).coords?.accuracy ?? loc.accuracy ?? 8.0;
+        const lat = loc.latitude;
+        const lng = loc.longitude;
+        const acc = loc.accuracy ?? 8.0;
 
         if (typeof lat === 'number' && typeof lng === 'number') {
           const nLat = Number(lat.toFixed(6));
@@ -259,13 +289,10 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           setSelectedLng(nLng);
           setGpsAccuracy(Number(acc.toFixed(1)));
           resolveAddressFromCoords(nLat, nLng);
-          Alert.alert(
-            'GPS Location Locked',
-            `Coordinates: ${nLat.toFixed(5)}, ${nLng.toFixed(5)} (Accuracy: ±${acc.toFixed(1)}m)`
-          );
+          triggerPinBounce();
         }
       } else {
-        Alert.alert('Location Notice', 'Could not lock GPS. Using current coordinates.');
+        Alert.alert('Location Notice', 'Could not lock GPS. Using current pin position.');
       }
     } catch (err: any) {
       Alert.alert('GPS Notice', err?.message || 'Could not fetch device GPS.');
@@ -275,7 +302,17 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   };
 
   const handleZoom = (delta: number) => {
-    setZoom((prev) => Math.min(18, Math.max(13, prev + delta)));
+    setZoom((prev) => Math.min(19, Math.max(13, prev + delta)));
+  };
+
+  // Micro-Nudge D-Pad: shift coordinates by ~3 meters in any cardinal direction
+  const handleNudge = (deltaLat: number, deltaLng: number) => {
+    const nextLat = Number((selectedLat + deltaLat).toFixed(6));
+    const nextLng = Number((selectedLng + deltaLng).toFixed(6));
+    setSelectedLat(nextLat);
+    setSelectedLng(nextLng);
+    resolveAddressFromCoords(nextLat, nextLng);
+    triggerPinBounce();
   };
 
   const handleSave = () => {
@@ -300,63 +337,86 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     onClose();
   };
 
-    // Real-time animated drag translation
+  // Real-time animated drag translation
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const [isDraggingMap, setIsDraggingMap] = useState(false);
-
-  // Constants for map tile geometry
-  const TILE_PX = 128;
+  const initialPinchDist = useRef<number | null>(null);
 
   // Fluid Touch PanResponder: Real-time 360° finger tracking with parent scroll freeze
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => false, // Allow inner touchable buttons to handle taps
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
-        // Crucial: do NOT allow parent ScrollView to terminate/steal the gesture!
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderTerminationRequest: () => false,
 
         onPanResponderGrant: () => {
           setIsDraggingMap(true);
           pan.setOffset({ x: 0, y: 0 });
           pan.setValue({ x: 0, y: 0 });
+          initialPinchDist.current = null;
         },
 
-        onPanResponderMove: (_, gesture) => {
-          // Live real-time tile tracking under finger
+        onPanResponderMove: (evt, gesture) => {
+          // Pinch-to-zoom multi-touch detection
+          const touches = evt.nativeEvent.touches;
+          if (touches && touches.length >= 2) {
+            const t1 = touches[0];
+            const t2 = touches[1];
+            const dist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+            if (!initialPinchDist.current) {
+              initialPinchDist.current = dist;
+            } else {
+              const ratio = dist / initialPinchDist.current;
+              if (ratio > 1.35) {
+                handleZoom(1);
+                initialPinchDist.current = dist;
+              } else if (ratio < 0.75) {
+                handleZoom(-1);
+                initialPinchDist.current = dist;
+              }
+            }
+            return;
+          }
+
+          // Live 360° fluid tile tracking under finger
           pan.setValue({ x: gesture.dx, y: gesture.dy });
         },
 
         onPanResponderRelease: (evt, gesture) => {
           setIsDraggingMap(false);
+          initialPinchDist.current = null;
 
-          // Direct tap-to-reposition (less than 5px drag)
-          if (Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
+          const n = Math.pow(2, zoom);
+          const totalWorldPx = n * TILE_SIZE;
+
+          // Direct tap-to-reposition (less than 6px drag)
+          if (Math.abs(gesture.dx) < 6 && Math.abs(gesture.dy) < 6) {
             pan.setValue({ x: 0, y: 0 });
             const locX = evt.nativeEvent?.locationX;
             const locY = evt.nativeEvent?.locationY;
             if (typeof locX === 'number' && typeof locY === 'number') {
-              // Canvas is ~380x270; center is approx (190, 135)
-              const tapOffsetX = locX - 190;
-              const tapOffsetY = locY - 135;
-              if (Math.abs(tapOffsetX) > 8 || Math.abs(tapOffsetY) > 8) {
-                const scale = Math.pow(2, zoom);
-                const totalWorldPx = scale * TILE_PX;
+              const halfW = canvasLayout.width / 2;
+              const halfH = canvasLayout.height / 2;
+              const tapOffsetX = locX - halfW;
+              const tapOffsetY = locY - halfH;
+
+              if (Math.abs(tapOffsetX) > 6 || Math.abs(tapOffsetY) > 6) {
                 const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
                 const latRad = (selectedLat * Math.PI) / 180;
+                const sinLat = Math.sin(latRad);
                 const currentWorldY =
-                  ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * totalWorldPx;
+                  (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * totalWorldPx;
 
                 const targetWorldX = currentWorldX + tapOffsetX;
                 const targetWorldY = currentWorldY + tapOffsetY;
 
                 const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
-                const normY = 1 - 2 * (targetWorldY / totalWorldPx);
-                const targetLat = Math.atan(Math.sinh(Math.PI * normY)) * (180 / Math.PI);
+                const normY = 0.5 - targetWorldY / totalWorldPx;
+                const targetLat =
+                  (2 * Math.atan(Math.exp(normY * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
 
                 const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
                 const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
@@ -364,27 +424,26 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 setSelectedLat(nLat);
                 setSelectedLng(nLng);
                 resolveAddressFromCoords(nLat, nLng);
+                triggerPinBounce();
               }
             }
             return;
           }
 
-          // Accurate Web Mercator drag translation
-          const scale = Math.pow(2, zoom);
-          const totalWorldPx = scale * TILE_PX;
-
+          // Accurate 256px Web Mercator drag translation
           const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
           const latRad = (selectedLat * Math.PI) / 180;
+          const sinLat = Math.sin(latRad);
           const currentWorldY =
-            ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * totalWorldPx;
+            (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * totalWorldPx;
 
-          // Dragging content by dx, dy shifts the world center by -dx, -dy
           const targetWorldX = currentWorldX - gesture.dx;
           const targetWorldY = currentWorldY - gesture.dy;
 
           const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
-          const normY = 1 - 2 * (targetWorldY / totalWorldPx);
-          const targetLat = Math.atan(Math.sinh(Math.PI * normY)) * (180 / Math.PI);
+          const normY = 0.5 - targetWorldY / totalWorldPx;
+          const targetLat =
+            (2 * Math.atan(Math.exp(normY * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
 
           const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
           const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
@@ -392,6 +451,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           setSelectedLat(nLat);
           setSelectedLng(nLng);
           resolveAddressFromCoords(nLat, nLng);
+          triggerPinBounce();
 
           // Reset animated offset for newly centered tiles
           pan.setValue({ x: 0, y: 0 });
@@ -402,7 +462,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           pan.setValue({ x: 0, y: 0 });
         },
       }),
-    [zoom, selectedLat, selectedLng]
+    [zoom, selectedLat, selectedLng, canvasLayout]
   );
 
   if (!isOpen) return null;
@@ -410,29 +470,33 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const activeCategoryConfig =
     CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
 
-  // Precise fractional slippy tile math for 100% pin alignment
+  // Slippy tile math with 256px standard tiles
   const n = Math.pow(2, zoom);
   const preciseTileX = ((selectedLng + 180) / 360) * n;
   const centerTileX = Math.floor(preciseTileX);
-  const fracX = (preciseTileX - centerTileX) * TILE_PX;
+  const fracX = (preciseTileX - centerTileX) * TILE_SIZE;
 
   const latRad = (selectedLat * Math.PI) / 180;
+  const sinLat = Math.sin(latRad);
   const preciseTileY =
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+    (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n;
   const centerTileY = Math.floor(preciseTileY);
-  const fracY = (preciseTileY - centerTileY) * TILE_PX;
+  const fracY = (preciseTileY - centerTileY) * TILE_SIZE;
 
-  // Google Road Map & Google Hybrid Satellite (Zero watermark, crystal-clear high-res maps)
+  // Google Maps Road & Satellite Tile URLs
   const getTileUrl = (x: number, y: number) => {
     const s = Math.abs(x + y) % 4;
+    const maxIndex = Math.pow(2, zoom);
+    const wrapX = ((x % maxIndex) + maxIndex) % maxIndex;
+    const wrapY = Math.max(0, Math.min(maxIndex - 1, y));
+
     if (mapMode === 'satellite') {
-      return `https://mt${s}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${zoom}`;
+      return `https://mt${s}.google.com/vt/lyrs=y&x=${wrapX}&y=${wrapY}&z=${zoom}`;
     }
-    // Google Street Road Map (Clean roads, hospitals, clinics, landmarks)
-    return `https://mt${s}.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${zoom}`;
+    return `https://mt${s}.google.com/vt/lyrs=m&x=${wrapX}&y=${wrapY}&z=${zoom}`;
   };
 
-  // 5x5 tile grid (640x640px) surrounding center location for seamless, infinite free-drag margin
+  // 5x5 tile grid (1280x1280px total coverage) for infinite free-drag margin
   const tileOffsets = [
     { dx: -2, dy: -2 }, { dx: -1, dy: -2 }, { dx: 0, dy: -2 }, { dx: 1, dy: -2 }, { dx: 2, dy: -2 },
     { dx: -2, dy: -1 }, { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 }, { dx: 2, dy: -1 },
@@ -444,9 +508,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   return (
     <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* Top Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Mark Facility Location</Text>
             <Text style={styles.subtitle}>Interactive Geotag for Clinics, Hospitals & Chemists</Text>
           </View>
@@ -455,124 +519,72 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          style={styles.scrollBody}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={!isDraggingMap}
-        >
-          {/* LIVE PLACE SEARCH BAR */}
-          <View style={styles.searchCard}>
-            <View style={styles.searchInputRow}>
-              <Text style={styles.searchIcon}>🔍</Text>
+        {/* FULLSCREEN MAP VIEW OR STANDARD FORM VIEW */}
+        {isFullscreenMap ? (
+          <View style={styles.fullscreenContainer}>
+            {/* Floating Top Header in Fullscreen */}
+            <View style={styles.fullscreenTopBar}>
+              <TouchableOpacity
+                style={styles.fullscreenBackBtn}
+                onPress={() => setIsFullscreenMap(false)}
+              >
+                <Text style={styles.fullscreenBackBtnText}>← Return to Form</Text>
+              </TouchableOpacity>
+              <View style={styles.fullscreenModeToggle}>
+                <TouchableOpacity
+                  style={[styles.modeToggleBtn, mapMode === 'street' && styles.modeToggleBtnActive]}
+                  onPress={() => setMapMode('street')}
+                >
+                  <Text style={[styles.modeToggleText, mapMode === 'street' && styles.modeToggleTextActive]}>
+                    Road
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeToggleBtn, mapMode === 'satellite' && styles.modeToggleBtnActive]}
+                  onPress={() => setMapMode('satellite')}
+                >
+                  <Text style={[styles.modeToggleText, mapMode === 'satellite' && styles.modeToggleTextActive]}>
+                    Satellite
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Live Search Bar in Fullscreen */}
+            <View style={styles.fullscreenSearchBox}>
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search clinic, hospital, chemist, shop, area..."
+                style={styles.fullscreenSearchInput}
+                placeholder="Search clinic, hospital, chemist, area..."
                 placeholderTextColor="#94A3B8"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearch}
                 returnKeyType="search"
               />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  style={styles.clearSearchBtn}
-                  onPress={() => {
-                    setSearchQuery('');
-                    setSearchResults([]);
-                  }}
-                >
-                  <Text style={styles.clearSearchText}>✕</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.searchSubmitBtn}
-                onPress={handleSearch}
-                disabled={isSearching}
-              >
-                {isSearching ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.searchSubmitText}>Search</Text>
-                )}
+              <TouchableOpacity style={styles.searchSubmitBtn} onPress={handleSearch}>
+                <Text style={styles.searchSubmitText}>Search</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Live Search Suggestions Dropdown */}
-            {searchResults.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsHeader}>Select Matched Location:</Text>
-                {searchResults.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSelectSearchResult(item)}
-                  >
-                    <View style={styles.suggestionIconBox}>
-                      <Text style={{ fontSize: 13 }}>
-                        {item.category?.toLowerCase().includes('hospital')
-                          ? '🏥'
-                          : item.category?.toLowerCase().includes('pharmacy')
-                          ? '💊'
-                          : '📍'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.suggestionName} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      <Text style={styles.suggestionAddr} numberOfLines={2}>
-                        {item.display_name}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* VISUAL INTERACTIVE MAP SECTION */}
-          <View style={styles.mapCard}>
-            <View style={styles.mapHeaderRow}>
-              <View style={styles.mapBadge}>
-                <View style={[styles.statusDot, { backgroundColor: activeCategoryConfig.color }]} />
-                <Text style={styles.mapBadgeText}>
-                  {mapMode === 'satellite' ? 'Satellite View' : 'Road Map'} • Zoom {zoom}x
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.modeToggleBtn,
-                    mapMode === 'satellite' && styles.modeToggleBtnActive,
-                  ]}
-                  onPress={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
-                >
-                  <Text
-                    style={[
-                      styles.modeToggleText,
-                      mapMode === 'satellite' && styles.modeToggleTextActive,
-                    ]}
-                  >
-                    {mapMode === 'street' ? '🛰️ Satellite' : '🗺️ Road'}
-                  </Text>
-                </TouchableOpacity>
-                {isResolvingAddress && (
-                  <Text style={styles.resolvingText}>Resolving...</Text>
-                )}
-              </View>
-            </View>
-
-            {/* Map Canvas with 5x5 Stitched Tiles & Fluid Touch Pan Gesture */}
-            <View style={styles.mapCanvas} {...panResponder.panHandlers}>
+            {/* Fullscreen Map Canvas */}
+            <View
+              style={styles.fullscreenCanvas}
+              onLayout={(e) => {
+                setCanvasLayout({
+                  width: e.nativeEvent.layout.width,
+                  height: e.nativeEvent.layout.height,
+                });
+              }}
+              {...panResponder.panHandlers}
+            >
               <Animated.View
                 style={[
                   styles.tilesGrid,
                   {
                     left: '50%',
                     top: '50%',
-                    marginLeft: -320 - fracX,
-                    marginTop: -320 - fracY,
+                    marginLeft: -640 - fracX,
+                    marginTop: -640 - fracY,
                     transform: [{ translateX: pan.x }, { translateY: pan.y }],
                   },
                 ]}
@@ -592,22 +604,23 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 })}
               </Animated.View>
 
-              {/* Grid Lines Visual Crosshair */}
+              {/* Crosshair & Bouncing Pin */}
               <View style={styles.crosshairH} pointerEvents="none" />
               <View style={styles.crosshairV} pointerEvents="none" />
-
-              {/* Standard Google Maps Style Center Pin */}
-              <View style={styles.pinOverlay} pointerEvents="none">
+              <Animated.View
+                style={[styles.pinOverlay, { transform: [{ translateY: pinBounceAnim }] }]}
+                pointerEvents="none"
+              >
                 <View style={styles.googlePinContainer}>
-                  <View style={styles.googlePinHead}>
+                  <View style={[styles.googlePinHead, { backgroundColor: activeCategoryConfig.color, borderColor: '#0F172A' }]}>
                     <View style={styles.googlePinDot} />
                   </View>
-                  <View style={styles.googlePinTip} />
+                  <View style={[styles.googlePinTip, { borderTopColor: activeCategoryConfig.color }]} />
                 </View>
                 <View style={styles.googlePinShadow} />
-              </View>
+              </Animated.View>
 
-              {/* Map Floating Controls: Zoom In / Out */}
+              {/* Floating Zoom Controls */}
               <View style={styles.zoomControlCol}>
                 <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(1)}>
                   <Text style={styles.controlBtnText}>+</Text>
@@ -617,15 +630,47 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Floating GPS Action Button (Google Maps Style) */}
+              {/* 4-Direction Micro-Nudge D-Pad */}
+              <View style={styles.nudgePad}>
+                <TouchableOpacity
+                  style={[styles.nudgeBtn, styles.nudgeBtnNorth]}
+                  onPress={() => handleNudge(0.00003, 0)}
+                >
+                  <Text style={styles.nudgeBtnText}>▲</Text>
+                </TouchableOpacity>
+                <View style={styles.nudgeMidRow}>
+                  <TouchableOpacity
+                    style={[styles.nudgeBtn, styles.nudgeBtnWest]}
+                    onPress={() => handleNudge(0, -0.00003)}
+                  >
+                    <Text style={styles.nudgeBtnText}>◄</Text>
+                  </TouchableOpacity>
+                  <View style={styles.nudgeCenterDot}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B' }}>3m</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.nudgeBtn, styles.nudgeBtnEast]}
+                    onPress={() => handleNudge(0, 0.00003)}
+                  >
+                    <Text style={styles.nudgeBtnText}>►</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={[styles.nudgeBtn, styles.nudgeBtnSouth]}
+                  onPress={() => handleNudge(-0.00003, 0)}
+                >
+                  <Text style={styles.nudgeBtnText}>▼</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Floating GPS Button */}
               <TouchableOpacity
                 style={styles.floatingGpsBtn}
                 onPress={handleGetCurrentLocation}
                 disabled={isLocatingGps}
-                activeOpacity={0.8}
               >
                 {isLocatingGps ? (
-                  <ActivityIndicator size="small" color="#1A3C6E" />
+                  <ActivityIndicator size="small" color="#0284C7" />
                 ) : (
                   <View style={styles.gpsIconInner}>
                     <Text style={styles.gpsIconText}>🎯</Text>
@@ -634,171 +679,386 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 )}
               </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Category Selector */}
-          <Text style={styles.sectionHeading}>Facility Type</Text>
-          <View style={styles.categoryRow}>
-            {CATEGORIES.map((cat) => {
-              const isSelected = category === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryTab,
-                    isSelected && { backgroundColor: cat.color, borderColor: cat.color },
-                  ]}
-                  onPress={() => setCategory(cat.id)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryTabText,
-                      isSelected && { color: '#FFFFFF', fontWeight: '700' },
-                    ]}
+            {/* Bottom Floating Info Card */}
+            <View style={styles.fullscreenBottomCard}>
+              <Text style={styles.fullscreenCardTitle} numberOfLines={1}>
+                {placeName || 'Selected Location'}
+              </Text>
+              <Text style={styles.fullscreenCardAddr} numberOfLines={2}>
+                {address || 'Fetching address...'}
+              </Text>
+              <Text style={styles.fullscreenCardCoords}>
+                {selectedLat.toFixed(5)}, {selectedLng.toFixed(5)} • Zoom {zoom}x
+              </Text>
+              <TouchableOpacity
+                style={styles.fullscreenConfirmBtn}
+                onPress={() => setIsFullscreenMap(false)}
+              >
+                <Text style={styles.fullscreenConfirmBtnText}>✓ Use This Precise Location</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollBody}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={!isDraggingMap}
+          >
+            {/* LIVE PLACE SEARCH BAR */}
+            <View style={styles.searchCard}>
+              <View style={styles.searchInputRow}>
+                <Text style={styles.searchIcon}>🔍</Text>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search clinic, hospital, chemist, area..."
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onSubmitEditing={handleSearch}
+                  returnKeyType="search"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.clearSearchBtn}
+                    onPress={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
                   >
-                    {cat.label}
-                  </Text>
+                    <Text style={styles.clearSearchText}>✕</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.searchSubmitBtn}
+                  onPress={handleSearch}
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.searchSubmitText}>Search</Text>
+                  )}
                 </TouchableOpacity>
-              );
-            })}
-          </View>
+              </View>
 
-          {/* Facility Name */}
-          <Text style={styles.inputLabel}>Facility / Clinic Name *</Text>
-          <TextInput
-            style={styles.textInput}
-            value={placeName}
-            onChangeText={setPlaceName}
-            placeholder="e.g. Apex Heart Centre, Metro Pharmacy"
-            placeholderTextColor="#94A3B8"
-          />
-
-          {/* Doctor Name */}
-          <Text style={styles.inputLabel}>Key Doctor / Contact Person</Text>
-          <TextInput
-            style={styles.textInput}
-            value={doctorName}
-            onChangeText={setDoctorName}
-            placeholder="e.g. Dr. Rajesh Sharma, MD"
-            placeholderTextColor="#94A3B8"
-          />
-
-          {/* Address */}
-          <Text style={styles.inputLabel}>Full Address *</Text>
-          <TextInput
-            style={[styles.textInput, styles.textArea]}
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Street, Landmark, Area, City, Pincode"
-            placeholderTextColor="#94A3B8"
-            multiline
-            numberOfLines={3}
-          />
-
-          {/* Phone */}
-          <Text style={styles.inputLabel}>Contact Phone Number</Text>
-          <TextInput
-            style={styles.textInput}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+91 98765 43210"
-            placeholderTextColor="#94A3B8"
-            keyboardType="phone-pad"
-          />
-
-          {/* Coordinate Adjustment Inputs */}
-          <Text style={styles.sectionHeading}>Fine-Tune GPS Coordinates</Text>
-          <View style={styles.coordInputsRow}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.coordSubLabel}>Latitude</Text>
-              <TextInput
-                style={styles.coordInput}
-                value={String(selectedLat)}
-                onChangeText={(val) => {
-                  const n = parseFloat(val);
-                  if (!isNaN(n)) setSelectedLat(n);
-                }}
-                keyboardType="numeric"
-              />
+              {/* Suggestions Dropdown */}
+              {searchResults.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <Text style={styles.suggestionsHeader}>Select Matched Location:</Text>
+                  {searchResults.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSelectSearchResult(item)}
+                    >
+                      <View style={styles.suggestionIconBox}>
+                        <Text style={{ fontSize: 13 }}>
+                          {item.category?.toLowerCase().includes('hospital')
+                            ? '🏥'
+                            : item.category?.toLowerCase().includes('pharmacy')
+                            ? '💊'
+                            : '📍'}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.suggestionName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.suggestionAddr} numberOfLines={2}>
+                          {item.display_name}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Text style={styles.coordSubLabel}>Longitude</Text>
-              <TextInput
-                style={styles.coordInput}
-                value={String(selectedLng)}
-                onChangeText={(val) => {
-                  const n = parseFloat(val);
-                  if (!isNaN(n)) setSelectedLng(n);
+
+            {/* VISUAL INTERACTIVE MAP SECTION */}
+            <View style={styles.mapCard}>
+              <View style={styles.mapHeaderRow}>
+                <View style={styles.mapBadge}>
+                  <View style={[styles.statusDot, { backgroundColor: activeCategoryConfig.color }]} />
+                  <Text style={styles.mapBadgeText}>
+                    {mapMode === 'satellite' ? 'Satellite' : 'Road'} • Zoom {zoom}x
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modeToggleBtn,
+                      mapMode === 'satellite' && styles.modeToggleBtnActive,
+                    ]}
+                    onPress={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
+                  >
+                    <Text
+                      style={[
+                        styles.modeToggleText,
+                        mapMode === 'satellite' && styles.modeToggleTextActive,
+                      ]}
+                    >
+                      {mapMode === 'street' ? '🛰️ Satellite' : '🗺️ Road'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Fullscreen Map Mode Button */}
+                  <TouchableOpacity
+                    style={styles.expandMapBtn}
+                    onPress={() => setIsFullscreenMap(true)}
+                  >
+                    <Text style={styles.expandMapText}>⛶ Expand</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Instructions banner */}
+              <View style={styles.interactiveInstructionBanner}>
+                <Text style={styles.interactiveInstructionText}>
+                  👆 Drag freely in 360° • Pinch to zoom • Tap anywhere to drop pin
+                </Text>
+              </View>
+
+              {/* Map Canvas with 5x5 256px Stitched Tiles */}
+              <View
+                style={styles.mapCanvas}
+                onLayout={(e) => {
+                  setCanvasLayout({
+                    width: e.nativeEvent.layout.width,
+                    height: e.nativeEvent.layout.height,
+                  });
                 }}
-                keyboardType="numeric"
-              />
+                {...panResponder.panHandlers}
+              >
+                <Animated.View
+                  style={[
+                    styles.tilesGrid,
+                    {
+                      left: '50%',
+                      top: '50%',
+                      marginLeft: -640 - fracX,
+                      marginTop: -640 - fracY,
+                      transform: [{ translateX: pan.x }, { translateY: pan.y }],
+                    },
+                  ]}
+                >
+                  {tileOffsets.map((offset, i) => {
+                    const x = centerTileX + offset.dx;
+                    const y = centerTileY + offset.dy;
+                    const url = getTileUrl(x, y);
+                    return (
+                      <Image
+                        key={`${mapMode}-${zoom}-${x}-${y}-${i}`}
+                        source={{ uri: url }}
+                        style={styles.gridTile}
+                        resizeMode="cover"
+                      />
+                    );
+                  })}
+                </Animated.View>
+
+                {/* Crosshair & Pin */}
+                <View style={styles.crosshairH} pointerEvents="none" />
+                <View style={styles.crosshairV} pointerEvents="none" />
+                <Animated.View
+                  style={[styles.pinOverlay, { transform: [{ translateY: pinBounceAnim }] }]}
+                  pointerEvents="none"
+                >
+                  <View style={styles.googlePinContainer}>
+                    <View style={[styles.googlePinHead, { backgroundColor: activeCategoryConfig.color, borderColor: '#0F172A' }]}>
+                      <View style={styles.googlePinDot} />
+                    </View>
+                    <View style={[styles.googlePinTip, { borderTopColor: activeCategoryConfig.color }]} />
+                  </View>
+                  <View style={styles.googlePinShadow} />
+                </Animated.View>
+
+                {/* Floating Zoom In / Out Buttons */}
+                <View style={styles.zoomControlCol}>
+                  <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(1)}>
+                    <Text style={styles.controlBtnText}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(-1)}>
+                    <Text style={styles.controlBtnText}>−</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Micro-Nudge D-Pad (4 Directions: ▲, ▼, ◄, ►) */}
+                <View style={styles.nudgePad}>
+                  <TouchableOpacity
+                    style={[styles.nudgeBtn, styles.nudgeBtnNorth]}
+                    onPress={() => handleNudge(0.00003, 0)}
+                  >
+                    <Text style={styles.nudgeBtnText}>▲</Text>
+                  </TouchableOpacity>
+                  <View style={styles.nudgeMidRow}>
+                    <TouchableOpacity
+                      style={[styles.nudgeBtn, styles.nudgeBtnWest]}
+                      onPress={() => handleNudge(0, -0.00003)}
+                    >
+                      <Text style={styles.nudgeBtnText}>◄</Text>
+                    </TouchableOpacity>
+                    <View style={styles.nudgeCenterDot}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B' }}>3m</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.nudgeBtn, styles.nudgeBtnEast]}
+                      onPress={() => handleNudge(0, 0.00003)}
+                    >
+                      <Text style={styles.nudgeBtnText}>►</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.nudgeBtn, styles.nudgeBtnSouth]}
+                    onPress={() => handleNudge(-0.00003, 0)}
+                  >
+                    <Text style={styles.nudgeBtnText}>▼</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Floating GPS Button */}
+                <TouchableOpacity
+                  style={styles.floatingGpsBtn}
+                  onPress={handleGetCurrentLocation}
+                  disabled={isLocatingGps}
+                  activeOpacity={0.8}
+                >
+                  {isLocatingGps ? (
+                    <ActivityIndicator size="small" color="#0284C7" />
+                  ) : (
+                    <View style={styles.gpsIconInner}>
+                      <Text style={styles.gpsIconText}>🎯</Text>
+                      <Text style={styles.gpsLabelText}>GPS</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </ScrollView>
+
+            {/* Category Selector */}
+            <Text style={styles.sectionHeading}>Facility Type</Text>
+            <View style={styles.categoryRow}>
+              {CATEGORIES.map((cat) => {
+                const isSelected = category === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.categoryTab,
+                      isSelected && { backgroundColor: cat.color, borderColor: cat.color },
+                    ]}
+                    onPress={() => setCategory(cat.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryTabText,
+                        isSelected && { color: '#FFFFFF', fontWeight: '700' },
+                      ]}
+                    >
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Facility Name */}
+            <Text style={styles.inputLabel}>Facility / Clinic Name *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={placeName}
+              onChangeText={setPlaceName}
+              placeholder="e.g. Apex Heart Centre, Metro Pharmacy"
+              placeholderTextColor="#94A3B8"
+            />
+
+            {/* Doctor Name */}
+            <Text style={styles.inputLabel}>Key Doctor / Contact Person</Text>
+            <TextInput
+              style={styles.textInput}
+              value={doctorName}
+              onChangeText={setDoctorName}
+              placeholder="e.g. Dr. Rajesh Sharma, MD"
+              placeholderTextColor="#94A3B8"
+            />
+
+            {/* Address */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.inputLabel}>Full Address *</Text>
+              {isResolvingAddress && (
+                <Text style={styles.resolvingBadge}>Resolving address...</Text>
+              )}
+            </View>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              value={address}
+              onChangeText={setAddress}
+              placeholder="Street, Landmark, Area, City, Pincode"
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={3}
+            />
+
+            {/* Phone */}
+            <Text style={styles.inputLabel}>Contact Phone Number</Text>
+            <TextInput
+              style={styles.textInput}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="+91 98765 43210"
+              placeholderTextColor="#94A3B8"
+              keyboardType="phone-pad"
+            />
+
+            {/* Coordinate Fine-Tune Display */}
+            <Text style={styles.sectionHeading}>GPS Geotag Coordinates</Text>
+            <View style={styles.coordInputsRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.coordSubLabel}>Latitude</Text>
+                <TextInput
+                  style={styles.coordInput}
+                  value={String(selectedLat)}
+                  onChangeText={(val) => {
+                    const n = parseFloat(val);
+                    if (!isNaN(n)) setSelectedLat(n);
+                  }}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.coordSubLabel}>Longitude</Text>
+                <TextInput
+                  style={styles.coordInput}
+                  value={String(selectedLng)}
+                  onChangeText={(val) => {
+                    const n = parseFloat(val);
+                    if (!isNaN(n)) setSelectedLng(n);
+                  }}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </ScrollView>
+        )}
 
         {/* Sticky Action Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-            <Text style={styles.saveBtnText}>Save Geotag Location</Text>
-          </TouchableOpacity>
-        </View>
+        {!isFullscreenMap && (
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <Text style={styles.saveBtnText}>Save Geotag Location</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  floatingGpsBtn: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-    elevation: 6,
-    borderWidth: 1.5,
-    borderColor: '#0284C7',
-  },
-  gpsIconInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  gpsIconText: {
-    fontSize: 14,
-  },
-  gpsLabelText: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: '#0284C7',
-    letterSpacing: 0.3,
-  },
-  mapHintStrip: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginBottom: 12,
-  },
-  mapHintText: {
-    fontSize: 11,
-    color: '#1E40AF',
-    textAlign: 'center',
-  },
-
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -841,7 +1101,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 40,
   },
   searchCard: {
     backgroundColor: '#FFFFFF',
@@ -991,13 +1251,32 @@ const styles = StyleSheet.create({
   modeToggleTextActive: {
     color: '#FFFFFF',
   },
-  resolvingText: {
+  expandMapBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#0284C7',
+  },
+  expandMapText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  interactiveInstructionBanner: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DBEAFE',
+  },
+  interactiveInstructionText: {
     fontSize: 10.5,
-    color: '#0F8B5A',
+    color: '#1D4ED8',
+    textAlign: 'center',
     fontWeight: '600',
   },
   mapCanvas: {
-    height: 270,
+    height: 290,
     width: '100%',
     backgroundColor: '#E2E8F0',
     position: 'relative',
@@ -1006,31 +1285,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tilesGrid: {
-    width: 640,
-    height: 640,
+    width: 1280,
+    height: 1280,
     flexDirection: 'row',
     flexWrap: 'wrap',
     position: 'absolute',
   },
-  touchHintBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.78)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    zIndex: 10,
-  },
-  touchHintText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
   gridTile: {
-    width: 128,
-    height: 128,
+    width: 256,
+    height: 256,
     backgroundColor: '#CBD5E1',
   },
   crosshairH: {
@@ -1038,14 +1301,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.15)',
+    backgroundColor: 'rgba(15, 23, 42, 0.16)',
   },
   crosshairV: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.15)',
+    backgroundColor: 'rgba(15, 23, 42, 0.16)',
   },
   pinOverlay: {
     position: 'absolute',
@@ -1062,9 +1325,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EA4335',
     borderWidth: 2,
-    borderColor: '#B91C1C',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1087,7 +1348,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#EA4335',
     marginTop: -2,
   },
   googlePinShadow: {
@@ -1096,7 +1356,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 6,
     borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
   },
   zoomControlCol: {
     position: 'absolute',
@@ -1109,65 +1369,132 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 2,
-    elevation: 3,
+    elevation: 4,
   },
   controlBtn: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
   controlBtnText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: '#1E293B',
   },
-  mapCoordsBadge: {
+  nudgePad: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.88)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 10,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 4,
+    alignItems: 'center',
+  },
+  nudgeMidRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
-  mapCoordsText: {
-    color: '#FFFFFF',
-    fontSize: 10.5,
-    fontWeight: '700',
+  nudgeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: '#CBD5E1',
   },
-  mapAccuracyText: {
-    color: '#4ADE80',
-    fontSize: 10,
-    fontWeight: '600',
+  nudgeBtnNorth: {
+    marginBottom: 2,
+  },
+  nudgeBtnSouth: {
+    marginTop: 2,
+  },
+  nudgeBtnWest: {
+    marginRight: 2,
+  },
+  nudgeBtnEast: {
+    marginLeft: 2,
+  },
+  nudgeCenterDot: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nudgeBtnText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#1E293B',
+  },
+  floatingGpsBtn: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+  },
+  gpsIconInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  gpsIconText: {
+    fontSize: 14,
+  },
+  gpsLabelText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#0284C7',
+    letterSpacing: 0.3,
   },
   sectionHeading: {
     fontSize: 12.5,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 8,
-    marginTop: 4,
+    fontWeight: '800',
+    color: '#0F172A',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginTop: 6,
+    marginBottom: 8,
   },
   categoryRow: {
     flexDirection: 'row',
+    gap: 8,
     marginBottom: 14,
+    flexWrap: 'wrap',
   },
   categoryTab: {
     flex: 1,
+    minWidth: '22%',
     paddingVertical: 9,
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
     borderRadius: 8,
-    marginHorizontal: 2.5,
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryTabText: {
     fontSize: 11.5,
@@ -1176,10 +1503,15 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  resolvingBadge: {
+    fontSize: 11,
+    color: '#0F8B5A',
     fontWeight: '600',
-    color: '#475569',
-    marginBottom: 5,
-    marginTop: 6,
   },
   textInput: {
     backgroundColor: '#FFFFFF',
@@ -1188,9 +1520,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    fontSize: 13.5,
+    fontSize: 13,
     color: '#0F172A',
-    marginBottom: 6,
   },
   textArea: {
     height: 64,
@@ -1198,22 +1529,24 @@ const styles = StyleSheet.create({
   },
   coordInputsRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginTop: 4,
   },
   coordSubLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#64748B',
-    marginBottom: 4,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   coordInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#0F172A',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: 'monospace',
   },
   footer: {
     flexDirection: 'row',
@@ -1221,32 +1554,155 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
+    gap: 10,
   },
   cancelBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
-    marginRight: 6,
+    justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 13.5,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#64748B',
   },
   saveBtn: {
     flex: 2,
     paddingVertical: 12,
-    borderRadius: 9,
+    borderRadius: 8,
     backgroundColor: '#0B2545',
     alignItems: 'center',
-    marginLeft: 6,
+    justifyContent: 'center',
   },
   saveBtnText: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  // Fullscreen Map Styles
+  fullscreenContainer: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: '#0F172A',
+  },
+  fullscreenTopBar: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    zIndex: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fullscreenBackBtn: {
+    backgroundColor: '#0B2545',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fullscreenBackBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  fullscreenModeToggle: {
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 3,
+    borderRadius: 8,
+  },
+  fullscreenSearchBox: {
+    position: 'absolute',
+    top: 56,
+    left: 12,
+    right: 12,
+    zIndex: 20,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  fullscreenSearchInput: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  fullscreenCanvas: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  fullscreenBottomCard: {
+    position: 'absolute',
+    bottom: 16,
+    left: 14,
+    right: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    zIndex: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  fullscreenCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  fullscreenCardAddr: {
+    fontSize: 11.5,
+    color: '#475569',
+    marginTop: 2,
+  },
+  fullscreenCardCoords: {
+    fontSize: 10.5,
+    color: '#0284C7',
+    fontWeight: '700',
+    marginTop: 4,
+    fontFamily: 'monospace',
+  },
+  fullscreenConfirmBtn: {
+    backgroundColor: '#0F8B5A',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  fullscreenConfirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

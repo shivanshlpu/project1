@@ -2099,6 +2099,26 @@ export const TasksView: React.FC<TasksViewProps> = ({
                                 </div>
                               )}
 
+                              {isDone && (
+                                <div style={{ fontSize: '11px', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '6px 8px', borderRadius: '4px', marginTop: '2px' }}>
+                                  {t.duration_seconds && (
+                                    <div style={{ color: '#166534', fontWeight: '700', marginBottom: '2px' }}>
+                                      ⏱ Visit Duration: {formatDuration(t.duration_seconds)}
+                                    </div>
+                                  )}
+                                  {t.outcome && (
+                                    <div style={{ color: '#15803D', fontStyle: 'italic' }}>
+                                      💬 "{t.outcome.slice(0, 70)}{t.outcome.length > 70 ? '...' : ''}"
+                                    </div>
+                                  )}
+                                  {t.orders && t.orders.length > 0 && (
+                                    <div style={{ color: '#047857', fontWeight: '700', marginTop: '2px' }}>
+                                      📦 {t.orders.length} orders recorded ({t.orders.reduce((sum, o) => sum + (o.quantity || 0), 0)} units)
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               {isSusp && (
                                 <button
                                   type="button"

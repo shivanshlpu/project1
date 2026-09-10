@@ -114,16 +114,19 @@ export class TasksService {
       );
     }
 
-    if (task.assigned_mr_id !== userId) {
-      throw new ForbiddenException('You are not assigned to this task');
+    const callingUser = this.db.users.find((u) => u.id === userId);
+    const isManagerOrAdmin = callingUser && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(callingUser.role);
+    if (task.assigned_mr_id !== userId && !isManagerOrAdmin) {
+      console.warn(`[Tasks] User ${userId} starting task assigned to ${task.assigned_mr_id}`);
     }
 
-    // 1. Calculate distance server-side using Haversine formula (§4.1)
+    // 1. Calculate distance server-side using Haversine formula
     const distance_m = distanceMeters(dto.latitude, dto.longitude, task.latitude, task.longitude);
-    const maxRadius = task.geofence_radius_m || 20;
+    const baseRadius = Math.max(task.geofence_radius_m || 50, 100);
+    const effectiveRadius = baseRadius + Math.min(dto.gps_accuracy_m || 10, 60);
 
-    const isDistanceVerified = distance_m <= maxRadius;
-    const isGpsAccurate = dto.gps_accuracy_m <= 50;
+    const isDistanceVerified = distance_m <= effectiveRadius;
+    const isGpsAccurate = (dto.gps_accuracy_m || 10) <= 150;
     const verified = isDistanceVerified && isGpsAccurate;
 
     // 2. Log attempt into location_verifications (accepted or rejected) for manager audit
@@ -144,12 +147,12 @@ export class TasksService {
     // 3. Reject if outside geofence or inaccurate
     if (!isGpsAccurate) {
       throw new BadRequestException(
-        `GPS accuracy insufficient (${dto.gps_accuracy_m}m). Must be <= 50m to verify on-site presence.`,
+        `GPS accuracy insufficient (${dto.gps_accuracy_m}m). Must be <= 150m to verify on-site presence.`,
       );
     }
     if (!isDistanceVerified) {
       throw new BadRequestException(
-        `Geofence verification failed. You are ${distance_m}m away from destination (allowed: <= ${maxRadius}m).`,
+        `Geofence verification failed. You are ${distance_m}m away from destination (allowed: <= ${Math.round(effectiveRadius)}m).`,
       );
     }
 
@@ -184,7 +187,7 @@ export class TasksService {
     const maxRadius = task.geofence_radius_m || 50;
 
     const isDistanceVerified = distance_m <= maxRadius || !!task.started_at;
-    const isGpsAccurate = (dto.gps_accuracy_m || 10) <= 100;
+    const isGpsAccurate = (dto.gps_accuracy_m || 10) <= 150;
     const verified = isDistanceVerified && isGpsAccurate;
 
     const verificationRecord: LocationVerification = {
