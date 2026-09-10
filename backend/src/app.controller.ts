@@ -119,10 +119,24 @@ export class AppController {
   @Post('api/app/version')
   @Post('app/version')
   updateAppVersion(@Body() body: Partial<AppVersionData>) {
+    if (body.downloadUrl && body.downloadUrl.trim()) {
+      const newUrl = body.downloadUrl.trim();
+      if (newUrl !== currentAppVersion.downloadUrl) {
+        currentAppVersion.downloadUrl = newUrl;
+        // Auto-increment version if admin didn't specify one
+        if (!body.latestVersion) {
+          const parts = (currentAppVersion.latestVersion || '1.0.1').split('.');
+          const lastIndex = Math.max(0, parts.length - 1);
+          const nextPatch = (parseInt(parts[lastIndex] || '0', 10) || 0) + 1;
+          parts[lastIndex] = String(nextPatch);
+          currentAppVersion.latestVersion = parts.join('.');
+          currentAppVersion.latestVersionCode = (currentAppVersion.latestVersionCode || 1) + 1;
+        }
+      }
+    }
     if (body.latestVersion) currentAppVersion.latestVersion = body.latestVersion.trim();
     if (body.latestVersionCode) currentAppVersion.latestVersionCode = Number(body.latestVersionCode);
     if (body.minimumVersion) currentAppVersion.minimumVersion = body.minimumVersion.trim();
-    if (body.downloadUrl) currentAppVersion.downloadUrl = body.downloadUrl.trim();
     if (typeof body.forceUpdate === 'boolean') currentAppVersion.forceUpdate = body.forceUpdate;
     if (typeof body.isActive === 'boolean') currentAppVersion.isActive = body.isActive;
     if (Array.isArray(body.releaseNotes)) currentAppVersion.releaseNotes = body.releaseNotes.filter(Boolean);

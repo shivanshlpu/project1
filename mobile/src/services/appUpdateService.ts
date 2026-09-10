@@ -41,6 +41,8 @@ export const CURRENT_APP_VERSION = '1.0.1';
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',
   LAST_UPDATE_TIME: '@ahtri_last_update_time',
+  DOWNLOADED_APK_URL: '@ahtri_downloaded_apk_url',
+  DISMISSED_VERSION: '@ahtri_dismissed_version',
 };
 
 /**
@@ -79,7 +81,7 @@ export const AppUpdateService = {
   async getEffectiveCurrentVersion(): Promise<string> {
     try {
       const stored = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION);
-      if (stored && compareSemVer(stored, CURRENT_APP_VERSION) > 0) {
+      if (stored && compareSemVer(stored, CURRENT_APP_VERSION) >= 0) {
         return stored;
       }
     } catch {
@@ -89,15 +91,29 @@ export const AppUpdateService = {
   },
 
   /**
-   * Mark a version as successfully applied/installed so it never prompts again
+   * Mark a version and download URL as successfully downloaded / handled
+   * so this exact update never prompts again on this device.
    */
-  async markVersionInstalled(version: string): Promise<void> {
+  async markUpdateHandled(downloadUrl?: string, version?: string): Promise<void> {
     try {
-      await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION, version);
+      if (downloadUrl) {
+        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL, downloadUrl.trim());
+      }
+      if (version) {
+        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION, version.trim());
+        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION, version.trim());
+      }
       await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.LAST_UPDATE_TIME, new Date().toISOString());
     } catch {
       // Ignore storage errors
     }
+  },
+
+  /**
+   * Legacy alias
+   */
+  async markVersionInstalled(version: string): Promise<void> {
+    await this.markUpdateHandled(undefined, version);
   },
 
   /**
@@ -165,11 +181,11 @@ export const AppUpdateService = {
           };
         }
         const data: AppVersionInfo = await resFallback.json();
-        return this.evaluateVersion(data, effectiveVersion);
+        return await this.evaluateVersion(data, effectiveVersion);
       }
 
       const data: AppVersionInfo = await res.json();
-      return this.evaluateVersion(data, effectiveVersion);
+      return await this.evaluateVersion(data, effectiveVersion);
     } catch (err: any) {
       return {
         hasUpdate: false,
@@ -182,8 +198,9 @@ export const AppUpdateService = {
 
   /**
    * Evaluate whether the returned version is newer than installed
+   * and has not already been downloaded/handled by this user.
    */
-  evaluateVersion(info: AppVersionInfo, baseVersion?: string): UpdateCheckResult {
+  async evaluateVersion(info: AppVersionInfo, baseVersion?: string): Promise<UpdateCheckResult> {
     const currentVer = baseVersion || CURRENT_APP_VERSION;
     // If update broadcast is paused or deactivated by admin, suppress update prompts
     if (info.isActive === false) {
@@ -193,6 +210,32 @@ export const AppUpdateService = {
         currentVersion: currentVer,
         info,
       };
+    }
+
+    // 1. If this exact APK link was ALREADY downloaded on this device, suppress popup!
+    try {
+      const downloadedUrl = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL);
+      if (downloadedUrl && info.downloadUrl && downloadedUrl.trim() === info.downloadUrl.trim()) {
+        return {
+          hasUpdate: false,
+          isMandatory: false,
+          currentVersion: currentVer,
+          info,
+        };
+      }
+
+      // 2. If the user already installed or marked this version, suppress popup!
+      const storedVer = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION);
+      if (storedVer && compareSemVer(storedVer, info.latestVersion) >= 0) {
+        return {
+          hasUpdate: false,
+          isMandatory: false,
+          currentVersion: storedVer,
+          info,
+        };
+      }
+    } catch {
+      // Continue to version comparison
     }
 
     const isNewer = compareSemVer(info.latestVersion, currentVer) > 0;
@@ -223,10 +266,8 @@ export const AppUpdateService = {
         return { success: false, error: 'No download URL provided' };
       }
 
-      // If a target version is provided, immediately persist it so the app knows it was applied
-      if (targetVersion) {
-        await this.markVersionInstalled(targetVersion);
-      }
+      // Mark this exact APK URL and target version as downloaded/handled immediately
+      await this.markUpdateHandled(downloadUrl, targetVersion);
 
       // Web Fallback: direct file download trigger (no external navigation)
       if (Platform.OS === 'web') {

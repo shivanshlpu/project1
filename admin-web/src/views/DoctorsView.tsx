@@ -187,14 +187,12 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const map = createOptimizedMap(mapContainerRef.current, {
         zoomControl: false,
-        dragging: !isMobile,
-        touchZoom: !isMobile,
+        dragging: true,
+        touchZoom: true,
       }).setView([28.538, 77.206], 13);
       mapInstanceRef.current = map;
-      if (isMobile) {
-        map.dragging.disable();
-        map.touchZoom.disable();
-      }
+      map.dragging.enable();
+      map.touchZoom.enable();
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 

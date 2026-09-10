@@ -319,27 +319,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleBroadcastUpdate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!updateData.latestVersion.trim()) {
-      setUpdateNotice({ type: 'error', message: 'Version string (e.g. 1.0.1) is required.' });
-      return;
-    }
     if (!updateData.downloadUrl.trim()) {
-      setUpdateNotice({ type: 'error', message: 'APK download URL is required.' });
+      setUpdateNotice({ type: 'error', message: 'Please enter the app download link.' });
       return;
     }
 
     setIsSavingUpdateInfo(true);
     try {
       const cleanUrl = targetServerUrl.replace(/\/+$/, '');
-      const notes = releaseNotesText
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
       const payload = {
-        ...updateData,
-        releaseNotes: notes,
-        publishedBy: managerName || 'System Admin',
+        downloadUrl: updateData.downloadUrl.trim(),
+        isActive: updateData.isActive,
+        publishedBy: managerName || 'Admin',
       };
 
       const res = await fetch(`${cleanUrl}/api/app/version`, {
@@ -365,16 +356,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       setUpdateNotice({
         type: 'success',
-        message: `✓ Version ${updateData.latestVersion} (Build #${updateData.latestVersionCode}) is now LIVE and broadcasted to all employees!`,
+        message: '✓ New app update link published! The mobile app will notify employees.',
       });
     } catch (err: any) {
       setUpdateNotice({
         type: 'error',
-        message: `Failed to broadcast update: ${err?.message || 'Server unreachable'}`,
+        message: `Failed to save update link: ${err?.message || 'Server error'}`,
       });
     } finally {
       setIsSavingUpdateInfo(false);
-      setTimeout(() => setUpdateNotice(null), 5000);
+      setTimeout(() => setUpdateNotice(null), 4000);
     }
   };
 
@@ -442,14 +433,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (!mapInstanceRef.current) {
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const map = createOptimizedMap(mapContainerRef.current, {
-        dragging: !isMobile,
-        touchZoom: !isMobile,
+        dragging: true,
+        touchZoom: true,
       }).setView([currentCityPin.lat, currentCityPin.lng], 11);
       mapInstanceRef.current = map;
-      if (isMobile) {
-        map.dragging.disable();
-        map.touchZoom.disable();
-      }
+      map.dragging.enable();
+      map.touchZoom.enable();
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
@@ -1690,564 +1679,104 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* 5. APP UPDATES & OTA SETTINGS TAB */}
+      {/* 5. APP UPDATE LINK TAB */}
       {activeTab === 'updates' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Notification Alert */}
+        <div className="enterprise-panel" style={{ padding: '28px', maxWidth: '640px' }}>
+          <div style={{ marginBottom: '20px', borderBottom: '1px solid #E2E8F0', paddingBottom: '14px' }}>
+            <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <UploadCloud size={20} color="#1A3C6E" />
+              {lang === 'hi' ? 'मोबाइल ऐप अपडेट लिंक' : 'Mobile App Update'}
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: '#64748B' }}>
+              {lang === 'hi'
+                ? 'नया ऐप लिंक यहाँ डालें। सर्वर तुरंत सभी कर्मचारियों के मोबाइल में नया अपडेट दिखाएगा।'
+                : 'Paste the new app download link here to notify all employee phones about the update.'}
+            </p>
+          </div>
+
           {updateNotice && (
             <div
               style={{
                 background: updateNotice.type === 'success' ? '#DCFCE7' : '#FEE2E2',
                 color: updateNotice.type === 'success' ? '#166534' : '#991B1B',
-                padding: '12px 18px',
+                padding: '12px 16px',
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: '600',
+                marginBottom: '18px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                gap: '8px',
                 border: updateNotice.type === 'success' ? '1px solid #86EFAC' : '1px solid #FCA5A5',
               }}
             >
               {updateNotice.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-              <div style={{ flex: 1 }}>{updateNotice.message}</div>
+              <span>{updateNotice.message}</span>
             </div>
           )}
 
-          {/* Active Broadcast Status Hero */}
-          <div
-            className="enterprise-panel"
-            style={{
-              padding: '24px',
-              background: updateData.isActive
-                ? 'linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%)'
-                : 'linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%)',
-              border: updateData.isActive ? '1.5px solid #86EFAC' : '1.5px solid #FDE68A',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                <div
-                  style={{
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: '12px',
-                    background: updateData.isActive ? '#16A34A' : '#D97706',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                  }}
-                >
-                  <Radio size={24} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        background: updateData.isActive ? '#DCFCE7' : '#FEF3C7',
-                        color: updateData.isActive ? '#15803D' : '#B45309',
-                        padding: '3px 10px',
-                        borderRadius: '999px',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        letterSpacing: '0.5px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: '7px',
-                          height: '7px',
-                          borderRadius: '50%',
-                          background: updateData.isActive ? '#16A34A' : '#D97706',
-                        }}
-                      />
-                      {updateData.isActive ? 'LIVE BROADCAST ACTIVE' : 'BROADCAST PAUSED'}
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#64748B' }}>
-                      Target Build: <strong>v{updateData.latestVersion}</strong> (Build #{updateData.latestVersionCode})
-                    </span>
-                  </div>
-                  <h2 style={{ margin: '6px 0 3px 0', fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>
-                    {updateData.isActive
-                      ? `Version v${updateData.latestVersion} is actively being served to employees`
-                      : 'Update broadcast is currently paused for all field devices'}
-                  </h2>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '680px' }}>
-                    {updateData.isActive
-                      ? 'When representatives open their AHTRI FFA mobile app, their device will automatically detect this build and prompt in-app download.'
-                      : 'Representatives will continue running their existing installed version without any update interruption or prompt.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => handleToggleBroadcastActive(!updateData.isActive)}
-                  disabled={isSavingUpdateInfo}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '9px 16px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    border: updateData.isActive ? '1px solid #DC2626' : '1px solid #16A34A',
-                    background: updateData.isActive ? '#FEF2F2' : '#F0FDF4',
-                    color: updateData.isActive ? '#DC2626' : '#16A34A',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {updateData.isActive ? <Pause size={15} /> : <Play size={15} />}
-                  <span>{updateData.isActive ? 'Pause Broadcast' : 'Resume Broadcast'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fetchRemoteVersionInfo()}
-                  disabled={isLoadingUpdateInfo}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '9px 14px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    border: '1px solid #CBD5E1',
-                    background: '#FFFFFF',
-                    color: '#334155',
-                  }}
-                >
-                  <RefreshCw size={14} style={{ animation: isLoadingUpdateInfo ? 'spin 1s linear infinite' : 'none' }} />
-                  <span>Refresh</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Main 2-Column Form Layout */}
-          <form onSubmit={handleBroadcastUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))', gap: '20px' }}>
-              {/* Column 1: Backend Connection & APK Binary */}
-              <div className="enterprise-panel" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Smartphone size={17} color="#1A3C6E" />
-                    Binary Package & Target Version
-                  </h3>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#64748B' }}>
-                    Configure the compiled APK artifact URL, version numbers, and update enforcement.
-                  </p>
-                </div>
-
-                {/* Target Server Endpoint */}
-                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
-                    Connected Backend Server Endpoint
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={targetServerUrl}
-                      onChange={(e) => setTargetServerUrl(e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #CBD5E1',
-                        fontSize: '12.5px',
-                        fontFamily: 'monospace',
-                      }}
-                      placeholder="https://ahtri-backend.onrender.com"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleTestServerConnection}
-                      disabled={isTestingServerConnection}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '6px',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
-                        border: '1px solid #1A3C6E',
-                        background: '#1A3C6E',
-                        color: '#FFFFFF',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {isTestingServerConnection ? 'Testing...' : 'Test Server'}
-                    </button>
-                  </div>
-                  <span style={{ display: 'block', fontSize: '10.5px', color: '#64748B', marginTop: '4px' }}>
-                    Production Render URL: <code>https://ahtri-backend.onrender.com</code>
-                  </span>
-                </div>
-
-                {/* APK Download URL Input */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-                    Expo EAS / Compiled APK Download URL *
-                  </label>
-                  <input
-                    type="url"
-                    value={updateData.downloadUrl}
-                    onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
-                    placeholder="https://expo.dev/artifacts/eas/...apk"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      border: '1.5px solid #94A3B8',
-                      fontSize: '12.5px',
-                      fontFamily: 'monospace',
-                      boxSizing: 'border-box',
-                      background: '#FFFFFF',
-                    }}
-                    required
-                  />
-
-                  {/* URL Action Tools */}
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {updateData.downloadUrl && (
-                      <a
-                        href={updateData.downloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          fontSize: '11.5px',
-                          fontWeight: '600',
-                          color: '#1A3C6E',
-                          textDecoration: 'none',
-                          padding: '3px 8px',
-                          background: '#EFF6FF',
-                          borderRadius: '4px',
-                          border: '1px solid #BFDBFE',
-                        }}
-                      >
-                        <ExternalLink size={12} />
-                        Test / Download Link
-                      </a>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (updateData.downloadUrl) {
-                          navigator.clipboard.writeText(updateData.downloadUrl);
-                          setCopiedDownloadUrl(true);
-                          setTimeout(() => setCopiedDownloadUrl(false), 2500);
-                        }
-                      }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        fontSize: '11.5px',
-                        fontWeight: '600',
-                        color: copiedDownloadUrl ? '#166534' : '#475569',
-                        background: copiedDownloadUrl ? '#DCFCE7' : '#F1F5F9',
-                        border: '1px solid #CBD5E1',
-                        borderRadius: '4px',
-                        padding: '3px 8px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {copiedDownloadUrl ? <Check size={12} /> : <Copy size={12} />}
-                      {copiedDownloadUrl ? 'Link Copied!' : 'Copy Link'}
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: '10px', padding: '8px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px dashed #CBD5E1', fontSize: '11px', color: '#475569' }}>
-                    <strong>Permanent Universal Link for MRs:</strong>
-                    <div style={{ marginTop: '3px', fontFamily: 'monospace', color: '#1A3C6E', wordBreak: 'break-all' }}>
-                      {targetServerUrl.replace(/\/+$/, '')}/app/latest-apk
-                    </div>
-                    <span style={{ fontSize: '10px', color: '#64748B' }}>
-                      (Redirects automatically to the latest active APK configured above)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Version Numbers */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
-                      Latest Version *
-                    </label>
-                    <input
-                      type="text"
-                      value={updateData.latestVersion}
-                      onChange={(e) => setUpdateData({ ...updateData, latestVersion: e.target.value })}
-                      placeholder="1.0.1"
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', boxSizing: 'border-box' }}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
-                      Version Code (Build #)
-                    </label>
-                    <input
-                      type="number"
-                      value={updateData.latestVersionCode}
-                      onChange={(e) => setUpdateData({ ...updateData, latestVersionCode: parseInt(e.target.value, 10) || 1 })}
-                      placeholder="2"
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', boxSizing: 'border-box' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
-                      Min Supported Version
-                    </label>
-                    <input
-                      type="text"
-                      value={updateData.minimumVersion}
-                      onChange={(e) => setUpdateData({ ...updateData, minimumVersion: e.target.value })}
-                      placeholder="1.0.0"
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Toggles */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={updateData.forceUpdate}
-                      onChange={(e) => setUpdateData({ ...updateData, forceUpdate: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0F172A' }}>
-                        Mandatory Update (Strict Enforcement)
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748B' }}>
-                        Prevents representatives from closing the update dialog until they have installed the new APK.
-                      </div>
-                    </div>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={updateData.isActive}
-                      onChange={(e) => setUpdateData({ ...updateData, isActive: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0F172A' }}>
-                        Active Broadcast Enabled
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748B' }}>
-                        Uncheck to temporarily pause broadcasting update prompts to mobile apps.
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Column 2: Release Notes & Mobile App Preview */}
-              <div className="enterprise-panel" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Sparkles size={17} color="#F59E0B" />
-                    Release Notes & In-App Preview
-                  </h3>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#64748B' }}>
-                    Explain the changes and see how the prompt will look on the employee's screen.
-                  </p>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
-                    Release Notes (One feature or fix per line)
-                  </label>
-                  <textarea
-                    rows={5}
-                    value={releaseNotesText}
-                    onChange={(e) => setReleaseNotesText(e.target.value)}
-                    placeholder="Enter what's new in this build..."
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '12.5px',
-                      boxSizing: 'border-box',
-                      lineHeight: '1.5',
-                      fontFamily: 'inherit',
-                    }}
-                  />
-                </div>
-
-                {/* Mobile Screen In-App Mockup Preview */}
-                <div style={{ background: '#0F172A', padding: '16px', borderRadius: '12px', color: '#FFFFFF', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#94A3B8' }}>
-                      <Smartphone size={13} />
-                      EMPLOYEE MOBILE SCREEN PREVIEW
-                    </div>
-                    <span style={{ fontSize: '10px', background: '#1E293B', padding: '2px 6px', borderRadius: '4px', color: '#38BDF8' }}>
-                      Native Dialog
-                    </span>
-                  </div>
-
-                  <div style={{ background: '#1E293B', borderRadius: '8px', padding: '14px', border: '1px solid #334155' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E' }} />
-                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC' }}>
-                        New Version Available: v{updateData.latestVersion}
-                      </span>
-                    </div>
-
-                    <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#94A3B8' }}>
-                      A newer version of AHTRI FFA is ready with enhanced stability and performance.
-                    </p>
-
-                    <div style={{ background: '#0F172A', borderRadius: '6px', padding: '8px 10px', marginBottom: '12px', maxHeight: '100px', overflowY: 'auto' }}>
-                      <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#CBD5E1', marginBottom: '4px' }}>
-                        What's New:
-                      </div>
-                      {releaseNotesText.split('\n').filter(Boolean).map((note, idx) => (
-                        <div key={idx} style={{ fontSize: '10px', color: '#94A3B8', display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '2px' }}>
-                          <span style={{ color: '#22C55E' }}>•</span>
-                          <span>{note}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        background: '#16A34A',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        fontSize: '12px',
-                        fontWeight: '800',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        cursor: 'default',
-                      }}
-                    >
-                      <DownloadCloud size={14} />
-                      Update Now (In-App Download)
-                    </button>
-                  </div>
-                </div>
-
-                {updateData.publishedAt && (
-                  <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Last broadcasted: {new Date(updateData.publishedAt).toLocaleString()}</span>
-                    <span>By: {updateData.publishedBy || 'Admin'}</span>
-                  </div>
-                )}
-              </div>
+          <form onSubmit={handleBroadcastUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
+                {lang === 'hi' ? 'ऐप डाउनलोड लिंक (APK URL) *' : 'App Download Link (URL) *'}
+              </label>
+              <input
+                type="url"
+                value={updateData.downloadUrl}
+                onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
+                placeholder="https://expo.dev/artifacts/eas/...apk"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #CBD5E1',
+                  fontSize: '13px',
+                  boxSizing: 'border-box',
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                }}
+                required
+              />
             </div>
 
-            {/* Broadcast Submission Bar */}
-            <div className="enterprise-panel" style={{ padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', background: '#F8FAFC' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
               <div>
-                <div style={{ fontWeight: '700', fontSize: '13.5px', color: '#0F172A' }}>
-                  Deploy Update to All Field Representatives
+                <div style={{ fontWeight: '700', fontSize: '13px', color: '#0F172A' }}>
+                  {lang === 'hi' ? 'कर्मचारियों को अपडेट दिखाएं' : 'Notify Employees in App'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748B' }}>
-                  Saves configuration to persistent backend storage and updates live endpoints instantly.
+                <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                  {updateData.isActive
+                    ? (lang === 'hi' ? 'चालू: ऐप खोलते ही कर्मचारियों को अपडेट का विकल्प मिलेगा।' : 'Active: Employees will see the update popup when opening the app.')
+                    : (lang === 'hi' ? 'बंद: अपडेट का विकल्प अभी नहीं दिखेगा।' : 'Paused: Update prompts are currently suppressed.')}
                 </div>
               </div>
+              <input
+                type="checkbox"
+                checked={updateData.isActive}
+                onChange={(e) => setUpdateData({ ...updateData, isActive: e.target.checked })}
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+              />
+            </div>
 
+            <div style={{ paddingTop: '6px' }}>
               <button
                 type="submit"
                 disabled={isSavingUpdateInfo}
                 className="btn-enterprise primary"
                 style={{
-                  padding: '11px 26px',
-                  fontSize: '13.5px',
-                  fontWeight: '800',
+                  padding: '11px 24px',
+                  fontSize: '13px',
+                  fontWeight: '700',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 14px rgba(26,60,110,0.25)',
                 }}
               >
-                <UploadCloud size={18} />
-                <span>{isSavingUpdateInfo ? 'Broadcasting to Server...' : 'Broadcast Update to All Employees'}</span>
+                <Save size={16} />
+                <span>{isSavingUpdateInfo ? (lang === 'hi' ? 'सहेज रहे हैं...' : 'Publishing...') : (lang === 'hi' ? 'अपडेट प्रकाशित करें' : 'Publish Update')}</span>
               </button>
             </div>
           </form>
-
-          {/* Operator Step-by-Step Instructions Card */}
-          <div className="enterprise-panel" style={{ padding: '24px' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Terminal size={17} color="#1A3C6E" />
-              Standard Operator Procedure: Compiling in Expo & Publishing Updates
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#1A3C6E', marginBottom: '4px' }}>
-                  1. Compile in Expo EAS
-                </div>
-                <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.5' }}>
-                  In the <code>mobile/</code> directory, execute:
-                  <br />
-                  <code style={{ background: '#E2E8F0', padding: '2px 5px', borderRadius: '3px', display: 'inline-block', marginTop: '4px' }}>
-                    npx eas-cli build -p android --profile preview
-                  </code>
-                  <br />
-                  Or push your commit to GitHub to run GitHub Actions.
-                </p>
-              </div>
-
-              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#1A3C6E', marginBottom: '4px' }}>
-                  2. Copy Direct APK Artifact Link
-                </div>
-                <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.5' }}>
-                  When EAS Build finishes, copy the generated <code>.apk</code> URL (e.g. <code>https://expo.dev/artifacts/eas/....apk</code>).
-                </p>
-              </div>
-
-              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#1A3C6E', marginBottom: '4px' }}>
-                  3. Paste & Broadcast
-                </div>
-                <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.5' }}>
-                  Paste the APK link in the form above, bump the version string (e.g. <code>1.0.2</code>), write release notes, and click <strong>"Broadcast Update"</strong>.
-                </p>
-              </div>
-
-              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#166534', marginBottom: '4px' }}>
-                  4. Automated In-App Installation
-                </div>
-                <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.5' }}>
-                  When employees open their app, they see the update popup. The app downloads the APK in-app with a progress bar and launches the native package installer.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>

@@ -63,10 +63,28 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
+  const handleDismiss = async () => {
+    if (updateInfo?.downloadUrl) {
+      await AppUpdateService.markUpdateHandled(updateInfo.downloadUrl, updateInfo.latestVersion);
+    }
+    onClose();
+  };
+
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => !isMandatory && downloadState !== 'DOWNLOADING' && onClose()}>
+    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => downloadState !== 'DOWNLOADING' && handleDismiss()}>
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
+          {/* Close 'X' Button at top-right */}
+          {downloadState !== 'DOWNLOADING' && (
+            <TouchableOpacity
+              style={styles.closeXBtn}
+              onPress={handleDismiss}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.closeXText}>✕</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Top Banner & Icon */}
           <View style={styles.bannerHeader}>
             <View style={styles.iconCircle}>
@@ -78,27 +96,27 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               {downloadState === 'DOWNLOADING'
                 ? 'Downloading Update...'
                 : downloadState === 'READY_TO_INSTALL'
-                ? 'Installing Update'
+                ? 'Update Downloaded!'
                 : 'New Update Available'}
             </Text>
             <Text style={styles.headerSubtitle}>
               {downloadState === 'DOWNLOADING'
-                ? 'Downloading package directly inside app (Play Store style)'
-                : isMandatory
-                ? 'Critical Security & Live Map Update'
-                : 'Enhanced Live Map & Automatic Features'}
+                ? 'Downloading package directly inside app'
+                : downloadState === 'READY_TO_INSTALL'
+                ? 'Installation package is ready on your device'
+                : 'A newer version is available for download'}
             </Text>
           </View>
 
           {/* Version Pill Indicator */}
           <View style={styles.versionPillRow}>
             <View style={styles.versionBadgeCurrent}>
-              <Text style={styles.versionLabel}>Installed</Text>
+              <Text style={styles.versionLabel}>Current</Text>
               <Text style={styles.versionValue}>v{currentVersion}</Text>
             </View>
             <Text style={styles.versionArrow}>➔</Text>
             <View style={styles.versionBadgeNew}>
-              <Text style={styles.versionLabelNew}>New Release</Text>
+              <Text style={styles.versionLabelNew}>New</Text>
               <Text style={styles.versionValueNew}>v{updateInfo.latestVersion}</Text>
             </View>
           </View>
@@ -126,10 +144,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             <View style={styles.readyCard}>
               <Text style={styles.readyHeading}>Download Completed!</Text>
               <Text style={styles.readyText}>
-                Android package installer prompt has been triggered. Tap "Install" on the OS dialog to complete your update.
+                The update has been downloaded. If the installer did not launch automatically, tap below.
               </Text>
               <TouchableOpacity style={styles.reinstallBtn} onPress={handleStartInAppUpdate}>
-                <Text style={styles.reinstallBtnText}>Re-trigger Installer Prompt</Text>
+                <Text style={styles.reinstallBtnText}>Open Installer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.doneBtn} onPress={handleDismiss}>
+                <Text style={styles.doneBtnText}>Done / Close</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -151,13 +172,6 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 </ScrollView>
               </View>
 
-              {/* Seamless In-Place Update Note */}
-              <View style={styles.infoBox}>
-                <Text style={styles.infoBoxText}>
-                  💡 <Text style={{ fontWeight: '700' }}>In-App Update:</Text> Downloads directly inside the app like the Play Store. No manual uninstallation or browser redirects.
-                </Text>
-              </View>
-
               {downloadState === 'ERROR' && (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorText}>⚠️ {errorMessage || 'Download error. Please try again.'}</Text>
@@ -168,21 +182,21 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
           {/* Action Buttons */}
           <View style={styles.actionsRow}>
-            {downloadState !== 'DOWNLOADING' && !isMandatory && (
-              <TouchableOpacity style={styles.laterBtn} onPress={onClose}>
-                <Text style={styles.laterBtnText}>Later</Text>
-              </TouchableOpacity>
-            )}
-
             {downloadState !== 'DOWNLOADING' && downloadState !== 'READY_TO_INSTALL' && (
-              <TouchableOpacity
-                style={[styles.updateBtn, isMandatory && { flex: 1 }]}
-                onPress={handleStartInAppUpdate}
-              >
-                <Text style={styles.updateBtnText}>
-                  {downloadState === 'ERROR' ? 'Retry Download' : 'Update Now (In-App)'}
-                </Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={styles.laterBtn} onPress={handleDismiss}>
+                  <Text style={styles.laterBtnText}>Later</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.updateBtn}
+                  onPress={handleStartInAppUpdate}
+                >
+                  <Text style={styles.updateBtnText}>
+                    {downloadState === 'ERROR' ? 'Retry Download' : 'Download Update'}
+                  </Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
@@ -464,5 +478,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  closeXBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    zIndex: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeXText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  doneBtn: {
+    marginTop: 10,
+    width: '100%',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#0F8B5A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

@@ -36,18 +36,18 @@ export const STREET_PROVIDERS: TileProvider[] = [
     maxZoom: 22,
   },
   {
-    name: 'CartoVoyager',
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    maxNativeZoom: 20,
-    maxZoom: 22,
-  },
-  {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
-    attribution: 'Map data &copy; OpenStreetMap contributors',
+    attribution: '&copy; OpenStreetMap contributors',
+    maxNativeZoom: 19,
+    maxZoom: 22,
+  },
+  {
+    name: 'OSMHot',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b'],
+    attribution: '&copy; OpenStreetMap contributors, Humanitarian OpenStreetMap Team',
     maxNativeZoom: 19,
     maxZoom: 22,
   },
@@ -183,9 +183,9 @@ export function createOptimizedMap(
     zoomSnap: 0.5,
     maxZoom: 22,
     minZoom: 3,
-    // On phone screens, disable scroll-wheel and gesture hijacking by default
     scrollWheelZoom: false,
-    touchZoom: !isMobile ? true : 'center',
+    touchZoom: true,
+    dragging: true,
     ...options,
   });
 }

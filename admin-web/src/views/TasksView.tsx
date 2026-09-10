@@ -813,14 +813,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const map = createOptimizedMap(mapContainerRef.current, {
         zoomControl: false,
-        dragging: !isMobile,
-        touchZoom: !isMobile,
+        dragging: true,
+        touchZoom: true,
       }).setView([taskLat, taskLng], 16);
       mapInstanceRef.current = map;
-      if (isMobile) {
-        map.dragging.disable();
-        map.touchZoom.disable();
-      }
+      map.dragging.enable();
+      map.touchZoom.enable();
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
