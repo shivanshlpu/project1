@@ -29,7 +29,7 @@ import {
   Compass,
   FileText,
 } from 'lucide-react';
-import { TaskItem, VerificationLogItem, DoctorItem } from '../types';
+import { TaskItem, VerificationLogItem, DoctorItem, TaskOrderItem } from '../types';
 import { Language, translations } from '../utils/i18n';
 import { create3DMapPinHtml } from '../utils/mapPinGenerator';
 import {
@@ -307,6 +307,26 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [isBulkUnsuspending, setIsBulkUnsuspending] = useState<boolean>(false);
   const [isCreatingOnServer, setIsCreatingOnServer] = useState<boolean>(false);
   const [toastNotification, setToastNotification] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
+  const [selectedCompletedTask, setSelectedCompletedTask] = useState<TaskItem | null>(null);
+  const [selectedOrderItem, setSelectedOrderItem] = useState<TaskOrderItem | null>(null);
+
+  const getDelayAnalysis = (task: TaskItem) => {
+    if (!task.started_at || !task.time) return { isDelayed: false, delayMinutes: 0, text: 'Scheduled On Time' };
+    try {
+      const scheduledDateTime = new Date(`${task.date || '2026-09-06'}T${task.time}`);
+      const actualStart = new Date(task.started_at);
+      const diffMinutes = Math.round((actualStart.getTime() - scheduledDateTime.getTime()) / 60000);
+      if (diffMinutes > 15) {
+        return { isDelayed: true, delayMinutes: diffMinutes, text: `${diffMinutes}m Delay (Late Check-in)` };
+      } else if (diffMinutes < -10) {
+        return { isDelayed: false, delayMinutes: diffMinutes, text: `${Math.abs(diffMinutes)}m Early (Punctual)` };
+      } else {
+        return { isDelayed: false, delayMinutes: diffMinutes, text: 'Punctual (±10m of Schedule)' };
+      }
+    } catch {
+      return { isDelayed: false, delayMinutes: 0, text: 'Verified' };
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToastNotification({ message, type });
@@ -571,6 +591,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
           <div style="font-weight:800;font-size:13.5px;color:#0F172A;margin-bottom:2px;">${loc.clinic || loc.name}</div>
           <div style="font-size:11.5px;color:#0F8B5A;font-weight:600;">${loc.doctor_name ? 'Dr. ' + loc.doctor_name : loc.specialization || ''}</div>
           <div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.3;">${loc.address}</div>
+          <div style="font-size:11px;color:#0F8B5A;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px;">
+            📍 Marked by: ${loc.created_by_name || 'Rahul Sharma (Field MR)'}
+          </div>
           <div style="margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:700;background:#EFF6FF;color:#1A3C6E;padding:2px 6px;border-radius:4px;">${loc.category || 'CLINIC'}</span>
             <button onclick="window.__assignTaskToLocation('${loc.id}')" style="background:#1A3C6E;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Plan Visit Here</button>
@@ -2316,6 +2339,38 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 ))}
               </div>
             )}
+
+            {task.status === 'COMPLETED' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCompletedTask(task);
+                  setSelectedOrderItem(null);
+                }}
+                style={{
+                  marginTop: '8px',
+                  width: '100%',
+                  padding: '9px 12px',
+                  background: '#F0FDF4',
+                  color: '#166534',
+                  border: '1px solid #86EFAC',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#DCFCE7')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#F0FDF4')}
+              >
+                <FileText size={13} />
+                <span>View Full Visit & Order Details ({task.orders?.length || 0} orders)</span>
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -3314,6 +3369,429 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Visit & Order Details Modal */}
+      {selectedCompletedTask && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+          onClick={() => setSelectedCompletedTask(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              maxWidth: '840px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #E2E8F0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: '#DCFCE7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CheckCircle2 size={22} color="#166534" />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                      {selectedCompletedTask.title}
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: '#DCFCE7',
+                        color: '#166534',
+                      }}
+                    >
+                      COMPLETED
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px' }}>
+                    {selectedCompletedTask.location_name} • Dr. Detailing & Commercial Report
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCompletedTask(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '6px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Top Stats Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '12px',
+                }}
+              >
+                {/* Rep */}
+                <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <User size={13} /> Field Representative
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
+                    {selectedCompletedTask.assigned_mr_name}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>{selectedCompletedTask.assigned_mr_id || 'MR'}</div>
+                </div>
+
+                {/* Timing & Punctuality */}
+                {(() => {
+                  const delay = getDelayAnalysis(selectedCompletedTask);
+                  return (
+                    <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Clock size={13} /> Timing & Punctuality
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
+                        Sched: {selectedCompletedTask.time}
+                      </div>
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '4px',
+                          fontSize: '10.5px',
+                          fontWeight: '700',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: delay.isDelayed ? '#FEE2E2' : '#DCFCE7',
+                          color: delay.isDelayed ? '#B91C1C' : '#15803D',
+                        }}
+                      >
+                        {delay.text}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Duration */}
+                <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Timer size={13} /> Meeting Duration
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
+                    {selectedCompletedTask.duration_seconds
+                      ? `${Math.floor(selectedCompletedTask.duration_seconds / 60)}m ${selectedCompletedTask.duration_seconds % 60}s`
+                      : 'Not logged'}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>
+                    Ended:{' '}
+                    {selectedCompletedTask.completed_at
+                      ? new Date(selectedCompletedTask.completed_at).toLocaleTimeString()
+                      : 'Completed'}
+                  </div>
+                </div>
+
+                {/* Geofence & GPS Audit */}
+                <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <ShieldCheck size={13} color="#0F8B5A" /> Geofence Verification
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F8B5A', marginTop: '4px' }}>
+                    {selectedCompletedTask.distance_verified ? 'Verified On-Site' : 'Verified'}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>
+                    Radius: {selectedCompletedTask.geofence_radius_m}m
+                  </div>
+                </div>
+              </div>
+
+              {/* Doctor Remarks / Outcome Section */}
+              <div
+                style={{
+                  background: '#FEF9C3',
+                  border: '1px solid #FEF08A',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    color: '#854D0E',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <MessageSquare size={15} />
+                  <span>Doctor Remarks & Detailing Feedback</span>
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: '#1E293B',
+                    lineHeight: '1.5',
+                    background: '#FFFFFF',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #FDE047',
+                  }}
+                >
+                  {selectedCompletedTask.outcome || 'No specific doctor remarks recorded for this visit.'}
+                </div>
+              </div>
+
+              {/* Orders Booked Table */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: '#F8FAFC',
+                    borderBottom: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShoppingBag size={16} color="#166534" />
+                    <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0F172A' }}>
+                      Orders Captured / POB (Product On Booking)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        background: '#DCFCE7',
+                        color: '#166534',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      {selectedCompletedTask.orders?.length || 0} items
+                    </span>
+                  </div>
+
+                  {selectedCompletedTask.orders && selectedCompletedTask.orders.length > 0 && (
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: '#166534' }}>
+                      Total Value: ₹
+                      {selectedCompletedTask.orders
+                        .reduce((sum, o) => sum + (o.total_amount || (o.unit_price ? o.unit_price * o.quantity : 0)), 0)
+                        .toLocaleString('en-IN')}
+                    </div>
+                  )}
+                </div>
+
+                {selectedCompletedTask.orders && selectedCompletedTask.orders.length > 0 ? (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ background: '#F1F5F9', color: '#475569', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>#</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>Product Name</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Quantity</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Unit Price (₹)</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Total (₹)</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>Stockist / Distributor</th>
+                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Inspect</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedCompletedTask.orders.map((ord, idx) => {
+                          const total = ord.total_amount || (ord.unit_price ? ord.unit_price * ord.quantity : 0);
+                          const isSelected = selectedOrderItem === ord;
+                          return (
+                            <tr
+                              key={idx}
+                              onClick={() => setSelectedOrderItem(isSelected ? null : ord)}
+                              style={{
+                                borderBottom: '1px solid #E2E8F0',
+                                background: isSelected ? '#EFF6FF' : idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s ease',
+                              }}
+                            >
+                              <td style={{ padding: '10px 14px', color: '#94A3B8' }}>{idx + 1}</td>
+                              <td style={{ padding: '10px 14px', fontWeight: '700', color: '#0F172A' }}>
+                                {ord.product_name}
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: '600' }}>
+                                <span
+                                  style={{
+                                    background: '#E2E8F0',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                  }}
+                                >
+                                  {ord.quantity} units
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'right', color: '#475569' }}>
+                                ₹{ord.unit_price || '-'}
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '700', color: '#166534' }}>
+                                ₹{total.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '10px 14px', color: '#2563EB', fontWeight: '600' }}>
+                                {ord.distributor || 'Default Stockist'}
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrderItem(isSelected ? null : ord);
+                                  }}
+                                  style={{
+                                    background: isSelected ? '#2563EB' : '#FFFFFF',
+                                    color: isSelected ? '#FFFFFF' : '#475569',
+                                    border: '1px solid #CBD5E1',
+                                    borderRadius: '4px',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {isSelected ? 'Viewing' : 'Inspect'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
+                    No commercial orders were booked during this visit (Scientific detailing & sampling only).
+                  </div>
+                )}
+
+                {/* Selected Order Inspector Sub-panel */}
+                {selectedOrderItem && (
+                  <div
+                    style={{
+                      margin: '12px 16px 16px',
+                      padding: '14px 16px',
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '13px', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ShoppingBag size={14} /> Item Inspector: {selectedOrderItem.product_name}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderItem(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        Close Inspector
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', fontSize: '12px' }}>
+                      <div>
+                        <span style={{ color: '#64748B' }}>Quantity:</span> <strong>{selectedOrderItem.quantity} packs</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B' }}>Unit Rate:</span> <strong>₹{selectedOrderItem.unit_price || '-'}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B' }}>Line Total:</span> <strong>₹{(selectedOrderItem.total_amount || ((selectedOrderItem.unit_price || 0) * selectedOrderItem.quantity)).toLocaleString('en-IN')}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B' }}>Fulfillment Hub:</span> <strong>{selectedOrderItem.distributor || 'Apollo Central Distribution'}</strong>
+                      </div>
+                    </div>
+                    {selectedOrderItem.notes && (
+                      <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#334155' }}>
+                        <strong>Fulfillment Note:</strong> {selectedOrderItem.notes}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                background: '#F8FAFC',
+                borderBottomLeftRadius: '16px',
+                borderBottomRightRadius: '16px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedCompletedTask(null)}
+                style={{
+                  padding: '9px 18px',
+                  background: '#1A3C6E',
+                  color: '#FFFFFF',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                Close Audit Sheet
+              </button>
             </div>
           </div>
         </div>

@@ -128,11 +128,32 @@ export class ApprovalsService {
     };
   }
 
+  private calculateDays(start: string, end: string): number {
+    try {
+      const d1 = new Date(start);
+      const d2 = new Date(end);
+      const diffTime = d2.getTime() - d1.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      return diffDays > 0 ? diffDays : 1;
+    } catch {
+      return 1;
+    }
+  }
+
   // Leave management helper methods
   async createLeave(mrId: string, dto: CreateLeaveDto) {
+    const category =
+      dto.category ||
+      (dto.reason.toLowerCase().includes('sick') || dto.reason.toLowerCase().includes('medical')
+        ? 'SICK'
+        : dto.reason.toLowerCase().includes('earned')
+        ? 'EARNED'
+        : 'CASUAL');
+
     const leave: LeaveRequest = {
       id: `leave-${uuidv4().substring(0, 8)}`,
       mr_id: mrId,
+      category,
       start_date: dto.start_date,
       end_date: dto.end_date,
       reason: dto.reason,
@@ -160,5 +181,85 @@ export class ApprovalsService {
         return { ...l, mr_name: mr?.name || 'Unknown' };
       })
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+
+  async getLeaveQuota(mrId: string) {
+    let quota = this.db.leaveQuotas.find((q) => q.mr_id === mrId);
+    if (!quota) {
+      quota = {
+        mr_id: mrId,
+        casual_total: 12,
+        sick_total: 10,
+        earned_total: 15,
+        updated_at: new Date().toISOString(),
+      };
+      this.db.leaveQuotas.push(quota);
+    }
+
+    const approvedLeaves = this.db.leaveRequests.filter(
+      (l) => l.mr_id === mrId && l.status === 'APPROVED',
+    );
+
+    let casualUsed = 0;
+    let sickUsed = 0;
+    let earnedUsed = 0;
+
+    for (const l of approvedLeaves) {
+      const days = this.calculateDays(l.start_date, l.end_date);
+      const cat =
+        l.category ||
+        (l.reason.toLowerCase().includes('sick') || l.reason.toLowerCase().includes('medical')
+          ? 'SICK'
+          : l.reason.toLowerCase().includes('earned')
+          ? 'EARNED'
+          : 'CASUAL');
+      if (cat === 'SICK') sickUsed += days;
+      else if (cat === 'EARNED') earnedUsed += days;
+      else casualUsed += days;
+    }
+
+    return {
+      mr_id: mrId,
+      casual: {
+        total: quota.casual_total,
+        used: casualUsed,
+        remaining: Math.max(0, quota.casual_total - casualUsed),
+      },
+      sick: {
+        total: quota.sick_total,
+        used: sickUsed,
+        remaining: Math.max(0, quota.sick_total - sickUsed),
+      },
+      earned: {
+        total: quota.earned_total,
+        used: earnedUsed,
+        remaining: Math.max(0, quota.earned_total - earnedUsed),
+      },
+      updated_at: quota.updated_at,
+    };
+  }
+
+  async updateLeaveQuota(
+    mrId: string,
+    dto: { casual_total?: number; sick_total?: number; earned_total?: number },
+  ) {
+    let quota = this.db.leaveQuotas.find((q) => q.mr_id === mrId);
+    if (!quota) {
+      quota = {
+        mr_id: mrId,
+        casual_total: 12,
+        sick_total: 10,
+        earned_total: 15,
+        updated_at: new Date().toISOString(),
+      };
+      this.db.leaveQuotas.push(quota);
+    }
+
+    if (dto.casual_total !== undefined) quota.casual_total = Number(dto.casual_total);
+    if (dto.sick_total !== undefined) quota.sick_total = Number(dto.sick_total);
+    if (dto.earned_total !== undefined) quota.earned_total = Number(dto.earned_total);
+    quota.updated_at = new Date().toISOString();
+
+    return this.getLeaveQuota(mrId);
   }
 }

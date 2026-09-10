@@ -21,4 +21,18 @@ export class CreateLeaveDto {
   @IsString()
   @IsNotEmpty()
   reason: string;
+
+  @IsOptional()
+  category?: 'CASUAL' | 'SICK' | 'EARNED';
+}
+
+export class UpdateLeaveQuotaDto {
+  @IsOptional()
+  casual_total?: number;
+
+  @IsOptional()
+  sick_total?: number;
+
+  @IsOptional()
+  earned_total?: number;
 }

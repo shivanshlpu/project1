@@ -225,7 +225,14 @@ export const App: React.FC = () => {
             onLocationAcknowledge={handleAcknowledgeLocation}
           />
         )}
-        {managerTab === 'members' && <MembersManagementView />}
+        {managerTab === 'members' && (
+          <MembersManagementView
+            onNavigateToLocation={(locId) => {
+              setFocusedLocationId(locId);
+              setManagerTab('locations');
+            }}
+          />
+        )}
         {managerTab === 'doctors' && <DoctorsView lang={lang} />}
         {managerTab === 'approvals' && <ApprovalsView />}
         {managerTab === 'reports' && <ReportsView lang={lang} />}

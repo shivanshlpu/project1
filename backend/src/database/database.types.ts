@@ -214,12 +214,21 @@ export interface Expense {
 export interface LeaveRequest {
   id: string;
   mr_id: string;
+  category?: 'CASUAL' | 'SICK' | 'EARNED';
   start_date: string;
   end_date: string;
   reason: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   approved_by?: string;
   created_at: string;
+}
+
+export interface LeaveQuota {
+  mr_id: string;
+  casual_total: number;
+  sick_total: number;
+  earned_total: number;
+  updated_at: string;
 }
 
 export interface TourPlan {

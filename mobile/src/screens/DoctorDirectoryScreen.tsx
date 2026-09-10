@@ -352,8 +352,8 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       {/* Top Header & Search Panel */}
       <View style={styles.headerCard}>
         <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.screenTitle}>Doctors & Locations</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.screenTitle}>Doctors &amp; Locations</Text>
             <Text style={styles.screenSubtitle}>
               Territory doctor directory and interactive GPS pinpointing
             </Text>

@@ -4,12 +4,17 @@ import {
   Post,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
-import { DecideApprovalDto, CreateLeaveDto } from './dto/approvals.dto';
+import {
+  DecideApprovalDto,
+  CreateLeaveDto,
+  UpdateLeaveQuotaDto,
+} from './dto/approvals.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
@@ -52,6 +57,21 @@ export class LeaveController {
   @Get('my')
   async getMyLeaves(@CurrentUser() user: any) {
     return this.approvalsService.getMyLeaves(user.id);
+  }
+
+  @Get('quota')
+  async getLeaveQuota(@CurrentUser() user: any, @Query('mr_id') mrId?: string) {
+    const targetId = mrId || user.id;
+    return this.approvalsService.getLeaveQuota(targetId);
+  }
+
+  @Post('quota/:mr_id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async updateLeaveQuota(
+    @Param('mr_id') mrId: string,
+    @Body() dto: UpdateLeaveQuotaDto,
+  ) {
+    return this.approvalsService.updateLeaveQuota(mrId, dto);
   }
 
   @Get()

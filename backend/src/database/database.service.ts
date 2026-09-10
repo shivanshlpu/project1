@@ -19,6 +19,7 @@ import {
   DCRItem,
   Expense,
   LeaveRequest,
+  LeaveQuota,
   TourPlan,
   Approval,
   Notification,
@@ -54,6 +55,7 @@ export class DatabaseService implements OnModuleInit {
 
   public expenses: Expense[] = [];
   public leaveRequests: LeaveRequest[] = [];
+  public leaveQuotas: LeaveQuota[] = [];
   public tourPlans: TourPlan[] = [];
   public approvals: Approval[] = [];
 
@@ -328,5 +330,30 @@ export class DatabaseService implements OnModuleInit {
       status: 'PENDING',
       created_at: new Date().toISOString(),
     });
+
+    // 8. Seed Initial Leave Quotas
+    this.leaveQuotas.push(
+      {
+        mr_id: mr.id,
+        casual_total: 12,
+        sick_total: 10,
+        earned_total: 15,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        mr_id: mr2.id,
+        casual_total: 12,
+        sick_total: 10,
+        earned_total: 15,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        mr_id: mr3.id,
+        casual_total: 12,
+        sick_total: 10,
+        earned_total: 15,
+        updated_at: new Date().toISOString(),
+      },
+    );
   }
 }

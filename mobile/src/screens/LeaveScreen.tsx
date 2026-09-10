@@ -50,12 +50,38 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
 
-  // Leave balances for this MR
-  const [balances] = useState({
+  // Leave balances for this MR dynamically linked to Admin Panel
+  const [balances, setBalances] = useState({
     casual: { total: 12, used: 4, remaining: 8 },
     sick: { total: 10, used: 4, remaining: 6 },
     earned: { total: 15, used: 3, remaining: 12 },
   });
+
+  // Fetch live leave quota from backend
+  const fetchQuota = async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(`${baseUrl}/leave/quota?mr_id=${currentUserId}`, {
+        headers: {
+          ...headers,
+          'x-user-id': currentUserId,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.casual && data.sick && data.earned) {
+          setBalances({
+            casual: data.casual,
+            sick: data.sick,
+            earned: data.earned,
+          });
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  };
 
   // Submitted leave requests list
   const [leaveHistory, setLeaveHistory] = useState<LeaveItem[]>([
@@ -85,6 +111,13 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   };
 
   const dayCount = calculateDays(startDate, endDate);
+  const selectedKey =
+    leaveCategory === 'Sick Leave'
+      ? 'sick'
+      : leaveCategory === 'Earned Leave'
+      ? 'earned'
+      : 'casual';
+  const currentRemaining = balances[selectedKey]?.remaining ?? 0;
 
   // Fetch live leaves from backend
   const fetchMyLeaves = async () => {
@@ -117,7 +150,8 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
 
   useEffect(() => {
     fetchMyLeaves();
-  }, []);
+    fetchQuota();
+  }, [currentUserId]);
 
   // Quick Preset Date Helpers
   const setQuickDates = (offsetDays: number, durationDays: number) => {
@@ -138,6 +172,22 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
 
     if (new Date(endDate) < new Date(startDate)) {
       Alert.alert('Invalid Date Range', 'End date cannot be earlier than start date.');
+      return;
+    }
+
+    if (currentRemaining <= 0) {
+      Alert.alert(
+        'Leave Balance Exhausted',
+        `Your ${leaveCategory} balance is 0 days remaining.\n\nPlease speak to your Area Manager to increase your leave quota before applying.`,
+      );
+      return;
+    }
+
+    if (dayCount > currentRemaining) {
+      Alert.alert(
+        'Insufficient Leave Balance',
+        `You requested ${dayCount} day(s) of ${leaveCategory}, but only ${currentRemaining} day(s) remain in your quota.\n\nPlease reduce the duration or speak with your Area Manager.`,
+      );
       return;
     }
 
@@ -387,16 +437,45 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
             )}
           </View>
 
+          {/* Quota Exhausted Warning Banner */}
+          {currentRemaining <= 0 && (
+            <View
+              style={{
+                backgroundColor: '#FEF2F2',
+                borderWidth: 1,
+                borderColor: '#FCA5A5',
+                borderRadius: 8,
+                padding: 10,
+                marginTop: 6,
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#991B1B' }}>
+                Leave Balance Exhausted
+              </Text>
+              <Text style={{ fontSize: 11, color: '#7F1D1D', marginTop: 2, lineHeight: 15 }}>
+                Your {leaveCategory} balance is 0. Please speak with your Area Manager (Shivansh Tiwari) to assign or increase your leave allowance.
+              </Text>
+            </View>
+          )}
+
           {/* Submit Action */}
           <TouchableOpacity
-            style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
-            disabled={isSubmitting}
+            style={[
+              styles.submitBtn,
+              (isSubmitting || currentRemaining <= 0) && styles.submitBtnDisabled,
+            ]}
+            disabled={isSubmitting || currentRemaining <= 0}
             onPress={handleSubmitLeave}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitBtnText}>Submit Leave Application</Text>
+              <Text style={styles.submitBtnText}>
+                {currentRemaining <= 0
+                  ? 'Quota Exhausted • Speak to Manager'
+                  : 'Submit Leave Application'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -406,7 +485,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
       {activeTab === 'history' && (
         <View style={styles.card}>
           <View style={styles.historyHeaderRow}>
-            <View>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <Text style={styles.sectionHeader}>Leave Applications &amp; Status</Text>
               <Text style={styles.sectionDesc}>
                 Real-time tracking of decisions made by your Manager
@@ -414,7 +493,10 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
             </View>
             <TouchableOpacity
               style={styles.refreshBtn}
-              onPress={fetchMyLeaves}
+              onPress={() => {
+                fetchMyLeaves();
+                fetchQuota();
+              }}
               disabled={isLoadingHistory}
             >
               <Text style={styles.refreshBtnText}>

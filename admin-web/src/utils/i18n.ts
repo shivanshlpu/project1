@@ -17,7 +17,7 @@ export const translations = {
     tabOverview: 'Performance Overview',
     tabTasks: 'Task Agenda & Audit',
     tabLocations: 'Live Map & Saved Locations',
-    tabMembers: 'MR Members & Device Security',
+    tabMembers: 'Employee Hub (Activity & Leaves)',
     tabDoctors: 'Doctor Directory',
     tabApprovals: 'Approvals Hub',
     tabReports: 'Reports & Export',

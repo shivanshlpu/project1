@@ -274,20 +274,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   };
 
-  const handlePan = (direction: 'up' | 'down' | 'left' | 'right') => {
-    const delta = 0.0012; // ~120 meters
-    let newLat = selectedLat;
-    let newLng = selectedLng;
-
-    if (direction === 'up') newLat += delta;
-    if (direction === 'down') newLat -= delta;
-    if (direction === 'left') newLng -= delta;
-    if (direction === 'right') newLng += delta;
-
-    setSelectedLat(Number(newLat.toFixed(6)));
-    setSelectedLng(Number(newLng.toFixed(6)));
-  };
-
   const handleZoom = (delta: number) => {
     setZoom((prev) => Math.min(18, Math.max(13, prev + delta)));
   };
@@ -610,28 +596,15 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               <View style={styles.crosshairH} pointerEvents="none" />
               <View style={styles.crosshairV} pointerEvents="none" />
 
-              {/* Free Touch Gesture Badge */}
-              <View style={styles.touchHintBadge} pointerEvents="none">
-                <Text style={styles.touchHintText}>👆 Touch & drag freely anywhere</Text>
-              </View>
-
-              {/* 3D Center Pin Overlay */}
+              {/* Standard Google Maps Style Center Pin */}
               <View style={styles.pinOverlay} pointerEvents="none">
-                <View
-                  style={[
-                    styles.pinHead,
-                    { backgroundColor: activeCategoryConfig.color },
-                  ]}
-                >
-                  <Text style={styles.pinIconText}>●</Text>
+                <View style={styles.googlePinContainer}>
+                  <View style={styles.googlePinHead}>
+                    <View style={styles.googlePinDot} />
+                  </View>
+                  <View style={styles.googlePinTip} />
                 </View>
-                <View
-                  style={[
-                    styles.pinPointer,
-                    { borderTopColor: activeCategoryConfig.color },
-                  ]}
-                />
-                <View style={styles.pinRadarRing} />
+                <View style={styles.googlePinShadow} />
               </View>
 
               {/* Map Floating Controls: Zoom In / Out */}
@@ -660,43 +633,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                   </View>
                 )}
               </TouchableOpacity>
-
-              {/* Optional Directional Pan Nudge Controls */}
-              <View style={styles.panControlCluster}>
-                <TouchableOpacity
-                  style={[styles.panBtn, styles.panUp]}
-                  onPress={() => handlePan('up')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.panArrowText}>▲</Text>
-                </TouchableOpacity>
-                <View style={styles.panMiddleRow}>
-                  <TouchableOpacity
-                    style={[styles.panBtn, styles.panLeft]}
-                    onPress={() => handlePan('left')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.panArrowText}>◀</Text>
-                  </TouchableOpacity>
-                  <View style={[styles.panBtn, styles.panCenter]}>
-                    <Text style={styles.panCenterText}>PAN</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.panBtn, styles.panRight]}
-                    onPress={() => handlePan('right')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.panArrowText}>▶</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity
-                  style={[styles.panBtn, styles.panDown]}
-                  onPress={() => handlePan('down')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.panArrowText}>▼</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
 
@@ -1115,45 +1051,52 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    width: 60,
+    height: 60,
   },
-  pinHead: {
+  googlePinContainer: {
+    alignItems: 'center',
+    transform: [{ translateY: -17 }],
+  },
+  googlePinHead: {
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: '#EA4335',
+    borderWidth: 2,
+    borderColor: '#B91C1C',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 8,
   },
-  pinIconText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
+  googlePinDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
   },
-  pinPointer: {
+  googlePinTip: {
     width: 0,
     height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
+    borderLeftWidth: 7,
+    borderRightWidth: 7,
+    borderTopWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    marginTop: -1,
+    borderTopColor: '#EA4335',
+    marginTop: -2,
   },
-  pinRadarRing: {
+  googlePinShadow: {
     position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(15, 139, 90, 0.45)',
-    backgroundColor: 'rgba(15, 139, 90, 0.08)',
-    top: -12,
+    bottom: 24,
+    width: 16,
+    height: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
   },
   zoomControlCol: {
     position: 'absolute',
@@ -1180,50 +1123,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#1E293B',
-  },
-  panControlCluster: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    padding: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  panMiddleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  panBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 1,
-  },
-  panUp: {},
-  panDown: {},
-  panLeft: {},
-  panRight: {},
-  panCenter: {
-    backgroundColor: '#0B2545',
-    borderColor: '#0B2545',
-  },
-  panCenterText: {
-    color: '#FFFFFF',
-    fontSize: 8.5,
-    fontWeight: '800',
-  },
-  panArrowText: {
-    fontSize: 9,
-    color: '#1E293B',
-    fontWeight: '700',
   },
   mapCoordsBadge: {
     position: 'absolute',
