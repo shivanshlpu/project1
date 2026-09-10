@@ -109,6 +109,7 @@ export const translations = {
     tabSecurity: 'Passwords & Security',
     tabCityPinpoint: 'City Pinpoint & Operating Zones',
     tabFieldPolicy: 'Field Rules & Geofence Policy',
+    tabAppUpdates: 'Update Settings (OTA)',
     tabPreferences: 'System Preferences',
 
     // Settings: Profile
@@ -273,6 +274,7 @@ export const translations = {
     tabSecurity: 'पासवर्ड और सुरक्षा',
     tabCityPinpoint: 'शहर पिनपॉइंट और कार्यक्षेत्र',
     tabFieldPolicy: 'फील्ड नियम और जियोफेंस नीतियां',
+    tabAppUpdates: 'अपडेट सेटिंग्स (ओटीए)',
     tabPreferences: 'सिस्टम प्राथमिकताएं',
 
     // Settings: Profile

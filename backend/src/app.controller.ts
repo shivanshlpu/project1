@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Body, Head, Res, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { SupabaseService } from './database/supabase.service';
 
-interface AppVersionData {
+export interface AppVersionData {
   appName: string;
   packageName: string;
   latestVersion: string;
@@ -10,12 +12,14 @@ interface AppVersionData {
   minimumVersion: string;
   downloadUrl: string;
   forceUpdate: boolean;
+  isActive: boolean;
   releaseDate: string;
   releaseNotes: string[];
+  publishedAt?: string;
+  publishedBy?: string;
 }
 
-// In-memory version state with fallback to environment variables
-let currentAppVersion: AppVersionData = {
+const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
   latestVersion: process.env.LATEST_APP_VERSION || '1.0.1',
@@ -25,15 +29,50 @@ let currentAppVersion: AppVersionData = {
     process.env.APP_APK_URL ||
     'https://expo.dev/artifacts/eas/y2kIcf-EohAYBP1skXo_FZp1moFAJZUZNWwMv2Uo5YY.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
+  isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
+  publishedAt: new Date().toISOString(),
+  publishedBy: 'System Admin',
   releaseNotes: [
-    'In-App Download Progress Bar (Just like Google Play Store)',
+    'Free Touch & Pan Live Google Maps with Road & Satellite views',
+    'Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere',
     'Seamless Native Update Prompt: No browser redirects required',
-    'High-Resolution Live Google Maps with Road & Satellite views',
     'Territory doctor directory & instant geotagging',
-    'Zero map freeze and smooth gesture panning',
+    'Ultra-fast server connection & zero freeze',
   ],
 };
+
+const DATA_DIR = path.resolve(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'app_version.json');
+
+function loadPersistedVersion(): AppVersionData {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.latestVersion && parsed.downloadUrl) {
+        return { ...defaultAppVersion, ...parsed };
+      }
+    }
+  } catch (err) {
+    console.warn('[AppVersion] Could not load persisted app_version.json, using defaults:', err);
+  }
+  return { ...defaultAppVersion };
+}
+
+function savePersistedVersion(data: AppVersionData): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[AppVersion] Failed to save app_version.json:', err);
+  }
+}
+
+// In-memory version state initialized from persistent storage
+let currentAppVersion: AppVersionData = loadPersistedVersion();
 
 @Controller()
 export class AppController {
@@ -74,23 +113,30 @@ export class AppController {
   }
 
   /**
-   * Set new APK link or version on the server dynamically
-   * Any client can update or admin can publish
+   * Set new APK link or version on the server dynamically from Admin Panel
+   * Saves to persistent file storage so server restarts never lose the link.
    */
   @Post('api/app/version')
   @Post('app/version')
   updateAppVersion(@Body() body: Partial<AppVersionData>) {
-    if (body.latestVersion) currentAppVersion.latestVersion = body.latestVersion;
+    if (body.latestVersion) currentAppVersion.latestVersion = body.latestVersion.trim();
     if (body.latestVersionCode) currentAppVersion.latestVersionCode = Number(body.latestVersionCode);
-    if (body.minimumVersion) currentAppVersion.minimumVersion = body.minimumVersion;
-    if (body.downloadUrl) currentAppVersion.downloadUrl = body.downloadUrl;
+    if (body.minimumVersion) currentAppVersion.minimumVersion = body.minimumVersion.trim();
+    if (body.downloadUrl) currentAppVersion.downloadUrl = body.downloadUrl.trim();
     if (typeof body.forceUpdate === 'boolean') currentAppVersion.forceUpdate = body.forceUpdate;
-    if (Array.isArray(body.releaseNotes)) currentAppVersion.releaseNotes = body.releaseNotes;
+    if (typeof body.isActive === 'boolean') currentAppVersion.isActive = body.isActive;
+    if (Array.isArray(body.releaseNotes)) currentAppVersion.releaseNotes = body.releaseNotes.filter(Boolean);
+    if (body.publishedBy) currentAppVersion.publishedBy = body.publishedBy;
+
     currentAppVersion.releaseDate = new Date().toISOString().split('T')[0];
+    currentAppVersion.publishedAt = new Date().toISOString();
+
+    // Persist to disk
+    savePersistedVersion(currentAppVersion);
 
     return {
       success: true,
-      message: 'App version and APK link updated successfully on server',
+      message: 'App version broadcast updated and persisted successfully on server',
       current: currentAppVersion,
     };
   }

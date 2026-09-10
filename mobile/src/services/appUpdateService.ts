@@ -14,6 +14,7 @@ export interface AppVersionInfo {
   forceUpdate: boolean;
   releaseDate?: string;
   releaseNotes: string[];
+  isActive?: boolean;
 }
 
 export interface UpdateCheckResult {
@@ -184,6 +185,16 @@ export const AppUpdateService = {
    */
   evaluateVersion(info: AppVersionInfo, baseVersion?: string): UpdateCheckResult {
     const currentVer = baseVersion || CURRENT_APP_VERSION;
+    // If update broadcast is paused or deactivated by admin, suppress update prompts
+    if (info.isActive === false) {
+      return {
+        hasUpdate: false,
+        isMandatory: false,
+        currentVersion: currentVer,
+        info,
+      };
+    }
+
     const isNewer = compareSemVer(info.latestVersion, currentVer) > 0;
     const isBelowMinimum = compareSemVer(currentVer, info.minimumVersion) < 0;
     const isMandatory = info.forceUpdate || isBelowMinimum;
