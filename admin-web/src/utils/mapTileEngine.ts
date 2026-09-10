@@ -183,7 +183,7 @@ export function createOptimizedMap(
     zoomSnap: 0.5,
     maxZoom: 22,
     minZoom: 3,
-    scrollWheelZoom: false,
+    scrollWheelZoom: true,
     touchZoom: true,
     dragging: true,
     ...options,

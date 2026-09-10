@@ -83,10 +83,12 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     if (isMapInteracting) {
       mapInstanceRef.current.dragging.disable();
       mapInstanceRef.current.touchZoom.disable();
+      mapInstanceRef.current.scrollWheelZoom.disable();
       setIsMapInteracting(false);
     } else {
       mapInstanceRef.current.dragging.enable();
       mapInstanceRef.current.touchZoom.enable();
+      mapInstanceRef.current.scrollWheelZoom.enable();
       setIsMapInteracting(true);
     }
   };
@@ -101,10 +103,12 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         zoomControl: false,
         dragging: true,
         touchZoom: true,
+        scrollWheelZoom: true,
       }).setView([selectedLat, selectedLng], 16);
       mapInstanceRef.current = map;
       map.dragging.enable();
       map.touchZoom.enable();
+      map.scrollWheelZoom.enable();
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
