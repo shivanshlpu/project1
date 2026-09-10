@@ -161,6 +161,9 @@ export class AppController {
    */
   @Get('api/app/latest-apk')
   @Get('app/latest-apk')
+  @Get('download-apk')
+  @Get('latest-apk')
+  @Get('download')
   downloadLatestApk(@Res() res: Response) {
     if (!currentAppVersion.downloadUrl) {
       return res.status(HttpStatus.NOT_FOUND).json({ error: 'No APK download URL configured.' });
