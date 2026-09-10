@@ -47,7 +47,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         updateInfo.downloadUrl,
         (p) => {
           setProgress(p);
-        }
+        },
+        updateInfo.latestVersion
       );
 
       if (res.success) {

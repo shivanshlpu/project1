@@ -9,34 +9,41 @@ interface ServerStatusPillProps {
 export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = false }) => {
   const [status, setStatus] = useState<'checking' | 'connected' | 'offline'>('checking');
   const [latency, setLatency] = useState<number | null>(null);
+  const [failedCount, setFailedCount] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPinging, setIsPinging] = useState(false);
 
   const checkConnection = async () => {
     setIsPinging(true);
-    const start = Date.now();
     try {
-      const baseUrl = await ApiConfig.getBaseUrl();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-      const res = await fetch(`${baseUrl}/health`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      const elapsed = Date.now() - start;
+      const res = await ApiConfig.testConnection();
       if (res.ok) {
         setStatus('connected');
-        setLatency(elapsed);
+        setLatency(res.latency ?? null);
+        setFailedCount(0);
       } else {
-        setStatus('offline');
+        setFailedCount((prev) => {
+          const next = prev + 1;
+          // Only show red "offline" after 2 consecutive failures to allow Render cold start
+          if (next >= 2) {
+            setStatus('offline');
+          } else {
+            setStatus('checking');
+          }
+          return next;
+        });
         setLatency(null);
       }
     } catch {
-      setStatus('offline');
+      setFailedCount((prev) => {
+        const next = prev + 1;
+        if (next >= 2) {
+          setStatus('offline');
+        } else {
+          setStatus('checking');
+        }
+        return next;
+      });
       setLatency(null);
     } finally {
       setIsPinging(false);
@@ -45,7 +52,7 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
 
   useEffect(() => {
     checkConnection();
-    const interval = setInterval(checkConnection, 15000);
+    const interval = setInterval(checkConnection, 20000);
     return () => clearInterval(interval);
   }, []);
 
@@ -55,7 +62,9 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
     status === 'connected'
       ? `Server Connected ${latency ? `(${latency}ms)` : ''}`
       : status === 'checking'
-      ? 'Connecting to Server...'
+      ? failedCount > 0
+        ? 'Waking up server...'
+        : 'Connecting to Server...'
       : 'Server Offline';
 
   if (compact) {
@@ -64,14 +73,24 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
         <TouchableOpacity
           style={[
             styles.compactPill,
-            status === 'connected' ? styles.pillBorderGreen : styles.pillBorderRed,
+            status === 'connected'
+              ? styles.pillBorderGreen
+              : status === 'checking'
+              ? styles.pillBorderYellow
+              : styles.pillBorderRed,
           ]}
           onPress={() => setIsModalOpen(true)}
           activeOpacity={0.7}
         >
           <View style={[styles.dot, { backgroundColor: dotColor }]} />
           <Text style={styles.compactText} numberOfLines={1}>
-            {status === 'connected' ? 'Server Online' : 'Server Offline'}
+            {status === 'connected'
+              ? 'Server Online'
+              : status === 'checking'
+              ? failedCount > 0
+                ? 'Waking up...'
+                : 'Connecting...'
+              : 'Server Offline'}
           </Text>
         </TouchableOpacity>
 
@@ -101,7 +120,13 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={[styles.dot, { backgroundColor: dotColor }]} />
                   <Text style={{ fontWeight: '700', color: dotColor }}>
-                    {status === 'connected' ? 'Connected & Healthy (200 OK)' : status === 'checking' ? 'Testing Connection...' : 'Unreachable'}
+                    {status === 'connected'
+                      ? 'Connected & Healthy (200 OK)'
+                      : status === 'checking'
+                      ? failedCount > 0
+                        ? 'Waking up server (Render cold start)...'
+                        : 'Testing Connection...'
+                      : 'Unreachable (Retry in progress)'}
                   </Text>
                 </View>
               </View>
@@ -177,6 +202,10 @@ const styles = StyleSheet.create({
   pillBorderGreen: {
     borderColor: '#86EFAC',
     backgroundColor: '#F0FDF4',
+  },
+  pillBorderYellow: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
   },
   pillBorderRed: {
     borderColor: '#FECACA',

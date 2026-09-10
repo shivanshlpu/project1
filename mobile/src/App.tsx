@@ -41,6 +41,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './services/appUpdateService';
 import { UpdateModal } from './components/UpdateModal';
 import { ServerStatusPill } from './components/ServerStatusPill';
+import { ApiConfig } from './services/apiConfig';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -91,12 +92,21 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+  const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
 
-  // Auto-check for over-the-air in-app updates on boot
+  // Auto-check for over-the-air in-app updates on boot & warmup backend
   useEffect(() => {
+    // Non-blocking background warm-up for Render cold start
+    ApiConfig.warmupServer();
+
+    AppUpdateService.getEffectiveCurrentVersion().then((v) => setEffectiveVersion(v));
+
     const checkUpdate = async () => {
       try {
         const res = await AppUpdateService.checkForUpdates();
+        if (res.currentVersion) {
+          setEffectiveVersion(res.currentVersion);
+        }
         if (res.hasUpdate && res.info) {
           setUpdateInfo(res.info);
           setIsUpdateModalOpen(true);
@@ -105,7 +115,7 @@ export default function App() {
         // Silent catch on boot
       }
     };
-    const timer = setTimeout(checkUpdate, 2000);
+    const timer = setTimeout(checkUpdate, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -113,13 +123,16 @@ export default function App() {
     setIsCheckingUpdate(true);
     try {
       const res = await AppUpdateService.checkForUpdates();
+      if (res.currentVersion) {
+        setEffectiveVersion(res.currentVersion);
+      }
       if (res.hasUpdate && res.info) {
         setUpdateInfo(res.info);
         setIsUpdateModalOpen(true);
       } else {
         Alert.alert(
           'App is Up to Date',
-          `AHTRI FFA Mobile v${CURRENT_APP_VERSION} is the latest version available.`
+          `AHTRI FFA Mobile v${res.currentVersion || effectiveVersion} is the latest version available.`
         );
       }
     } catch (err: any) {
@@ -406,12 +419,10 @@ export default function App() {
                       <ActivityIndicator size="small" color="#15803D" />
                     ) : (
                       <Text style={styles.updateProfileBtnText}>
-                        🚀 Check for Updates (Installed v{CURRENT_APP_VERSION})
+                        🚀 Check for Updates (Installed v{effectiveVersion})
                       </Text>
                     )}
                   </TouchableOpacity>
-
-
 
                   <TouchableOpacity style={styles.logoutLargeBtn} onPress={handleLogout}>
                     <Text style={styles.logoutLargeBtnText}>Log Out Account</Text>
@@ -421,14 +432,15 @@ export default function App() {
             )}
           </View>
 
-
-
           {/* In-App Auto-Update Modal */}
           <UpdateModal
             isOpen={isUpdateModalOpen}
-            onClose={() => setIsUpdateModalOpen(false)}
+            onClose={() => {
+              setIsUpdateModalOpen(false);
+              AppUpdateService.getEffectiveCurrentVersion().then((v) => setEffectiveVersion(v));
+            }}
             updateInfo={updateInfo}
-            currentVersion={CURRENT_APP_VERSION}
+            currentVersion={effectiveVersion}
             isMandatory={updateInfo?.forceUpdate}
           />
 

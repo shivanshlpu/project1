@@ -95,6 +95,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     if (!mapInstanceRef.current) {
       const map = createOptimizedMap(mapContainerRef.current, {
         zoomControl: false,
+        dragging: true,
+        touchZoom: true,
       }).setView([initialLat, initialLng], 17);
       mapInstanceRef.current = map;
 

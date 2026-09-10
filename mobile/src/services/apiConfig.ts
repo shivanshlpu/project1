@@ -57,24 +57,90 @@ export const ApiConfig = {
     };
   },
 
-  async testConnection(targetUrl?: string): Promise<{ ok: boolean; message: string; data?: any }> {
+  /**
+   * Fire a silent background warm-up request to wake up Render container from cold sleep
+   */
+  warmupServer(): void {
     const baseUrl = DEFAULT_API_URL;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-      const res = await fetch(`${baseUrl}/health`, {
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      fetch(`${baseUrl}/health`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      })
+        .then(() => clearTimeout(timeoutId))
+        .catch(() => clearTimeout(timeoutId));
+    } catch {
+      // Non-blocking fire-and-forget
+    }
+  },
+
+  /**
+   * Resilient fetch helper with automatic retry for Render spin-up tolerance
+   */
+  async fetchWithRetry(
+    url: string,
+    options: RequestInit = {},
+    maxRetries = 2,
+    timeoutMs = 15000
+  ): Promise<Response> {
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        // If Render is waking up and returns 502/503/504, retry after short pause
+        if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        return response;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        lastError = err;
+        if (attempt < maxRetries) {
+          // Wait 2s before retry on cold-start abort or connection drop
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+    }
+    throw lastError || new Error('Server request failed after retries');
+  },
+
+  async testConnection(targetUrl?: string): Promise<{ ok: boolean; message: string; latency?: number; data?: any }> {
+    const baseUrl = targetUrl || DEFAULT_API_URL;
+    const start = Date.now();
+
+    try {
+      // 18-second tolerance for Render free-tier cold starts with retry
+      const res = await this.fetchWithRetry(
+        `${baseUrl}/health`,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        },
+        2,
+        18000
+      );
+
+      const elapsed = Date.now() - start;
 
       if (res.ok) {
         const data = await res.json();
         return {
           ok: true,
-          message: `Connected successfully (HTTP ${res.status} OK)`,
+          message: `Connected successfully (${elapsed}ms • HTTP ${res.status} OK)`,
+          latency: elapsed,
           data,
         };
       } else {
@@ -87,7 +153,7 @@ export const ApiConfig = {
       if (err.name === 'AbortError') {
         return {
           ok: false,
-          message: 'Connection timed out after 6 seconds.',
+          message: 'Connection timed out. Server may be spinning up from sleep.',
         };
       }
       return {

@@ -318,16 +318,21 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const [isDraggingMap, setIsDraggingMap] = useState(false);
 
-  // Fluid Touch PanResponder: Real-time finger tracking without parent scroll interception
+  // Constants for map tile geometry
+  const TILE_PX = 128;
+
+  // Fluid Touch PanResponder: Real-time 360° finger tracking with parent scroll freeze
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
+        onStartShouldSetPanResponderCapture: () => false, // Allow inner touchable buttons to handle taps
         onMoveShouldSetPanResponder: (_, gesture) =>
           Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
         onMoveShouldSetPanResponderCapture: (_, gesture) =>
           Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
+        // Crucial: do NOT allow parent ScrollView to terminate/steal the gesture!
+        onPanResponderTerminationRequest: () => false,
 
         onPanResponderGrant: () => {
           setIsDraggingMap(true);
@@ -340,25 +345,63 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           pan.setValue({ x: gesture.dx, y: gesture.dy });
         },
 
-        onPanResponderRelease: (_, gesture) => {
+        onPanResponderRelease: (evt, gesture) => {
           setIsDraggingMap(false);
 
-          // If finger moved less than 5px, treat as a direct tap-to-reposition
+          // Direct tap-to-reposition (less than 5px drag)
           if (Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
             pan.setValue({ x: 0, y: 0 });
+            const locX = evt.nativeEvent?.locationX;
+            const locY = evt.nativeEvent?.locationY;
+            if (typeof locX === 'number' && typeof locY === 'number') {
+              // Canvas is ~380x270; center is approx (190, 135)
+              const tapOffsetX = locX - 190;
+              const tapOffsetY = locY - 135;
+              if (Math.abs(tapOffsetX) > 8 || Math.abs(tapOffsetY) > 8) {
+                const scale = Math.pow(2, zoom);
+                const totalWorldPx = scale * TILE_PX;
+                const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
+                const latRad = (selectedLat * Math.PI) / 180;
+                const currentWorldY =
+                  ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * totalWorldPx;
+
+                const targetWorldX = currentWorldX + tapOffsetX;
+                const targetWorldY = currentWorldY + tapOffsetY;
+
+                const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
+                const normY = 1 - 2 * (targetWorldY / totalWorldPx);
+                const targetLat = Math.atan(Math.sinh(Math.PI * normY)) * (180 / Math.PI);
+
+                const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
+                const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
+
+                setSelectedLat(nLat);
+                setSelectedLng(nLng);
+                resolveAddressFromCoords(nLat, nLng);
+              }
+            }
             return;
           }
 
-          // Convert drag pixels to coordinates
+          // Accurate Web Mercator drag translation
           const scale = Math.pow(2, zoom);
-          const dLng = (-gesture.dx * 360) / (256 * scale);
-          const dLat = (gesture.dy * 180) / (256 * scale);
+          const totalWorldPx = scale * TILE_PX;
 
-          const nextLat = Math.max(-85, Math.min(85, selectedLat + dLat));
-          const nextLng = Math.max(-180, Math.min(180, selectedLng + dLng));
+          const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
+          const latRad = (selectedLat * Math.PI) / 180;
+          const currentWorldY =
+            ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * totalWorldPx;
 
-          const nLat = Number(nextLat.toFixed(6));
-          const nLng = Number(nextLng.toFixed(6));
+          // Dragging content by dx, dy shifts the world center by -dx, -dy
+          const targetWorldX = currentWorldX - gesture.dx;
+          const targetWorldY = currentWorldY - gesture.dy;
+
+          const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
+          const normY = 1 - 2 * (targetWorldY / totalWorldPx);
+          const targetLat = Math.atan(Math.sinh(Math.PI * normY)) * (180 / Math.PI);
+
+          const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
+          const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
 
           setSelectedLat(nLat);
           setSelectedLng(nLng);
@@ -381,13 +424,17 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const activeCategoryConfig =
     CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
 
-  // Slippy tile math for center coordinates
+  // Precise fractional slippy tile math for 100% pin alignment
   const n = Math.pow(2, zoom);
-  const centerTileX = Math.floor(((selectedLng + 180) / 360) * n);
+  const preciseTileX = ((selectedLng + 180) / 360) * n;
+  const centerTileX = Math.floor(preciseTileX);
+  const fracX = (preciseTileX - centerTileX) * TILE_PX;
+
   const latRad = (selectedLat * Math.PI) / 180;
-  const centerTileY = Math.floor(
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
-  );
+  const preciseTileY =
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+  const centerTileY = Math.floor(preciseTileY);
+  const fracY = (preciseTileY - centerTileY) * TILE_PX;
 
   // Google Road Map & Google Hybrid Satellite (Zero watermark, crystal-clear high-res maps)
   const getTileUrl = (x: number, y: number) => {
@@ -395,15 +442,17 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     if (mapMode === 'satellite') {
       return `https://mt${s}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${zoom}`;
     }
-    // Google Street Road Map (Clean roads, hospitals, clinics, landmarks - No Carto watermark)
+    // Google Street Road Map (Clean roads, hospitals, clinics, landmarks)
     return `https://mt${s}.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${zoom}`;
   };
 
-  // Center 3x3 tiles surrounding the selected location for seamless panning
+  // 5x5 tile grid (640x640px) surrounding center location for seamless, infinite free-drag margin
   const tileOffsets = [
-    { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 },
-    { dx: -1, dy: 0 },  { dx: 0, dy: 0 },  { dx: 1, dy: 0 },
-    { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 },
+    { dx: -2, dy: -2 }, { dx: -1, dy: -2 }, { dx: 0, dy: -2 }, { dx: 1, dy: -2 }, { dx: 2, dy: -2 },
+    { dx: -2, dy: -1 }, { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 }, { dx: 2, dy: -1 },
+    { dx: -2, dy: 0 },  { dx: -1, dy: 0 },  { dx: 0, dy: 0 },  { dx: 1, dy: 0 },  { dx: 2, dy: 0 },
+    { dx: -2, dy: 1 },  { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 },  { dx: 2, dy: 1 },
+    { dx: -2, dy: 2 },  { dx: -1, dy: 2 },  { dx: 0, dy: 2 },  { dx: 1, dy: 2 },  { dx: 2, dy: 2 },
   ];
 
   return (
@@ -420,7 +469,12 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.scrollBody}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={!isDraggingMap}
+        >
           {/* LIVE PLACE SEARCH BAR */}
           <View style={styles.searchCard}>
             <View style={styles.searchInputRow}>
@@ -523,9 +577,20 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               </View>
             </View>
 
-            {/* Map Canvas with 3x3 Stitched Tiles & Touch Pan Gesture */}
+            {/* Map Canvas with 5x5 Stitched Tiles & Fluid Touch Pan Gesture */}
             <View style={styles.mapCanvas} {...panResponder.panHandlers}>
-              <Animated.View style={[styles.tilesGrid, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}>
+              <Animated.View
+                style={[
+                  styles.tilesGrid,
+                  {
+                    left: '50%',
+                    top: '50%',
+                    marginLeft: -320 - fracX,
+                    marginTop: -320 - fracY,
+                    transform: [{ translateX: pan.x }, { translateY: pan.y }],
+                  },
+                ]}
+              >
                 {tileOffsets.map((offset, i) => {
                   const x = centerTileX + offset.dx;
                   const y = centerTileY + offset.dy;
@@ -544,6 +609,11 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               {/* Grid Lines Visual Crosshair */}
               <View style={styles.crosshairH} pointerEvents="none" />
               <View style={styles.crosshairV} pointerEvents="none" />
+
+              {/* Free Touch Gesture Badge */}
+              <View style={styles.touchHintBadge} pointerEvents="none">
+                <Text style={styles.touchHintText}>👆 Touch & drag freely anywhere</Text>
+              </View>
 
               {/* 3D Center Pin Overlay */}
               <View style={styles.pinOverlay} pointerEvents="none">
@@ -580,7 +650,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 onPress={handleGetCurrentLocation}
                 disabled={isLocatingGps}
                 activeOpacity={0.8}
-                
               >
                 {isLocatingGps ? (
                   <ActivityIndicator size="small" color="#1A3C6E" />
@@ -591,6 +660,43 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                   </View>
                 )}
               </TouchableOpacity>
+
+              {/* Optional Directional Pan Nudge Controls */}
+              <View style={styles.panControlCluster}>
+                <TouchableOpacity
+                  style={[styles.panBtn, styles.panUp]}
+                  onPress={() => handlePan('up')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.panArrowText}>▲</Text>
+                </TouchableOpacity>
+                <View style={styles.panMiddleRow}>
+                  <TouchableOpacity
+                    style={[styles.panBtn, styles.panLeft]}
+                    onPress={() => handlePan('left')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.panArrowText}>◀</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.panBtn, styles.panCenter]}>
+                    <Text style={styles.panCenterText}>PAN</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.panBtn, styles.panRight]}
+                    onPress={() => handlePan('right')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.panArrowText}>▶</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={[styles.panBtn, styles.panDown]}
+                  onPress={() => handlePan('down')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.panArrowText}>▼</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -964,11 +1070,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tilesGrid: {
-    width: 384,
-    height: 384,
+    width: 640,
+    height: 640,
     flexDirection: 'row',
     flexWrap: 'wrap',
     position: 'absolute',
+  },
+  touchHintBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 10,
+  },
+  touchHintText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   gridTile: {
     width: 128,
@@ -1061,9 +1183,14 @@ const styles = StyleSheet.create({
   },
   panControlCluster: {
     position: 'absolute',
-    bottom: 36,
-    right: 10,
+    bottom: 8,
+    left: 8,
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    padding: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   panMiddleRow: {
     flexDirection: 'row',
