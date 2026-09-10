@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '96c858b1-239b-46ec-ada6-7fcacb093f69';
+const BUILD_ID = '475c7ce0-0d11-44bf-b14d-9b1e1401ea04';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -82,11 +82,11 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'Fluid 360-Degree Touch & Pan Google Maps (Road & Satellite)',
-          'Pinch-to-Zoom & Surgical 4-Direction Micro-Nudge D-Pad (3m accuracy)',
-          'Direct Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere',
-          'High-Accuracy Indoor GPS & Smart Geofence Structural Allowance',
-          'Live Duty Completion & POB Commercial Orders Synced with Admin Dashboard',
+          'Fluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)',
+          'Direct Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision',
+          'Eliminated drone crosshairs and 4-way D-pad controls for standard Google Maps experience',
+          'Pinch-to-zoom, double-tap zoom, and smooth inertia panning',
+          'High-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies',
         ],
       };
 
