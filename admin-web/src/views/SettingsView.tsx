@@ -224,10 +224,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.2',
-    latestVersionCode: 3,
+    latestVersion: '1.0.3',
+    latestVersionCode: 4,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/fxrTnPzj_yZRx9iFK6DhNwSoMM2E-wYG1g0iZbSEE0Y.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/hQCoqer3q3h5Jc8nQLRI4qVCiohh8frphZiQYg30Aj4.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],

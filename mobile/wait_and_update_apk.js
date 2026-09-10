@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '42825e1d-6729-4937-aca5-81d16ee095cf';
+const BUILD_ID = '96c858b1-239b-46ec-ada6-7fcacb093f69';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -72,8 +72,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.2',
-        latestVersionCode: 3,
+        latestVersion: '1.0.3',
+        latestVersionCode: 4,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -82,12 +82,11 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'Automatic GPS Check-In (Strict Geofence Radius Enforcement)',
-          'Live Detailing Workspace with Elapsed Timer & Doctor Feedback',
-          'Multi-Order Booking Form (POB) with Line-Item Calculator',
-          'Leave Quota Allocator with Mobile Auto-Exhaustion Blocker',
-          'Google Maps Red Pin with Ground Shadow',
-          'Full-Page AI Command Chatbot and Aligned Employee Hub',
+          'Fluid 360-Degree Touch & Pan Google Maps (Road & Satellite)',
+          'Pinch-to-Zoom & Surgical 4-Direction Micro-Nudge D-Pad (3m accuracy)',
+          'Direct Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere',
+          'High-Accuracy Indoor GPS & Smart Geofence Structural Allowance',
+          'Live Duty Completion & POB Commercial Orders Synced with Admin Dashboard',
         ],
       };
 

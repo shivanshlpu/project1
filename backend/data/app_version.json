@@ -1,21 +1,20 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.2",
-  "latestVersionCode": 3,
+  "latestVersion": "1.0.3",
+  "latestVersionCode": 4,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/fxrTnPzj_yZRx9iFK6DhNwSoMM2E-wYG1g0iZbSEE0Y.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/hQCoqer3q3h5Jc8nQLRI4qVCiohh8frphZiQYg30Aj4.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-09-10",
-  "publishedAt": "2026-09-10T13:27:00.000Z",
-  "publishedBy": "System Admin",
+  "publishedAt": "2026-09-10T20:21:53.227Z",
+  "publishedBy": "System Auto-Build",
   "releaseNotes": [
-    "Automatic GPS Check-In with Strict Geofence Distance Validation",
-    "Live Detailing Workspace with Real-Time Stopwatch & Clinical Remarks",
-    "POB Commercial Order Booking with Quantity/Rate Auto-Calculation",
-    "Admin-Synced Leave Balance Quota with Auto-Exhaustion Protection",
-    "Interactive Google Map with High-Visibility Location Markers",
-    "Full-Screen AI Intelligence Assistant & Redesigned Employee Hub"
+    "Fluid 360-Degree Touch & Pan Google Maps (Road & Satellite)",
+    "Pinch-to-Zoom & Surgical 4-Direction Micro-Nudge D-Pad (3m accuracy)",
+    "Direct Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere",
+    "High-Accuracy Indoor GPS & Smart Geofence Structural Allowance",
+    "Live Duty Completion & POB Commercial Orders Synced with Admin Dashboard"
   ]
 }
