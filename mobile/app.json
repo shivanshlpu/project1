@@ -2,7 +2,7 @@
   "expo": {
     "name": "AHTRI FFA",
     "slug": "ahtri-ffa-mobile",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.ahtri.ffa",
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#0B2545"
       },
