@@ -4,17 +4,17 @@
   "latestVersion": "1.0.3",
   "latestVersionCode": 4,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/hQCoqer3q3h5Jc8nQLRI4qVCiohh8frphZiQYg30Aj4.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-09-10",
-  "publishedAt": "2026-09-10T20:21:53.227Z",
+  "publishedAt": "2026-09-10T22:09:04.918Z",
   "publishedBy": "System Auto-Build",
   "releaseNotes": [
-    "Fluid 360-Degree Touch & Pan Google Maps (Road & Satellite)",
-    "Pinch-to-Zoom & Surgical 4-Direction Micro-Nudge D-Pad (3m accuracy)",
-    "Direct Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere",
-    "High-Accuracy Indoor GPS & Smart Geofence Structural Allowance",
-    "Live Duty Completion & POB Commercial Orders Synced with Admin Dashboard"
+    "Fluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)",
+    "Direct Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision",
+    "Eliminated drone crosshairs and 4-way D-pad controls for standard Google Maps experience",
+    "Pinch-to-zoom, double-tap zoom, and smooth inertia panning",
+    "High-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies"
   ]
 }
