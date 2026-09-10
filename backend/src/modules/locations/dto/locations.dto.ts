@@ -46,5 +46,59 @@ export class CreateLocationDto {
 
   @IsString()
   @IsOptional()
+  qualification?: string;
+
+  @IsString()
+  @IsOptional()
+  class?: string;
+
+  @IsString()
+  @IsOptional()
   area_id?: string;
+}
+
+export class UpdateLocationDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  doctor_name?: string;
+
+  @IsString()
+  @IsOptional()
+  clinic?: string;
+
+  @IsString()
+  @IsOptional()
+  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+
+  @IsString()
+  @IsOptional()
+  qualification?: string;
+
+  @IsString()
+  @IsOptional()
+  specialization?: string;
+
+  @IsString()
+  @IsOptional()
+  class?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsNumber()
+  @IsOptional()
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  longitude?: number;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
 }

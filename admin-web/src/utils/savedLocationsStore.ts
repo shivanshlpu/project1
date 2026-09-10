@@ -316,17 +316,10 @@ export function getOperatingZones(): TerritoryZone[] {
 export function getStoredSavedLocations(): DoctorItem[] {
   try {
     const raw = localStorage.getItem('ahtri_saved_locations');
-    if (raw) {
+    if (raw !== null) {
       const parsed: DoctorItem[] = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const idSet = new Set(parsed.map((p) => p.id));
-        const merged = [...parsed];
-        INITIAL_SAVED_LOCATIONS.forEach((initLoc) => {
-          if (!idSet.has(initLoc.id)) {
-            merged.push(initLoc);
-          }
-        });
-        return merged;
+      if (Array.isArray(parsed)) {
+        return parsed;
       }
     }
   } catch {}
@@ -340,21 +333,29 @@ export function persistSavedLocations(locs: DoctorItem[]) {
   } catch {}
 }
 
+export function deleteSavedLocation(id: string): DoctorItem[] {
+  const current = getStoredSavedLocations();
+  const filtered = current.filter((l) => l.id !== id);
+  persistSavedLocations(filtered);
+  return filtered;
+}
+
+export function updateSavedLocation(id: string, updates: Partial<DoctorItem>): DoctorItem[] {
+  const current = getStoredSavedLocations();
+  const updated = current.map((l) => (l.id === id ? { ...l, ...updates } : l));
+  persistSavedLocations(updated);
+  return updated;
+}
+
 export async function syncSavedLocationsWithBackend(): Promise<DoctorItem[]> {
   try {
     const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
     const res = await fetch(`${apiUrl}/locations`);
     if (res.ok) {
       const data: DoctorItem[] = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const localLocs = getStoredSavedLocations();
-        const localIdMap = new Map(localLocs.map((l) => [l.id, l]));
-        data.forEach((backendLoc) => {
-          localIdMap.set(backendLoc.id, { ...localIdMap.get(backendLoc.id), ...backendLoc });
-        });
-        const finalMerged = Array.from(localIdMap.values());
-        persistSavedLocations(finalMerged);
-        return finalMerged;
+      if (Array.isArray(data)) {
+        persistSavedLocations(data);
+        return data;
       }
     }
   } catch {}

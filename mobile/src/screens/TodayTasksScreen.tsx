@@ -463,7 +463,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      await fetch(`${baseUrl}/tasks/${completingTask.id}/complete`, {
+      const res = await fetch(`${baseUrl}/tasks/${completingTask.id}/complete`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -474,6 +474,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           orders: validOrders,
         }),
       });
+      if (res.ok) {
+        fetchTasksFromBackend();
+      }
     } catch {
       // Offline fallback
     }

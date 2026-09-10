@@ -14,6 +14,7 @@ import { AiChatView } from './views/AiChatView';
 import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
 import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
+import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
 import { Language } from './utils/i18n';
 import './styles/app.css';
 
@@ -65,6 +66,17 @@ export const App: React.FC = () => {
   // New MR-Marked Field Locations Notification State
   const [recentNewLocations, setRecentNewLocations] = useState<NewLocationItem[]>([]);
   const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
+
+  // Live MR Duty Completion Notification State
+  const [recentCompletions, setRecentCompletions] = useState<DutyCompletionItem[]>([]);
+  const [acknowledgedCompletionIds, setAcknowledgedCompletionIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('ahtri_acked_completions');
+      return raw ? new Set(JSON.parse(raw)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   // Live poll pending device authorizations count
   useEffect(() => {
@@ -125,6 +137,57 @@ export const App: React.FC = () => {
     } catch {
       // Ignored
     }
+  };
+
+  // Live poll for MR completed duties
+  useEffect(() => {
+    const fetchRecentCompletions = async () => {
+      try {
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const res = await fetch(`${apiUrl}/tasks/recent-completions`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const unacked = data.filter((c: any) => !acknowledgedCompletionIds.has(c.id));
+            setRecentCompletions(unacked);
+          }
+        }
+      } catch {
+        // Fallback silently
+      }
+    };
+    fetchRecentCompletions();
+    const timer = setInterval(fetchRecentCompletions, 3500);
+    return () => clearInterval(timer);
+  }, [acknowledgedCompletionIds]);
+
+  const handleAcknowledgeCompletion = (id: string) => {
+    setRecentCompletions((prev) => prev.filter((c) => c.id !== id));
+    setAcknowledgedCompletionIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('ahtri_acked_completions', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleAcknowledgeAllCompletions = () => {
+    setRecentCompletions([]);
+    setAcknowledgedCompletionIds((prev) => {
+      const next = new Set(prev);
+      recentCompletions.forEach((c) => next.add(c.id));
+      try {
+        localStorage.setItem('ahtri_acked_completions', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleViewCompletedTask = (task: DutyCompletionItem) => {
+    handleAcknowledgeCompletion(task.id);
+    setManagerTab('tasks');
   };
 
   const handleViewLocationOnMap = (loc: NewLocationItem) => {
@@ -266,6 +329,14 @@ export const App: React.FC = () => {
         onViewOnMap={handleViewLocationOnMap}
         onAcknowledge={handleAcknowledgeLocation}
         onAcknowledgeAll={handleAcknowledgeAllLocations}
+      />
+
+      {/* Live Real-time Popup for MR Duty Completions */}
+      <DutyCompletionToast
+        completions={recentCompletions}
+        onViewTask={handleViewCompletedTask}
+        onDismiss={handleAcknowledgeCompletion}
+        onDismissAll={handleAcknowledgeAllCompletions}
       />
       {/* Floating AHTRI AI Operations Copilot Trigger -> Switches directly to AI Command Page */}
       {managerTab !== 'ai' && (

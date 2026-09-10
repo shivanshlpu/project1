@@ -383,14 +383,66 @@ export class LocationsService implements OnModuleInit {
     return loc;
   }
 
+  async updateLocation(id: string, dto: Partial<CreateLocationDto>): Promise<SavedLocation> {
+    const loc = this.locations.find((l) => l.id === id);
+    if (!loc) {
+      throw new NotFoundException(`Location ${id} not found`);
+    }
+
+    if (dto.name !== undefined) loc.name = dto.name;
+    if (dto.clinic !== undefined) loc.clinic = dto.clinic;
+    if (dto.doctor_name !== undefined) loc.doctor_name = dto.doctor_name;
+    if (dto.qualification !== undefined) loc.qualification = dto.qualification;
+    if (dto.specialization !== undefined) loc.specialization = dto.specialization;
+    if (dto.phone !== undefined) loc.phone = dto.phone;
+    if (dto.address !== undefined) loc.address = dto.address;
+    if (dto.category !== undefined) loc.category = dto.category;
+    if (dto.latitude !== undefined) loc.latitude = dto.latitude;
+    if (dto.longitude !== undefined) loc.longitude = dto.longitude;
+    if (dto.class !== undefined) loc.class = dto.class as any;
+
+    // Sync with DatabaseService doctors list
+    const doc = this.db.doctors.find((d) => d.id === id);
+    if (doc) {
+      if (dto.name !== undefined) doc.name = dto.name;
+      if (dto.clinic !== undefined) doc.clinic = dto.clinic;
+      if (dto.qualification !== undefined) doc.qualification = dto.qualification;
+      if (dto.specialization !== undefined) doc.specialization = dto.specialization;
+      if (dto.phone !== undefined) doc.phone = dto.phone;
+      if (dto.address !== undefined) doc.address = dto.address;
+      if (dto.category !== undefined) doc.category = dto.category;
+      if (dto.latitude !== undefined) doc.latitude = dto.latitude;
+      if (dto.longitude !== undefined) doc.longitude = dto.longitude;
+      if (dto.class !== undefined) doc.class = dto.class as any;
+    }
+
+    return loc;
+  }
+
+  async deleteLocation(id: string): Promise<{ success: boolean; message: string; id: string }> {
+    const locIndex = this.locations.findIndex((l) => l.id === id);
+    if (locIndex === -1) {
+      throw new NotFoundException(`Location ${id} not found`);
+    }
+    this.locations.splice(locIndex, 1);
+
+    const docIndex = this.db.doctors.findIndex((d) => d.id === id);
+    if (docIndex !== -1) {
+      this.db.doctors.splice(docIndex, 1);
+    }
+
+    return { success: true, message: `Location ${id} deleted successfully`, id };
+  }
+
   async acknowledgeAllLocations(): Promise<{ acknowledged: number }> {
     let count = 0;
-    for (const loc of this.locations) {
+    this.locations.forEach((loc) => {
       if (loc.is_new) {
         loc.is_new = false;
         count++;
       }
-    }
+    });
     return { acknowledged: count };
   }
 }
+

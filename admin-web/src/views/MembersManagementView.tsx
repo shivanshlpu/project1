@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Stethoscope,
   Building,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
 
@@ -107,6 +109,17 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   });
   const [grantReason, setGrantReason] = useState('Authorized Leave approved by Owner');
   const [isGrantingLeave, setIsGrantingLeave] = useState(false);
+
+  // Edit Member Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<MRMemberItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editTerritory, setEditTerritory] = useState('');
+  const [editStatus, setEditStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+  const [editPassword, setEditPassword] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Tasks & Locations
   const [tasks, setTasks] = useState<TaskItem[]>([
@@ -266,6 +279,114 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleOpenEditModal = (member: MRMemberItem) => {
+    setEditingMember(member);
+    setEditName(member.name);
+    setEditPhone(member.phone);
+    setEditEmail(member.email);
+    setEditTerritory(member.territory || 'Delhi Territory');
+    setEditStatus(member.status);
+    setEditPassword('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteMember = async (member: MRMemberItem) => {
+    const ok = window.confirm(
+      `Are you sure you want to delete employee "${member.name}" (${member.id})?\n\nThis will remove their profile, territory assignments, and mobile access immediately. This action cannot be undone.`,
+    );
+    if (!ok) return;
+
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      await fetch(`${apiUrl}/users/${member.id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch (err) {
+      console.warn('Delete member error:', err);
+    }
+
+    const updated = members.filter((m) => m.id !== member.id);
+    setMembers(updated);
+    if (selectedMemberId === member.id && updated.length > 0) {
+      setSelectedMemberId(updated[0].id);
+    }
+    showToast(`✓ Employee ${member.name} deleted successfully.`);
+  };
+
+  const handleSaveEditMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    if (!editName.trim() || !editPhone.trim()) {
+      alert('Full Name and Phone Number are required.');
+      return;
+    }
+
+    setIsSubmittingEdit(true);
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+
+      const payload: any = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        territory: editTerritory.trim(),
+        status: editStatus,
+      };
+      if (editPassword.trim()) {
+        payload.password = editPassword.trim();
+      }
+
+      await fetch(`${apiUrl}/users/${editingMember.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === editingMember.id
+            ? {
+                ...m,
+                name: editName.trim(),
+                phone: editPhone.trim(),
+                email: editEmail.trim(),
+                territory: editTerritory.trim(),
+                status: editStatus,
+              }
+            : m,
+        ),
+      );
+
+      setIsEditModalOpen(false);
+      showToast(`✓ Employee profile updated for ${editName.trim()}!`);
+    } catch {
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === editingMember.id
+            ? {
+                ...m,
+                name: editName.trim(),
+                phone: editPhone.trim(),
+                email: editEmail.trim(),
+                territory: editTerritory.trim(),
+                status: editStatus,
+              }
+            : m,
+        ),
+      );
+      setIsEditModalOpen(false);
+      showToast(`✓ Employee profile updated for ${editName.trim()}!`);
+    } finally {
+      setIsSubmittingEdit(false);
+    }
   };
 
   // Fetch Users, Tasks, and Locations
@@ -702,26 +823,70 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleCopyCredentials(selectedMember)}
-            style={{
-              padding: '6px 12px',
-              background: '#F8FAFC',
-              border: '1px solid #CBD5E1',
-              borderRadius: '6px',
-              fontSize: '11.5px',
-              fontWeight: 600,
-              color: '#334155',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            {copiedId === selectedMember.id ? <Check size={13} color="#166534" /> : <Copy size={13} />}
-            <span>{copiedId === selectedMember.id ? 'Copied' : 'Credentials'}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleCopyCredentials(selectedMember)}
+              style={{
+                padding: '6px 12px',
+                background: '#F8FAFC',
+                border: '1px solid #CBD5E1',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              {copiedId === selectedMember.id ? <Check size={13} color="#166534" /> : <Copy size={13} />}
+              <span>{copiedId === selectedMember.id ? 'Copied' : 'Credentials'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenEditModal(selectedMember)}
+              style={{
+                padding: '6px 12px',
+                background: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: '#1D4ED8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <Pencil size={13} color="#1D4ED8" />
+              <span>Edit Profile</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDeleteMember(selectedMember)}
+              style={{
+                padding: '6px 12px',
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: '#DC2626',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <Trash2 size={13} color="#DC2626" />
+              <span>Delete</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1404,6 +1569,198 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Field Representative Modal */}
+      {isEditModalOpen && editingMember && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px',
+          }}
+          onClick={() => setIsEditModalOpen(false)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              maxWidth: '460px',
+              width: '100%',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '14px 18px',
+                background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+                color: '#FFFFFF',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Pencil size={16} color="#38BDF8" />
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Edit Employee Profile • {editingMember.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditMember} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                  required
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="e.g. 9876543210"
+                    required
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                    Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#FFFFFF' }}
+                  >
+                    <option value="ACTIVE">ACTIVE (Authorized)</option>
+                    <option value="INACTIVE">INACTIVE (Deactivated)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                  Login Email *
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="e.g. mr@ahtri.com"
+                  required
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                  Assigned Territory / Area
+                </label>
+                <input
+                  type="text"
+                  value={editTerritory}
+                  onChange={(e) => setEditTerritory(e.target.value)}
+                  placeholder="e.g. South Delhi (Saket, Malviya Nagar) or Shahdol"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                  Reset Password (Leave blank to keep unchanged)
+                </label>
+                <input
+                  type="text"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Enter new password (optional)"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    handleDeleteMember(editingMember);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    color: '#DC2626',
+                    borderRadius: '6px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Trash2 size={12} color="#DC2626" /> Delete Account
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    style={{ padding: '6px 12px', background: '#F1F5F9', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingEdit}
+                    style={{
+                      padding: '6px 16px',
+                      background: '#1A3C6E',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isSubmittingEdit ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

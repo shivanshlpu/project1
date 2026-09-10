@@ -76,6 +76,7 @@ export interface MRMemberItem {
   email: string;
   role: 'MR';
   status: 'ACTIVE' | 'INACTIVE';
+  territory?: string;
   device_id?: string;
   device_model?: string;
   device_bound_at?: string;

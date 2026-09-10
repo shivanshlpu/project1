@@ -2,6 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Patch,
+  Delete,
   Body,
   Param,
   Req,
@@ -32,6 +35,19 @@ export class LocationsController {
     return this.locationsService.createLocation(dto, user);
   }
 
+  @Put(':id')
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  async updateLocation(@Param('id') id: string, @Body() dto: Partial<CreateLocationDto>) {
+    return this.locationsService.updateLocation(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async deleteLocation(@Param('id') id: string) {
+    return this.locationsService.deleteLocation(id);
+  }
+
   @Post(':id/acknowledge')
   @HttpCode(HttpStatus.OK)
   async acknowledgeLocation(@Param('id') id: string) {
@@ -44,3 +60,4 @@ export class LocationsController {
     return this.locationsService.acknowledgeAllLocations();
   }
 }
+

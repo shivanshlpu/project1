@@ -79,10 +79,31 @@ export class UsersService {
     if (dto.phone) user.phone = dto.phone;
     if (dto.email) user.email = dto.email.toLowerCase();
     if (dto.status) user.status = dto.status;
+    if (dto.role) user.role = dto.role;
+    if (dto.area_id) user.area_id = dto.area_id;
+    if ((dto as any).territory) (user as any).territory = (dto as any).territory;
     if (dto.biometric_enabled !== undefined) user.biometric_enabled = dto.biometric_enabled;
+
+    if (dto.password && dto.password.trim()) {
+      user.password_hash = await bcrypt.hash(dto.password.trim(), 10);
+    }
 
     const { password_hash: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
+  }
+
+  async deleteUser(id: string) {
+    const userIndex = this.db.users.findIndex((u) => u.id === id);
+    if (userIndex === -1) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const deletedUser = this.db.users.splice(userIndex, 1)[0];
+    return {
+      success: true,
+      message: `Employee ${deletedUser.name} (${id}) deleted successfully`,
+      id,
+    };
   }
 
   async deactivateUser(id: string) {

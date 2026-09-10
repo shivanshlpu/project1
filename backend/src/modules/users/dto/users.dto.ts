@@ -53,9 +53,25 @@ export class UpdateUserDto {
   @IsOptional()
   email?: string;
 
+  @IsString()
+  @IsOptional()
+  password?: string;
+
+  @IsEnum(['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR'])
+  @IsOptional()
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'MR';
+
   @IsEnum(['ACTIVE', 'INACTIVE'])
   @IsOptional()
   status?: 'ACTIVE' | 'INACTIVE';
+
+  @IsString()
+  @IsOptional()
+  area_id?: string;
+
+  @IsString()
+  @IsOptional()
+  territory?: string;
 
   @IsBoolean()
   @IsOptional()

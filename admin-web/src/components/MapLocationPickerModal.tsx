@@ -23,6 +23,7 @@ interface MapLocationPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveLocation: (loc: {
+    id?: string;
     name: string;
     clinic: string;
     category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
@@ -41,6 +42,7 @@ interface MapLocationPickerModalProps {
   }) => void;
   initialLat?: number;
   initialLng?: number;
+  editingLocation?: any | null;
 }
 
 export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
@@ -50,6 +52,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   onAssignTaskHere,
   initialLat = 28.5245,
   initialLng = 77.2066,
+  editingLocation = null,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -321,6 +324,34 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   };
 
+  // Synchronize state when editingLocation changes or modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editingLocation) {
+      setLocationName(editingLocation.name || editingLocation.clinic || '');
+      setAddress(editingLocation.address || '');
+      setCategory(editingLocation.category || 'CLINIC');
+      setPhone(editingLocation.phone && editingLocation.phone !== 'N/A' ? editingLocation.phone : '');
+      const lat = Number(editingLocation.latitude) || initialLat;
+      const lng = Number(editingLocation.longitude) || initialLng;
+      setSelectedLat(lat);
+      setSelectedLng(lng);
+      if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+      if (circleRef.current) circleRef.current.setLatLng([lat, lng]);
+      if (mapInstanceRef.current) mapInstanceRef.current.setView([lat, lng], 16);
+    } else {
+      setLocationName('');
+      setAddress('Ring Road, Saket, South Delhi');
+      setCategory('CLINIC');
+      setPhone('');
+      setSelectedLat(initialLat);
+      setSelectedLng(initialLng);
+      if (markerRef.current) markerRef.current.setLatLng([initialLat, initialLng]);
+      if (circleRef.current) circleRef.current.setLatLng([initialLat, initialLng]);
+      if (mapInstanceRef.current) mapInstanceRef.current.setView([initialLat, initialLng], 16);
+    }
+  }, [isOpen, editingLocation]);
+
   // Update geofence radius visual circle
   useEffect(() => {
     if (circleRef.current) {
@@ -449,6 +480,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       return;
     }
     onSaveLocation({
+      id: editingLocation?.id,
       name: locationName,
       clinic: locationName,
       category,
@@ -462,7 +494,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     setTimeout(() => {
       setIsSavedSuccess(false);
       onClose();
-    }, 1000);
+    }, 900);
   };
 
   if (!isOpen) return null;
@@ -500,11 +532,11 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#FFFFFF' }}>
-                  Interactive Live Map & Location Picker
+                  {editingLocation ? 'Edit Territory Location' : 'Interactive Live Map & Location Picker'}
                 </h3>
                 <span
                   style={{
-                    background: '#059669',
+                    background: editingLocation ? '#D97706' : '#059669',
                     color: '#FFFFFF',
                     padding: '2px 8px',
                     borderRadius: '12px',
@@ -513,11 +545,13 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
                     letterSpacing: '0.5px',
                   }}
                 >
-                  LIVE GPS • MASTER DIRECTORY
+                  {editingLocation ? 'EDIT MODE • MASTER DIRECTORY' : 'LIVE GPS • MASTER DIRECTORY'}
                 </span>
               </div>
               <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
-                Search, click anywhere to pin coordinates, or save doctor clinics
+                {editingLocation
+                  ? 'Update location details, coordinates, or category in master directory'
+                  : 'Search, click anywhere to pin coordinates, or save doctor clinics'}
               </p>
             </div>
           </div>
@@ -932,11 +966,11 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
               >
                 {isSavedSuccess ? (
                   <>
-                    <CheckCircle2 size={16} /> Saved to Master Directory!
+                    <CheckCircle2 size={16} /> {editingLocation ? 'Location Updated!' : 'Saved to Master Directory!'}
                   </>
                 ) : (
                   <>
-                    <Save size={16} /> Save Location
+                    <Save size={16} /> {editingLocation ? 'Update Location' : 'Save Location'}
                   </>
                 )}
               </button>

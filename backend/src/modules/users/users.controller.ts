@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -43,9 +45,16 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @Put(':id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteUser(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
   }
 
   @Patch(':id/deactivate')

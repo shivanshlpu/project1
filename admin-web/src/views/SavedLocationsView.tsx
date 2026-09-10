@@ -13,6 +13,8 @@ import {
   Filter,
   UserCheck,
   Compass,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { DoctorItem } from '../types';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
@@ -64,6 +66,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<DoctorItem | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DoctorItem | null>(null);
 
   // Helper to check if a location has a NEW unread mark
@@ -315,6 +318,10 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
               <strong style="color:${loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E'};">${loc.created_by_name || (loc.created_by_role === 'MR' ? 'Field MR' : 'System Admin')}</strong>
               <span style="font-size:10px;color:#94A3B8;"> • ${loc.created_by_role === 'MR' ? 'MR Discovery' : 'Owner Defined'}</span>
             </div>
+            <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;">
+              <button class="popup-edit-btn" data-id="${loc.id}" style="flex:1;padding:4px 8px;font-size:11px;background:#F1F5F9;color:#1E293B;border:1px solid #CBD5E1;border-radius:4px;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;">✏️ Edit</button>
+              <button class="popup-del-btn" data-id="${loc.id}" data-name="${loc.clinic || loc.name}" style="flex:1;padding:4px 8px;font-size:11px;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:4px;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;">🗑️ Delete</button>
+            </div>
           </div>
         `);
 
@@ -323,6 +330,29 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         });
 
         markersGroupRef.current?.addLayer(marker);
+      });
+
+      // Attach click listeners to popup buttons
+      mapInstanceRef.current?.off('popupopen');
+      mapInstanceRef.current?.on('popupopen', (e) => {
+        const container = e.popup.getElement();
+        if (!container) return;
+        const editBtn = container.querySelector('.popup-edit-btn') as HTMLButtonElement | null;
+        if (editBtn) {
+          editBtn.onclick = () => {
+            const id = editBtn.getAttribute('data-id');
+            const found = locations.find((l) => l.id === id);
+            if (found) handleEditLocation(found);
+          };
+        }
+        const delBtn = container.querySelector('.popup-del-btn') as HTMLButtonElement | null;
+        if (delBtn) {
+          delBtn.onclick = () => {
+            const id = delBtn.getAttribute('data-id');
+            const name = delBtn.getAttribute('data-name') || 'Location';
+            if (id) handleDeleteLocation(id, name);
+          };
+        }
       });
     }
 
@@ -359,24 +389,98 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Handle saving new location from modal
-  const handleSaveLocation = async (newLoc: any) => {
+  // Handle editing an existing location
+  const handleEditLocation = (loc: DoctorItem) => {
+    setEditingLocation(loc);
+    setIsPickerOpen(true);
+  };
+
+  // Handle deleting a location
+  const handleDeleteLocation = async (id: string, name: string) => {
+    const ok = window.confirm(
+      `Are you sure you want to delete "${name}"?\nThis will permanently remove it from your territory master directory and maps.`,
+    );
+    if (!ok) return;
+
+    const next = locations.filter((l) => l.id !== id);
+    setLocations(next);
+    persistSavedLocations(next);
+    if (selectedLocation?.id === id) {
+      setSelectedLocation(null);
+    }
+
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      await fetch(`${apiUrl}/locations/${id}`, { method: 'DELETE' });
+      fetchLocations();
+    } catch (err) {
+      console.warn('Backend delete location warning:', err);
+    }
+  };
+
+  // Handle saving new or updated location from modal
+  const handleSaveLocation = async (locData: any) => {
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+
+    if (locData.id) {
+      // Update existing location
+      const updatedList = locations.map((l) =>
+        l.id === locData.id
+          ? {
+              ...l,
+              name: locData.name,
+              clinic: locData.clinic || locData.name,
+              doctor_name: locData.name,
+              address: locData.address,
+              category: locData.category,
+              latitude: locData.latitude,
+              longitude: locData.longitude,
+              phone: locData.phone || l.phone,
+            }
+          : l,
+      );
+      setLocations(updatedList);
+      persistSavedLocations(updatedList);
+      setSelectedLocation(updatedList.find((l) => l.id === locData.id) || null);
+      setEditingLocation(null);
+
+      try {
+        await fetch(`${apiUrl}/locations/${locData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: locData.name,
+            clinic: locData.clinic || locData.name,
+            doctor_name: locData.name,
+            category: locData.category,
+            address: locData.address,
+            latitude: locData.latitude,
+            longitude: locData.longitude,
+            phone: locData.phone,
+          }),
+        });
+        fetchLocations();
+      } catch {}
+      return;
+    }
+
+    // Create new location
     const created: DoctorItem = {
       id: `loc-${Date.now().toString().slice(-4)}`,
-      name: newLoc.name,
-      clinic: newLoc.clinic,
+      name: locData.name,
+      clinic: locData.clinic,
       qualification: 'Registered Point of Care',
-      specialization: newLoc.category,
+      specialization: locData.category,
       class: 'A',
       potential_score: 90,
-      phone: newLoc.phone || 'N/A',
-      address: newLoc.address,
-      latitude: newLoc.latitude,
-      longitude: newLoc.longitude,
-      category: newLoc.category,
+      phone: locData.phone || 'N/A',
+      address: locData.address,
+      latitude: locData.latitude,
+      longitude: locData.longitude,
+      category: locData.category,
       created_by_role: 'ADMIN',
       created_by_name: 'System Admin (Owner)',
-      area_name: newLoc.address.includes('Shahdol') ? 'Shahdol District' : 'Delhi Territory',
+      area_name: locData.address.includes('Shahdol') ? 'Shahdol District' : 'Delhi Territory',
       visit_count: 0,
     };
 
@@ -387,18 +491,17 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     mapInstanceRef.current?.setView([created.latitude, created.longitude], 15);
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       await fetch(`${apiUrl}/locations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newLoc.clinic || newLoc.name,
-          doctor_name: newLoc.name,
-          category: newLoc.category,
-          address: newLoc.address,
-          latitude: newLoc.latitude,
-          longitude: newLoc.longitude,
-          phone: newLoc.phone,
+          name: locData.clinic || locData.name,
+          doctor_name: locData.name,
+          category: locData.category,
+          address: locData.address,
+          latitude: locData.latitude,
+          longitude: locData.longitude,
+          phone: locData.phone,
           mr_name: 'System Admin (Owner)',
         }),
       });
@@ -434,7 +537,10 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         </div>
 
         <button
-          onClick={() => setIsPickerOpen(true)}
+          onClick={() => {
+            setEditingLocation(null);
+            setIsPickerOpen(true);
+          }}
           style={{
             padding: '9px 16px',
             background: '#0F8B5A',
@@ -749,42 +855,91 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                        <span style={{ fontSize: '11px', color: loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E', fontWeight: '700' }}>
-                          Marked by: {loc.created_by_name || (loc.created_by_role === 'MR' ? 'Field MR' : 'System Admin')}
-                        </span>
-                        <span style={{ fontSize: '10px', color: '#94A3B8' }}>
-                          {loc.created_by_role === 'MR' ? 'Field MR Discovery' : 'Owner Defined'}
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                          <span style={{ fontSize: '11px', color: loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E', fontWeight: '700' }}>
+                            Marked by: {loc.created_by_name || (loc.created_by_role === 'MR' ? 'Field MR' : 'System Admin')}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#94A3B8' }}>
+                            {loc.created_by_role === 'MR' ? 'Field MR Discovery' : 'Owner Defined'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          title="Edit Location Details"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditLocation(loc);
+                          }}
+                          style={{
+                            padding: '3px 7px',
+                            background: '#F1F5F9',
+                            color: '#1E293B',
+                            borderRadius: '4px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <Pencil size={11} color="#2563EB" /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete Location"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteLocation(loc.id, loc.clinic || loc.name);
+                          }}
+                          style={{
+                            padding: '3px 7px',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            borderRadius: '4px',
+                            border: '1px solid #FECACA',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <Trash2 size={11} color="#DC2626" /> Delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAssignTaskToLocation({
+                              name: loc.clinic || loc.name,
+                              address: loc.address || loc.clinic,
+                              latitude: loc.latitude,
+                              longitude: loc.longitude,
+                              geofence_radius_m: 50,
+                            });
+                          }}
+                          style={{
+                            padding: '3px 8px',
+                            background: '#1A3C6E',
+                            color: '#FFFFFF',
+                            borderRadius: '4px',
+                            border: 'none',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <Calendar size={11} /> Assign
+                        </button>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAssignTaskToLocation({
-                            name: loc.clinic || loc.name,
-                            address: loc.address || loc.clinic,
-                            latitude: loc.latitude,
-                            longitude: loc.longitude,
-                            geofence_radius_m: 50,
-                          });
-                        }}
-                        style={{
-                          padding: '3px 8px',
-                          background: '#1A3C6E',
-                          color: '#FFFFFF',
-                          borderRadius: '4px',
-                          border: 'none',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <Calendar size={11} /> Assign Task
-                      </button>
                     </div>
                   </div>
                 );
@@ -953,7 +1108,11 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       {/* Map Location Picker Modal */}
       <MapLocationPickerModal
         isOpen={isPickerOpen}
-        onClose={() => setIsPickerOpen(false)}
+        editingLocation={editingLocation}
+        onClose={() => {
+          setIsPickerOpen(false);
+          setEditingLocation(null);
+        }}
         onSaveLocation={handleSaveLocation}
         onAssignTaskHere={(loc) => {
           handleSaveLocation(loc);
