@@ -39,6 +39,7 @@ test_endpoints.js
 
 # Expo & Mobile Build Artifacts
 .expo/
+*.apk
 *.jks
 *.p8
 *.mobileprovision
