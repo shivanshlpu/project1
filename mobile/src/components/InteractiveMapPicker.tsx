@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Image,
-  PanResponder,
-  Animated,
   Dimensions,
 } from 'react-native';
-import { PinCategory } from '../utils/mapPinGenerator';
+import { WebView } from 'react-native-webview';
+import { PinCategory, create3DMapPinHtml } from '../utils/mapPinGenerator';
 import { LocationService } from '../services/locationService';
 
 interface InteractiveMapPickerProps {
@@ -45,8 +43,6 @@ const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
   { id: 'OFFICE', label: 'Chemist / Lab', color: '#D97706' },
 ];
 
-const TILE_SIZE = 256;
-
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   isOpen,
   onClose,
@@ -61,47 +57,47 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
 }) => {
   const [selectedLat, setSelectedLat] = useState<number>(initialLat);
   const [selectedLng, setSelectedLng] = useState<number>(initialLng);
-  const [zoom, setZoom] = useState<number>(16);
-  const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
-  const [gpsAccuracy, setGpsAccuracy] = useState<number>(8.0);
   const [category, setCategory] = useState<PinCategory>(initialCategory);
   const [placeName, setPlaceName] = useState<string>(initialName);
   const [doctorName, setDoctorName] = useState<string>(initialDoctorName);
   const [address, setAddress] = useState<string>(initialAddress);
   const [phone, setPhone] = useState<string>(initialPhone);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number>(8.0);
+  const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
 
-  // Fullscreen map mode toggle
+  // Fullscreen state
   const [isFullscreenMap, setIsFullscreenMap] = useState<boolean>(false);
+  const [isScrollEnabled, setIsScrollEnabled] = useState<boolean>(true);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  // State flags
+  // Loading flags
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState<boolean>(false);
 
-  // Map canvas layout measurement
-  const [canvasLayout, setCanvasLayout] = useState<{ width: number; height: number }>({
-    width: 380,
-    height: 290,
-  });
-
-  // Animated pin drop bounce
-  const pinBounceAnim = useRef(new Animated.Value(0)).current;
-  const triggerPinBounce = () => {
-    pinBounceAnim.setValue(-18);
-    Animated.spring(pinBounceAnim, {
-      toValue: 0,
-      friction: 4,
-      tension: 120,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  // Debounced reverse-geocoding
+  const webViewRef = useRef<WebView | null>(null);
   const reverseGeocodeTimer = useRef<any>(null);
+
+  // Reset state on open
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedLat(initialLat);
+      setSelectedLng(initialLng);
+      setCategory(initialCategory);
+      setPlaceName(initialName);
+      setDoctorName(initialDoctorName);
+      setAddress(initialAddress);
+      setPhone(initialPhone);
+      setSearchQuery('');
+      setSearchResults([]);
+      setIsFullscreenMap(false);
+    }
+  }, [isOpen]);
+
+  // Debounced reverse geocode on coordinate change
   const resolveAddressFromCoords = (lat: number, lng: number) => {
     if (reverseGeocodeTimer.current) {
       clearTimeout(reverseGeocodeTimer.current);
@@ -109,7 +105,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     reverseGeocodeTimer.current = setTimeout(async () => {
       try {
         setIsResolvingAddress(true);
-        // Primary: Nominatim reverse geocode
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
           {
@@ -137,7 +132,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             return;
           }
         }
-
         // Fallback: Photon Reverse
         const photonRes = await fetch(
           `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`
@@ -154,21 +148,21 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           }
         }
       } catch {
-        // Keep existing address on network error
+        // Keep existing address
       } finally {
         setIsResolvingAddress(false);
       }
-    }, 400);
+    }, 350);
   };
 
-  // High-accuracy live POI search
+  // Live POI & Address Search
   const handleSearch = async () => {
     const query = searchQuery.trim();
     if (!query) return;
 
     setIsSearching(true);
 
-    // 1. Direct coordinate format: "28.5245, 77.2066"
+    // Direct coords check (e.g., "28.5245, 77.2066")
     const coordMatch = query.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -177,9 +171,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         setSelectedLat(lat);
         setSelectedLng(lng);
         resolveAddressFromCoords(lat, lng);
-        triggerPinBounce();
         setSearchResults([]);
         setIsSearching(false);
+        flyMapTo(lat, lng);
         return;
       }
     }
@@ -212,7 +206,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               display_name: fullAddr || name,
               lat: f.geometry.coordinates[1],
               lon: f.geometry.coordinates[0],
-              category: p.osm_value || 'place',
             };
           });
         }
@@ -236,7 +229,6 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               display_name: item.display_name,
               lat: parseFloat(item.lat),
               lon: parseFloat(item.lon),
-              category: 'place',
             }));
           }
         }
@@ -250,7 +242,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         setSelectedLng(first.lon);
         if (!placeName) setPlaceName(first.name);
         setAddress(first.display_name);
-        triggerPinBounce();
+        flyMapTo(first.lat, first.lon);
       } else {
         Alert.alert(
           'Location Search',
@@ -258,7 +250,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         );
       }
     } catch {
-      Alert.alert('Search Notice', 'Could not complete place search. Verify internet connection.');
+      Alert.alert('Search Notice', 'Could not complete search. Check network connection.');
     } finally {
       setIsSearching(false);
     }
@@ -270,29 +262,26 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     setPlaceName(item.name);
     setAddress(item.display_name);
     setSearchResults([]);
-    triggerPinBounce();
+    flyMapTo(item.lat, item.lon);
   };
 
+  // Device GPS
   const handleGetCurrentLocation = async () => {
     setIsLocatingGps(true);
     try {
       const loc = await LocationService.getCurrentLocation();
       if (loc) {
-        const lat = loc.latitude;
-        const lng = loc.longitude;
+        const lat = Number(loc.latitude.toFixed(6));
+        const lng = Number(loc.longitude.toFixed(6));
         const acc = loc.accuracy ?? 8.0;
 
-        if (typeof lat === 'number' && typeof lng === 'number') {
-          const nLat = Number(lat.toFixed(6));
-          const nLng = Number(lng.toFixed(6));
-          setSelectedLat(nLat);
-          setSelectedLng(nLng);
-          setGpsAccuracy(Number(acc.toFixed(1)));
-          resolveAddressFromCoords(nLat, nLng);
-          triggerPinBounce();
-        }
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        setGpsAccuracy(Number(acc.toFixed(1)));
+        resolveAddressFromCoords(lat, lng);
+        flyMapTo(lat, lng);
       } else {
-        Alert.alert('Location Notice', 'Could not lock GPS. Using current pin position.');
+        Alert.alert('GPS Notice', 'Could not lock GPS. Using current pin position.');
       }
     } catch (err: any) {
       Alert.alert('GPS Notice', err?.message || 'Could not fetch device GPS.');
@@ -301,18 +290,44 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   };
 
-  const handleZoom = (delta: number) => {
-    setZoom((prev) => Math.min(19, Math.max(13, prev + delta)));
+  // Fly Leaflet Map to coordinates
+  const flyMapTo = (lat: number, lng: number) => {
+    const js = `
+      if (window.leafletMap && window.marker) {
+        window.leafletMap.flyTo([${lat}, ${lng}], 17, { duration: 0.8 });
+        window.marker.setLatLng([${lat}, ${lng}]);
+      }
+      true;
+    `;
+    webViewRef.current?.injectJavaScript(js);
   };
 
-  // Micro-Nudge D-Pad: shift coordinates by ~3 meters in any cardinal direction
-  const handleNudge = (deltaLat: number, deltaLng: number) => {
-    const nextLat = Number((selectedLat + deltaLat).toFixed(6));
-    const nextLng = Number((selectedLng + deltaLng).toFixed(6));
-    setSelectedLat(nextLat);
-    setSelectedLng(nextLng);
-    resolveAddressFromCoords(nextLat, nextLng);
-    triggerPinBounce();
+  // Toggle map mode
+  const handleToggleMapMode = (mode: 'street' | 'satellite') => {
+    setMapMode(mode);
+    const js = `
+      if (window.setTileMode) {
+        window.setTileMode('${mode}');
+      }
+      true;
+    `;
+    webViewRef.current?.injectJavaScript(js);
+  };
+
+  // Handle messages from Leaflet inside WebView
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'location_selected') {
+        const lat = Number(data.lat.toFixed(6));
+        const lng = Number(data.lng.toFixed(6));
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        resolveAddressFromCoords(lat, lng);
+      }
+    } catch {
+      // Ignored
+    }
   };
 
   const handleSave = () => {
@@ -337,173 +352,131 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     onClose();
   };
 
-  // Real-time animated drag translation
-  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  const [isDraggingMap, setIsDraggingMap] = useState(false);
-  const initialPinchDist = useRef<number | null>(null);
+  // Dynamic 3D Pin HTML based on category
+  const pinHtml = create3DMapPinHtml({ category, isSelected: true });
 
-  // Fluid Touch PanResponder: Real-time 360° finger tracking with parent scroll freeze
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderTerminationRequest: () => false,
-
-        onPanResponderGrant: () => {
-          setIsDraggingMap(true);
-          pan.setOffset({ x: 0, y: 0 });
-          pan.setValue({ x: 0, y: 0 });
-          initialPinchDist.current = null;
-        },
-
-        onPanResponderMove: (evt, gesture) => {
-          // Pinch-to-zoom multi-touch detection
-          const touches = evt.nativeEvent.touches;
-          if (touches && touches.length >= 2) {
-            const t1 = touches[0];
-            const t2 = touches[1];
-            const dist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
-            if (!initialPinchDist.current) {
-              initialPinchDist.current = dist;
-            } else {
-              const ratio = dist / initialPinchDist.current;
-              if (ratio > 1.35) {
-                handleZoom(1);
-                initialPinchDist.current = dist;
-              } else if (ratio < 0.75) {
-                handleZoom(-1);
-                initialPinchDist.current = dist;
-              }
-            }
-            return;
-          }
-
-          // Live 360° fluid tile tracking under finger
-          pan.setValue({ x: gesture.dx, y: gesture.dy });
-        },
-
-        onPanResponderRelease: (evt, gesture) => {
-          setIsDraggingMap(false);
-          initialPinchDist.current = null;
-
-          const n = Math.pow(2, zoom);
-          const totalWorldPx = n * TILE_SIZE;
-
-          // Direct tap-to-reposition (less than 6px drag)
-          if (Math.abs(gesture.dx) < 6 && Math.abs(gesture.dy) < 6) {
-            pan.setValue({ x: 0, y: 0 });
-            const locX = evt.nativeEvent?.locationX;
-            const locY = evt.nativeEvent?.locationY;
-            if (typeof locX === 'number' && typeof locY === 'number') {
-              const halfW = canvasLayout.width / 2;
-              const halfH = canvasLayout.height / 2;
-              const tapOffsetX = locX - halfW;
-              const tapOffsetY = locY - halfH;
-
-              if (Math.abs(tapOffsetX) > 6 || Math.abs(tapOffsetY) > 6) {
-                const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
-                const latRad = (selectedLat * Math.PI) / 180;
-                const sinLat = Math.sin(latRad);
-                const currentWorldY =
-                  (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * totalWorldPx;
-
-                const targetWorldX = currentWorldX + tapOffsetX;
-                const targetWorldY = currentWorldY + tapOffsetY;
-
-                const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
-                const normY = 0.5 - targetWorldY / totalWorldPx;
-                const targetLat =
-                  (2 * Math.atan(Math.exp(normY * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
-
-                const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
-                const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
-
-                setSelectedLat(nLat);
-                setSelectedLng(nLng);
-                resolveAddressFromCoords(nLat, nLng);
-                triggerPinBounce();
-              }
-            }
-            return;
-          }
-
-          // Accurate 256px Web Mercator drag translation
-          const currentWorldX = ((selectedLng + 180) / 360) * totalWorldPx;
-          const latRad = (selectedLat * Math.PI) / 180;
-          const sinLat = Math.sin(latRad);
-          const currentWorldY =
-            (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * totalWorldPx;
-
-          const targetWorldX = currentWorldX - gesture.dx;
-          const targetWorldY = currentWorldY - gesture.dy;
-
-          const targetLng = (targetWorldX / totalWorldPx) * 360 - 180;
-          const normY = 0.5 - targetWorldY / totalWorldPx;
-          const targetLat =
-            (2 * Math.atan(Math.exp(normY * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
-
-          const nLat = Number(Math.max(-85, Math.min(85, targetLat)).toFixed(6));
-          const nLng = Number(Math.max(-180, Math.min(180, targetLng)).toFixed(6));
-
-          setSelectedLat(nLat);
-          setSelectedLng(nLng);
-          resolveAddressFromCoords(nLat, nLng);
-          triggerPinBounce();
-
-          // Reset animated offset for newly centered tiles
-          pan.setValue({ x: 0, y: 0 });
-        },
-
-        onPanResponderTerminate: () => {
-          setIsDraggingMap(false);
-          pan.setValue({ x: 0, y: 0 });
-        },
-      }),
-    [zoom, selectedLat, selectedLng, canvasLayout]
-  );
-
-  if (!isOpen) return null;
-
-  const activeCategoryConfig =
-    CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
-
-  // Slippy tile math with 256px standard tiles
-  const n = Math.pow(2, zoom);
-  const preciseTileX = ((selectedLng + 180) / 360) * n;
-  const centerTileX = Math.floor(preciseTileX);
-  const fracX = (preciseTileX - centerTileX) * TILE_SIZE;
-
-  const latRad = (selectedLat * Math.PI) / 180;
-  const sinLat = Math.sin(latRad);
-  const preciseTileY =
-    (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n;
-  const centerTileY = Math.floor(preciseTileY);
-  const fracY = (preciseTileY - centerTileY) * TILE_SIZE;
-
-  // Google Maps Road & Satellite Tile URLs
-  const getTileUrl = (x: number, y: number) => {
-    const s = Math.abs(x + y) % 4;
-    const maxIndex = Math.pow(2, zoom);
-    const wrapX = ((x % maxIndex) + maxIndex) % maxIndex;
-    const wrapY = Math.max(0, Math.min(maxIndex - 1, y));
-
-    if (mapMode === 'satellite') {
-      return `https://mt${s}.google.com/vt/lyrs=y&x=${wrapX}&y=${wrapY}&z=${zoom}`;
+  // Full Leaflet HTML page rendered inside WebView
+  const leafletHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #E2E8F0;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
-    return `https://mt${s}.google.com/vt/lyrs=m&x=${wrapX}&y=${wrapY}&z=${zoom}`;
-  };
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+    .custom-3d-pin {
+      background: transparent !important;
+      border: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function() {
+      var streetTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 22,
+        maxNativeZoom: 20
+      });
 
-  // 5x5 tile grid (1280x1280px total coverage) for infinite free-drag margin
-  const tileOffsets = [
-    { dx: -2, dy: -2 }, { dx: -1, dy: -2 }, { dx: 0, dy: -2 }, { dx: 1, dy: -2 }, { dx: 2, dy: -2 },
-    { dx: -2, dy: -1 }, { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 }, { dx: 2, dy: -1 },
-    { dx: -2, dy: 0 },  { dx: -1, dy: 0 },  { dx: 0, dy: 0 },  { dx: 1, dy: 0 },  { dx: 2, dy: 0 },
-    { dx: -2, dy: 1 },  { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 },  { dx: 2, dy: 1 },
-    { dx: -2, dy: 2 },  { dx: -1, dy: 2 },  { dx: 0, dy: 2 },  { dx: 1, dy: 2 },  { dx: 2, dy: 2 },
-  ];
+      var satelliteTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 22,
+        maxNativeZoom: 20
+      });
+
+      var currentTileLayer = streetTiles;
+
+      var map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: true,
+        touchZoom: true,
+        doubleClickZoom: true,
+        scrollWheelZoom: true,
+        tap: true
+      }).setView([${selectedLat}, ${selectedLng}], 17);
+
+      currentTileLayer.addTo(map);
+
+      // Custom 3D Pin
+      var pinIcon = L.divIcon({
+        className: 'custom-3d-pin',
+        html: ${JSON.stringify(pinHtml)},
+        iconSize: [46, 60],
+        iconAnchor: [23, 60],
+        popupAnchor: [0, -56]
+      });
+
+      var marker = L.marker([${selectedLat}, ${selectedLng}], {
+        icon: pinIcon,
+        draggable: true
+      }).addTo(map);
+
+      window.leafletMap = map;
+      window.marker = marker;
+
+      // Post coordinates to React Native
+      function sendCoords(lat, lng) {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'location_selected',
+            lat: lat,
+            lng: lng
+          }));
+        }
+      }
+
+      // 1. Drag marker freely
+      marker.on('dragend', function(e) {
+        var pos = marker.getLatLng();
+        sendCoords(pos.lat, pos.lng);
+      });
+
+      // 2. Tap anywhere on map to drop / move pin
+      map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        sendCoords(e.latlng.lat, e.latlng.lng);
+      });
+
+      // Switch Street / Satellite
+      window.setTileMode = function(mode) {
+        map.removeLayer(currentTileLayer);
+        if (mode === 'satellite') {
+          currentTileLayer = satelliteTiles;
+        } else {
+          currentTileLayer = streetTiles;
+        }
+        currentTileLayer.addTo(map);
+      };
+
+      // Invalidate size on load
+      setTimeout(function() {
+        map.invalidateSize();
+      }, 100);
+      setTimeout(function() {
+        map.invalidateSize();
+      }, 400);
+    })();
+  </script>
+</body>
+</html>
+  `;
 
   return (
     <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={onClose}>
@@ -512,17 +485,21 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Mark Facility Location</Text>
-            <Text style={styles.subtitle}>Interactive Geotag for Clinics, Hospitals & Chemists</Text>
+            <Text style={styles.subtitle}>
+              {isFullscreenMap
+                ? 'Tap anywhere to drop pin or drag freely'
+                : 'Interactive Geotag for Clinics, Hospitals & Chemists'}
+            </Text>
           </View>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        {/* FULLSCREEN MAP VIEW OR STANDARD FORM VIEW */}
         {isFullscreenMap ? (
+          /* FULLSCREEN MAP VIEW */
           <View style={styles.fullscreenContainer}>
-            {/* Floating Top Header in Fullscreen */}
+            {/* Top Toolbar in Fullscreen */}
             <View style={styles.fullscreenTopBar}>
               <TouchableOpacity
                 style={styles.fullscreenBackBtn}
@@ -533,7 +510,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               <View style={styles.fullscreenModeToggle}>
                 <TouchableOpacity
                   style={[styles.modeToggleBtn, mapMode === 'street' && styles.modeToggleBtnActive]}
-                  onPress={() => setMapMode('street')}
+                  onPress={() => handleToggleMapMode('street')}
                 >
                   <Text style={[styles.modeToggleText, mapMode === 'street' && styles.modeToggleTextActive]}>
                     Road
@@ -541,7 +518,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modeToggleBtn, mapMode === 'satellite' && styles.modeToggleBtnActive]}
-                  onPress={() => setMapMode('satellite')}
+                  onPress={() => handleToggleMapMode('satellite')}
                 >
                   <Text style={[styles.modeToggleText, mapMode === 'satellite' && styles.modeToggleTextActive]}>
                     Satellite
@@ -550,7 +527,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               </View>
             </View>
 
-            {/* Live Search Bar in Fullscreen */}
+            {/* Live Search in Fullscreen */}
             <View style={styles.fullscreenSearchBox}>
               <TextInput
                 style={styles.fullscreenSearchInput}
@@ -566,102 +543,19 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Fullscreen Map Canvas */}
-            <View
-              style={styles.fullscreenCanvas}
-              onLayout={(e) => {
-                setCanvasLayout({
-                  width: e.nativeEvent.layout.width,
-                  height: e.nativeEvent.layout.height,
-                });
-              }}
-              {...panResponder.panHandlers}
-            >
-              <Animated.View
-                style={[
-                  styles.tilesGrid,
-                  {
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: -640 - fracX,
-                    marginTop: -640 - fracY,
-                    transform: [{ translateX: pan.x }, { translateY: pan.y }],
-                  },
-                ]}
-              >
-                {tileOffsets.map((offset, i) => {
-                  const x = centerTileX + offset.dx;
-                  const y = centerTileY + offset.dy;
-                  const url = getTileUrl(x, y);
-                  return (
-                    <Image
-                      key={`${mapMode}-${zoom}-${x}-${y}-${i}`}
-                      source={{ uri: url }}
-                      style={styles.gridTile}
-                      resizeMode="cover"
-                    />
-                  );
-                })}
-              </Animated.View>
-
-              {/* Crosshair & Bouncing Pin */}
-              <View style={styles.crosshairH} pointerEvents="none" />
-              <View style={styles.crosshairV} pointerEvents="none" />
-              <Animated.View
-                style={[styles.pinOverlay, { transform: [{ translateY: pinBounceAnim }] }]}
-                pointerEvents="none"
-              >
-                <View style={styles.googlePinContainer}>
-                  <View style={[styles.googlePinHead, { backgroundColor: activeCategoryConfig.color, borderColor: '#0F172A' }]}>
-                    <View style={styles.googlePinDot} />
-                  </View>
-                  <View style={[styles.googlePinTip, { borderTopColor: activeCategoryConfig.color }]} />
-                </View>
-                <View style={styles.googlePinShadow} />
-              </Animated.View>
-
-              {/* Floating Zoom Controls */}
-              <View style={styles.zoomControlCol}>
-                <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(1)}>
-                  <Text style={styles.controlBtnText}>+</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(-1)}>
-                  <Text style={styles.controlBtnText}>−</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* 4-Direction Micro-Nudge D-Pad */}
-              <View style={styles.nudgePad}>
-                <TouchableOpacity
-                  style={[styles.nudgeBtn, styles.nudgeBtnNorth]}
-                  onPress={() => handleNudge(0.00003, 0)}
-                >
-                  <Text style={styles.nudgeBtnText}>▲</Text>
-                </TouchableOpacity>
-                <View style={styles.nudgeMidRow}>
-                  <TouchableOpacity
-                    style={[styles.nudgeBtn, styles.nudgeBtnWest]}
-                    onPress={() => handleNudge(0, -0.00003)}
-                  >
-                    <Text style={styles.nudgeBtnText}>◄</Text>
-                  </TouchableOpacity>
-                  <View style={styles.nudgeCenterDot}>
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B' }}>3m</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.nudgeBtn, styles.nudgeBtnEast]}
-                    onPress={() => handleNudge(0, 0.00003)}
-                  >
-                    <Text style={styles.nudgeBtnText}>►</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity
-                  style={[styles.nudgeBtn, styles.nudgeBtnSouth]}
-                  onPress={() => handleNudge(-0.00003, 0)}
-                >
-                  <Text style={styles.nudgeBtnText}>▼</Text>
-                </TouchableOpacity>
-              </View>
+            {/* Fullscreen Map Canvas (WebView with Leaflet) */}
+            <View style={styles.fullscreenCanvas}>
+              <WebView
+                ref={webViewRef}
+                originWhitelist={['*']}
+                source={{ html: leafletHtml }}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                geolocationEnabled={true}
+                onMessage={handleWebViewMessage}
+                style={styles.webView}
+                scrollEnabled={false}
+              />
 
               {/* Floating GPS Button */}
               <TouchableOpacity
@@ -680,7 +574,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Bottom Floating Info Card */}
+            {/* Bottom Card in Fullscreen */}
             <View style={styles.fullscreenBottomCard}>
               <Text style={styles.fullscreenCardTitle} numberOfLines={1}>
                 {placeName || 'Selected Location'}
@@ -689,7 +583,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 {address || 'Fetching address...'}
               </Text>
               <Text style={styles.fullscreenCardCoords}>
-                {selectedLat.toFixed(5)}, {selectedLng.toFixed(5)} • Zoom {zoom}x
+                {selectedLat.toFixed(6)}, {selectedLng.toFixed(6)}
               </Text>
               <TouchableOpacity
                 style={styles.fullscreenConfirmBtn}
@@ -700,13 +594,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             </View>
           </View>
         ) : (
+          /* STANDARD FORM VIEW */
           <ScrollView
             style={styles.scrollBody}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            scrollEnabled={!isDraggingMap}
+            scrollEnabled={isScrollEnabled}
           >
-            {/* LIVE PLACE SEARCH BAR */}
+            {/* Search Bar */}
             <View style={styles.searchCard}>
               <View style={styles.searchInputRow}>
                 <Text style={styles.searchIcon}>🔍</Text>
@@ -753,57 +648,36 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                       style={styles.suggestionItem}
                       onPress={() => handleSelectSearchResult(item)}
                     >
-                      <View style={styles.suggestionIconBox}>
-                        <Text style={{ fontSize: 13 }}>
-                          {item.category?.toLowerCase().includes('hospital')
-                            ? '🏥'
-                            : item.category?.toLowerCase().includes('pharmacy')
-                            ? '💊'
-                            : '📍'}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.suggestionName} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <Text style={styles.suggestionAddr} numberOfLines={2}>
-                          {item.display_name}
-                        </Text>
-                      </View>
+                      <Text style={styles.suggestionName}>{item.name}</Text>
+                      <Text style={styles.suggestionAddress} numberOfLines={1}>
+                        {item.display_name}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
             </View>
 
-            {/* VISUAL INTERACTIVE MAP SECTION */}
-            <View style={styles.mapCard}>
-              <View style={styles.mapHeaderRow}>
-                <View style={styles.mapBadge}>
-                  <View style={[styles.statusDot, { backgroundColor: activeCategoryConfig.color }]} />
-                  <Text style={styles.mapBadgeText}>
-                    {mapMode === 'satellite' ? 'Satellite' : 'Road'} • Zoom {zoom}x
+            {/* Interactive Map Frame */}
+            <View style={styles.mapFrameCard}>
+              <View style={styles.mapTopBar}>
+                <View style={styles.mapTitleRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.mapModeTitle}>
+                    {mapMode === 'street' ? 'Road Map' : 'Satellite Hybrid'}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={styles.mapControlGroup}>
                   <TouchableOpacity
-                    style={[
-                      styles.modeToggleBtn,
-                      mapMode === 'satellite' && styles.modeToggleBtnActive,
-                    ]}
-                    onPress={() => setMapMode(mapMode === 'street' ? 'satellite' : 'street')}
+                    style={styles.mapModeBtn}
+                    onPress={() =>
+                      handleToggleMapMode(mapMode === 'street' ? 'satellite' : 'street')
+                    }
                   >
-                    <Text
-                      style={[
-                        styles.modeToggleText,
-                        mapMode === 'satellite' && styles.modeToggleTextActive,
-                      ]}
-                    >
+                    <Text style={styles.mapModeBtnText}>
                       {mapMode === 'street' ? '🛰️ Satellite' : '🗺️ Road'}
                     </Text>
                   </TouchableOpacity>
-
-                  {/* Fullscreen Map Mode Button */}
                   <TouchableOpacity
                     style={styles.expandMapBtn}
                     onPress={() => setIsFullscreenMap(true)}
@@ -816,106 +690,29 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               {/* Instructions banner */}
               <View style={styles.interactiveInstructionBanner}>
                 <Text style={styles.interactiveInstructionText}>
-                  👆 Drag freely in 360° • Pinch to zoom • Tap anywhere to drop pin
+                  👆 Drag map freely • Pinch to zoom • Tap anywhere to drop pin
                 </Text>
               </View>
 
-              {/* Map Canvas with 5x5 256px Stitched Tiles */}
+              {/* Map Canvas (WebView with Leaflet) */}
               <View
                 style={styles.mapCanvas}
-                onLayout={(e) => {
-                  setCanvasLayout({
-                    width: e.nativeEvent.layout.width,
-                    height: e.nativeEvent.layout.height,
-                  });
-                }}
-                {...panResponder.panHandlers}
+                onTouchStart={() => setIsScrollEnabled(false)}
+                onTouchEnd={() => setIsScrollEnabled(true)}
+                onTouchCancel={() => setIsScrollEnabled(true)}
               >
-                <Animated.View
-                  style={[
-                    styles.tilesGrid,
-                    {
-                      left: '50%',
-                      top: '50%',
-                      marginLeft: -640 - fracX,
-                      marginTop: -640 - fracY,
-                      transform: [{ translateX: pan.x }, { translateY: pan.y }],
-                    },
-                  ]}
-                >
-                  {tileOffsets.map((offset, i) => {
-                    const x = centerTileX + offset.dx;
-                    const y = centerTileY + offset.dy;
-                    const url = getTileUrl(x, y);
-                    return (
-                      <Image
-                        key={`${mapMode}-${zoom}-${x}-${y}-${i}`}
-                        source={{ uri: url }}
-                        style={styles.gridTile}
-                        resizeMode="cover"
-                      />
-                    );
-                  })}
-                </Animated.View>
-
-                {/* Crosshair & Pin */}
-                <View style={styles.crosshairH} pointerEvents="none" />
-                <View style={styles.crosshairV} pointerEvents="none" />
-                <Animated.View
-                  style={[styles.pinOverlay, { transform: [{ translateY: pinBounceAnim }] }]}
-                  pointerEvents="none"
-                >
-                  <View style={styles.googlePinContainer}>
-                    <View style={[styles.googlePinHead, { backgroundColor: activeCategoryConfig.color, borderColor: '#0F172A' }]}>
-                      <View style={styles.googlePinDot} />
-                    </View>
-                    <View style={[styles.googlePinTip, { borderTopColor: activeCategoryConfig.color }]} />
-                  </View>
-                  <View style={styles.googlePinShadow} />
-                </Animated.View>
-
-                {/* Floating Zoom In / Out Buttons */}
-                <View style={styles.zoomControlCol}>
-                  <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(1)}>
-                    <Text style={styles.controlBtnText}>+</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.controlBtn} onPress={() => handleZoom(-1)}>
-                    <Text style={styles.controlBtnText}>−</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Micro-Nudge D-Pad (4 Directions: ▲, ▼, ◄, ►) */}
-                <View style={styles.nudgePad}>
-                  <TouchableOpacity
-                    style={[styles.nudgeBtn, styles.nudgeBtnNorth]}
-                    onPress={() => handleNudge(0.00003, 0)}
-                  >
-                    <Text style={styles.nudgeBtnText}>▲</Text>
-                  </TouchableOpacity>
-                  <View style={styles.nudgeMidRow}>
-                    <TouchableOpacity
-                      style={[styles.nudgeBtn, styles.nudgeBtnWest]}
-                      onPress={() => handleNudge(0, -0.00003)}
-                    >
-                      <Text style={styles.nudgeBtnText}>◄</Text>
-                    </TouchableOpacity>
-                    <View style={styles.nudgeCenterDot}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B' }}>3m</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.nudgeBtn, styles.nudgeBtnEast]}
-                      onPress={() => handleNudge(0, 0.00003)}
-                    >
-                      <Text style={styles.nudgeBtnText}>►</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.nudgeBtn, styles.nudgeBtnSouth]}
-                    onPress={() => handleNudge(-0.00003, 0)}
-                  >
-                    <Text style={styles.nudgeBtnText}>▼</Text>
-                  </TouchableOpacity>
-                </View>
+                <WebView
+                  ref={webViewRef}
+                  originWhitelist={['*']}
+                  source={{ html: leafletHtml }}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  geolocationEnabled={true}
+                  onMessage={handleWebViewMessage}
+                  style={styles.webView}
+                  scrollEnabled={false}
+                  nestedScrollEnabled={true}
+                />
 
                 {/* Floating GPS Button */}
                 <TouchableOpacity
@@ -936,7 +733,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               </View>
             </View>
 
-            {/* Category Selector */}
+            {/* Facility Type Selector */}
             <Text style={styles.sectionHeading}>Facility Type</Text>
             <View style={styles.categoryRow}>
               {CATEGORIES.map((cat) => {
@@ -973,7 +770,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               placeholderTextColor="#94A3B8"
             />
 
-            {/* Doctor Name */}
+            {/* Key Doctor / Contact */}
             <Text style={styles.inputLabel}>Key Doctor / Contact Person</Text>
             <TextInput
               style={styles.textInput}
@@ -1000,7 +797,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               numberOfLines={3}
             />
 
-            {/* Phone */}
+            {/* Contact Phone */}
             <Text style={styles.inputLabel}>Contact Phone Number</Text>
             <TextInput
               style={styles.textInput}
@@ -1011,8 +808,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
               keyboardType="phone-pad"
             />
 
-            {/* Coordinate Fine-Tune Display */}
-            <Text style={styles.sectionHeading}>GPS Geotag Coordinates</Text>
+            {/* Coordinate Readout */}
+            <Text style={styles.sectionHeading}>GPS Coordinates (Precision Pin)</Text>
             <View style={styles.coordInputsRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coordSubLabel}>Latitude</Text>
@@ -1148,111 +945,97 @@ const styles = StyleSheet.create({
   },
   searchSubmitText: {
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '700',
+    fontSize: 12,
   },
   suggestionsContainer: {
-    marginTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+    marginTop: 6,
     paddingTop: 6,
-    maxHeight: 180,
   },
   suggestionsHeader: {
-    fontSize: 10.5,
-    color: '#64748B',
+    fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
+    color: '#64748B',
     marginBottom: 4,
-    marginLeft: 4,
+    paddingHorizontal: 4,
   },
   suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
-  suggestionIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
   suggestionName: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0F172A',
   },
-  suggestionAddr: {
+  suggestionAddress: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 1,
+    marginTop: 2,
   },
-  mapCard: {
+  mapFrameCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#CBD5E1',
+    overflow: 'hidden',
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },
-  mapHeaderRow: {
+  mapTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  mapBadge: {
+  mapTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: '#0F8B5A',
+    marginRight: 6,
   },
-  mapBadgeText: {
+  mapModeTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#334155',
   },
-  modeToggleBtn: {
-    paddingHorizontal: 8,
+  mapControlGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mapModeBtn: {
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
   },
-  modeToggleBtnActive: {
-    backgroundColor: '#0B2545',
-    borderColor: '#0B2545',
-  },
-  modeToggleText: {
+  mapModeBtnText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#334155',
   },
-  modeToggleTextActive: {
-    color: '#FFFFFF',
-  },
   expandMapBtn: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     backgroundColor: '#0284C7',
@@ -1263,198 +1046,46 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   interactiveInstructionBanner: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 5,
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 6,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#DBEAFE',
+    borderBottomColor: '#DCFCE7',
+    alignItems: 'center',
   },
   interactiveInstructionText: {
-    fontSize: 10.5,
-    color: '#1D4ED8',
-    textAlign: 'center',
+    fontSize: 11,
     fontWeight: '600',
+    color: '#166534',
   },
   mapCanvas: {
-    height: 290,
-    width: '100%',
+    height: 330,
     backgroundColor: '#E2E8F0',
     position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
   },
-  tilesGrid: {
-    width: 1280,
-    height: 1280,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    position: 'absolute',
-  },
-  gridTile: {
-    width: 256,
-    height: 256,
-    backgroundColor: '#CBD5E1',
-  },
-  crosshairH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.16)',
-  },
-  crosshairV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.16)',
-  },
-  pinOverlay: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 60,
-    height: 60,
-  },
-  googlePinContainer: {
-    alignItems: 'center',
-    transform: [{ translateY: -17 }],
-  },
-  googlePinHead: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  googlePinDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FFFFFF',
-  },
-  googlePinTip: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderTopWidth: 10,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -2,
-  },
-  googlePinShadow: {
-    position: 'absolute',
-    bottom: 24,
-    width: 16,
-    height: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.32)',
-  },
-  zoomControlCol: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 4,
-  },
-  controlBtn: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  controlBtnText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  nudgePad: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 10,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 4,
-    alignItems: 'center',
-  },
-  nudgeMidRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nudgeBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 4,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#CBD5E1',
-  },
-  nudgeBtnNorth: {
-    marginBottom: 2,
-  },
-  nudgeBtnSouth: {
-    marginTop: 2,
-  },
-  nudgeBtnWest: {
-    marginRight: 2,
-  },
-  nudgeBtnEast: {
-    marginLeft: 2,
-  },
-  nudgeCenterDot: {
-    width: 26,
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nudgeBtnText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#1E293B',
+  webView: {
+    flex: 1,
+    backgroundColor: '#E2E8F0',
   },
   floatingGpsBtn: {
     position: 'absolute',
-    bottom: 10,
-    right: 10,
+    bottom: 14,
+    right: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 22,
     paddingHorizontal: 12,
     paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
     borderWidth: 1.5,
     borderColor: '#0284C7',
+    zIndex: 100,
   },
   gpsIconInner: {
     flexDirection: 'row',
@@ -1465,53 +1096,162 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   gpsLabelText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: '#0284C7',
-    letterSpacing: 0.3,
   },
-  sectionHeading: {
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  fullscreenTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#0B2545',
+    zIndex: 200,
+  },
+  fullscreenBackBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  fullscreenBackBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  fullscreenModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    padding: 2,
+  },
+  modeToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  modeToggleBtnActive: {
+    backgroundColor: '#0284C7',
+  },
+  modeToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  modeToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  fullscreenSearchBox: {
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#CBD5E1',
+    zIndex: 200,
+  },
+  fullscreenSearchInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     fontSize: 12.5,
+    color: '#0F172A',
+  },
+  fullscreenCanvas: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: '#E2E8F0',
+  },
+  fullscreenBottomCard: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 8,
+    zIndex: 200,
+  },
+  fullscreenCardTitle: {
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  fullscreenCardAddr: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  fullscreenCardCoords: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  fullscreenConfirmBtn: {
+    backgroundColor: '#0F8B5A',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  fullscreenConfirmBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  sectionHeading: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#334155',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginTop: 6,
+    marginTop: 4,
     marginBottom: 8,
   },
   categoryRow: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 14,
-    flexWrap: 'wrap',
   },
   categoryTab: {
     flex: 1,
-    minWidth: '22%',
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryTabText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '600',
     color: '#475569',
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
+    color: '#475569',
     marginBottom: 4,
-    marginTop: 8,
+    marginTop: 4,
   },
   resolvingBadge: {
-    fontSize: 11,
-    color: '#0F8B5A',
-    fontWeight: '600',
+    fontSize: 10.5,
+    color: '#0284C7',
+    fontStyle: 'italic',
   },
   textInput: {
     backgroundColor: '#FFFFFF',
@@ -1522,39 +1262,41 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     fontSize: 13,
     color: '#0F172A',
+    marginBottom: 10,
   },
   textArea: {
-    height: 64,
+    minHeight: 64,
     textAlignVertical: 'top',
   },
   coordInputsRow: {
     flexDirection: 'row',
-    marginTop: 4,
+    marginBottom: 16,
   },
   coordSubLabel: {
-    fontSize: 10.5,
-    color: '#64748B',
+    fontSize: 11,
     fontWeight: '600',
+    color: '#64748B',
     marginBottom: 2,
   },
   coordInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     fontSize: 12,
-    color: '#334155',
+    color: '#0F172A',
     fontFamily: 'monospace',
   },
   footer: {
     flexDirection: 'row',
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    gap: 10,
+    gap: 12,
   },
   cancelBtn: {
     flex: 1,
@@ -1562,14 +1304,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 13,
+    color: '#475569',
     fontWeight: '700',
-    color: '#64748B',
+    fontSize: 13,
   },
   saveBtn: {
     flex: 2,
@@ -1577,132 +1318,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#0B2545',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   saveBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
     color: '#FFFFFF',
-  },
-
-  // Fullscreen Map Styles
-  fullscreenContainer: {
-    flex: 1,
-    position: 'relative',
-    backgroundColor: '#0F172A',
-  },
-  fullscreenTopBar: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
-    zIndex: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  fullscreenBackBtn: {
-    backgroundColor: '#0B2545',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fullscreenBackBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  fullscreenModeToggle: {
-    flexDirection: 'row',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 3,
-    borderRadius: 8,
-  },
-  fullscreenSearchBox: {
-    position: 'absolute',
-    top: 56,
-    left: 12,
-    right: 12,
-    zIndex: 20,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  fullscreenSearchInput: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12.5,
-    color: '#0F172A',
-  },
-  fullscreenCanvas: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  fullscreenBottomCard: {
-    position: 'absolute',
-    bottom: 16,
-    left: 14,
-    right: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    zIndex: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  fullscreenCardTitle: {
-    fontSize: 14,
     fontWeight: '800',
-    color: '#0F172A',
-  },
-  fullscreenCardAddr: {
-    fontSize: 11.5,
-    color: '#475569',
-    marginTop: 2,
-  },
-  fullscreenCardCoords: {
-    fontSize: 10.5,
-    color: '#0284C7',
-    fontWeight: '700',
-    marginTop: 4,
-    fontFamily: 'monospace',
-  },
-  fullscreenConfirmBtn: {
-    backgroundColor: '#0F8B5A',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  fullscreenConfirmBtnText: {
-    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '800',
   },
 });
