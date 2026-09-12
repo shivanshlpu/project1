@@ -20,6 +20,7 @@ import {
   MicOff,
   Volume2,
   HelpCircle,
+  X,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
@@ -527,39 +528,14 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100vh - 110px)',
-        maxHeight: 'calc(100dvh - 110px)',
-        maxWidth: '1000px',
-        margin: '0 auto',
-        background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #E2E8F0',
-        overflow: 'hidden',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-      }}
-    >
+    <div className="ai-aura-container">
       {/* Chat Header */}
-      <div
-        style={{
-          padding: '12px 18px',
-          borderBottom: '1px solid #E2E8F0',
-          background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="ai-aura-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
-              width: '34px',
-              height: '34px',
+              width: '32px',
+              height: '32px',
               borderRadius: '8px',
               background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
               color: '#FFFFFF',
@@ -567,20 +543,22 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 6px rgba(26, 60, 110, 0.25)',
+              flexShrink: 0,
             }}
           >
-            <Sparkles size={18} color="#6EE7B7" />
+            <Sparkles size={16} color="#6EE7B7" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '13.5px', fontWeight: '800', color: '#0F172A' }}>
                 Aura AI Operations Assistant
               </span>
               <span
+                className="ai-aura-header-badge"
                 style={{
-                  fontSize: '10.5px',
+                  fontSize: '10px',
                   fontWeight: '700',
-                  padding: '2px 7px',
+                  padding: '1px 6px',
                   borderRadius: '10px',
                   background: '#DCFCE7',
                   color: '#166534',
@@ -589,7 +567,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                 ● Live Ground Truth
               </span>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B' }}>
+            <div className="ai-aura-subtitle">
               Ask questions or command actions (visits, timing audits, leaves, orders)
             </div>
           </div>
@@ -697,118 +675,136 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         </div>
       </div>
 
-      {/* Suggested Quick Prompt Chips (Top Bar) - Full Wrap Layout for Laptops & Desktops */}
-      <div
-        style={{
-          padding: '10px 16px',
-          background: '#FFFFFF',
-          borderBottom: '1px solid #E2E8F0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#1E293B' }}>
-            <Sparkles size={14} color="#2563EB" />
-            <span>{lang === 'hi' ? 'सुझाए गए प्रश्न (क्लिक करके तुरंत पूछें):' : 'Suggested Questions (Click to Ask Immediately):'}</span>
+      {/* Suggested Quick Prompt Chips (Top Bar) */}
+      <div className="ai-aura-prompt-bar">
+        <div className="ai-aura-prompt-bar-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '700', color: '#1E293B' }}>
+            <Sparkles size={13} color="#2563EB" />
+            <span className="ai-aura-prompt-title">
+              {lang === 'hi' ? 'त्वरित प्रश्न:' : 'Quick Questions:'}
+            </span>
           </div>
           <button
             type="button"
-            onClick={() => setIsAllQuestionsOpen(!isAllQuestionsOpen)}
+            onClick={() => setIsAllQuestionsOpen(true)}
             style={{
-              padding: '4px 10px',
+              padding: '3px 8px',
               borderRadius: '6px',
-              border: isAllQuestionsOpen ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
-              background: isAllQuestionsOpen ? '#EFF6FF' : '#F8FAFC',
-              color: isAllQuestionsOpen ? '#1D4ED8' : '#475569',
-              fontSize: '11px',
+              border: '1px solid #CBD5E1',
+              background: '#F8FAFC',
+              color: '#1D4ED8',
+              fontSize: '10.5px',
               fontWeight: '700',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '5px',
+              gap: '4px',
               transition: 'all 0.15s ease',
+              flexShrink: 0,
             }}
           >
-            <HelpCircle size={13} />
-            <span>{isAllQuestionsOpen ? (lang === 'hi' ? '✕ प्रश्न बंद करें' : '✕ Close Questions') : (lang === 'hi' ? '📋 सभी प्रश्न देखें (All Queries)' : '📋 View All Queries')}</span>
+            <HelpCircle size={12} />
+            <span>{lang === 'hi' ? '📋 सभी प्रश्न (All)' : '📋 All Queries (24)'}</span>
           </button>
         </div>
 
-        {/* Quick Prompts Container with flexWrap: 'wrap' - Fully visible on laptop screens! */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '8px',
-            alignItems: 'center',
-          }}
-        >
+        {/* Responsive Prompt Track: Flex-Wrap on Laptops, 1-Line Swipeable Scroll on Phones */}
+        <div className="ai-aura-prompt-track">
           {quickPrompts.map((prompt, idx) => (
             <button
               key={idx}
               type="button"
+              className="ai-aura-chip"
               onClick={() => handleSend(prompt.replace(/^[^\s]+ /, '').replace(/^["']|["']$/g, ''))}
-              style={{
-                background: '#F8FAFC',
-                border: '1px solid #CBD5E1',
-                borderRadius: '18px',
-                padding: '5px 12px',
-                fontSize: '11.5px',
-                fontWeight: '600',
-                color: '#1E293B',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#EFF6FF';
-                e.currentTarget.style.borderColor = '#93C5FD';
-                e.currentTarget.style.color = '#1D4ED8';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#F8FAFC';
-                e.currentTarget.style.borderColor = '#CBD5E1';
-                e.currentTarget.style.color = '#1E293B';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
             >
               {prompt}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Expandable All Questions Directory Panel */}
-        {isAllQuestionsOpen && (
+      {/* Floating Dialog Modal for All Questions (Never pushes the chat messages down!) */}
+      {isAllQuestionsOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 1200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'clamp(8px, 3vw, 20px)',
+          }}
+          onClick={() => setIsAllQuestionsOpen(false)}
+        >
           <div
             style={{
-              marginTop: '4px',
-              padding: '12px 14px',
-              background: '#F8FAFC',
-              borderRadius: '8px',
-              border: '1.5px solid #BFDBFE',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              background: '#FFFFFF',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '680px',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #E2E8F0',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Sparkles size={14} color="#2563EB" />
-                <span>{lang === 'hi' ? 'Aura AI प्रश्न निर्देशिका — किसी भी प्रश्न पर क्लिक करके तुरंत उत्तर प्राप्त करें:' : 'Aura AI Questions Directory — Click any prompt to execute immediately:'}</span>
-              </div>
-            </div>
-
+            {/* Modal Header */}
             <div
               style={{
+                padding: '12px 18px',
+                background: 'linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={16} color="#2563EB" />
+                <span style={{ fontSize: '13.5px', fontWeight: '800', color: '#0F172A' }}>
+                  {lang === 'hi' ? 'Aura AI — सभी प्रश्न निर्देशिका' : 'Aura AI — Operations Question Directory'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAllQuestionsOpen(false)}
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <X size={14} />
+                <span>{lang === 'hi' ? 'बंद करें' : 'Close'}</span>
+              </button>
+            </div>
+
+            {/* Modal Categories & Questions Grid */}
+            <div
+              style={{
+                padding: '14px 18px',
+                overflowY: 'auto',
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '10px',
-                maxHeight: '260px',
-                overflowY: 'auto',
-                paddingRight: '4px',
+                gap: '12px',
+                background: '#F8FAFC',
               }}
             >
               {queryCategories.map((cat, cIdx) => (
@@ -816,15 +812,16 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                   key={cIdx}
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: '6px',
-                    padding: '10px',
+                    borderRadius: '8px',
+                    padding: '12px',
                     border: '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                   }}
                 >
-                  <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#1E40AF', marginBottom: '8px' }}>
                     {cat.category}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {cat.queries.map((q, qIdx) => (
                       <button
                         key={qIdx}
@@ -835,11 +832,12 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                         }}
                         style={{
                           textAlign: 'left',
-                          padding: '5px 8px',
+                          padding: '7px 10px',
                           background: '#F8FAFC',
                           border: '1px solid #E2E8F0',
-                          borderRadius: '4px',
-                          fontSize: '11px',
+                          borderRadius: '6px',
+                          fontSize: '11.5px',
+                          fontWeight: '600',
                           color: '#334155',
                           cursor: 'pointer',
                           transition: 'all 0.12s ease',
@@ -863,22 +861,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Message Feed Canvas */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px',
-          background: '#FAFAFA',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
+      <div className="ai-aura-messages">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           return (
@@ -1179,16 +1166,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
       )}
 
       {/* Input Bar pinned to bottom */}
-      <div
-        style={{
-          padding: '12px 16px',
-          borderTop: '1px solid #E2E8F0',
-          background: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-        }}
-      >
+      <div className="ai-aura-input-bar">
         <input
           type="text"
           placeholder={
