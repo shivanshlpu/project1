@@ -28,6 +28,7 @@ import {
   Platform,
   useWindowDimensions,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNav, MobileTab } from './components/BottomNav';
@@ -268,9 +269,11 @@ export default function App() {
           {/* App Header */}
           <View style={styles.topHeader}>
             <View style={styles.brandRow}>
-              <View style={styles.logoBadge}>
-                <Text style={styles.logoText}>A</Text>
-              </View>
+              <Image
+                source={require('../assets/logo.png')}
+                style={{ width: 36, height: 36, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#38BDF8' }}
+                resizeMode="cover"
+              />
               <View>
                 <Text style={styles.brandTitle}>AHTRI FFA Mobile</Text>
                 <Text style={styles.brandUser}>

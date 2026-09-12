@@ -4,8 +4,10 @@
     "slug": "ahtri-ffa-mobile",
     "version": "1.0.3",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0B2545"
     },
@@ -20,6 +22,7 @@
       "package": "com.ahtri.ffa",
       "versionCode": 4,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B2545"
       },
       "permissions": [

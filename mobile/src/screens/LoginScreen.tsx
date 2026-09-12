@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { DeviceBindingService } from '../services/deviceBindingService';
 import { ApiConfig } from '../services/apiConfig';
@@ -266,9 +267,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     return (
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.brandContainer}>
-          <View style={[styles.logoBadge, { backgroundColor: '#EA580C' }]}>
-            <Text style={styles.logoText}>A</Text>
-          </View>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{ width: 68, height: 68, borderRadius: 16, marginBottom: 12, borderWidth: 1.5, borderColor: '#EA580C' }}
+            resizeMode="cover"
+          />
           <Text style={styles.brandTitle}>Device Authorization Required</Text>
           <Text style={styles.brandSubtitle}>Owner-Controlled Security Verification</Text>
         </View>
@@ -371,9 +374,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
       {/* Brand Header */}
       <View style={styles.brandContainer}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoText}>A</Text>
-        </View>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={{ width: 78, height: 78, borderRadius: 18, marginBottom: 14, borderWidth: 1.5, borderColor: '#38BDF8' }}
+          resizeMode="cover"
+        />
         <Text style={styles.brandTitle}>AHTRI Field Force Automation</Text>
         <Text style={styles.brandSubtitle}>Medical Representative Mobile Gateway</Text>
       </View>
