@@ -224,8 +224,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.3',
-    latestVersionCode: 4,
+    latestVersion: '1.0.4',
+    latestVersionCode: 5,
     minimumVersion: '1.0.0',
     downloadUrl: 'https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk',
     forceUpdate: false,
@@ -235,7 +235,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Free Touch & Pan Live Google Maps with Road & Satellite views\nTap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere\nSeamless Native Update Prompt: No browser redirects required\nTerritory doctor directory & instant geotagging\nUltra-fast server connection & zero freeze'
+    'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo\nLive Task Lifecycle: Completed visits automatically move to History with Commercial Order Breakdown\nPersistent Geofenced Attendance Punch-in: Restores Marked Done status across tab switches\nFluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)\nDirect Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision\nPinch-to-zoom, double-tap zoom, and smooth inertia panning without drone crosshairs\nHigh-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);

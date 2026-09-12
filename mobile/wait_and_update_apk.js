@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '475c7ce0-0d11-44bf-b14d-9b1e1401ea04';
+const BUILD_ID = '9dd40fc6-5150-4900-a8f1-a98d3448befe';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -40,6 +40,7 @@ async function checkBuild() {
       cwd: path.join(ROOT_DIR, 'mobile'),
       encoding: 'utf-8',
       shell: true,
+      env: { ...process.env, CI: 'true' },
       stdio: ['ignore', 'pipe', 'ignore'],
     });
 
@@ -72,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.3',
-        latestVersionCode: 4,
+        latestVersion: '1.0.4',
+        latestVersionCode: 5,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -82,10 +83,12 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
+          'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo',
+          'Live Task Lifecycle: Completed visits automatically move to History with Commercial Order Breakdown',
+          'Persistent Geofenced Attendance Punch-in: Restores Marked Done status across tab switches',
           'Fluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)',
           'Direct Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision',
-          'Eliminated drone crosshairs and 4-way D-pad controls for standard Google Maps experience',
-          'Pinch-to-zoom, double-tap zoom, and smooth inertia panning',
+          'Pinch-to-zoom, double-tap zoom, and smooth inertia panning without drone crosshairs',
           'High-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies',
         ],
       };
@@ -110,19 +113,23 @@ async function checkBuild() {
       }
 
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Official Logo & Branding)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.2\` (Version Code \`3\`)
-- **Git Commit**: \`${buildData.gitCommitHash || '0bc305c'}\`
+- **Version**: \`v1.0.4\` (Version Code \`5\`)
+- **Branding**: Official AHTRI Pharmaceuticals App Logo (App Icon, Splash Screen, Login Screen, App Header)
+- **Git Commit**: \`${buildData.gitCommitHash || 'ff0a79ed7d0a'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
-- **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/app/latest-apk](https://ahtri-backend.onrender.com/app/latest-apk)
+- **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
+- **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 
 ---
 
 ### Instructions for Employees:
-Employees can click either link above on their Android smartphone to download and install the update.
+1. Tap on the direct APK download link or visit [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk) on any Android phone.
+2. The download will start immediately.
+3. Open the downloaded file to install/update the AHTRI FFA app with the new official logo and all latest features!
 `;
       fs.writeFileSync(OUTPUT_INFO_FILE, infoMd, 'utf-8');
       console.log(`[AutoAPK] Written release info to ${OUTPUT_INFO_FILE}`);
@@ -158,11 +165,11 @@ Employees can click either link above on their Android smartphone to download an
       // 5. Git commit & push
       try {
         console.log('[AutoAPK] Committing and pushing updated version to Git repository...');
-        execSync('git add backend/data/app_version.json backend/src/app.controller.ts LATEST_APK_INFO.md', {
+        execSync('git add backend/data/app_version.json backend/src/app.controller.ts LATEST_APK_INFO.md admin-web/src/views/SettingsView.tsx', {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.2"', {
+        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.4 with official app logo"', {
           cwd: ROOT_DIR,
           shell: true,
         });
