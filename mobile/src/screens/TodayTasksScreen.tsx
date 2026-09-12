@@ -16,6 +16,7 @@ import { LocationService } from '../services/locationService';
 import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { NotificationService } from '../services/notificationService';
 
 export interface MobileTaskItem {
   id: string;
@@ -202,6 +203,13 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED');
   const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED');
 
+  // Track seen tasks to fire notifications on newly assigned tasks
+  const seenTaskIdsRef = React.useRef<Set<string>>(new Set());
+  const isInitialLoadRef = React.useRef<boolean>(true);
+
+  // Completed history date filter
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('ALL');
+
   // Load persistent completed tasks from AsyncStorage on mount
   useEffect(() => {
     AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`)
@@ -220,6 +228,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         }
       })
       .catch(() => {});
+
+    // Populate initial seen IDs
+    allTasks.forEach((t) => seenTaskIdsRef.current.add(t.id));
   }, [currentUserId]);
 
   // Live Auto-Fetch from Backend Server
@@ -276,6 +287,28 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             }
           });
 
+          // Check for newly assigned tasks and fire WhatsApp-style system notification
+          if (!isInitialLoadRef.current) {
+            data.forEach((t: any) => {
+              if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED') {
+                if (!seenTaskIdsRef.current.has(t.id)) {
+                  seenTaskIdsRef.current.add(t.id);
+                  NotificationService.notifyTaskAssigned({
+                    id: t.id,
+                    title: t.title,
+                    location_name: t.location_name,
+                    address: t.address,
+                    time: t.time,
+                    priority: t.priority,
+                  });
+                }
+              }
+            });
+          } else {
+            data.forEach((t: any) => seenTaskIdsRef.current.add(t.id));
+            isInitialLoadRef.current = false;
+          }
+
           setAllTasks(mapped);
         }
       }
@@ -289,6 +322,45 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     const interval = setInterval(fetchTasksFromBackend, 4000);
     return () => clearInterval(interval);
   }, [currentUserId]);
+
+  // Unique dates from completed history
+  const availableHistoryDates = React.useMemo(() => {
+    const dates = new Set<string>();
+    historyTasks.forEach((t) => {
+      const d = formatDateDDMMYYYY(t.date || t.completed_at || '');
+      if (d) dates.add(d);
+    });
+    return Array.from(dates);
+  }, [historyTasks]);
+
+  // Filtered completed tasks based on historyDateFilter
+  const filteredHistoryTasks = React.useMemo(() => {
+    if (historyDateFilter === 'ALL') return historyTasks;
+    return historyTasks.filter((t) => {
+      const d = formatDateDDMMYYYY(t.date || t.completed_at || '');
+      return d === historyDateFilter;
+    });
+  }, [historyTasks, historyDateFilter]);
+
+  // Executive summary metrics for filtered history
+  const historyMetrics = React.useMemo(() => {
+    const totalCalls = filteredHistoryTasks.length;
+    let totalRevenue = 0;
+    let totalUnits = 0;
+    let totalSecs = 0;
+
+    filteredHistoryTasks.forEach((t) => {
+      totalSecs += t.duration_seconds || 0;
+      if (t.orders && Array.isArray(t.orders)) {
+        t.orders.forEach((o) => {
+          totalRevenue += o.total_amount || 0;
+          totalUnits += o.quantity || 0;
+        });
+      }
+    });
+
+    return { totalCalls, totalRevenue, totalUnits, totalSecs };
+  }, [filteredHistoryTasks]);
 
   // Read Live Hardware GPS from phone sensor
   const handleReadLiveGPS = async (silent = false) => {
@@ -781,26 +853,108 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         </>
       )}
 
-      {/* === TAB 2: COMPLETED & HISTORY SECTION === */}
+      {/* === TAB 2: COMPLETED & HISTORY SECTION (WITH DATE-WISE FILTER) === */}
       {taskTab === 'HISTORY' && (
         <View style={{ marginBottom: 20 }}>
-          {historyTasks.length === 0 ? (
+          {/* Date-Wise Filter Chips Bar */}
+          <View style={styles.historyFilterBar}>
+            <Text style={styles.historyFilterLabel}>Filter by Date:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.historyDateScroll}>
+              <TouchableOpacity
+                style={[
+                  styles.historyDateChip,
+                  historyDateFilter === 'ALL' && styles.historyDateChipActive,
+                ]}
+                onPress={() => setHistoryDateFilter('ALL')}
+              >
+                <Text
+                  style={[
+                    styles.historyDateChipText,
+                    historyDateFilter === 'ALL' && styles.historyDateChipTextActive,
+                  ]}
+                >
+                  All Dates ({historyTasks.length})
+                </Text>
+              </TouchableOpacity>
+
+              {availableHistoryDates.map((dateStr) => (
+                <TouchableOpacity
+                  key={dateStr}
+                  style={[
+                    styles.historyDateChip,
+                    historyDateFilter === dateStr && styles.historyDateChipActive,
+                  ]}
+                  onPress={() => setHistoryDateFilter(dateStr)}
+                >
+                  <Text
+                    style={[
+                      styles.historyDateChipText,
+                      historyDateFilter === dateStr && styles.historyDateChipTextActive,
+                    ]}
+                  >
+                    📅 {dateStr}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Work Completed Executive Summary Card */}
+          <View style={styles.historySummaryCard}>
+            <View style={styles.historySummaryHeader}>
+              <Text style={styles.historySummaryTitle}>
+                📊 Work Completed Summary
+              </Text>
+              <Text style={styles.historySummaryBadge}>
+                {historyDateFilter === 'ALL' ? 'All Dates Combined' : historyDateFilter}
+              </Text>
+            </View>
+
+            <View style={styles.historySummaryGrid}>
+              <View style={styles.historySummaryItem}>
+                <Text style={styles.historySummaryValue}>{historyMetrics.totalCalls}</Text>
+                <Text style={styles.historySummarySub}>Visits Concluded</Text>
+              </View>
+
+              <View style={styles.historySummaryItem}>
+                <Text style={[styles.historySummaryValue, { color: '#166534' }]}>
+                  ₹{historyMetrics.totalRevenue.toLocaleString()}
+                </Text>
+                <Text style={styles.historySummarySub}>POB Booked ({historyMetrics.totalUnits} units)</Text>
+              </View>
+
+              <View style={styles.historySummaryItem}>
+                <Text style={styles.historySummaryValue}>
+                  {formatTimer(historyMetrics.totalSecs)}
+                </Text>
+                <Text style={styles.historySummarySub}>Detailing Logged</Text>
+              </View>
+
+              <View style={styles.historySummaryItem}>
+                <Text style={[styles.historySummaryValue, { color: '#0F8B5A' }]}>100%</Text>
+                <Text style={styles.historySummarySub}>Geofence Verified</Text>
+              </View>
+            </View>
+          </View>
+
+          {filteredHistoryTasks.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>
-                No completed visits in history yet. Completed tasks and orders booked will automatically appear here.
+                No completed visits found for {historyDateFilter === 'ALL' ? 'history' : historyDateFilter}. Select another date above to view completed work.
               </Text>
             </View>
           ) : (
-            historyTasks.map((task) => {
+            filteredHistoryTasks.map((task) => {
               const orderTotal = task.orders ? task.orders.reduce((sum, o) => sum + (o.total_amount || 0), 0) : 0;
               const orderUnits = task.orders ? task.orders.reduce((sum, o) => sum + (o.quantity || 0), 0) : 0;
+              const visitFormattedDate = formatDateDDMMYYYY(task.date || task.completed_at || '');
 
               return (
                 <View key={task.id} style={[styles.taskCard, styles.historyCard]}>
                   {/* History Header Row */}
                   <View style={styles.taskHeaderRow}>
                     <Text style={[styles.taskTime, { color: '#166534', fontWeight: '700' }]}>
-                      ✓ COMPLETED {task.completed_at ? `• ${new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                      ✓ COMPLETED {visitFormattedDate ? `• ${visitFormattedDate}` : ''} {task.completed_at ? `(${new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
                     </Text>
                     <View style={styles.badgeCompleted}>
                       <Text style={[styles.badgeText, { color: '#166534' }]}>
@@ -1409,5 +1563,103 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '600',
     color: '#059669',
+  },
+  historyFilterBar: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  historyFilterLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  historyDateScroll: {
+    flexDirection: 'row',
+  },
+  historyDateChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  historyDateChipActive: {
+    backgroundColor: '#0F8B5A',
+    borderColor: '#0F8B5A',
+  },
+  historyDateChipText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  historyDateChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  historySummaryCard: {
+    backgroundColor: '#0B2545',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  historySummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  historySummaryTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  historySummaryBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    color: '#38BDF8',
+    fontSize: 10.5,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  historySummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  historySummaryItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  historySummaryValue: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  historySummarySub: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
 });

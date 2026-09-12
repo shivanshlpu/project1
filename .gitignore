@@ -54,6 +54,10 @@ pnpm-debug.log*
 # Editor & OS Artifacts
 .DS_Store
 Thumbs.db
+
+# Scratch directory
+scratch/
+
 desktop.ini
 .vscode/*
 !.vscode/extensions.json

@@ -44,6 +44,8 @@ import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './service
 import { UpdateModal } from './components/UpdateModal';
 import { ServerStatusPill } from './components/ServerStatusPill';
 import { ApiConfig } from './services/apiConfig';
+import { NotificationService } from './services/notificationService';
+import { HeadsUpNotificationBanner } from './components/HeadsUpNotificationBanner';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -98,6 +100,9 @@ export default function App() {
 
   // Auto-check for over-the-air in-app updates on boot, resume & active polling
   useEffect(() => {
+    // Setup Android notification channels & permissions
+    NotificationService.setupPermissionsAndChannels();
+
     // Non-blocking background warm-up for Render cold start
     ApiConfig.warmupServer();
 
@@ -116,6 +121,8 @@ export default function App() {
         if (res.hasUpdate && res.info) {
           setUpdateInfo(res.info);
           setIsUpdateModalOpen(true);
+          // Fire WhatsApp-style heads-up system notification for new app update!
+          NotificationService.notifyAppUpdateAvailable(res.info.latestVersion, res.info.downloadUrl);
         }
       } catch {
         // Non-blocking silent catch
@@ -146,6 +153,48 @@ export default function App() {
       subscription.remove();
     };
   }, []);
+
+  // Poll for Manager Leave Decisions & Approvals
+  const knownLeaveStatusesRef = React.useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    if (!currentUser) return;
+    let isMounted = true;
+
+    const checkLeaveDecisions = async () => {
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders();
+        const res = await fetch(`${baseUrl}/leave/my`, { headers });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            data.forEach((l: any) => {
+              const prevStatus = knownLeaveStatusesRef.current.get(l.id);
+              if (prevStatus === 'PENDING' && (l.status === 'APPROVED' || l.status === 'REJECTED')) {
+                NotificationService.notifyLeaveDecision({
+                  id: l.id,
+                  status: l.status,
+                  start_date: l.start_date,
+                  end_date: l.end_date,
+                  leave_type: l.leave_type || l.type,
+                  admin_comment: l.admin_comment,
+                });
+              }
+              knownLeaveStatusesRef.current.set(l.id, l.status);
+            });
+          }
+        }
+      } catch {}
+    };
+
+    checkLeaveDecisions();
+    const leaveInterval = setInterval(checkLeaveDecisions, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(leaveInterval);
+    };
+  }, [currentUser]);
 
   const handleManualUpdateCheck = async () => {
     setIsCheckingUpdate(true);
@@ -291,6 +340,12 @@ export default function App() {
 
   return (
     <View style={outerWrapperStyle}>
+      {/* Floating in-app Heads-up Banner for instant task/leave/update alerts */}
+      <HeadsUpNotificationBanner
+        onPressTask={() => setCurrentTab('tasks')}
+        onPressUpdate={() => setIsUpdateModalOpen(true)}
+      />
+
       <View style={phoneContainerStyle}>
         <SafeAreaView style={styles.safeArea}>
           {/* App Header */}
