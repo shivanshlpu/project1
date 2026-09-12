@@ -19,6 +19,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  HelpCircle,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
@@ -64,8 +65,64 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const [isAllQuestionsOpen, setIsAllQuestionsOpen] = useState(false);
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const queryCategories = [
+    {
+      category: lang === 'hi' ? '📊 दैनिक कार्य व विजिट्स' : '📊 Daily Detailing & Visits',
+      queries: [
+        'आज कितना काम हुआ?',
+        'आज के पूरे हुए टास्क दिखाओ',
+        'Show today’s visit completion & delay analysis',
+        'Which MRs are delayed on visits today?',
+      ],
+    },
+    {
+      category: lang === 'hi' ? '👥 उपस्थिति व फील्ड हाजिरी' : '👥 Field Attendance & Presence',
+      queries: [
+        'आज किसकी हाजिरी लगी है?',
+        'फील्ड अटेंडेंस लॉग दिखाओ',
+        'Who clocked in on time today?',
+        'Show absent medical representatives',
+      ],
+    },
+    {
+      category: lang === 'hi' ? '💰 कमर्शियल ऑर्डर्स व रेवेन्यू' : '💰 Commercial Orders & Revenue',
+      queries: [
+        'आज कितने ऑर्डर्स मिले?',
+        'Show total orders captured today',
+        'आज का कुल रेवेन्यू कितना है?',
+        'Top selling pharmaceutical products today',
+      ],
+    },
+    {
+      category: lang === 'hi' ? '🏖️ लीव बैलेंस व छुट्टी अनुमोदन' : '🏖️ Leave Management & Approval',
+      queries: [
+        'Rahul Sharma का लीव बैलेंस चेक करो',
+        'Vikram Malhotra का लीव बैलेंस चेक करो',
+        'राहुल शर्मा को 2 दिन की लीव दो',
+        'विक्रम मल्होत्रा को 1 दिन की सिक लीव दो',
+      ],
+    },
+    {
+      category: lang === 'hi' ? '📍 क्लिनिक मैपिंग व जियोफेंस' : '📍 Clinic Locations & Geofence',
+      queries: [
+        'कौन-कौन से नए क्लिनिक मार्क हुए हैं?',
+        'जियोफेंस उल्लंघन ऑडिट दिखाओ',
+        'List doctors visited in South Delhi territory',
+      ],
+    },
+    {
+      category: lang === 'hi' ? '🚗 लाइव टीम लोकेशन ट्रैकिंग' : '🚗 Live Field Tracking',
+      queries: [
+        'फील्ड पर अभी कौन-कौन काम कर रहा है?',
+        'Who is active on field duty right now?',
+        'Show territory-wise MR distribution',
+      ],
+    },
+  ];
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -304,7 +361,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `**आज के फील्ड कार्य की विस्तृत रिपोर्ट (06 Sep 2026):**\n\n- **कुल निर्धारित विजिट (Scheduled)**: 4 कॉल्स\n- **सफलतापूर्वक पूरे हुए (Completed)**: 2 विजिट (समय पर ✓)\n- **प्रगति में (In-Progress)**: 1 कॉल (Apex Cardiology - विक्रम मल्होत्रा)\n- **बाकी (Pending)**: 1 कॉल (Dr. Priya Verma - राहुल शर्मा)\n- **समय की पाबंदी**: 100% ऑन-टाइम (औसत 2 मिनट पहले पहुंचे, कोई देरी नहीं)\n- **आज बुक किए गए ऑर्डर्स**: ₹13,200 (कुल 3 कमर्शियल ऑर्डर्स)`
+            ? `**आज के फील्ड कार्य की विस्तृत रिपोर्ट (06-09-2026):**\n\n- **कुल निर्धारित विजिट (Scheduled)**: 4 कॉल्स\n- **सफलतापूर्वक पूरे हुए (Completed)**: 2 विजिट (समय पर ✓)\n- **प्रगति में (In-Progress)**: 1 कॉल (Apex Cardiology - विक्रम मल्होत्रा)\n- **बाकी (Pending)**: 1 कॉल (Dr. Priya Verma - राहुल शर्मा)\n- **समय की पाबंदी**: 100% ऑन-टाइम (औसत 2 मिनट पहले पहुंचे, कोई देरी नहीं)\n- **आज बुक किए गए ऑर्डर्स**: ₹13,200 (कुल 3 कमर्शियल ऑर्डर्स)`
             : `Here is today's real-time **Field Detailing & Delay Audit** across all territories:`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           data: {
@@ -640,51 +697,173 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         </div>
       </div>
 
-      {/* Suggested Quick Prompt Chips (Top Bar) */}
+      {/* Suggested Quick Prompt Chips (Top Bar) - Full Wrap Layout for Laptops & Desktops */}
       <div
         style={{
-          padding: '8px 14px',
+          padding: '10px 16px',
           background: '#FFFFFF',
-          borderBottom: '1px solid #F1F5F9',
+          borderBottom: '1px solid #E2E8F0',
           display: 'flex',
+          flexDirection: 'column',
           gap: '8px',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch',
         }}
       >
-        {quickPrompts.map((prompt, idx) => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#1E293B' }}>
+            <Sparkles size={14} color="#2563EB" />
+            <span>{lang === 'hi' ? 'सुझाए गए प्रश्न (क्लिक करके तुरंत पूछें):' : 'Suggested Questions (Click to Ask Immediately):'}</span>
+          </div>
           <button
-            key={idx}
             type="button"
-            onClick={() => handleSend(prompt.replace(/^[^\s]+ /, ''))}
+            onClick={() => setIsAllQuestionsOpen(!isAllQuestionsOpen)}
             style={{
-              flexShrink: 0,
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '20px',
-              padding: '5px 12px',
-              fontSize: '11.5px',
-              fontWeight: '600',
-              color: '#334155',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: isAllQuestionsOpen ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
+              background: isAllQuestionsOpen ? '#EFF6FF' : '#F8FAFC',
+              color: isAllQuestionsOpen ? '#1D4ED8' : '#475569',
+              fontSize: '11px',
+              fontWeight: '700',
               cursor: 'pointer',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
               transition: 'all 0.15s ease',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#EFF6FF';
-              e.currentTarget.style.borderColor = '#BFDBFE';
-              e.currentTarget.style.color = '#1E40AF';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#F8FAFC';
-              e.currentTarget.style.borderColor = '#E2E8F0';
-              e.currentTarget.style.color = '#334155';
+          >
+            <HelpCircle size={13} />
+            <span>{isAllQuestionsOpen ? (lang === 'hi' ? '✕ प्रश्न बंद करें' : '✕ Close Questions') : (lang === 'hi' ? '📋 सभी प्रश्न देखें (All Queries)' : '📋 View All Queries')}</span>
+          </button>
+        </div>
+
+        {/* Quick Prompts Container with flexWrap: 'wrap' - Fully visible on laptop screens! */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            alignItems: 'center',
+          }}
+        >
+          {quickPrompts.map((prompt, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleSend(prompt.replace(/^[^\s]+ /, '').replace(/^["']|["']$/g, ''))}
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #CBD5E1',
+                borderRadius: '18px',
+                padding: '5px 12px',
+                fontSize: '11.5px',
+                fontWeight: '600',
+                color: '#1E293B',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#EFF6FF';
+                e.currentTarget.style.borderColor = '#93C5FD';
+                e.currentTarget.style.color = '#1D4ED8';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#F8FAFC';
+                e.currentTarget.style.borderColor = '#CBD5E1';
+                e.currentTarget.style.color = '#1E293B';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+
+        {/* Expandable All Questions Directory Panel */}
+        {isAllQuestionsOpen && (
+          <div
+            style={{
+              marginTop: '4px',
+              padding: '12px 14px',
+              background: '#F8FAFC',
+              borderRadius: '8px',
+              border: '1.5px solid #BFDBFE',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
             }}
           >
-            {prompt}
-          </button>
-        ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sparkles size={14} color="#2563EB" />
+                <span>{lang === 'hi' ? 'Aura AI प्रश्न निर्देशिका — किसी भी प्रश्न पर क्लिक करके तुरंत उत्तर प्राप्त करें:' : 'Aura AI Questions Directory — Click any prompt to execute immediately:'}</span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '10px',
+                maxHeight: '260px',
+                overflowY: 'auto',
+                paddingRight: '4px',
+              }}
+            >
+              {queryCategories.map((cat, cIdx) => (
+                <div
+                  key={cIdx}
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: '6px',
+                    padding: '10px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
+                    {cat.category}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {cat.queries.map((q, qIdx) => (
+                      <button
+                        key={qIdx}
+                        type="button"
+                        onClick={() => {
+                          handleSend(q);
+                          setIsAllQuestionsOpen(false);
+                        }}
+                        style={{
+                          textAlign: 'left',
+                          padding: '5px 8px',
+                          background: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#334155',
+                          cursor: 'pointer',
+                          transition: 'all 0.12s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#EFF6FF';
+                          e.currentTarget.style.borderColor = '#93C5FD';
+                          e.currentTarget.style.color = '#1D4ED8';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#F8FAFC';
+                          e.currentTarget.style.borderColor = '#E2E8F0';
+                          e.currentTarget.style.color = '#334155';
+                        }}
+                      >
+                        👉 {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Message Feed Canvas */}
