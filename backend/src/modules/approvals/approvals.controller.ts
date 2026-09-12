@@ -74,6 +74,17 @@ export class LeaveController {
     return this.approvalsService.updateLeaveQuota(mrId, dto);
   }
 
+  @Post(':id/decide')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @HttpCode(HttpStatus.OK)
+  async decideLeave(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: DecideApprovalDto,
+  ) {
+    return this.approvalsService.decideApproval(id, user, dto);
+  }
+
   @Get()
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getAdminLeaves() {

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 
-export type ManagerTab = 'overview' | 'tasks' | 'locations' | 'members' | 'doctors' | 'approvals' | 'reports' | 'ai' | 'settings';
+export type ManagerTab = 'overview' | 'tasks' | 'locations' | 'members' | 'approvals' | 'reports' | 'ai' | 'settings';
 
 interface SubNavProps {
   currentTab: ManagerTab;
@@ -46,7 +46,6 @@ export const SubNav: React.FC<SubNavProps> = ({
       badgeColor: '#0F8B5A',
     },
     { id: 'members' as ManagerTab, label: t.tabMembers, Icon: Users },
-    { id: 'doctors' as ManagerTab, label: t.tabDoctors, Icon: Stethoscope },
     {
       id: 'approvals' as ManagerTab,
       label: t.tabApprovals,

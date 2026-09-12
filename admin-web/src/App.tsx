@@ -5,7 +5,6 @@ import { DashboardView } from './views/DashboardView';
 import { TasksView } from './views/TasksView';
 import { SavedLocationsView } from './views/SavedLocationsView';
 import { MembersManagementView } from './views/MembersManagementView';
-import { DoctorsView } from './views/DoctorsView';
 import { ApprovalsView } from './views/ApprovalsView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
@@ -295,7 +294,6 @@ export const App: React.FC = () => {
             }}
           />
         )}
-        {managerTab === 'doctors' && <DoctorsView lang={lang} />}
         {managerTab === 'approvals' && <ApprovalsView />}
         {managerTab === 'reports' && <ReportsView lang={lang} />}
         {managerTab === 'ai' && (

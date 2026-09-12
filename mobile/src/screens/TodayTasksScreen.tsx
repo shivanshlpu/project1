@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DistanceIndicator } from '../components/DistanceIndicator';
 import { LocationService } from '../services/locationService';
 import { CameraService, PhotoResult } from '../services/cameraService';
@@ -33,7 +34,7 @@ export interface MobileTaskItem {
   completed_at?: string;
   duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
   outcome?: string;
-  orders?: Array<{ product_name: string; quantity: number; unit_price: number; total_amount: number }>;
+  orders?: Array<{ product_name: string; quantity: number; unit_price: number; total_amount: number; distributor?: string }>;
   suspended_at?: string;
   suspended_reason?: string;
 }
@@ -192,8 +193,33 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
   };
 
+  // Top Segmented Tab for Active Calls vs Completed & History
+  const [taskTab, setTaskTab] = useState<'AGENDA' | 'HISTORY'>('AGENDA');
+
   // STRICT FILTERING: Only show tasks assigned to this logged-in member!
   const myTasks = allTasks.filter((t) => t.assigned_mr_id === currentUserId);
+  const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED');
+  const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED');
+
+  // Load persistent completed tasks from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`)
+      .then((raw) => {
+        if (raw) {
+          const savedCompleted: MobileTaskItem[] = JSON.parse(raw);
+          if (Array.isArray(savedCompleted) && savedCompleted.length > 0) {
+            setAllTasks((prev) => {
+              const map = new Map(prev.map((t) => [t.id, t]));
+              savedCompleted.forEach((sc) => {
+                map.set(sc.id, sc);
+              });
+              return Array.from(map.values());
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, [currentUserId]);
 
   // Live Auto-Fetch from Backend Server
   const fetchTasksFromBackend = async () => {
@@ -206,27 +232,49 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: MobileTaskItem[] = data.map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            date: t.date,
-            time: t.time,
-            assigned_mr_id: t.assigned_mr_id,
-            assigned_mr_name: t.assigned_mr_name || currentUserName,
-            location_name: t.location_name || 'Designated Clinic',
-            address: t.address || t.location_name || 'Delhi Territory',
-            latitude: t.latitude,
-            longitude: t.longitude,
-            geofence_radius_m: t.geofence_radius_m || 50,
-            priority: t.priority || 'MEDIUM',
-            status: t.status,
-            started_at: t.started_at,
-            completed_at: t.completed_at,
-            outcome: t.outcome,
-            orders: t.orders,
-            suspended_at: t.suspended_at,
-            suspended_reason: t.suspended_reason,
-          }));
+          // Read local completed tasks so completed status is never overridden
+          let locallyCompleted: MobileTaskItem[] = [];
+          try {
+            const raw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
+            if (raw) locallyCompleted = JSON.parse(raw);
+          } catch {}
+          const localCompMap = new Map(locallyCompleted.map((c) => [c.id, c]));
+
+          const mapped: MobileTaskItem[] = data.map((t: any) => {
+            const locallyComp = localCompMap.get(t.id);
+            if (locallyComp) {
+              return locallyComp;
+            }
+            return {
+              id: t.id,
+              title: t.title,
+              date: t.date,
+              time: t.time,
+              assigned_mr_id: t.assigned_mr_id,
+              assigned_mr_name: t.assigned_mr_name || currentUserName,
+              location_name: t.location_name || 'Designated Clinic',
+              address: t.address || t.location_name || 'Delhi Territory',
+              latitude: t.latitude,
+              longitude: t.longitude,
+              geofence_radius_m: t.geofence_radius_m || 50,
+              priority: t.priority || 'MEDIUM',
+              status: t.status,
+              started_at: t.started_at,
+              completed_at: t.completed_at,
+              outcome: t.outcome,
+              orders: t.orders,
+              suspended_at: t.suspended_at,
+              suspended_reason: t.suspended_reason,
+            };
+          });
+
+          // Also keep any completed items not in backend response
+          locallyCompleted.forEach((lc) => {
+            if (!mapped.some((m) => m.id === lc.id)) {
+              mapped.push(lc);
+            }
+          });
+
           setAllTasks(mapped);
         }
       }
@@ -481,9 +529,17 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       orders: validOrders,
     };
 
-    setAllTasks((prev) =>
-      prev.map((t) => (t.id === completingTask.id ? completedTask : t)),
-    );
+    setAllTasks((prev) => {
+      const updated = prev.map((t) => (t.id === completingTask.id ? completedTask : t));
+      try {
+        const completedList = updated.filter((t) => t.status === 'COMPLETED');
+        AsyncStorage.setItem(
+          `@ahtri_completed_tasks_${currentUserId}`,
+          JSON.stringify(completedList),
+        );
+      } catch {}
+      return updated;
+    });
 
     // Sync completion to backend
     try {
@@ -511,7 +567,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
     Alert.alert(
       'Visit Finalized & Logged! ✓',
-      `Call concluded for ${completingTask.location_name}.\n\n• Duration: ${formatTimer(duration)}\n• Feedback: "${visitOutcome.slice(0, 50)}${visitOutcome.length > 50 ? '...' : ''}"\n• Orders: ${validOrders.length} products (${totalOrderUnits} units • ₹${totalOrderAmount.toLocaleString()})\n\nReport synced with Area Manager.`,
+      `Call concluded for ${completingTask.location_name}.\n\n• Duration: ${formatTimer(duration)}\n• Feedback: "${visitOutcome.slice(0, 50)}${visitOutcome.length > 50 ? '...' : ''}"\n• Orders: ${validOrders.length} products (${totalOrderUnits} units • ₹${totalOrderAmount.toLocaleString()})\n\nThis call has been closed and moved to 'Completed & History'.`,
+      [
+        { text: 'Stay on Agenda', style: 'cancel' },
+        { text: 'View in History →', onPress: () => setTaskTab('HISTORY') },
+      ],
     );
   };
 
@@ -519,184 +579,301 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     <ScrollView style={styles.container}>
       {/* Representative Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Assigned Calls ({myTasks.length})</Text>
+        <Text style={styles.headerTitle}>My Field Calls</Text>
         <Text style={styles.headerSub}>
-          {currentUserName} • Today's Field Call Schedule
+          {currentUserName} • Today's Schedule & History
         </Text>
       </View>
 
-      {/* GPS Status Banner */}
-      <View style={styles.simBox}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.simHeader}>Automatic GPS &amp; Geofence Sensor</Text>
-          <Text
-            style={{
-              fontSize: 10.5,
-              color: deviceCoords ? '#0F8B5A' : '#D97706',
-              fontWeight: '700',
-            }}
-          >
-            {deviceCoords ? `● GPS Live (±${deviceCoords.accuracy}m)` : '○ Locating...'}
-          </Text>
-        </View>
-
-        {deviceCoords ? (
-          <Text style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>
-            Coordinates: {deviceCoords.latitude.toFixed(5)}, {deviceCoords.longitude.toFixed(5)}
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, fontStyle: 'italic' }}>
-            Acquiring high-accuracy satellite lock from phone sensor...
-          </Text>
-        )}
-
-        {/* Live GPS Sensor Trigger */}
+      {/* Top Segmented Tab Navigation */}
+      <View style={styles.segmentContainer}>
         <TouchableOpacity
-          style={[styles.liveGpsBtn, isReadingGps ? { opacity: 0.7 } : {}]}
-          onPress={() => handleReadLiveGPS(false)}
-          disabled={isReadingGps}
+          style={[styles.segmentBtn, taskTab === 'AGENDA' ? styles.segmentBtnActive : styles.segmentBtnInactive]}
+          onPress={() => setTaskTab('AGENDA')}
         >
-          <Text style={styles.liveGpsBtnText}>
-            {isReadingGps ? 'Syncing Satellite Fix...' : '↻ Refresh GPS Location'}
+          <Text style={[styles.segmentBtnText, taskTab === 'AGENDA' ? styles.segmentBtnTextActive : {}]}>
+            Today's Agenda ({agendaTasks.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.segmentBtn, taskTab === 'HISTORY' ? styles.segmentBtnActive : styles.segmentBtnInactive]}
+          onPress={() => setTaskTab('HISTORY')}
+        >
+          <Text style={[styles.segmentBtnText, taskTab === 'HISTORY' ? styles.segmentBtnTextActive : {}]}>
+            Completed & History ({historyTasks.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Task List */}
-      {myTasks.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>No tasks currently assigned to your account.</Text>
-        </View>
-      ) : (
-        myTasks.map((task) => {
-          const dist = getTaskDistance(task);
-          const isOutOfRange = dist === null || dist > task.geofence_radius_m;
-
-          return (
-            <View key={task.id} style={styles.taskCard}>
-              {/* Header Row */}
-              <View style={styles.taskHeaderRow}>
-                <Text style={[styles.taskTime, task.status === 'SUSPENDED' ? { color: '#DC2626' } : {}]}>
-                  {task.date} • {task.time} • {task.priority} PRIORITY
-                </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    task.status === 'COMPLETED'
-                      ? styles.badgeCompleted
-                      : task.status === 'IN_PROGRESS'
-                      ? styles.badgeInProgress
-                      : task.status === 'SUSPENDED'
-                      ? styles.badgeSuspended
-                      : styles.badgeAssigned,
-                  ]}
-                >
-                  <Text style={[styles.badgeText, task.status === 'SUSPENDED' ? { color: '#991B1B' } : {}]}>
-                    {task.status === 'SUSPENDED' ? 'SUSPENDED' : task.status}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Title & Location */}
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              <Text style={styles.locationName}>{task.location_name}</Text>
-              <Text style={styles.addressText}>{task.address}</Text>
-
-              {/* SUSPENDED LOCKOUT ALERT */}
-              {task.status === 'SUSPENDED' && (
-                <View style={styles.suspendedBanner}>
-                  <Text style={styles.suspendedBannerTitle}>TASK SUSPENDED (&gt;24h Exceeded)</Text>
-                  <Text style={styles.suspendedBannerText}>
-                    Scheduled date ({task.date}) has passed without visit completion. This call is locked by company administration.
-                  </Text>
-                  <Text style={styles.suspendedContactText}>
-                    Contact Owner (Shivansh Tiwari) to unsuspend this call so you can complete it.
-                  </Text>
-                </View>
-              )}
-
-              {/* Geofence Distance Indicator */}
-              {task.status !== 'SUSPENDED' && (
-                <DistanceIndicator
-                  distanceMeters={dist !== null ? dist : 99999}
-                  maxGeofenceRadiusM={task.geofence_radius_m}
-                  gpsAccuracyMeters={deviceCoords?.accuracy || 15}
-                />
-              )}
-
-              {/* Action Buttons Row */}
-              <View style={styles.btnRow}>
-                {/* Suspended Lockout CTA */}
-                {task.status === 'SUSPENDED' && (
-                  <View style={styles.suspendedBtn}>
-                    <Text style={styles.suspendedBtnText}>Locked by Owner (Task Expired)</Text>
-                  </View>
-                )}
-
-                {/* Google Maps Directions Button */}
-                {task.status !== 'SUSPENDED' && (
-                  <TouchableOpacity
-                    style={styles.directionsBtn}
-                    onPress={() => handleGetDirections(task)}
-                  >
-                    <Text style={styles.directionsBtnText}>Get Directions (Google Maps)</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Start Visit Button */}
-                {task.status === 'ASSIGNED' && (
-                  <TouchableOpacity
-                    style={[
-                      styles.actionBtnPrimary,
-                      isOutOfRange ? styles.btnDisabled : {},
-                    ]}
-                    disabled={isOutOfRange}
-                    onPress={() => handleStartTask(task)}
-                  >
-                    <Text style={styles.actionBtnText}>
-                      {dist === null
-                        ? 'Acquiring GPS Fix...'
-                        : !isOutOfRange
-                        ? '▶ Start Visit (On-Site Verified)'
-                        : `Out of Range (${formatDistance(dist)}) • Reach Clinic`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Resume In-Progress Detailing Visit Button */}
-                {task.status === 'IN_PROGRESS' && (
-                  <TouchableOpacity
-                    style={styles.actionBtnInProgress}
-                    onPress={() => handleOpenCompleteSheet(task)}
-                  >
-                    <Text style={styles.actionBtnText}>
-                      ⏱ Detailing In Progress ({formatTimer(activeElapsedSeconds)}) • Resume &amp; Finalize
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Completed Summary */}
-                {task.status === 'COMPLETED' && (
-                  <View style={styles.completedSummary}>
-                    <Text style={styles.completedText}>
-                      ✓ Call Verified &amp; Logged ({formatTimer(task.duration_seconds || 0)} duration)
-                    </Text>
-                    {task.outcome && (
-                      <Text style={{ fontSize: 11, color: '#334155', marginTop: 3 }}>
-                        Remarks: {task.outcome}
-                      </Text>
-                    )}
-                    {task.orders && task.orders.length > 0 && (
-                      <Text style={styles.orderSummaryText}>
-                        Orders Booked ({task.orders.length} {task.orders.length === 1 ? 'item' : 'items'} • ₹{task.orders.reduce((sum, o) => sum + o.total_amount, 0).toLocaleString()}): {task.orders.map((o) => `${o.product_name} x ${o.quantity}`).join(', ')}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </View>
+      {/* === TAB 1: TODAY'S AGENDA (ACTIVE CALLS ONLY) === */}
+      {taskTab === 'AGENDA' && (
+        <>
+          {/* GPS Status Banner */}
+          <View style={styles.simBox}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.simHeader}>Automatic GPS &amp; Geofence Sensor</Text>
+              <Text
+                style={{
+                  fontSize: 10.5,
+                  color: deviceCoords ? '#0F8B5A' : '#D97706',
+                  fontWeight: '700',
+                }}
+              >
+                {deviceCoords ? `● GPS Live (±${deviceCoords.accuracy}m)` : '○ Locating...'}
+              </Text>
             </View>
-          );
-        })
+
+            {deviceCoords ? (
+              <Text style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>
+                Coordinates: {deviceCoords.latitude.toFixed(5)}, {deviceCoords.longitude.toFixed(5)}
+              </Text>
+            ) : (
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, fontStyle: 'italic' }}>
+                Acquiring high-accuracy satellite lock from phone sensor...
+              </Text>
+            )}
+
+            {/* Live GPS Sensor Trigger */}
+            <TouchableOpacity
+              style={[styles.liveGpsBtn, isReadingGps ? { opacity: 0.7 } : {}]}
+              onPress={() => handleReadLiveGPS(false)}
+              disabled={isReadingGps}
+            >
+              <Text style={styles.liveGpsBtnText}>
+                {isReadingGps ? 'Syncing Satellite Fix...' : '↻ Refresh GPS Location'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Active Agenda Task List */}
+          {agendaTasks.length === 0 ? (
+            <View style={[styles.emptyCard, { alignItems: 'center', paddingVertical: 28 }]}>
+              <Text style={{ fontSize: 28, marginBottom: 8 }}>🎉</Text>
+              <Text style={[styles.emptyText, { fontWeight: '800', color: '#0F172A', fontSize: 15, marginBottom: 4 }]}>
+                All Scheduled Calls Completed!
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 14, paddingHorizontal: 20 }}>
+                You have concluded all scheduled visits for today. Switch to the 'Completed & History' tab to review your submitted orders and visit details.
+              </Text>
+              {historyTasks.length > 0 && (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#1A3C6E', paddingVertical: 9, paddingHorizontal: 18, borderRadius: 6 }}
+                  onPress={() => setTaskTab('HISTORY')}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12.5 }}>
+                    View Completed Calls & Orders ({historyTasks.length}) →
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            agendaTasks.map((task) => {
+              const dist = getTaskDistance(task);
+              const isOutOfRange = dist === null || dist > task.geofence_radius_m;
+
+              return (
+                <View key={task.id} style={styles.taskCard}>
+                  {/* Header Row */}
+                  <View style={styles.taskHeaderRow}>
+                    <Text style={[styles.taskTime, task.status === 'SUSPENDED' ? { color: '#DC2626' } : {}]}>
+                      {task.date} • {task.time} • {task.priority} PRIORITY
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        task.status === 'IN_PROGRESS'
+                          ? styles.badgeInProgress
+                          : task.status === 'SUSPENDED'
+                          ? styles.badgeSuspended
+                          : styles.badgeAssigned,
+                      ]}
+                    >
+                      <Text style={[styles.badgeText, task.status === 'SUSPENDED' ? { color: '#991B1B' } : {}]}>
+                        {task.status === 'SUSPENDED' ? 'SUSPENDED' : task.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Title & Location */}
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.locationName}>{task.location_name}</Text>
+                  <Text style={styles.addressText}>{task.address}</Text>
+
+                  {/* SUSPENDED LOCKOUT ALERT */}
+                  {task.status === 'SUSPENDED' && (
+                    <View style={styles.suspendedBanner}>
+                      <Text style={styles.suspendedBannerTitle}>TASK SUSPENDED (&gt;24h Exceeded)</Text>
+                      <Text style={styles.suspendedBannerText}>
+                        Scheduled date ({task.date}) has passed without visit completion. This call is locked by company administration.
+                      </Text>
+                      <Text style={styles.suspendedContactText}>
+                        Contact Owner (Shivansh Tiwari) to unsuspend this call so you can complete it.
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Geofence Distance Indicator */}
+                  {task.status !== 'SUSPENDED' && (
+                    <DistanceIndicator
+                      distanceMeters={dist !== null ? dist : 99999}
+                      maxGeofenceRadiusM={task.geofence_radius_m}
+                      gpsAccuracyMeters={deviceCoords?.accuracy || 15}
+                    />
+                  )}
+
+                  {/* Action Buttons Row */}
+                  <View style={styles.btnRow}>
+                    {/* Suspended Lockout CTA */}
+                    {task.status === 'SUSPENDED' && (
+                      <View style={styles.suspendedBtn}>
+                        <Text style={styles.suspendedBtnText}>Locked by Owner (Task Expired)</Text>
+                      </View>
+                    )}
+
+                    {/* Google Maps Directions Button */}
+                    {task.status !== 'SUSPENDED' && (
+                      <TouchableOpacity
+                        style={styles.directionsBtn}
+                        onPress={() => handleGetDirections(task)}
+                      >
+                        <Text style={styles.directionsBtnText}>Get Directions (Google Maps)</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Start Visit Button */}
+                    {task.status === 'ASSIGNED' && (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionBtnPrimary,
+                          isOutOfRange ? styles.btnDisabled : {},
+                        ]}
+                        disabled={isOutOfRange}
+                        onPress={() => handleStartTask(task)}
+                      >
+                        <Text style={styles.actionBtnText}>
+                          {dist === null
+                            ? 'Acquiring GPS Fix...'
+                            : !isOutOfRange
+                            ? '▶ Start Visit (On-Site Verified)'
+                            : `Out of Range (${formatDistance(dist)}) • Reach Clinic`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Resume In-Progress Detailing Visit Button */}
+                    {task.status === 'IN_PROGRESS' && (
+                      <TouchableOpacity
+                        style={styles.actionBtnInProgress}
+                        onPress={() => handleOpenCompleteSheet(task)}
+                      >
+                        <Text style={styles.actionBtnText}>
+                          ⏱ Detailing In Progress ({formatTimer(activeElapsedSeconds)}) • Resume &amp; Finalize
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </>
+      )}
+
+      {/* === TAB 2: COMPLETED & HISTORY SECTION === */}
+      {taskTab === 'HISTORY' && (
+        <View style={{ marginBottom: 20 }}>
+          {historyTasks.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                No completed visits in history yet. Completed tasks and orders booked will automatically appear here.
+              </Text>
+            </View>
+          ) : (
+            historyTasks.map((task) => {
+              const orderTotal = task.orders ? task.orders.reduce((sum, o) => sum + (o.total_amount || 0), 0) : 0;
+              const orderUnits = task.orders ? task.orders.reduce((sum, o) => sum + (o.quantity || 0), 0) : 0;
+
+              return (
+                <View key={task.id} style={[styles.taskCard, styles.historyCard]}>
+                  {/* History Header Row */}
+                  <View style={styles.taskHeaderRow}>
+                    <Text style={[styles.taskTime, { color: '#166534', fontWeight: '700' }]}>
+                      ✓ COMPLETED {task.completed_at ? `• ${new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </Text>
+                    <View style={styles.badgeCompleted}>
+                      <Text style={[styles.badgeText, { color: '#166534' }]}>
+                        VERIFIED ON-SITE
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.locationName}>{task.location_name}</Text>
+                  <Text style={styles.addressText}>{task.address}</Text>
+
+                  {/* Detailing Details & Duration */}
+                  <View style={styles.historyMetaBox}>
+                    <Text style={styles.historyMetaText}>
+                      ⏱ Detailing Duration: <Text style={{ fontWeight: '700', color: '#0F172A' }}>{formatTimer(task.duration_seconds || 0)}</Text>
+                    </Text>
+                    {task.outcome ? (
+                      <Text style={[styles.historyMetaText, { marginTop: 3 }]}>
+                        📝 Remarks: <Text style={{ fontStyle: 'italic', color: '#334155' }}>"{task.outcome}"</Text>
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {/* POB Commercial Orders Review Box */}
+                  <View style={styles.historyOrdersBox}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={styles.historyOrdersTitle}>
+                        📦 Commercial Orders Placed
+                      </Text>
+                      {orderTotal > 0 ? (
+                        <Text style={styles.historyOrdersTotalBadge}>
+                          ₹{orderTotal.toLocaleString()} ({orderUnits} units)
+                        </Text>
+                      ) : (
+                        <Text style={{ fontSize: 10.5, color: '#64748B', fontWeight: '600' }}>
+                          Sampling Only
+                        </Text>
+                      )}
+                    </View>
+
+                    {task.orders && task.orders.length > 0 ? (
+                      task.orders.map((ord, idx) => (
+                        <View key={idx} style={styles.historyOrderItem}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.historyOrderProductName}>{ord.product_name}</Text>
+                            <Text style={styles.historyOrderDistributor}>
+                              Distributor: {ord.distributor || 'MedPlus Saket'}
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.historyOrderAmount}>₹{ord.total_amount.toLocaleString()}</Text>
+                            <Text style={styles.historyOrderQty}>
+                              {ord.quantity} units @ ₹{ord.unit_price}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.noOrdersText}>
+                        No commercial booking logged for this call (Doctor consultation & product sampling concluded).
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Sync Status Badge */}
+                  <View style={styles.historyFooter}>
+                    <Text style={styles.historyFooterText}>✓ Synced with Company Administration</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
       )}
 
       {/* Active Visit Detailing & Order Finalization Modal */}
@@ -1115,5 +1292,121 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 12,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 12,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  segmentBtnActive: {
+    backgroundColor: '#1A3C6E',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentBtnInactive: {
+    backgroundColor: 'transparent',
+  },
+  segmentBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  segmentBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  historyCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#166534',
+    backgroundColor: '#FFFFFF',
+  },
+  historyMetaBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  historyMetaText: {
+    fontSize: 11,
+    color: '#475569',
+  },
+  historyOrdersBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  historyOrdersTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  historyOrdersTotalBadge: {
+    backgroundColor: '#DCFCE7',
+    color: '#15803D',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  historyOrderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCFCE7',
+  },
+  historyOrderProductName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  historyOrderDistributor: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  historyOrderAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#15803D',
+  },
+  historyOrderQty: {
+    fontSize: 10,
+    color: '#475569',
+  },
+  noOrdersText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontStyle: 'italic',
+    paddingVertical: 4,
+  },
+  historyFooter: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    alignItems: 'flex-end',
+  },
+  historyFooterText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#059669',
   },
 });

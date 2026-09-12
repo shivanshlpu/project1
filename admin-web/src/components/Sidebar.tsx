@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type NavTab = 'dashboard' | 'tasks' | 'doctors' | 'approvals' | 'reports';
+export type NavTab = 'dashboard' | 'tasks' | 'approvals' | 'reports';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -16,7 +16,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'dashboard' as NavTab, label: 'Manager Overview', icon: '' },
     { id: 'tasks' as NavTab, label: 'Tasks & Geofence Logs', icon: '' },
-    { id: 'doctors' as NavTab, label: 'Doctor Master (Coverage)', icon: '' },
     {
       id: 'approvals' as NavTab,
       label: 'Approvals Hub',

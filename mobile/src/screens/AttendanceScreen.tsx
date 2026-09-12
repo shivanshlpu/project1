@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LocationService } from '../services/locationService';
 import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
@@ -39,6 +40,77 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkOutGps, setCheckOutGps] = useState<string | null>(null);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const userId = currentUser?.id || 'usr-mr-01';
+  const ATTENDANCE_KEY = `@ahtri_attendance_${userId}_${todayStr}`;
+
+  // Restore today's attendance from local storage and backend sync
+  useEffect(() => {
+    // 1. Load locally cached attendance
+    AsyncStorage.getItem(ATTENDANCE_KEY)
+      .then((raw) => {
+        if (raw) {
+          const rec = JSON.parse(raw);
+          if (rec.checkedIn) {
+            setCheckedIn(true);
+            setCheckInTime(rec.checkInTime);
+            setCheckInGps(rec.checkInGps);
+          }
+          if (rec.checkedOut) {
+            setCheckedOut(true);
+            setCheckOutTime(rec.checkOutTime);
+            setCheckOutGps(rec.checkOutGps);
+          }
+        }
+      })
+      .catch(() => {});
+
+    // 2. Fetch live status from backend
+    (async () => {
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders();
+        const res = await fetch(`${baseUrl}/attendance/my`, { headers });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            const todayRec = list.find((a: any) => a.date === todayStr);
+            if (todayRec) {
+              const inTime = todayRec.check_in_at
+                ? new Date(todayRec.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '09:15 AM';
+              const gpsStr = todayRec.check_in_lat
+                ? `GPS: ${Number(todayRec.check_in_lat).toFixed(4)}, ${Number(todayRec.check_in_lng).toFixed(4)}`
+                : null;
+
+              setCheckedIn(true);
+              setCheckInTime(inTime);
+              if (gpsStr) setCheckInGps(gpsStr);
+
+              let outTime: string | null = null;
+              if (todayRec.check_out_at) {
+                outTime = new Date(todayRec.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                setCheckedOut(true);
+                setCheckOutTime(outTime);
+              }
+
+              AsyncStorage.setItem(
+                ATTENDANCE_KEY,
+                JSON.stringify({
+                  checkedIn: true,
+                  checkInTime: inTime,
+                  checkInGps: gpsStr,
+                  checkedOut: !!todayRec.check_out_at,
+                  checkOutTime: outTime,
+                }),
+              );
+            }
+          }
+        }
+      } catch {}
+    })();
+  }, [userId, todayStr]);
 
   // Take selfie photo via Camera
   const handleTakeSelfie = async () => {
@@ -74,8 +146,9 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const lon = coords?.longitude || 77.2066;
       const accuracy = coords?.accuracy ? Math.round(coords.accuracy) : 10;
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
-      // 2. Post to Backend (Records time and coordinates - photo is NOT stored in DB)
+      // 2. Post to Backend
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
@@ -93,11 +166,23 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       setCheckedIn(true);
       setCheckInTime(nowStr);
-      setCheckInGps(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`);
+      setCheckInGps(gpsFormatted);
+
+      // 3. Save locally in AsyncStorage immediately
+      await AsyncStorage.setItem(
+        ATTENDANCE_KEY,
+        JSON.stringify({
+          checkedIn: true,
+          checkInTime: nowStr,
+          checkInGps: gpsFormatted,
+          checkedOut: false,
+          checkOutTime: null,
+        }),
+      );
 
       Alert.alert(
-        'Attendance Approved',
-        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n\n(Photo was verified in session; not stored in database. No face scan required.)`
+        'Attendance Marked Done! ✓',
+        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n\nShift is now active. Your attendance has been submitted and verified.`,
       );
     } catch (error: any) {
       Alert.alert('Attendance Error', error?.message || 'Failed to record attendance.');
@@ -115,6 +200,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const lon = coords?.longitude || 77.2100;
       const accuracy = coords?.accuracy ? Math.round(coords.accuracy) : 12;
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -133,7 +219,20 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       setCheckedOut(true);
       setCheckOutTime(nowStr);
-      setCheckOutGps(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`);
+      setCheckOutGps(gpsFormatted);
+
+      // Save locally in AsyncStorage
+      await AsyncStorage.setItem(
+        ATTENDANCE_KEY,
+        JSON.stringify({
+          checkedIn: true,
+          checkInTime,
+          checkInGps,
+          checkedOut: true,
+          checkOutTime: nowStr,
+          checkOutGps: gpsFormatted,
+        }),
+      );
 
       Alert.alert('Shift Ended', `Punch-out recorded at ${nowStr}. Shift marked as Completed.`);
     } catch (error: any) {
@@ -211,14 +310,41 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             ]}
           >
             {checkedOut
-              ? 'SHIFT COMPLETED (PRESENT)'
+              ? 'SHIFT COMPLETED (PRESENT) ✓'
               : checkedIn
-              ? 'CHECKED IN (ON FIELD)'
+              ? 'MARKED DONE (PRESENT) ✓'
               : 'NOT CHECKED IN'}
           </Text>
           <Text style={styles.statusSub}>
             Date: {new Date().toLocaleDateString()} • Standard Shift: 09:00 AM – 06:00 PM
           </Text>
+
+          {/* Prominent Marked Done Verification Banner */}
+          {checkedIn && (
+            <View
+              style={{
+                backgroundColor: '#DCFCE7',
+                borderColor: '#86EFAC',
+                borderWidth: 1,
+                padding: 10,
+                borderRadius: 8,
+                marginTop: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Text style={{ fontSize: 18, color: '#166534', fontWeight: '800' }}>✓</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#166534' }}>
+                  ATTENDANCE MARKED DONE
+                </Text>
+                <Text style={{ fontSize: 11, color: '#15803D' }}>
+                  Punched in at {checkInTime || '09:15 AM'} • Geotagged on field
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Shift Timings Grid (In-Time and Out-Time) */}

@@ -20,7 +20,7 @@ export class AttendanceService {
     );
 
     if (existing) {
-      throw new ConflictException('Attendance already recorded for today');
+      return { message: 'Attendance already recorded for today', attendance: existing };
     }
 
     const now = new Date();

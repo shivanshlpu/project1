@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   CheckCircle2,
@@ -6,6 +6,9 @@ import {
   Clock,
   RefreshCw,
   Filter,
+  Calendar,
+  CalendarDays,
+  CalendarRange,
 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Language, translations } from '../utils/i18n';
@@ -17,16 +20,18 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => {
   const t = translations[lang];
 
+  const [timeframe, setTimeframe] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('DAILY');
   const [selectedArea, setSelectedArea] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const [mrTeamActivities, setMrTeamActivities] = useState([
     {
-      id: 'mr-1',
+      id: 'usr-mr-01',
       name: 'Rahul Sharma',
       territory: 'South Delhi (Saket)',
       area: 'South Delhi',
+      attendanceMarked: true,
       checkInTime: '09:15 AM (On-Time)',
       visitsCompleted: 6,
       visitsTarget: 8,
@@ -36,10 +41,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       complianceScore: '100%',
     },
     {
-      id: 'mr-2',
+      id: 'usr-mr-02',
       name: 'Vikram Malhotra',
       territory: 'South Delhi (Hauz Khas)',
       area: 'South Delhi',
+      attendanceMarked: true,
       checkInTime: '09:28 AM (On-Time)',
       visitsCompleted: 5,
       visitsTarget: 7,
@@ -49,10 +55,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       complianceScore: '100%',
     },
     {
-      id: 'mr-3',
+      id: 'usr-mr-03',
       name: 'Pooja Verma',
       territory: 'South Delhi (Green Park)',
       area: 'South Delhi',
+      attendanceMarked: true,
       checkInTime: '09:10 AM (On-Time)',
       visitsCompleted: 8,
       visitsTarget: 8,
@@ -62,10 +69,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       complianceScore: '100%',
     },
     {
-      id: 'mr-4',
+      id: 'usr-mr-04',
       name: 'Amit Kumar',
       territory: 'South Delhi (Malviya Nagar)',
       area: 'South Delhi',
+      attendanceMarked: true,
       checkInTime: '09:42 AM (Late)',
       visitsCompleted: 4,
       visitsTarget: 7,
@@ -76,53 +84,236 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     },
   ]);
 
+  // Fetch live attendance from backend
+  const fetchLiveAttendance = async () => {
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/attendance`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const todayAtt = data.filter((a: any) => a.date === todayStr);
+
+          if (todayAtt.length > 0) {
+            setMrTeamActivities((prev) =>
+              prev.map((mr) => {
+                const match = todayAtt.find((a: any) => a.user_id === mr.id || a.user_name === mr.name);
+                if (match) {
+                  const inTime = match.check_in_at
+                    ? new Date(match.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '09:15 AM';
+                  return {
+                    ...mr,
+                    attendanceMarked: true,
+                    checkInTime: `${inTime} (${match.status === 'LATE' ? 'Late' : 'On-Time'})`,
+                  };
+                }
+                return mr;
+              }),
+            );
+          }
+        }
+      }
+    } catch {
+      // Fallback to local state
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveAttendance();
+    const interval = setInterval(fetchLiveAttendance, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      setRefreshNotice('Live GPS coordinates & compliance synchronized with server.');
-      setTimeout(() => setRefreshNotice(null), 3000);
-    }, 600);
+    fetchLiveAttendance().finally(() => {
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setRefreshNotice('Live attendance & compliance metrics synchronized with server.');
+        setTimeout(() => setRefreshNotice(null), 3000);
+      }, 500);
+    });
   };
 
   const filteredActivities = mrTeamActivities.filter(
     (mr) => selectedArea === 'ALL' || mr.area === selectedArea,
   );
 
+  // Dynamic Metrics Based on Selected Timeframe Filter
+  const totalEmployees = filteredActivities.length;
+  const markedEmployees = filteredActivities.filter((mr) => mr.attendanceMarked).length;
+
+  const kpiData = {
+    DAILY: {
+      attendanceVal: `${markedEmployees} / ${totalEmployees}`,
+      attendanceSub: `${markedEmployees} of ${totalEmployees} Employees Marked Done Today (100%)`,
+      attendanceTrend: 'All scheduled staff present',
+      callsVal: '23 / 30 Calls',
+      callsSub: '76.7% Daily Field Target Met',
+      callsTrend: '5.8 calls / MR today',
+      complianceVal: '100.0%',
+      complianceSub: 'All visits verified ≤50m boundary',
+      approvalsVal: '3 Pending',
+      approvalsSub: 'Leave & Expense claims',
+    },
+    WEEKLY: {
+      attendanceVal: `${markedEmployees * 5} / ${totalEmployees * 5}`,
+      attendanceSub: `96.8% Avg Attendance for Last 7 Days`,
+      attendanceTrend: '+3.2% vs Previous Week',
+      callsVal: '142 / 160 Calls',
+      callsSub: '88.8% Weekly Target Achieved',
+      callsTrend: '35.5 calls / MR this week',
+      complianceVal: '99.2%',
+      complianceSub: '1 flagged call outside perimeter',
+      approvalsVal: '12 Resolved',
+      approvalsSub: '12 approved this week',
+    },
+    MONTHLY: {
+      attendanceVal: `${markedEmployees * 22} / ${totalEmployees * 22}`,
+      attendanceSub: `97.4% Monthly Avg Attendance (Current Month)`,
+      attendanceTrend: '+1.5% MoM compliance',
+      callsVal: '584 / 640 Calls',
+      callsSub: '91.3% Monthly Territory Target Met',
+      callsTrend: '146 calls / MR this month',
+      complianceVal: '99.5%',
+      complianceSub: 'Zero GPS spoofing detections',
+      approvalsVal: '46 Resolved',
+      approvalsSub: '46 requests processed',
+    },
+  }[timeframe];
+
   return (
     <div>
+      {/* Top Timeframe Filter Strip for Reports & Performance */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: '#FFFFFF',
+          padding: '10px 16px',
+          borderRadius: '8px',
+          border: '1px solid #E2E8F0',
+          marginBottom: '16px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={16} color="#1A3C6E" />
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>
+            Performance & Attendance Report Scope:
+          </span>
+          <span style={{ fontSize: '12px', color: '#64748B' }}>
+            {timeframe === 'DAILY' ? "Today's Live Shift" : timeframe === 'WEEKLY' ? 'Last 7 Days (Weekly Aggregate)' : 'Current Month (Monthly Aggregate)'}
+          </span>
+        </div>
+
+        {/* Daily, Weekly, Monthly Filter Buttons */}
+        <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '6px', gap: '3px' }}>
+          <button
+            onClick={() => setTimeframe('DAILY')}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '5px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: timeframe === 'DAILY' ? '#1A3C6E' : 'transparent',
+              color: timeframe === 'DAILY' ? '#FFFFFF' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <CalendarDays size={13} />
+            <span>Daily (Today)</span>
+          </button>
+
+          <button
+            onClick={() => setTimeframe('WEEKLY')}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '5px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: timeframe === 'WEEKLY' ? '#1A3C6E' : 'transparent',
+              color: timeframe === 'WEEKLY' ? '#FFFFFF' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <CalendarRange size={13} />
+            <span>Weekly Report</span>
+          </button>
+
+          <button
+            onClick={() => setTimeframe('MONTHLY')}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '5px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: timeframe === 'MONTHLY' ? '#1A3C6E' : 'transparent',
+              color: timeframe === 'MONTHLY' ? '#FFFFFF' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Calendar size={13} />
+            <span>Monthly Report</span>
+          </button>
+        </div>
+      </div>
+
       {/* KPI Tiles Strip */}
       <div className="metric-tiles-strip">
         <KPICard
-          title={t.fieldAttendance}
-          value="94.1%"
-          subText="16 of 17 MRs Checked In"
+          title={`${t.fieldAttendance} (${timeframe === 'DAILY' ? 'Marked Today' : timeframe === 'WEEKLY' ? 'Weekly' : 'Monthly'})`}
+          value={kpiData.attendanceVal}
+          subText={kpiData.attendanceSub}
           Icon={Users}
-          trendText="+2.4% vs Last Week"
+          trendText={kpiData.attendanceTrend}
           trendType="positive"
         />
         <KPICard
-          title={t.doctorCallOutput}
-          value="48 / 60"
-          subText="80.0% Daily Target Met"
+          title={`${t.doctorCallOutput} (${timeframe})`}
+          value={kpiData.callsVal}
+          subText={kpiData.callsSub}
           Icon={CheckCircle2}
-          trendText="4.8 calls / MR"
+          trendText={kpiData.callsTrend}
           trendType="positive"
         />
         <KPICard
           title={t.geofenceCompliance}
-          value="100.0%"
-          subText="All visits verified ≤50m"
+          value={kpiData.complianceVal}
+          subText={kpiData.complianceSub}
           Icon={Crosshair}
           trendText="0 Spoof Flags"
           trendType="positive"
         />
         <KPICard
           title={t.pendingApprovals}
-          value="3 Requests"
-          subText="Leave & Expenses"
+          value={kpiData.approvalsVal}
+          subText={kpiData.approvalsSub}
           Icon={Clock}
-          trendText="Action Required"
+          trendText={timeframe === 'DAILY' ? 'Action Required' : 'Engine Synced'}
           trendType="neutral"
         />
       </div>

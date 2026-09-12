@@ -12,47 +12,77 @@ import {
 } from 'lucide-react';
 import { ApprovalItem } from '../types';
 
+const DECIDED_STORAGE_KEY = 'ahtri_decided_approvals';
+
+const getStoredDecisions = (): Record<string, { status: 'APPROVED' | 'REJECTED'; comment?: string; date?: string }> => {
+  try {
+    const raw = localStorage.getItem(DECIDED_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveStoredDecision = (id: string, entityId: string | undefined, status: 'APPROVED' | 'REJECTED', comment?: string) => {
+  try {
+    const current = getStoredDecisions();
+    const payload = { status, comment, date: new Date().toISOString().split('T')[0] };
+    current[id] = payload;
+    if (entityId) current[entityId] = payload;
+    localStorage.setItem(DECIDED_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+};
+
 export const ApprovalsView: React.FC = () => {
-  const [approvals, setApprovals] = useState<ApprovalItem[]>([
-    {
-      id: 'appr-01',
-      entity_type: 'LEAVE',
-      entity_id: 'leave-101',
-      requester_name: 'Rahul Sharma',
-      details: 'Casual Leave (2 days): Sep 12 - Sep 13 (Family occasion)',
-      date: '2026-09-06',
-      status: 'PENDING',
-    },
-    {
-      id: 'appr-02',
-      entity_type: 'EXPENSE',
-      entity_id: 'exp-102',
-      requester_name: 'Rahul Sharma',
-      details: 'Conveyance Allowance: Saket Clinic Visits (Fuel receipt attached)',
-      amount: 450.0,
-      date: '2026-09-06',
-      status: 'PENDING',
-    },
-    {
-      id: 'appr-03',
-      entity_type: 'DCR_CORRECTION',
-      entity_id: 'dcr-103',
-      requester_name: 'Vikram Malhotra',
-      details: 'DCR Resubmission: Added sample dispensing voucher for Dr. Anita Desai',
-      date: '2026-09-05',
-      status: 'PENDING',
-    },
-    {
-      id: 'appr-04',
-      entity_type: 'EXPENSE',
-      entity_id: 'exp-104',
-      requester_name: 'Pooja Verma',
-      details: 'Doctor Detailing Lunch with Dr. Sameer Kapoor',
-      amount: 620.0,
-      date: '2026-09-05',
-      status: 'APPROVED',
-    },
-  ]);
+  const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [approvals, setApprovals] = useState<ApprovalItem[]>(() => {
+    const stored = getStoredDecisions();
+    const initialItems: ApprovalItem[] = [
+      {
+        id: 'appr-01',
+        entity_type: 'LEAVE',
+        entity_id: 'leave-101',
+        requester_name: 'Rahul Sharma',
+        details: 'Casual Leave (2 days): Sep 12 - Sep 13 (Family occasion)',
+        date: '2026-09-06',
+        status: 'PENDING',
+      },
+      {
+        id: 'appr-02',
+        entity_type: 'EXPENSE',
+        entity_id: 'exp-102',
+        requester_name: 'Rahul Sharma',
+        details: 'Conveyance Allowance: Saket Clinic Visits (Fuel receipt attached)',
+        amount: 450.0,
+        date: '2026-09-06',
+        status: 'PENDING',
+      },
+      {
+        id: 'appr-03',
+        entity_type: 'DCR_CORRECTION',
+        entity_id: 'dcr-103',
+        requester_name: 'Vikram Malhotra',
+        details: 'DCR Resubmission: Added sample dispensing voucher for Dr. Anita Desai',
+        date: '2026-09-05',
+        status: 'PENDING',
+      },
+      {
+        id: 'appr-04',
+        entity_type: 'EXPENSE',
+        entity_id: 'exp-104',
+        requester_name: 'Pooja Verma',
+        details: 'Doctor Detailing Lunch with Dr. Sameer Kapoor',
+        amount: 620.0,
+        date: '2026-09-05',
+        status: 'APPROVED',
+      },
+    ];
+
+    return initialItems.map((item) => {
+      const dec = stored[item.id] || (item.entity_id ? stored[item.entity_id] : undefined);
+      return dec ? { ...item, status: dec.status } : item;
+    });
+  });
 
   const [activeModal, setActiveModal] = useState<{
     id: string;
@@ -74,29 +104,38 @@ export const ApprovalsView: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const mapped: ApprovalItem[] = data.map((a: any) => ({
-            id: a.id,
-            entity_type: a.entity_type,
-            entity_id: a.entity_id,
-            requester_name: a.requester_name || 'Rahul Sharma',
-            details: a.entity_details?.reason
-              ? `${a.entity_details.reason} (${a.entity_details.start_date} to ${a.entity_details.end_date})`
-              : a.entity_details?.description || `${a.entity_type} Request`,
-            amount: a.entity_details?.amount,
-            date: a.created_at ? a.created_at.split('T')[0] : '2026-09-08',
-            status: a.status,
-          }));
+        const storedDecisions = getStoredDecisions();
+        if (Array.isArray(data)) {
+          const mapped: ApprovalItem[] = data.map((a: any) => {
+            const dec = storedDecisions[a.id] || (a.entity_id ? storedDecisions[a.entity_id] : undefined);
+            return {
+              id: a.id,
+              entity_type: a.entity_type,
+              entity_id: a.entity_id,
+              requester_name: a.requester_name || 'Rahul Sharma',
+              details: a.entity_details?.reason
+                ? `${a.entity_details.reason} (${a.entity_details.start_date} to ${a.entity_details.end_date})`
+                : a.entity_details?.description || `${a.entity_type} Request`,
+              amount: a.entity_details?.amount,
+              date: a.created_at ? a.created_at.split('T')[0] : '2026-09-08',
+              status: dec ? dec.status : a.status,
+            };
+          });
 
-          // Merge with any local approved/rejected items
+          // Merge backend data with local state while strictly respecting stored decisions
           setApprovals((prev) => {
             const map = new Map(mapped.map((m) => [m.id, m]));
+            // Retain any items from prev that are not returned by pending endpoint
             prev.forEach((p) => {
-              if (p.status !== 'PENDING' && !map.has(p.id)) {
+              if (!map.has(p.id)) {
                 mapped.push(p);
               }
             });
-            return mapped;
+            // Override with stored decisions so decided items NEVER revert to PENDING
+            return mapped.map((item) => {
+              const dec = storedDecisions[item.id] || (item.entity_id ? storedDecisions[item.entity_id] : undefined);
+              return dec ? { ...item, status: dec.status } : item;
+            });
           });
         }
       }
@@ -112,32 +151,61 @@ export const ApprovalsView: React.FC = () => {
   }, []);
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
+    const item = approvals.find((a) => a.id === id);
+    const newStatus: 'APPROVED' | 'REJECTED' = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    const commentTrimmed = comment.trim();
+
+    // 1. Immediately persist decision to localStorage to ensure it NEVER reverts
+    saveStoredDecision(id, item?.entity_id, newStatus, commentTrimmed);
+
+    // 2. Immediately update state
+    setApprovals((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, status: newStatus } : a,
+      ),
+    );
+
+    // 3. Post to backend
     try {
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const body = JSON.stringify({
+        status: newStatus,
+        comment: commentTrimmed,
+      });
+
+      // Call approvals engine endpoint
       await fetch(`${apiUrl}/approvals/${id}/decide`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-          comment: comment.trim(),
-        }),
+        headers,
+        body,
       });
+
+      // If leave item, also hit leave decision endpoint
+      if (item?.entity_type === 'LEAVE' || id.startsWith('leave-') || item?.entity_id?.startsWith('leave-')) {
+        const leaveId = item?.entity_id || id;
+        await fetch(`${apiUrl}/leave/${leaveId}/decide`, {
+          method: 'POST',
+          headers,
+          body,
+        }).catch(() => {});
+      }
     } catch {
       // Graceful local handling
     }
 
-    setApprovals((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' } : a,
-      ),
-    );
     setActiveModal(null);
     setComment('');
   };
+
+  const displayedApprovals = approvals.filter((a) => {
+    if (filterTab === 'ALL') return true;
+    return a.status === filterTab;
+  });
 
   return (
     <div className="enterprise-panel">
@@ -146,10 +214,33 @@ export const ApprovalsView: React.FC = () => {
           <CheckSquare size={16} color="#0052cc" />
           <span>Unified Approvals Inbox (Leave, Expenses & DCR Resubmissions)</span>
         </div>
-        <span className="status-pill warning">
-          <span className="status-dot warning"></span>
-          {approvals.filter((a) => a.status === 'PENDING').length} Pending Manager Action
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '2px', borderRadius: '6px' }}>
+            {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilterTab(tab)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: filterTab === tab ? '#0052cc' : 'transparent',
+                  color: filterTab === tab ? '#FFFFFF' : '#64748B',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {tab === 'ALL' ? 'All Requests' : tab === 'PENDING' ? `Pending (${approvals.filter(a => a.status === 'PENDING').length})` : tab}
+              </button>
+            ))}
+          </div>
+          <span className="status-pill warning">
+            <span className="status-dot warning"></span>
+            {approvals.filter((a) => a.status === 'PENDING').length} Pending Action
+          </span>
+        </div>
       </div>
 
       <div className="enterprise-table-wrapper">
@@ -166,7 +257,14 @@ export const ApprovalsView: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {approvals.map((item) => (
+            {displayedApprovals.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#64748B' }}>
+                  No approval requests found for this filter.
+                </td>
+              </tr>
+            ) : (
+              displayedApprovals.map((item) => (
               <tr key={item.id}>
                 <td>
                   <span
@@ -248,7 +346,7 @@ export const ApprovalsView: React.FC = () => {
                   )}
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

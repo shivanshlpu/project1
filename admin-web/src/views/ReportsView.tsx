@@ -152,6 +152,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterOrderOnly, setFilterOrderOnly] = useState(false);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+
+  const handleToggleRow = (id: string) => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedRowIds.size === filteredRecords.length) {
+      setSelectedRowIds(new Set());
+    } else {
+      setSelectedRowIds(new Set(filteredRecords.map((r) => r.id)));
+    }
+  };
 
   const reportTypes = [
     { id: 'visits', name: 'Doctor Detailing & Call Analysis', desc: 'Call duration, geofence status, sample units dispensed, and orders' },
@@ -161,11 +179,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     { id: 'expenses', name: 'Field Expense Claims & Conveyance', desc: 'Category-wise claims (TA/DA, fuel, food) with voucher audit' },
   ];
 
-  // Filtering Logic
+  // Filtering Logic with Daily, Weekly, and Monthly Filters
   const filteredRecords = useMemo(() => {
     return rawRecords.filter((rec) => {
-      if (filterDateRange === 'TODAY' && rec.date !== '2026-09-06') return false;
-      if (filterDateRange === 'YESTERDAY' && rec.date !== '2026-09-05') return false;
+      if (filterDateRange === 'TODAY' && rec.date !== '2026-09-06' && rec.date !== new Date().toISOString().split('T')[0]) return false;
+      if (filterDateRange === 'WEEK' && rec.date < '2026-09-01') return false;
+      if (filterDateRange === 'MONTH' && !rec.date.startsWith('2026-09')) return false;
       if (filterTerritory !== 'ALL' && !rec.territory.includes(filterTerritory)) return false;
       if (filterMr !== 'ALL' && rec.mr_name !== filterMr) return false;
       if (filterStatus !== 'ALL' && rec.geofence_status !== filterStatus) return false;
@@ -188,59 +207,108 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     return { total, complianceRate, totalRevenue, avgDuration };
   }, [filteredRecords]);
 
-  // Professional RFC 4180 CSV Download Handler
-  const downloadCSV = () => {
-    const headers = [
-      'Record ID',
-      'Date',
-      'Time',
-      'Medical Representative',
-      'Doctor Name',
-      'Clinic / Hospital',
-      'Territory',
-      'Latitude',
-      'Longitude',
-      'Perimeter Distance (m)',
-      'Geofence Compliance',
-      'Call Duration (mins)',
-      'Order Value (INR)',
-      'Products Detailed',
-    ];
+  // Professional RFC 4180 CSV Download Handler (Supports Selective Downloading)
+  const downloadCSV = (onlySelected: boolean = false) => {
+    const targetRecords = onlySelected && selectedRowIds.size > 0
+      ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
+      : filteredRecords;
 
-    const rows = filteredRecords.map((r) => [
-      `"${r.id}"`,
-      `"${r.date}"`,
-      `"${r.time}"`,
-      `"${r.mr_name}"`,
-      `"${r.doctor_name}"`,
-      `"${r.clinic}"`,
-      `"${r.territory}"`,
-      r.lat.toFixed(5),
-      r.lng.toFixed(5),
-      r.distance_m.toFixed(1),
-      `"${r.geofence_status}"`,
-      r.duration_mins,
-      r.order_amount,
-      `"${r.products_detailed}"`,
-    ]);
+    if (targetRecords.length === 0) {
+      setDownloadNotice('No records selected for export.');
+      setTimeout(() => setDownloadNotice(null), 3000);
+      return;
+    }
+
+    let headers: string[] = [];
+    let rows: any[][] = [];
+
+    if (selectedReport === 'attendance') {
+      headers = [
+        'Record ID',
+        'Date',
+        'Time',
+        'Field Representative',
+        'Territory',
+        'Latitude',
+        'Longitude',
+        'Attendance State',
+        'Geofence Compliance',
+        'Call Logs Synced',
+      ];
+      rows = targetRecords.map((r) => [
+        `"${r.id}"`,
+        `"${r.date}"`,
+        `"${r.time}"`,
+        `"${r.mr_name}"`,
+        `"${r.territory}"`,
+        r.lat.toFixed(5),
+        r.lng.toFixed(5),
+        `"PRESENT (MARKED DONE)"`,
+        `"${r.geofence_status}"`,
+        r.duration_mins > 0 ? `"SYNCED"` : `"PENDING"`,
+      ]);
+    } else {
+      headers = [
+        'Record ID',
+        'Date',
+        'Time',
+        'Medical Representative',
+        'Doctor Name',
+        'Clinic / Hospital',
+        'Territory',
+        'Latitude',
+        'Longitude',
+        'Perimeter Distance (m)',
+        'Geofence Compliance',
+        'Call Duration (mins)',
+        'Order Value (INR)',
+        'Products Detailed',
+      ];
+      rows = targetRecords.map((r) => [
+        `"${r.id}"`,
+        `"${r.date}"`,
+        `"${r.time}"`,
+        `"${r.mr_name}"`,
+        `"${r.doctor_name}"`,
+        `"${r.clinic}"`,
+        `"${r.territory}"`,
+        r.lat.toFixed(5),
+        r.lng.toFixed(5),
+        r.distance_m.toFixed(1),
+        `"${r.geofence_status}"`,
+        r.duration_mins,
+        r.order_amount,
+        `"${r.products_detailed}"`,
+      ]);
+    }
 
     const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `AHTRI_${selectedReport}_Report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `AHTRI_${selectedReport}_Report_${onlySelected ? 'Selected_' : ''}${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    setDownloadNotice('Professional CSV Report downloaded successfully.');
+    setDownloadNotice(`Professional CSV Report exported successfully (${targetRecords.length} ${onlySelected ? 'selected' : 'filtered'} records).`);
     setTimeout(() => setDownloadNotice(null), 4000);
   };
 
-  // Professional Formatted Executive PDF Generation
-  const downloadPDF = () => {
+  // Professional Formatted Executive PDF Generation (Supports Selective Downloading)
+  const downloadPDF = (onlySelected: boolean = false) => {
+    const targetRecords = onlySelected && selectedRowIds.size > 0
+      ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
+      : filteredRecords;
+
+    if (targetRecords.length === 0) {
+      setDownloadNotice('No records selected for PDF export.');
+      setTimeout(() => setDownloadNotice(null), 3000);
+      return;
+    }
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -277,7 +345,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
             <div class="subtitle">Field Force Automation - Executive Compliance & Call Detailing Audit</div>
           </div>
           <div class="meta-box">
-            <div>Report: <strong>${selectedReport.toUpperCase()} AUDIT LEDGER</strong></div>
+            <div>Report: <strong>${selectedReport.toUpperCase()} AUDIT LEDGER ${onlySelected ? '(SELECTED RECORDS)' : ''}</strong></div>
             <div>Generated: ${new Date().toLocaleString()}</div>
             <div>Territory: ${filterTerritory === 'ALL' ? 'All Territories' : filterTerritory}</div>
           </div>
@@ -285,8 +353,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
 
         <div class="kpi-row">
           <div class="kpi-card">
-            <div class="kpi-label">Total Calls Filtered</div>
-            <div class="kpi-val">${stats.total}</div>
+            <div class="kpi-label">Exported Records</div>
+            <div class="kpi-val">${targetRecords.length}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Geofence Compliance</div>
@@ -294,7 +362,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Total Orders Booked</div>
-            <div class="kpi-val" style="color:#1a3c6e;">₹${stats.totalRevenue.toLocaleString()}</div>
+            <div class="kpi-val" style="color:#1a3c6e;">₹${targetRecords.reduce((sum, r) => sum + r.order_amount, 0).toLocaleString()}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Avg Meeting Duration</div>
@@ -317,7 +385,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
             </tr>
           </thead>
           <tbody>
-            ${filteredRecords
+            ${targetRecords
               .map(
                 (r) => `
               <tr>
@@ -363,13 +431,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       doc.open();
       doc.write(htmlContent);
       doc.close();
-
       setTimeout(() => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch {
-          // Fallback if iframe print is restricted
           window.print();
         } finally {
           setTimeout(() => {
@@ -381,27 +447,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       }, 400);
     }
 
-    setDownloadNotice('Executive Report prepared. System print dialog dispatched for PDF export.');
+    setDownloadNotice(`Executive Report prepared for ${targetRecords.length} ${onlySelected ? 'selected' : 'filtered'} records.`);
     setTimeout(() => setDownloadNotice(null), 4500);
   };
 
-  const handleExportAction = () => {
+  const handleExportAction = (onlySelected: boolean = false) => {
     if (selectedFormat === 'csv') {
-      downloadCSV();
+      downloadCSV(onlySelected);
     } else if (selectedFormat === 'pdf') {
-      downloadPDF();
+      downloadPDF(onlySelected);
     } else {
       // JSON
-      const jsonBlob = new Blob([JSON.stringify(filteredRecords, null, 2)], {
+      const targetRecords = onlySelected && selectedRowIds.size > 0
+        ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
+        : filteredRecords;
+
+      const jsonBlob = new Blob([JSON.stringify(targetRecords, null, 2)], {
         type: 'application/json',
       });
       const url = URL.createObjectURL(jsonBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `AHTRI_${selectedReport}_Report.json`;
+      a.download = `AHTRI_${selectedReport}_Report_${onlySelected ? 'Selected_' : ''}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setDownloadNotice('Structured JSON dataset exported.');
+      setDownloadNotice(`Structured JSON exported (${targetRecords.length} records).`);
       setTimeout(() => setDownloadNotice(null), 3000);
     }
   };
@@ -498,8 +568,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
               style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', background: '#FFFFFF' }}
             >
               <option value="ALL">All Recorded Dates</option>
-              <option value="TODAY">Today (06 Sep 2026)</option>
-              <option value="YESTERDAY">Yesterday (05 Sep 2026)</option>
+              <option value="TODAY">Daily (Today)</option>
+              <option value="WEEK">Weekly (Last 7 Days)</option>
+              <option value="MONTH">Monthly (Current Month)</option>
             </select>
           </div>
 
@@ -607,15 +678,25 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
             <span>{t.previewTable} ({filteredRecords.length} Rows Matching Filters)</span>
           </div>
 
-          <div className="panel-controls-group">
-            <button className="btn-enterprise primary sm" onClick={handleExportAction}>
+          <div className="panel-controls-group" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {selectedRowIds.size > 0 && (
+              <button
+                className="btn-enterprise primary sm"
+                style={{ background: '#0F8B5A', borderColor: '#0F8B5A' }}
+                onClick={() => handleExportAction(true)}
+              >
+                <Download size={13} />
+                <span>Export Selected ({selectedRowIds.size})</span>
+              </button>
+            )}
+            <button className="btn-enterprise secondary sm" onClick={() => handleExportAction(false)}>
               <Download size={13} />
               <span>
                 {selectedFormat === 'csv'
-                  ? t.downloadCsv
+                  ? `Export All Filtered CSV (${filteredRecords.length})`
                   : selectedFormat === 'pdf'
-                  ? t.downloadPdf
-                  : 'Export JSON'}
+                  ? `Export All Filtered PDF (${filteredRecords.length})`
+                  : `Export All Filtered JSON (${filteredRecords.length})`}
               </span>
             </button>
           </div>
@@ -632,6 +713,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           <table className="enterprise-table">
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    title="Select All Records"
+                    checked={filteredRecords.length > 0 && selectedRowIds.size === filteredRecords.length}
+                    onChange={handleToggleSelectAll}
+                    style={{ cursor: 'pointer', width: '15px', height: '15px', accentColor: '#0052cc' }}
+                  />
+                </th>
                 <th>Record ID</th>
                 <th>Date & Time</th>
                 <th>Field Representative</th>
@@ -646,51 +736,62 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
             <tbody>
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: '#64748B' }}>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: '#64748B' }}>
                     No records match the selected filter criteria.
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((rec) => (
-                  <tr key={rec.id}>
-                    <td style={{ fontWeight: '700', fontSize: '11.5px', color: '#1A3C6E' }}>{rec.id}</td>
-                    <td>
-                      <div>{rec.date}</div>
-                      <div style={{ fontSize: '10px', color: '#64748B' }}>{rec.time}</div>
-                    </td>
-                    <td style={{ fontWeight: '600' }}>{rec.mr_name}</td>
-                    <td>
-                      <div style={{ fontWeight: '600' }}>{rec.doctor_name}</div>
-                      <div style={{ fontSize: '10.5px', color: '#64748B' }}>{rec.clinic}</div>
-                    </td>
-                    <td style={{ color: '#475569' }}>{rec.territory}</td>
-                    <td>
-                      <span style={{ fontWeight: '700', color: rec.distance_m <= 50 ? '#0F8B5A' : '#DC2626' }}>
-                        {rec.distance_m}m
-                      </span>{' '}
-                      <span style={{ fontSize: '10px', color: '#64748B' }}>(≤50m)</span>
-                    </td>
-                    <td>
-                      <span
-                        className={`status-pill ${
-                          rec.geofence_status === 'VERIFIED_ON_SITE' ? 'success' : 'alert'
-                        }`}
-                      >
-                        {rec.geofence_status === 'VERIFIED_ON_SITE' ? t.verified : t.rejected}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: '600' }}>{rec.duration_mins} mins</td>
-                    <td>
-                      {rec.order_amount > 0 ? (
-                        <span style={{ fontWeight: '700', color: '#0F8B5A' }}>
-                          ₹{rec.order_amount.toLocaleString()}
+                filteredRecords.map((rec) => {
+                  const isChecked = selectedRowIds.has(rec.id);
+                  return (
+                    <tr key={rec.id} style={{ background: isChecked ? '#EFF6FF' : undefined }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleRow(rec.id)}
+                          style={{ cursor: 'pointer', width: '15px', height: '15px', accentColor: '#0052cc' }}
+                        />
+                      </td>
+                      <td style={{ fontWeight: '700', fontSize: '11.5px', color: '#1A3C6E' }}>{rec.id}</td>
+                      <td>
+                        <div>{rec.date}</div>
+                        <div style={{ fontSize: '10px', color: '#64748B' }}>{rec.time}</div>
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{rec.mr_name}</td>
+                      <td>
+                        <div style={{ fontWeight: '600' }}>{rec.doctor_name}</div>
+                        <div style={{ fontSize: '10.5px', color: '#64748B' }}>{rec.clinic}</div>
+                      </td>
+                      <td style={{ color: '#475569' }}>{rec.territory}</td>
+                      <td>
+                        <span style={{ fontWeight: '700', color: rec.distance_m <= 50 ? '#0F8B5A' : '#DC2626' }}>
+                          {rec.distance_m}m
+                        </span>{' '}
+                        <span style={{ fontSize: '10px', color: '#64748B' }}>(≤50m)</span>
+                      </td>
+                      <td>
+                        <span
+                          className={`status-pill ${
+                            rec.geofence_status === 'VERIFIED_ON_SITE' ? 'success' : 'alert'
+                          }`}
+                        >
+                          {rec.geofence_status === 'VERIFIED_ON_SITE' ? t.verified : t.rejected}
                         </span>
-                      ) : (
-                        <span style={{ color: '#94A3B8', fontSize: '11px' }}>Detailing Only</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{rec.duration_mins} mins</td>
+                      <td>
+                        {rec.order_amount > 0 ? (
+                          <span style={{ fontWeight: '700', color: '#0F8B5A' }}>
+                            ₹{rec.order_amount.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontSize: '11px' }}>Detailing Only</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
