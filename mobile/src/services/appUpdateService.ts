@@ -2,6 +2,7 @@ import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from 'expo-constants';
 import { ApiConfig } from './apiConfig';
 
 export interface AppVersionInfo {
@@ -35,8 +36,15 @@ export interface DownloadProgressPayload {
 
 export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void;
 
-// Current version installed on this device (matches app.json version)
-export const CURRENT_APP_VERSION = '1.0.3';
+// Current version and versionCode installed on this device (read dynamically from manifest or fallback to 1.0.5 / 5)
+export const CURRENT_APP_VERSION =
+  Constants.expoConfig?.version ||
+  (Constants as any).manifest2?.extra?.expoClient?.version ||
+  '1.0.5';
+
+export const CURRENT_APP_VERSION_CODE =
+  Constants.expoConfig?.android?.versionCode ||
+  5;
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',
@@ -83,14 +91,36 @@ export const AppUpdateService = {
   },
 
   /**
-   * Clear any legacy suppression keys that may have blocked update popups
+   * Mark a version as dismissed by user so they are not nagged again
+   */
+  async markVersionDismissed(version: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION, version);
+    } catch {
+      // Non-blocking
+    }
+  },
+
+  /**
+   * Check if a specific version was dismissed by the user
+   */
+  async isVersionDismissed(version: string): Promise<boolean> {
+    try {
+      const dismissed = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION);
+      return dismissed === version;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Clear any legacy suppression keys
    */
   async clearSuppressionCache(): Promise<void> {
     try {
       await AsyncStorage.multiRemove([
         UPDATE_STORAGE_KEYS.INSTALLED_VERSION,
         UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL,
-        UPDATE_STORAGE_KEYS.DISMISSED_VERSION,
       ]);
     } catch {
       // Non-blocking
@@ -147,6 +177,7 @@ export const AppUpdateService = {
    */
   async evaluateVersion(info: AppVersionInfo, baseVersion?: string): Promise<UpdateCheckResult> {
     const currentVer = baseVersion || CURRENT_APP_VERSION;
+    const currentCode = CURRENT_APP_VERSION_CODE;
 
     // If update broadcast is paused or deactivated by admin, suppress update prompts
     if (info.isActive === false || !info.downloadUrl) {
@@ -159,13 +190,24 @@ export const AppUpdateService = {
     }
 
     const isNewerSemVer = compareSemVer(info.latestVersion, currentVer) > 0;
-    const isNewerCode = (info.latestVersionCode || 0) > 4; // Native app.json versionCode is 4
+    const isNewerCode = (info.latestVersionCode || 0) > currentCode;
+    const isTrulyNewer = isNewerSemVer || isNewerCode;
+
+    // If user is ALREADY on the same or newer version, NEVER trigger update!
+    if (!isTrulyNewer) {
+      return {
+        hasUpdate: false,
+        isMandatory: false,
+        currentVersion: currentVer,
+        info,
+      };
+    }
+
     const isBelowMinimum = compareSemVer(currentVer, info.minimumVersion) < 0;
     const isMandatory = !!info.forceUpdate || isBelowMinimum;
-    const hasUpdate = isNewerSemVer || isNewerCode || isMandatory;
 
     return {
-      hasUpdate,
+      hasUpdate: true,
       isMandatory,
       currentVersion: currentVer,
       info,

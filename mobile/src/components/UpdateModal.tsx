@@ -63,7 +63,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
+    if (updateInfo?.latestVersion) {
+      await AppUpdateService.markVersionDismissed(updateInfo.latestVersion);
+    }
     onClose();
   };
 

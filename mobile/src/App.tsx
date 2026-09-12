@@ -97,6 +97,7 @@ export default function App() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
+  const lastNotifiedVersionRef = React.useRef<string>('');
 
   // Auto-check for over-the-air in-app updates on boot, resume & active polling
   useEffect(() => {
@@ -106,8 +107,6 @@ export default function App() {
     // Non-blocking background warm-up for Render cold start
     ApiConfig.warmupServer();
 
-    // Clear any stale local suppression keys
-    AppUpdateService.clearSuppressionCache();
     setEffectiveVersion(CURRENT_APP_VERSION);
 
     let isMounted = true;
@@ -119,10 +118,16 @@ export default function App() {
           setEffectiveVersion(res.currentVersion);
         }
         if (res.hasUpdate && res.info) {
-          setUpdateInfo(res.info);
-          setIsUpdateModalOpen(true);
-          // Fire WhatsApp-style heads-up system notification for new app update!
-          NotificationService.notifyAppUpdateAvailable(res.info.latestVersion, res.info.downloadUrl);
+          const isDismissed = await AppUpdateService.isVersionDismissed(res.info.latestVersion);
+          if (!isDismissed || res.isMandatory) {
+            setUpdateInfo(res.info);
+            setIsUpdateModalOpen(true);
+          }
+          // Only fire notification once per new version so employee is not harassed
+          if (lastNotifiedVersionRef.current !== res.info.latestVersion) {
+            lastNotifiedVersionRef.current = res.info.latestVersion;
+            NotificationService.notifyAppUpdateAvailable(res.info.latestVersion, res.info.downloadUrl);
+          }
         }
       } catch {
         // Non-blocking silent catch
