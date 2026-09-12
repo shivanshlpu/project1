@@ -21,6 +21,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 interface AiChatViewProps {
   lang?: Language;
@@ -222,7 +223,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + (days - 1));
 
-        const dateStr = `${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+        const dateStr = `${formatDateDDMMYYYY(startDate)} - ${formatDateDDMMYYYY(endDate)}`;
 
         // Trigger backend leave creation if available
         try {
@@ -281,7 +282,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           sender: 'ai',
           text: isHindi
             ? `**आज की लाइव उपस्थिति रिपोर्ट (Field Attendance Log):**\n\n- **राहुल शर्मा (Rahul Sharma)**: उपस्थित ✓ (09:15 AM पर पंच-इन) — On-Site Verified (14m)\n- **विक्रम मल्होत्रा (Vikram Malhotra)**: उपस्थित ✓ (09:28 AM पर पंच-इन) — On-Site Verified (8m)\n- **पूजा वर्मा (Pooja Verma)**: उपस्थित ✓ (09:35 AM पर पंच-इन) — On-Site Verified (19m)\n- **अमित कुमार (Amit Kumar)**: अनुपस्थित / स्वीकृत आकस्मिक अवकाश (Approved CL)\n\n**उपस्थिति सारांश**: 4 में से **3 फील्ड प्रतिनिधि उपस्थित** हैं (**75% अटेंडेंस दर**)। सभी उपस्थित सदस्यों का GPS लोकेशन जियोफेंस के दायरे (≤50m) में सत्यापित है।`
-            : `**Live Field Attendance Log for Today (06 Sep 2026):**\n\n- **Rahul Sharma**: PRESENT ✓ (Clocked in at 09:15 AM) — Geofence Verified (14m)\n- **Vikram Malhotra**: PRESENT ✓ (Clocked in at 09:28 AM) — Geofence Verified (8m)\n- **Pooja Verma**: PRESENT ✓ (Clocked in at 09:35 AM) — Geofence Verified (19m)\n- **Amit Kumar**: ABSENT / On Authorized Casual Leave\n\n**Attendance Ratio**: **3 of 4 MRs on duty (75% field presence)**. 100% of check-ins verified within 50m perimeter.`,
+            : `**Live Field Attendance Log for Today (06-09-2026):**\n\n- **Rahul Sharma**: PRESENT ✓ (Clocked in at 09:15 AM) — Geofence Verified (14m)\n- **Vikram Malhotra**: PRESENT ✓ (Clocked in at 09:28 AM) — Geofence Verified (8m)\n- **Pooja Verma**: PRESENT ✓ (Clocked in at 09:35 AM) — Geofence Verified (19m)\n- **Amit Kumar**: ABSENT / On Authorized Casual Leave\n\n**Attendance Ratio**: **3 of 4 MRs on duty (75% field presence)**. 100% of check-ins verified within 50m perimeter.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }

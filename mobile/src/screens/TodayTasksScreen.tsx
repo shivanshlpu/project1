@@ -15,6 +15,7 @@ import { DistanceIndicator } from '../components/DistanceIndicator';
 import { LocationService } from '../services/locationService';
 import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 export interface MobileTaskItem {
   id: string;
@@ -396,7 +397,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     if (task.status === 'SUSPENDED') {
       Alert.alert(
         'TASK SUSPENDED',
-        `Scheduled date (${task.date}) has passed without visit completion. This task is locked by company administration.\n\nOnly Owner (Shivansh Tiwari) can unsuspend it so you can complete this task.`,
+        `Scheduled date (${formatDateDDMMYYYY(task.date)}) has passed without visit completion. This task is locked by company administration.\n\nOnly Owner (Shivansh Tiwari) can unsuspend it so you can complete this task.`,
       );
       return;
     }
@@ -677,7 +678,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                   {/* Header Row */}
                   <View style={styles.taskHeaderRow}>
                     <Text style={[styles.taskTime, task.status === 'SUSPENDED' ? { color: '#DC2626' } : {}]}>
-                      {task.date} • {task.time} • {task.priority} PRIORITY
+                      {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
                     </Text>
                     <View
                       style={[
@@ -705,7 +706,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                     <View style={styles.suspendedBanner}>
                       <Text style={styles.suspendedBannerTitle}>TASK SUSPENDED (&gt;24h Exceeded)</Text>
                       <Text style={styles.suspendedBannerText}>
-                        Scheduled date ({task.date}) has passed without visit completion. This call is locked by company administration.
+                        Scheduled date ({formatDateDDMMYYYY(task.date)}) has passed without visit completion. This call is locked by company administration.
                       </Text>
                       <Text style={styles.suspendedContactText}>
                         Contact Owner (Shivansh Tiwari) to unsuspend this call so you can complete it.

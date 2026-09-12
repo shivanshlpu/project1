@@ -355,5 +355,19 @@ export class DatabaseService implements OnModuleInit {
         updated_at: new Date().toISOString(),
       },
     );
+
+    // 9. Seed Today's Initial Attendance for Field MR
+    this.attendance.push({
+      id: 'att-01',
+      user_id: mr.id,
+      date: todayStr,
+      check_in_at: `${todayStr}T09:15:22.000Z`,
+      check_in_lat: 28.5245,
+      check_in_lng: 77.2066,
+      distance_meters: 8.4,
+      is_verified_location: true,
+      status: 'PRESENT',
+      created_at: new Date().toISOString(),
+    });
   }
 }

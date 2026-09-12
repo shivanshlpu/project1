@@ -27,6 +27,7 @@ import {
   ArrowLeft,
   Copy,
 } from 'lucide-react';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 export const SalesmanPortalView: React.FC = () => {
   // Persistent MR Session State (never logs out unless explicitly requested)
@@ -591,7 +592,7 @@ export const SalesmanPortalView: React.FC = () => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: call.status === 'SUSPENDED' ? '#DC2626' : 'var(--color-text-muted)' }}>
-                      {call.date} • {call.time}
+                      {formatDateDDMMYYYY(call.date)} • {call.time}
                     </span>
                     <span
                       className={`status-pill ${
@@ -637,7 +638,7 @@ export const SalesmanPortalView: React.FC = () => {
                         <span>CALL SUSPENDED (&gt;24 HRS PASSED)</span>
                       </div>
                       <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '4px', lineHeight: '15px' }}>
-                        The scheduled visit date ({call.date}) has passed without completion. This call is automatically suspended and locked.
+                        The scheduled visit date ({formatDateDDMMYYYY(call.date)}) has passed without completion. This call is automatically suspended and locked.
                       </div>
                       <div style={{ fontSize: '11px', color: '#B91C1C', marginTop: '4px', fontWeight: '700' }}>
                         Contact Owner (Shivansh Tiwari) to unsuspend this call so you can proceed.

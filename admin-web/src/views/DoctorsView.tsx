@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { DoctorItem } from '../types';
 import { Language, translations } from '../utils/i18n';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
@@ -944,7 +945,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '700', fontSize: '12.5px', color: '#0F172A' }}>
-                      {visit.date} • {visit.time}
+                      {formatDateDDMMYYYY(visit.date)} • {visit.time}
                     </span>
                     <span style={{ background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
                       {visit.geofence}

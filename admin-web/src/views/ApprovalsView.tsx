@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { ApprovalItem } from '../types';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 const DECIDED_STORAGE_KEY = 'ahtri_decided_approvals';
 
@@ -26,7 +27,7 @@ const getStoredDecisions = (): Record<string, { status: 'APPROVED' | 'REJECTED';
 const saveStoredDecision = (id: string, entityId: string | undefined, status: 'APPROVED' | 'REJECTED', comment?: string) => {
   try {
     const current = getStoredDecisions();
-    const payload = { status, comment, date: new Date().toISOString().split('T')[0] };
+    const payload = { status, comment, date: formatDateDDMMYYYY(new Date()) };
     current[id] = payload;
     if (entityId) current[entityId] = payload;
     localStorage.setItem(DECIDED_STORAGE_KEY, JSON.stringify(current));
@@ -43,8 +44,8 @@ export const ApprovalsView: React.FC = () => {
         entity_type: 'LEAVE',
         entity_id: 'leave-101',
         requester_name: 'Rahul Sharma',
-        details: 'Casual Leave (2 days): Sep 12 - Sep 13 (Family occasion)',
-        date: '2026-09-06',
+        details: 'Casual Leave (2 days): 12-09-2026 to 13-09-2026 (Family occasion)',
+        date: '06-09-2026',
         status: 'PENDING',
       },
       {
@@ -54,7 +55,7 @@ export const ApprovalsView: React.FC = () => {
         requester_name: 'Rahul Sharma',
         details: 'Conveyance Allowance: Saket Clinic Visits (Fuel receipt attached)',
         amount: 450.0,
-        date: '2026-09-06',
+        date: '06-09-2026',
         status: 'PENDING',
       },
       {
@@ -63,7 +64,7 @@ export const ApprovalsView: React.FC = () => {
         entity_id: 'dcr-103',
         requester_name: 'Vikram Malhotra',
         details: 'DCR Resubmission: Added sample dispensing voucher for Dr. Anita Desai',
-        date: '2026-09-05',
+        date: '05-09-2026',
         status: 'PENDING',
       },
       {
@@ -73,7 +74,7 @@ export const ApprovalsView: React.FC = () => {
         requester_name: 'Pooja Verma',
         details: 'Doctor Detailing Lunch with Dr. Sameer Kapoor',
         amount: 620.0,
-        date: '2026-09-05',
+        date: '05-09-2026',
         status: 'APPROVED',
       },
     ];
@@ -114,10 +115,10 @@ export const ApprovalsView: React.FC = () => {
               entity_id: a.entity_id,
               requester_name: a.requester_name || 'Rahul Sharma',
               details: a.entity_details?.reason
-                ? `${a.entity_details.reason} (${a.entity_details.start_date} to ${a.entity_details.end_date})`
+                ? `${a.entity_details.reason} (${formatDateDDMMYYYY(a.entity_details.start_date)} to ${formatDateDDMMYYYY(a.entity_details.end_date)})`
                 : a.entity_details?.description || `${a.entity_type} Request`,
               amount: a.entity_details?.amount,
-              date: a.created_at ? a.created_at.split('T')[0] : '2026-09-08',
+              date: formatDateDDMMYYYY(a.created_at || a.date || '08-09-2026'),
               status: dec ? dec.status : a.status,
             };
           });
@@ -287,7 +288,7 @@ export const ApprovalsView: React.FC = () => {
                 <td style={{ fontWeight: 700 }}>
                   {item.amount ? `₹${item.amount.toFixed(2)}` : '—'}
                 </td>
-                <td style={{ color: 'var(--color-text-secondary)' }}>{item.date}</td>
+                <td style={{ color: 'var(--color-text-secondary)' }}>{formatDateDDMMYYYY(item.date)}</td>
                 <td>
                   <span
                     className={`status-pill ${

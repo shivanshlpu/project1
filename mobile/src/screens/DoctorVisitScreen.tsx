@@ -32,7 +32,7 @@ export const DoctorVisitScreen: React.FC = () => {
   const [remarks, setRemarks] = useState<string>(
     'Presented CardioFix-50 clinical brochure. Doctor requested 25 commercial packs via MedPlus Saket.',
   );
-  const [followUpDate, setFollowUpDate] = useState<string>('2026-09-15');
+  const [followUpDate, setFollowUpDate] = useState<string>('15-09-2026');
 
   // Multiple Orders State
   const [orders, setOrders] = useState<OrderItem[]>([
@@ -195,7 +195,7 @@ export const DoctorVisitScreen: React.FC = () => {
             style={styles.input}
             value={followUpDate}
             onChangeText={setFollowUpDate}
-            placeholder="YYYY-MM-DD"
+            placeholder="DD-MM-YYYY"
           />
         </View>
 

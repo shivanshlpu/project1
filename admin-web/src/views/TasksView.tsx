@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { TaskItem, VerificationLogItem, DoctorItem, TaskOrderItem } from '../types';
 import { Language, translations } from '../utils/i18n';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { create3DMapPinHtml } from '../utils/mapPinGenerator';
 import {
   getStoredSavedLocations,
@@ -624,7 +625,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         <div style="font-family:sans-serif;min-width:200px;padding:4px 2px;">
           <div style="font-weight:800;font-size:13px;color:#0F172A;">${t.title}</div>
           <div style="font-size:11.5px;color:#475569;margin-top:3px;">Assigned to: <strong>${t.assigned_mr_name}</strong></div>
-          <div style="font-size:11px;color:#64748B;margin-top:2px;">Scheduled: ${t.date} at ${t.time}</div>
+          <div style="font-size:11px;color:#64748B;margin-top:2px;">Scheduled: ${formatDateDDMMYYYY(t.date)} at ${t.time}</div>
           <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;background:${bg};color:white;">${t.status}</span>
             <span style="font-size:10.5px;color:#64748B;">Priority: ${t.priority}</span>
@@ -1096,7 +1097,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         setTasks((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
         setIsCreateModalOpen(false);
         if (onClearPrefilledLocation) onClearPrefilledLocation();
-        showToast(`Task assigned to ${assignedMr} (${taskDate} • ${taskTime} ${selectedTimeZone === 'Asia/Kolkata' ? 'IST' : selectedTimeZone}).`, 'success');
+        showToast(`Task assigned to ${assignedMr} (${formatDateDDMMYYYY(taskDate)} • ${taskTime} ${selectedTimeZone === 'Asia/Kolkata' ? 'IST' : selectedTimeZone}).`, 'success');
       } else {
         // Graceful fallback on 401 or backend validation error
         console.warn('Backend rejected task assignment, saving locally:', res.status);
@@ -1118,7 +1119,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
         setIsCreateModalOpen(false);
         if (onClearPrefilledLocation) onClearPrefilledLocation();
-        showToast(`Task assigned to ${assignedMr} (${taskDate} • ${taskTime} IST).`, 'success');
+        showToast(`Task assigned to ${assignedMr} (${formatDateDDMMYYYY(taskDate)} • ${taskTime} IST).`, 'success');
       }
     } catch (err) {
       console.warn('Backend unavailable, falling back to local state:', err);
@@ -1164,7 +1165,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
       const data = await res.json();
       if (res.ok) {
-        showToast(`Task unsuspended. Date reset to today (${today}). ${mrName} unlocked.`, 'success');
+        showToast(`Task unsuspended. Date reset to today (${formatDateDDMMYYYY(today)}). ${mrName} unlocked.`, 'success');
         await fetchBackendTasks();
       } else {
         showToast(data.message || 'Failed to unsuspend task.', 'error');
@@ -2090,7 +2091,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                               </div>
 
                               <div style={{ fontSize: '11px', color: '#64748B' }}>
-                                Date: {t.date} • {t.time} • Priority: {t.priority}
+                                Date: {formatDateDDMMYYYY(t.date)} • {t.time} • Priority: {t.priority}
                               </div>
 
                               {t.location_name && (
@@ -2215,7 +2216,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     color: task.status === 'SUSPENDED' ? '#DC2626' : task.priority === 'HIGH' ? '#DC2626' : '#2563EB',
                   }}
                 >
-                  {task.date} • {task.time} • {task.priority} PRIORITY
+                  {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
                 </span>
                 <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                   {task.title}
@@ -2277,11 +2278,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   <span>TASK SUSPENDED (1 Day Passed Without Visit)</span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '3px', lineHeight: '15px' }}>
-                  The MR did not visit on scheduled date ({task.date}). This task is locked out on their phone.
+                  The MR did not visit on scheduled date ({formatDateDDMMYYYY(task.date)}). This task is locked out on their phone.
                 </div>
                 {task.suspended_at && (
                   <div style={{ fontSize: '10px', color: '#991B1B', marginTop: '2px', opacity: 0.85 }}>
-                    Suspended on: {new Date(task.suspended_at).toLocaleString()}
+                    Suspended on: {formatDateTimeDDMMYYYY(task.suspended_at)}
                   </div>
                 )}
                 <button
@@ -2446,7 +2447,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     {log.verified ? 'Verified On-Site' : 'Rejected (Out of Geofence)'}
                   </span>
                 </td>
-                <td style={{ padding: '10px 12px', color: '#64748B' }}>{log.timestamp}</td>
+                <td style={{ padding: '10px 12px', color: '#64748B' }}>{formatDateTimeDDMMYYYY(log.timestamp)}</td>
               </tr>
             ))}
           </tbody>
@@ -3262,7 +3263,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                             </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Calendar size={13} color="#64748B" />
-                              Scheduled Date: <strong>{task.date}</strong>
+                              Scheduled Date: <strong>{formatDateDDMMYYYY(task.date)}</strong>
                             </span>
                           </div>
                         </div>
@@ -3295,9 +3296,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       >
                         <strong>Suspension Reason:</strong> Scheduled visit was not conducted within 24 hours of scheduled date. The MR is locked out from beginning this visit until you unsuspend.
                         {task.suspended_at && (
-                          <span style={{ display: 'block', marginTop: '2px', color: '#991B1B', opacity: 0.85 }}>
-                            Suspended on: {new Date(task.suspended_at).toLocaleString()}
-                          </span>
+                          <div style={{ fontSize: '11px', color: '#991B1B', marginTop: '4px', opacity: 0.85 }}>
+                            Suspended on: {formatDateTimeDDMMYYYY(task.suspended_at)}
+                          </div>
                         )}
                       </div>
 
@@ -3346,7 +3347,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
               }}
             >
               <div style={{ fontSize: '12px', color: '#64748B' }}>
-                Unsuspending resets the task date to today ({getTodayDateString()}) and restores status to ASSIGNED.
+                Unsuspending resets the task date to today ({formatDateDDMMYYYY(getTodayDateString())}) and restores status to ASSIGNED.
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button

@@ -175,7 +175,10 @@ export interface Attendance {
   check_out_at?: string;
   check_out_lat?: number;
   check_out_lng?: number;
+  distance_meters?: number;
+  is_verified_location?: boolean;
   status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
+  created_at?: string;
 }
 
 export interface DCR {

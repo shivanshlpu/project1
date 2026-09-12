@@ -18,6 +18,7 @@ import {
   Search,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 
 interface ReportsViewProps {
   lang?: Language;
@@ -237,7 +238,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       ];
       rows = targetRecords.map((r) => [
         `"${r.id}"`,
-        `"${r.date}"`,
+        `"${formatDateDDMMYYYY(r.date)}"`,
         `"${r.time}"`,
         `"${r.mr_name}"`,
         `"${r.territory}"`,
@@ -266,7 +267,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       ];
       rows = targetRecords.map((r) => [
         `"${r.id}"`,
-        `"${r.date}"`,
+        `"${formatDateDDMMYYYY(r.date)}"`,
         `"${r.time}"`,
         `"${r.mr_name}"`,
         `"${r.doctor_name}"`,
@@ -346,7 +347,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           </div>
           <div class="meta-box">
             <div>Report: <strong>${selectedReport.toUpperCase()} AUDIT LEDGER ${onlySelected ? '(SELECTED RECORDS)' : ''}</strong></div>
-            <div>Generated: ${new Date().toLocaleString()}</div>
+            <div>Generated: ${formatDateTimeDDMMYYYY(new Date())}</div>
             <div>Territory: ${filterTerritory === 'ALL' ? 'All Territories' : filterTerritory}</div>
           </div>
         </div>
@@ -390,7 +391,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
                 (r) => `
               <tr>
                 <td><strong>${r.id}</strong></td>
-                <td>${r.date} ${r.time}</td>
+                <td>${formatDateDDMMYYYY(r.date)} ${r.time}</td>
                 <td>${r.mr_name}</td>
                 <td><strong>${r.doctor_name}</strong><br/><span style="color:#64748b;">${r.clinic}</span></td>
                 <td>${r.territory}</td>
@@ -755,7 +756,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
                       </td>
                       <td style={{ fontWeight: '700', fontSize: '11.5px', color: '#1A3C6E' }}>{rec.id}</td>
                       <td>
-                        <div>{rec.date}</div>
+                        <div>{formatDateDDMMYYYY(rec.date)}</div>
                         <div style={{ fontSize: '10px', color: '#64748B' }}>{rec.time}</div>
                       </td>
                       <td style={{ fontWeight: '600' }}>{rec.mr_name}</td>

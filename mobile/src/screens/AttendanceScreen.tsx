@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LocationService } from '../services/locationService';
 import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { LeaveScreen } from './LeaveScreen';
 
 interface AttendanceScreenProps {
@@ -316,7 +317,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               : 'NOT CHECKED IN'}
           </Text>
           <Text style={styles.statusSub}>
-            Date: {new Date().toLocaleDateString()} • Standard Shift: 09:00 AM – 06:00 PM
+            Date: {formatDateDDMMYYYY(new Date())} • Standard Shift: 09:00 AM – 06:00 PM
           </Text>
 
           {/* Prominent Marked Done Verification Banner */}

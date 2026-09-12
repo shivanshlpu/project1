@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 export interface LeaveItem {
   id: string;
@@ -401,7 +402,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
             <View>
               <Text style={styles.durationTitle}>Total Duration</Text>
               <Text style={styles.durationSub}>
-                {startDate} to {endDate}
+                {formatDateDDMMYYYY(startDate)} to {formatDateDDMMYYYY(endDate)}
               </Text>
             </View>
             <View style={styles.durationBadge}>
@@ -523,7 +524,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
                   <View style={styles.historyTopRow}>
                     <View>
                       <Text style={styles.historyDateRange}>
-                        {item.start_date} to {item.end_date}
+                        {formatDateDDMMYYYY(item.start_date)} to {formatDateDDMMYYYY(item.end_date)}
                       </Text>
                       <Text style={styles.historyDaysCount}>
                         {item.days_count || 1} day(s) duration
