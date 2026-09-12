@@ -1,11 +1,11 @@
-# Latest AHTRI FFA Mobile APK Build (Version 5 - Official Logo & Notifications)
+# Latest AHTRI FFA Mobile APK Build (Version 1.0.5.1 - History Page & Notifications)
 
-- **Build ID**: `e5d09117-24ad-45f4-82c4-9ba2bbade661`
-- **Version**: `v1.0.5` (Version Code `5`)
-- **Branding**: Official AHTRI Pharmaceuticals App Logo (App Icon, Splash Screen, Login Screen, App Header)
-- **Git Commit**: `d2938638e3f48469373cf8ae1a2b9af3430fb823`
-- **Build Completed At**: `2026-09-12T17:09:36.230Z`
-- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/7P6U0umFj3C87sjJRYMs4rBGKebig0Hj02VZq82nY04.apk)
+- **Build ID**: `d57c2ae4-28f0-40c8-b6c5-2b7c2422d75a`
+- **Version**: `v1.0.5.1` (Version Code `6`)
+- **Branding**: Official AHTRI BIOTECH App Logo (App Icon, Splash Screen, Login Screen, App Header)
+- **Git Commit**: `34ba2a622e6a9440f5d2b57ebae88f20a921903b`
+- **Build Completed At**: `2026-09-12T18:14:23.101Z`
+- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk)
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
 - **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 

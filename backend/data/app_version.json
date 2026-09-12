@@ -1,19 +1,19 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.5",
-  "latestVersionCode": 5,
+  "latestVersion": "1.0.5.1",
+  "latestVersionCode": 6,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/7P6U0umFj3C87sjJRYMs4rBGKebig0Hj02VZq82nY04.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-09-12",
-  "publishedAt": "2026-09-12T17:09:36.229Z",
+  "publishedAt": "2026-09-12T18:14:23.099Z",
   "publishedBy": "System Auto-Build",
   "releaseNotes": [
     "WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions",
-    "Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, POB ₹, Detailing)",
-    "Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo (Launcher, Splash, Header)",
+    "Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary",
+    "Official AHTRI BIOTECH Branding & High-Resolution App Logo (Launcher, Splash, Header)",
     "Automated In-App Update Notifications with one-tap APK installation flow",
     "Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding"
   ]

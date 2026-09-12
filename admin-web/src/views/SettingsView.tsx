@@ -74,7 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [email, setEmail] = useState(() => localStorage.getItem('ahtri_user_email') || 'anil.kumar@ahtripharma.com');
   const [phone, setPhone] = useState(() => localStorage.getItem('ahtri_user_phone') || '+91 98111 22334');
   const [designation, setDesignation] = useState(() => localStorage.getItem('ahtri_user_designation') || 'Area Business Manager');
-  const [companyName, setCompanyName] = useState(() => localStorage.getItem('ahtri_company_name') || 'AHTRI PHARMACEUTICALS');
+  const [companyName, setCompanyName] = useState(() => localStorage.getItem('ahtri_company_name') || 'AHTRI BIOTECH');
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
   // 2. Password Security State
@@ -224,8 +224,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.5',
-    latestVersionCode: 5,
+    latestVersion: '1.0.5.1',
+    latestVersionCode: 6,
     minimumVersion: '1.0.0',
     downloadUrl: 'https://expo.dev/artifacts/eas/7P6U0umFj3C87sjJRYMs4rBGKebig0Hj02VZq82nY04.apk',
     forceUpdate: false,
@@ -235,7 +235,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions\nCompleted Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, POB ₹, Detailing)\nOfficial AHTRI Pharmaceuticals Branding & High-Resolution App Logo (Launcher, Splash, Header)\nAutomated In-App Update Notifications with one-tap APK installation flow\nLive GPS Geofencing, Leaflet mapping, and real-time reverse geocoding'
+    'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, Duration, Orders)\nWhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions\nOfficial AHTRI BIOTECH Branding & High-Resolution App Logo (Launcher, Splash, Header)\nAutomated In-App Update Notifications with one-tap APK installation flow\nLive GPS Geofencing, Leaflet mapping, and real-time reverse geocoding'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);

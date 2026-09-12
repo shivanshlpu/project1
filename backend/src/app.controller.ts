@@ -22,23 +22,23 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.5',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '5', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.5.1',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '6', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://expo.dev/artifacts/eas/7P6U0umFj3C87sjJRYMs4rBGKebig0Hj02VZq82nY04.apk',
+    'https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Free Touch & Pan Live Google Maps with Road & Satellite views',
-    'Tap-to-Pinpoint: Instantly mark clinic/hospital locations anywhere',
-    'Seamless Native Update Prompt: No browser redirects required',
-    'Territory doctor directory & instant geotagging',
-    'Ultra-fast server connection & zero freeze',
+    'Completed Tasks History Page with Date-Wise Filters & Executive Work Summary',
+    'WhatsApp-Style Push Notifications for task assignments & leave decisions',
+    'Official AHTRI BIOTECH Branding & High-Resolution App Logo',
+    'Automated In-App Update Notifications with one-tap APK installation',
+    'Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding',
   ],
 };
 
