@@ -18,6 +18,7 @@ if (typeof global !== 'undefined') {
 
 import React, { useState, useEffect } from 'react';
 import {
+  AppState,
   SafeAreaView,
   View,
   Text,
@@ -95,16 +96,20 @@ export default function App() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
 
-  // Auto-check for over-the-air in-app updates on boot & warmup backend
+  // Auto-check for over-the-air in-app updates on boot, resume & active polling
   useEffect(() => {
     // Non-blocking background warm-up for Render cold start
     ApiConfig.warmupServer();
 
-    AppUpdateService.getEffectiveCurrentVersion().then((v) => setEffectiveVersion(v));
+    // Clear any stale local suppression keys
+    AppUpdateService.clearSuppressionCache();
+    setEffectiveVersion(CURRENT_APP_VERSION);
 
+    let isMounted = true;
     const checkUpdate = async () => {
       try {
         const res = await AppUpdateService.checkForUpdates();
+        if (!isMounted) return;
         if (res.currentVersion) {
           setEffectiveVersion(res.currentVersion);
         }
@@ -113,11 +118,33 @@ export default function App() {
           setIsUpdateModalOpen(true);
         }
       } catch {
-        // Silent catch on boot
+        // Non-blocking silent catch
       }
     };
-    const timer = setTimeout(checkUpdate, 2500);
-    return () => clearTimeout(timer);
+
+    // Staggered boot checks to accommodate Render cold start
+    const t1 = setTimeout(checkUpdate, 2000);
+    const t2 = setTimeout(checkUpdate, 7000);
+    const t3 = setTimeout(checkUpdate, 16000);
+
+    // Re-check whenever employee switches to the app (foreground resume)
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkUpdate();
+      }
+    });
+
+    // Active foreground poll every 60s so manager broadcasts arrive in near real-time
+    const interval = setInterval(checkUpdate, 60000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 
   const handleManualUpdateCheck = async () => {

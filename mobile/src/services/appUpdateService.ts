@@ -76,65 +76,24 @@ export function compareSemVer(v1: string, v2: string): number {
 
 export const AppUpdateService = {
   /**
-   * Get effective version (combines bundled version with persistent applied update state)
+   * Get effective version of the installed app
    */
   async getEffectiveCurrentVersion(): Promise<string> {
-    try {
-      const stored = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION);
-      if (stored && compareSemVer(stored, CURRENT_APP_VERSION) >= 0) {
-        return stored;
-      }
-    } catch {
-      // Fallback to static constant
-    }
     return CURRENT_APP_VERSION;
   },
 
   /**
-   * Mark a version and download URL as successfully downloaded / handled
-   * so this exact update never prompts again on this device.
+   * Clear any legacy suppression keys that may have blocked update popups
    */
-  async markUpdateHandled(downloadUrl?: string, version?: string): Promise<void> {
+  async clearSuppressionCache(): Promise<void> {
     try {
-      if (downloadUrl) {
-        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL, downloadUrl.trim());
-      }
-      if (version) {
-        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION, version.trim());
-        await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION, version.trim());
-      }
-      await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.LAST_UPDATE_TIME, new Date().toISOString());
+      await AsyncStorage.multiRemove([
+        UPDATE_STORAGE_KEYS.INSTALLED_VERSION,
+        UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL,
+        UPDATE_STORAGE_KEYS.DISMISSED_VERSION,
+      ]);
     } catch {
-      // Ignore storage errors
-    }
-  },
-
-  /**
-   * Legacy alias
-   */
-  async markVersionInstalled(version: string): Promise<void> {
-    await this.markUpdateHandled(undefined, version);
-  },
-
-  /**
-   * Check if the backend server link is actively established and healthy.
-   * Tolerates Render cold starts with up to 12s timeout.
-   */
-  async isServerConnected(): Promise<boolean> {
-    try {
-      const baseUrl = await ApiConfig.getBaseUrl();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const res = await fetch(`${baseUrl}/health`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      return res.ok;
-    } catch {
-      return false;
+      // Non-blocking
     }
   },
 
@@ -142,30 +101,17 @@ export const AppUpdateService = {
    * Check backend for newer application versions
    */
   async checkForUpdates(): Promise<UpdateCheckResult> {
-    const effectiveVersion = await this.getEffectiveCurrentVersion();
+    const effectiveVersion = CURRENT_APP_VERSION;
 
     try {
-      // 1. Verify server connectivity first: do NOT show update if server is unreachable
-      const connected = await this.isServerConnected();
-      if (!connected) {
-        return {
-          hasUpdate: false,
-          isMandatory: false,
-          currentVersion: effectiveVersion,
-          error: 'Backend server connection is not established yet. Update check suppressed.',
-        };
-      }
-
       const baseUrl = await ApiConfig.getBaseUrl();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const res = await fetch(`${baseUrl}/api/app/version`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      // Resilient fetch with automatic retries for Render wake-up tolerance
+      const res = await ApiConfig.fetchWithRetry(
+        `${baseUrl}/api/app/version`,
+        { headers: { Accept: 'application/json' } },
+        2,
+        15000
+      );
 
       if (!res.ok) {
         // Fallback to /app/version
@@ -198,12 +144,12 @@ export const AppUpdateService = {
 
   /**
    * Evaluate whether the returned version is newer than installed
-   * and has not already been downloaded/handled by this user.
    */
   async evaluateVersion(info: AppVersionInfo, baseVersion?: string): Promise<UpdateCheckResult> {
     const currentVer = baseVersion || CURRENT_APP_VERSION;
+
     // If update broadcast is paused or deactivated by admin, suppress update prompts
-    if (info.isActive === false) {
+    if (info.isActive === false || !info.downloadUrl) {
       return {
         hasUpdate: false,
         isMandatory: false,
@@ -212,38 +158,14 @@ export const AppUpdateService = {
       };
     }
 
-    // 1. If this exact APK link was ALREADY downloaded on this device, suppress popup!
-    try {
-      const downloadedUrl = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.DOWNLOADED_APK_URL);
-      if (downloadedUrl && info.downloadUrl && downloadedUrl.trim() === info.downloadUrl.trim()) {
-        return {
-          hasUpdate: false,
-          isMandatory: false,
-          currentVersion: currentVer,
-          info,
-        };
-      }
-
-      // 2. If the user already installed or marked this version, suppress popup!
-      const storedVer = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.INSTALLED_VERSION);
-      if (storedVer && compareSemVer(storedVer, info.latestVersion) >= 0) {
-        return {
-          hasUpdate: false,
-          isMandatory: false,
-          currentVersion: storedVer,
-          info,
-        };
-      }
-    } catch {
-      // Continue to version comparison
-    }
-
-    const isNewer = compareSemVer(info.latestVersion, currentVer) > 0;
+    const isNewerSemVer = compareSemVer(info.latestVersion, currentVer) > 0;
+    const isNewerCode = (info.latestVersionCode || 0) > 4; // Native app.json versionCode is 4
     const isBelowMinimum = compareSemVer(currentVer, info.minimumVersion) < 0;
-    const isMandatory = info.forceUpdate || isBelowMinimum;
+    const isMandatory = !!info.forceUpdate || isBelowMinimum;
+    const hasUpdate = isNewerSemVer || isNewerCode || isMandatory;
 
     return {
-      hasUpdate: isNewer,
+      hasUpdate,
       isMandatory,
       currentVersion: currentVer,
       info,
@@ -266,8 +188,8 @@ export const AppUpdateService = {
         return { success: false, error: 'No download URL provided' };
       }
 
-      // Mark this exact APK URL and target version as downloaded/handled immediately
-      await this.markUpdateHandled(downloadUrl, targetVersion);
+      // Record download timestamp
+      await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.LAST_UPDATE_TIME, new Date().toISOString());
 
       // Web Fallback: direct file download trigger (no external navigation)
       if (Platform.OS === 'web') {

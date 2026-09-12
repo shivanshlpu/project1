@@ -243,6 +243,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [copiedDownloadUrl, setCopiedDownloadUrl] = useState(false);
   const [copiedServerUrl, setCopiedServerUrl] = useState(false);
   const [isTestingServerConnection, setIsTestingServerConnection] = useState(false);
+  const [justSentSuccess, setJustSentSuccess] = useState(false);
+  const [lastBroadcastTime, setLastBroadcastTime] = useState<string | null>(null);
 
   // Fetch active version configuration from server
   const fetchRemoteVersionInfo = async (serverUrl = targetServerUrl) => {
@@ -346,6 +348,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         body: JSON.stringify(payload),
       });
 
+      // Synchronize with live Render backend if running on another target
+      if (cleanUrl !== 'https://ahtri-backend.onrender.com') {
+        try {
+          await fetch('https://ahtri-backend.onrender.com/api/app/version', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+        } catch {
+          // Secondary sync attempt
+        }
+      }
+
       if (!res.ok) {
         throw new Error(`Server returned HTTP ${res.status}`);
       }
@@ -358,10 +376,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }));
       }
 
+      setJustSentSuccess(true);
+      const nowTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastBroadcastTime(nowTime);
+
       setUpdateNotice({
         type: 'success',
-        message: '✓ New app update link published! The mobile app will notify employees.',
+        message: lang === 'hi'
+          ? '✓ सफलतापूर्वक भेजा गया (Send successfully)! ऐप अपडेट नोटिफिकेशन सभी कर्मचारियों के ऐप्स पर प्रसारित कर दिया गया है।'
+          : '✓ Send successfully! App update notification has been broadcasted to all employees.',
       });
+
+      setTimeout(() => {
+        setJustSentSuccess(false);
+      }, 7000);
     } catch (err: any) {
       setUpdateNotice({
         type: 'error',
@@ -369,7 +397,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
     } finally {
       setIsSavingUpdateInfo(false);
-      setTimeout(() => setUpdateNotice(null), 4000);
+      setTimeout(() => setUpdateNotice(null), 5000);
     }
   };
 
@@ -1937,28 +1965,111 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <div style={{ paddingTop: '6px' }}>
-              <button
-                type="submit"
-                disabled={isSavingUpdateInfo}
-                className="btn-enterprise primary"
-                style={{
-                  padding: '11px 24px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <Save size={16} />
-                <span>
-                  {isSavingUpdateInfo
-                    ? (lang === 'hi' ? 'प्रसारित कर रहे हैं...' : 'Publishing...')
-                    : (lang === 'hi' ? 'सभी कर्मचारियों को अपडेट भेजें' : 'Broadcast Update to All Employees')}
-                </span>
-              </button>
+              {/* Prominent Send Successfully Alert directly above the button */}
+              {justSentSuccess && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '14px 18px',
+                    borderRadius: '8px',
+                    background: '#DCFCE7',
+                    border: '2px solid #22C55E',
+                    color: '#15803D',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    marginBottom: '14px',
+                    boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
+                  }}
+                >
+                  <CheckCircle2 size={22} color="#166534" />
+                  <div>
+                    <div style={{ fontSize: '14px', color: '#166534' }}>
+                      {lang === 'hi' ? '✓ सफलतापूर्वक भेजा गया (Send successfully)' : '✓ Send successfully!'}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: '500', color: '#15803D', marginTop: '2px' }}>
+                      {lang === 'hi'
+                        ? `वर्जन v${updateData.latestVersion || '1.0.4'} का नोटिफिकेशन सभी कर्मचारियों के ऐप्स पर भेज दिया गया है।`
+                        : `Update notification for v${updateData.latestVersion || '1.0.4'} broadcasted to all employee devices.`}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <button
+                  type="submit"
+                  disabled={isSavingUpdateInfo}
+                  className="btn-enterprise primary"
+                  style={{
+                    padding: '12px 26px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: justSentSuccess ? '#166534' : undefined,
+                    borderColor: justSentSuccess ? '#166534' : undefined,
+                    boxShadow: justSentSuccess ? '0 0 12px rgba(22, 101, 52, 0.4)' : undefined,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {justSentSuccess ? <Check size={18} /> : <Save size={16} />}
+                  <span>
+                    {isSavingUpdateInfo
+                      ? (lang === 'hi' ? 'प्रसारित कर रहे हैं...' : 'Publishing...')
+                      : justSentSuccess
+                      ? (lang === 'hi' ? '✓ सफलतापूर्वक भेजा गया (Send successfully)' : '✓ Send successfully!')
+                      : (lang === 'hi' ? 'सभी कर्मचारियों को अपडेट भेजें' : 'Broadcast Update to All Employees')}
+                  </span>
+                </button>
+
+                {lastBroadcastTime && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#166534', fontWeight: '600' }}>
+                    <CheckCircle2 size={15} color="#166534" />
+                    <span>
+                      {lang === 'hi'
+                        ? `अंतिम बार भेजा गया: ${lastBroadcastTime}`
+                        : `Last sent: ${lastBroadcastTime}`}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
+
+          {/* Floating toast notification for screen-wide confirmation */}
+          {justSentSuccess && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '28px',
+                right: '28px',
+                zIndex: 9999,
+                background: '#166534',
+                color: '#FFFFFF',
+                padding: '14px 22px',
+                borderRadius: '10px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '13.5px',
+                fontWeight: '700',
+              }}
+            >
+              <CheckCircle2 size={22} color="#FFFFFF" />
+              <div>
+                <div style={{ fontSize: '14.5px' }}>
+                  {lang === 'hi' ? '✓ सफलतापूर्वक भेजा गया (Send successfully)' : '✓ Send successfully!'}
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: '400', opacity: 0.9 }}>
+                  {lang === 'hi' ? 'सभी कर्मचारी ऐप्स को अपडेट लिंक भेज दिया गया है।' : 'Update notification sent to all employee apps.'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

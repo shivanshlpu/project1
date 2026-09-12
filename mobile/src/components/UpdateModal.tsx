@@ -63,19 +63,16 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
-  const handleDismiss = async () => {
-    if (updateInfo?.downloadUrl) {
-      await AppUpdateService.markUpdateHandled(updateInfo.downloadUrl, updateInfo.latestVersion);
-    }
+  const handleDismiss = () => {
     onClose();
   };
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => downloadState !== 'DOWNLOADING' && handleDismiss()}>
+    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => !isMandatory && downloadState !== 'DOWNLOADING' && handleDismiss()}>
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
-          {/* Close 'X' Button at top-right */}
-          {downloadState !== 'DOWNLOADING' && (
+          {/* Close 'X' Button at top-right (hidden if mandatory) */}
+          {!isMandatory && downloadState !== 'DOWNLOADING' && (
             <TouchableOpacity
               style={styles.closeXBtn}
               onPress={handleDismiss}
@@ -184,12 +181,14 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           <View style={styles.actionsRow}>
             {downloadState !== 'DOWNLOADING' && downloadState !== 'READY_TO_INSTALL' && (
               <>
-                <TouchableOpacity style={styles.laterBtn} onPress={handleDismiss}>
-                  <Text style={styles.laterBtnText}>Later</Text>
-                </TouchableOpacity>
+                {!isMandatory && (
+                  <TouchableOpacity style={styles.laterBtn} onPress={handleDismiss}>
+                    <Text style={styles.laterBtnText}>Later</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
-                  style={styles.updateBtn}
+                  style={[styles.updateBtn, isMandatory ? { flex: 1 } : null]}
                   onPress={handleStartInAppUpdate}
                 >
                   <Text style={styles.updateBtnText}>
