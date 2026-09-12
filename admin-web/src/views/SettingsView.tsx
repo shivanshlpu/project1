@@ -227,7 +227,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     latestVersion: '1.0.5',
     latestVersionCode: 5,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/NtL0I2BIWxmI4H8WNOWsZCeljy5SQhdiVeE6PPjpMrA.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/2230bgQr8OI66zRhFj6-h4Nfg3R4ynIQ-oUwaecgHAY.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -235,7 +235,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo\nLive Task Lifecycle: Completed visits automatically move to History with Commercial Order Breakdown\nPersistent Geofenced Attendance Punch-in: Restores Marked Done status across tab switches\nFluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)\nDirect Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision\nPinch-to-zoom, double-tap zoom, and smooth inertia panning without drone crosshairs\nHigh-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies'
+    'WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions\nCompleted Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, POB ₹, Detailing)\nOfficial AHTRI Pharmaceuticals Branding & High-Resolution App Logo (Launcher, Splash, Header)\nAutomated In-App Update Notifications with one-tap APK installation flow\nLive GPS Geofencing, Leaflet mapping, and real-time reverse geocoding'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '1577c8b5-77dc-4902-80eb-c40fe63c5a89';
+const BUILD_ID = '211a6ea9-8450-449f-a2f0-1893abdb9446';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -73,7 +73,7 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.4',
+        latestVersion: '1.0.5',
         latestVersionCode: 5,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
@@ -83,13 +83,11 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo',
-          'Live Task Lifecycle: Completed visits automatically move to History with Commercial Order Breakdown',
-          'Persistent Geofenced Attendance Punch-in: Restores Marked Done status across tab switches',
-          'Fluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)',
-          'Direct Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision',
-          'Pinch-to-zoom, double-tap zoom, and smooth inertia panning without drone crosshairs',
-          'High-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies',
+          'WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions',
+          'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, POB ₹, Detailing)',
+          'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo (Launcher, Splash, Header)',
+          'Automated In-App Update Notifications with one-tap APK installation flow',
+          'Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding',
         ],
       };
 
@@ -113,12 +111,12 @@ async function checkBuild() {
       }
 
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Official Logo & Branding)
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 5 - Official Logo & Notifications)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.4\` (Version Code \`5\`)
+- **Version**: \`v1.0.5\` (Version Code \`5\`)
 - **Branding**: Official AHTRI Pharmaceuticals App Logo (App Icon, Splash Screen, Login Screen, App Header)
-- **Git Commit**: \`${buildData.gitCommitHash || 'ff0a79ed7d0a'}\`
+- **Git Commit**: \`${buildData.gitCommitHash || '206108bcef00'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
@@ -169,7 +167,7 @@ async function checkBuild() {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.4 with official app logo"', {
+        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.5 (versionCode 5)"', {
           cwd: ROOT_DIR,
           shell: true,
         });
