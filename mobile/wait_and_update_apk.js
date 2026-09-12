@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '211a6ea9-8450-449f-a2f0-1893abdb9446';
+const BUILD_ID = 'e5d09117-24ad-45f4-82c4-9ba2bbade661';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
