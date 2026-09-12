@@ -1,14 +1,17 @@
-# Latest AHTRI FFA Mobile APK Build
+# Latest AHTRI FFA Mobile APK Build (Official Logo & Branding)
 
-- **Build ID**: `475c7ce0-0d11-44bf-b14d-9b1e1401ea04`
-- **Version**: `v1.0.3` (Version Code `4`)
-- **Git Commit**: `647dbd4b22ecbb19119e11af3ef94184d808b6be`
-- **Build Completed At**: `2026-09-10T22:09:04.919Z`
-- **Direct Expo Download Link**: [https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk](https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk)
-- **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
-- **Direct Download Alias**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
+- **Build ID**: `1577c8b5-77dc-4902-80eb-c40fe63c5a89`
+- **Version**: `v1.0.4` (Version Code `5`)
+- **Branding**: Official AHTRI Pharmaceuticals App Logo (App Icon, Splash Screen, Login Screen, App Header)
+- **Git Commit**: `17a1caf5b686c90a6fa336a5c7117fe1294983cb`
+- **Build Completed At**: `2026-09-12T14:30:14.773Z`
+- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/NtL0I2BIWxmI4H8WNOWsZCeljy5SQhdiVeE6PPjpMrA.apk)
+- **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
+- **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 
 ---
 
 ### Instructions for Employees:
-Send employees either link above (via WhatsApp or SMS). When clicked on their Android smartphone, the browser or app will immediately prompt and download the new APK.
+1. Tap on the direct APK download link or visit [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk) on any Android phone.
+2. The download will start immediately.
+3. Open the downloaded file to install/update the AHTRI FFA app with the new official logo and all latest features!

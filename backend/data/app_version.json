@@ -4,17 +4,19 @@
   "latestVersion": "1.0.4",
   "latestVersionCode": 5,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/NtL0I2BIWxmI4H8WNOWsZCeljy5SQhdiVeE6PPjpMrA.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-09-10",
-  "publishedAt": "2026-09-10T22:09:04.918Z",
+  "releaseDate": "2026-09-12",
+  "publishedAt": "2026-09-12T14:30:14.771Z",
   "publishedBy": "System Auto-Build",
   "releaseNotes": [
+    "Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo",
+    "Live Task Lifecycle: Completed visits automatically move to History with Commercial Order Breakdown",
+    "Persistent Geofenced Attendance Punch-in: Restores Marked Done status across tab switches",
     "Fluid 360-Degree Google Maps & Leaflet Touch Movement (Road & Satellite)",
     "Direct Tap-to-Pinpoint: Tap anywhere on the map or drag the pin with 100% precision",
-    "Eliminated drone crosshairs and 4-way D-pad controls for standard Google Maps experience",
-    "Pinch-to-zoom, double-tap zoom, and smooth inertia panning",
+    "Pinch-to-zoom, double-tap zoom, and smooth inertia panning without drone crosshairs",
     "High-Accuracy Indoor GPS & Live reverse-geocoding for clinics and pharmacies"
   ]
 }

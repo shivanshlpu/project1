@@ -27,7 +27,7 @@ const defaultAppVersion: AppVersionData = {
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://expo.dev/artifacts/eas/1gI43T-fpacOrDhOdia3oXrtlBgZ9Lyq8MWxgiGdU3Q.apk',
+    'https://expo.dev/artifacts/eas/NtL0I2BIWxmI4H8WNOWsZCeljy5SQhdiVeE6PPjpMrA.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
