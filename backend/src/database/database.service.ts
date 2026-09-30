@@ -142,7 +142,7 @@ export class DatabaseService implements OnModuleInit {
 
     // 3. Seed Users
     const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-    const shivanshPasswordHash = await bcrypt.hash('12345678', 10);
+    const shivanshPasswordHash = await bcrypt.hash('87654321', 10);
 
     // Primary Super Admin: Shivansh Tiwari (Requested ID: shivanshti10@gmail.com, Mobile: 9009149694)
     const shivanshAdmin: User = {

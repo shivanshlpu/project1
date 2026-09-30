@@ -4,12 +4,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
-    strictPort: true,
+    port: 5173,
     host: true,
     proxy: {
       '/api': {
-        target: 'https://ahtri-backend.onrender.com',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },
