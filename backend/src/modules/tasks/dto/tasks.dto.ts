@@ -68,6 +68,86 @@ export class VerifyLocationDto {
 
   @IsOptional()
   orders?: any[];
+
+  @IsString()
+  @IsOptional()
+  photo_key?: string;
+
+  @IsEnum(['CAMERA', 'GALLERY'])
+  @IsOptional()
+  photo_source?: 'CAMERA' | 'GALLERY';
+
+  @IsOptional()
+  is_mocked?: boolean;
+
+  @IsOptional()
+  developer_mode?: boolean;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  stocker_id?: string;
+}
+
+export class SkipOrderDto {
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude: number;
+
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude: number;
+
+  @IsNumber()
+  gps_accuracy_m: number;
+
+  @IsString()
+  @IsOptional()
+  outcome?: string;
+
+  @IsString()
+  @IsOptional()
+  photo_key?: string;
+
+  @IsEnum(['CAMERA', 'GALLERY'])
+  @IsOptional()
+  photo_source?: 'CAMERA' | 'GALLERY';
+
+  @IsOptional()
+  is_mocked?: boolean;
+
+  @IsOptional()
+  developer_mode?: boolean;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  stocker_id?: string;
+}
+
+export class SubmitOrderDto {
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  stocker_id?: string;
+
+  @IsOptional()
+  orders: any[];
+
+  @IsString()
+  @IsOptional()
+  outcome?: string;
 }
 
 export class UpdateTaskDto {
@@ -91,7 +171,8 @@ export class UpdateTaskDto {
   @IsOptional()
   time?: string;
 
-  @IsEnum(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'MISSED', 'CANCELLED', 'SUSPENDED'])
+  @IsEnum(['ASSIGNED', 'IN_PROGRESS', 'ORDER_PENDING', 'COMPLETED', 'MISSED', 'CANCELLED', 'SUSPENDED'])
   @IsOptional()
-  status?: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
+  status?: 'ASSIGNED' | 'IN_PROGRESS' | 'ORDER_PENDING' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
 }
+

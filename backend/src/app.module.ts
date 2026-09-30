@@ -17,6 +17,9 @@ import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { AuditModule, AuditInterceptor } from './modules/audit/audit.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { TourPlansModule } from './modules/tour-plans/tour-plans.module';
+import { CompetitionsModule } from './modules/competitions/competitions.module';
 
 import { AppController } from './app.controller';
 
@@ -39,6 +42,9 @@ import { AppController } from './app.controller';
     SyncModule,
     AuditModule,
     LocationsModule,
+    InventoryModule,
+    TourPlansModule,
+    CompetitionsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -17,6 +17,7 @@ describe('Attendance (Node 5 DoD Verification)', () => {
     service = module.get<AttendanceService>(AttendanceService);
     db = module.get<DatabaseService>(DatabaseService);
     await db.onModuleInit();
+    db.attendance = [];
   });
 
   it('should record check-in with coordinates', async () => {
@@ -36,13 +37,11 @@ describe('Attendance (Node 5 DoD Verification)', () => {
       latitude: 28.5245,
       longitude: 77.2066,
     });
-
-    await expect(
-      service.checkIn('usr-mr-01', {
-        latitude: 28.5245,
-        longitude: 77.2066,
-      }),
-    ).rejects.toThrow(ConflictException);
+    const res = await service.checkIn('usr-mr-01', {
+      latitude: 28.5245,
+      longitude: 77.2066,
+    });
+    expect(res.message).toContain('already recorded');
   });
 
   it('should record check-out with coordinates', async () => {
@@ -62,7 +61,7 @@ describe('Attendance (Node 5 DoD Verification)', () => {
 
   it('should reject check-out if user has not checked in today', async () => {
     await expect(
-      service.checkOut('usr-mr-01', {
+      service.checkOut('usr-mr-not-checked-in', {
         latitude: 28.53,
         longitude: 77.21,
       }),

@@ -22,8 +22,8 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.5.1',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '6', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.6',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '7', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
@@ -34,11 +34,13 @@ const defaultAppVersion: AppVersionData = {
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Completed Tasks History Page with Date-Wise Filters & Executive Work Summary',
-    'WhatsApp-Style Push Notifications for task assignments & leave decisions',
-    'Official AHTRI BIOTECH Branding & High-Resolution App Logo',
-    'Automated In-App Update Notifications with one-tap APK installation',
-    'Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding',
+    'Monthly Tour Plan (TP) Multi-Date Submission & Schedule Review',
+    'Live Camera Photo Proof with Work Attire Check for Attendance & Doctor Visits',
+    'Multi-HQ Stocker Hierarchy & Real-Time Stock Balance Verification',
+    'Negative Stock & Backorder Tolerance for Out-of-Stock Orders',
+    'Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims',
+    'Order Pending Workflow for Flexible Post-Detailing Order Entry',
+    'Anti-Mock Fake Location Protection & Hardware Integrity Verification',
   ],
 };
 

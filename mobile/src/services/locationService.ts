@@ -5,6 +5,7 @@ export interface LocationCoords {
   longitude: number;
   accuracy?: number | null;
   timestamp?: number;
+  is_mocked?: boolean;
 }
 
 export const LocationService = {
@@ -41,7 +42,7 @@ export const LocationService = {
   },
 
   /**
-   * Retrieve current device GPS coordinates with indoor fallback
+   * Retrieve current device GPS coordinates with indoor fallback and mock detection
    */
   async getCurrentLocation(): Promise<LocationCoords | null> {
     try {
@@ -61,27 +62,31 @@ export const LocationService = {
         setTimeout(() => resolve(null), 6000)
       );
 
-      const highResult = await Promise.race([highAccuracyPromise, timeoutPromise]);
+      const highResult: any = await Promise.race([highAccuracyPromise, timeoutPromise]);
       if (highResult && highResult.coords) {
+        const isMocked = !!(highResult.mocked || highResult.coords.isMocked || highResult.coords.mocked);
         return {
           latitude: highResult.coords.latitude,
           longitude: highResult.coords.longitude,
           accuracy: highResult.coords.accuracy,
           timestamp: highResult.timestamp,
+          is_mocked: isMocked,
         };
       }
 
       // 2. Second attempt: Balanced indoor accuracy (Google Fused Provider using Wi-Fi + Cell towers)
-      const balancedResult = await Location.getCurrentPositionAsync({
+      const balancedResult: any = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
       if (balancedResult && balancedResult.coords) {
+        const isMocked = !!(balancedResult.mocked || balancedResult.coords.isMocked || balancedResult.coords.mocked);
         return {
           latitude: balancedResult.coords.latitude,
           longitude: balancedResult.coords.longitude,
           accuracy: balancedResult.coords.accuracy,
           timestamp: balancedResult.timestamp,
+          is_mocked: isMocked,
         };
       }
     } catch (error) {
@@ -90,15 +95,17 @@ export const LocationService = {
 
     // 3. Fallback: Last known recent position (within 10 minutes)
     try {
-      const lastKnown = await Location.getLastKnownPositionAsync();
+      const lastKnown: any = await Location.getLastKnownPositionAsync();
       if (lastKnown && lastKnown.coords) {
         const isRecent = Date.now() - (lastKnown.timestamp || 0) < 10 * 60 * 1000;
         if (isRecent) {
+          const isMocked = !!(lastKnown.mocked || lastKnown.coords.isMocked || lastKnown.coords.mocked);
           return {
             latitude: lastKnown.coords.latitude,
             longitude: lastKnown.coords.longitude,
             accuracy: lastKnown.coords.accuracy,
             timestamp: lastKnown.timestamp,
+            is_mocked: isMocked,
           };
         }
       }

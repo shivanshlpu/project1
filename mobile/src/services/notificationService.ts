@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { ApiConfig } from './apiConfig';
 
 // Configure notification presentation when app is in foreground
 Notifications.setNotificationHandler({
@@ -212,5 +213,49 @@ export const NotificationService = {
       version,
       downloadUrl,
     });
+  },
+
+  /**
+   * Register device for Remote Push Notifications (Expo Push Service / FCM)
+   * This allows the backend to ring the phone even when the app is completely closed or locked (like WhatsApp)
+   */
+  async registerForRemotePushNotifications(userId: string): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') return null;
+
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        console.log('[NotificationService] Notification permission not granted');
+        return null;
+      }
+
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: '60909a48-8c02-4b10-ba38-404119640394',
+      });
+      const pushToken = tokenData.data;
+      console.log('[NotificationService] Device Push Token obtained:', pushToken);
+
+      // Register with backend server
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      await fetch(`${baseUrl}/notifications/register-device`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fcm_token: pushToken }),
+      });
+
+      return pushToken;
+    } catch (err: any) {
+      console.warn('[NotificationService] Push registration notice:', err?.message);
+      return null;
+    }
   },
 };

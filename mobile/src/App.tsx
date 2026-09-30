@@ -39,6 +39,10 @@ import { TodayTasksScreen } from './screens/TodayTasksScreen';
 import { DoctorDirectoryScreen } from './screens/DoctorDirectoryScreen';
 import { DoctorVisitScreen } from './screens/DoctorVisitScreen';
 import { AttendanceScreen } from './screens/AttendanceScreen';
+import { TaskHistoryScreen } from './screens/TaskHistoryScreen';
+import { MonthlyTpScreen } from './screens/MonthlyTpScreen';
+import { StocklistScreen } from './screens/StocklistScreen';
+import { CompetitionScreen } from './screens/CompetitionScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { AppUpdateService, AppVersionInfo, CURRENT_APP_VERSION } from './services/appUpdateService';
 import { UpdateModal } from './components/UpdateModal';
@@ -46,6 +50,7 @@ import { ServerStatusPill } from './components/ServerStatusPill';
 import { ApiConfig } from './services/apiConfig';
 import { NotificationService } from './services/notificationService';
 import { HeadsUpNotificationBanner } from './components/HeadsUpNotificationBanner';
+import * as Notifications from 'expo-notifications';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 
@@ -91,6 +96,7 @@ export default function App() {
   }, []);
 
   const [currentTab, setCurrentTab] = useState<MobileTab>('tasks');
+  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'monthly_tp' | 'stocklist' | 'competition'>('menu');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
@@ -200,6 +206,29 @@ export default function App() {
       clearInterval(leaveInterval);
     };
   }, [currentUser]);
+
+  // Register for Remote Push Notifications (Expo / FCM)
+  useEffect(() => {
+    if (currentUser?.id) {
+      NotificationService.registerForRemotePushNotifications(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
+  // Listen for user tapping on push notifications in Android status bar
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response?.notification?.request?.content?.data;
+      if (data?.taskId || data?.type === 'TASK_ASSIGNED') {
+        setCurrentTab('tasks');
+      } else if (data?.type === 'APP_UPDATE') {
+        setIsUpdateModalOpen(true);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, []);
 
   const handleManualUpdateCheck = async () => {
     setIsCheckingUpdate(true);
@@ -443,6 +472,14 @@ export default function App() {
               />
             )}
 
+            {/* Completed Tasks History */}
+            {currentTab === 'history' && (
+              <TaskHistoryScreen
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+              />
+            )}
+
             {/* Unified Doctors & Locations Tab with Interactive Map */}
             {currentTab === 'doctors' && (
               <DoctorDirectoryScreen currentUser={currentUser} />
@@ -454,16 +491,92 @@ export default function App() {
             {/* Attendance Punch In / Out & Leave Management */}
             {currentTab === 'attendance' && <AttendanceScreen currentUser={currentUser} />}
 
-            {/* Device & Profile Info */}
-            {currentTab === 'profile' && (
+            {/* Device & Profile Info / Enterprise Tools (§5-§7, §14, §30) */}
+            {currentTab === 'profile' && moreSubScreen === 'monthly_tp' && (
+              <MonthlyTpScreen
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
+            {currentTab === 'profile' && moreSubScreen === 'stocklist' && (
+              <StocklistScreen
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
+            {currentTab === 'profile' && moreSubScreen === 'competition' && (
+              <CompetitionScreen
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
+            {currentTab === 'profile' && moreSubScreen === 'menu' && (
               <ScrollView style={styles.profileContainer}>
+                {/* Enterprise Operations Modules (§5-§7, §14, §30) */}
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#1A3C6E', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, paddingHorizontal: 2 }}>
+                    Field Force Work Tools
+                  </Text>
+
+                  {/* Monthly Tour Plan */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('monthly_tp')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#EFF6FF' }]}>
+                      <Text style={{ fontSize: 18 }}>🗺️</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Monthly Tour Plan (TP)</Text>
+                      <Text style={styles.moreNavSubtitle}>Plan monthly travel across HQs, areas &amp; KOLs</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
+
+                  {/* Stocklist & Inventory */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('stocklist')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                      <Text style={{ fontSize: 18 }}>📦</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Point-of-Care Stocklist</Text>
+                      <Text style={styles.moreNavSubtitle}>Real-time stock availability &amp; shortage per HQ</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
+
+                  {/* Sales Competitions & Rewards */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('competition')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                      <Text style={{ fontSize: 18 }}>🏆</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Sales Competitions &amp; Rewards</Text>
+                      <Text style={styles.moreNavSubtitle}>Track live sales targets &amp; claim cash rewards</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.profileCard}>
                   <View style={styles.avatarCircle}>
                     <Text style={styles.avatarText}>{currentUser.name.charAt(0)}</Text>
                   </View>
                   <Text style={styles.profileName}>{currentUser.name}</Text>
                   <Text style={styles.profileRole}>Medical Representative</Text>
-                  <Text style={styles.profileTerritory}>South Delhi Territory • AHTRI Pharma</Text>
+                  <Text style={styles.profileTerritory}>South Delhi Territory • AHTRI BIOTECH</Text>
 
                   {/* Device Security Card */}
                   <View style={styles.deviceCard}>
@@ -485,7 +598,7 @@ export default function App() {
                     <View style={styles.deviceRow}>
                       <Text style={styles.deviceRowLabel}>Status:</Text>
                       <Text style={[styles.deviceRowVal, { color: '#0F8B5A', fontWeight: '700' }]}>
-                        ACTIVE & VERIFIED
+                        ACTIVE &amp; VERIFIED
                       </Text>
                     </View>
                   </View>
@@ -761,5 +874,38 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 12,
+  },
+  moreNavCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  moreNavIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreNavTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  moreNavSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

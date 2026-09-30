@@ -8,6 +8,10 @@ import { MembersManagementView } from './views/MembersManagementView';
 import { ApprovalsView } from './views/ApprovalsView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
+import { MonthlyTpView } from './views/MonthlyTpView';
+import { StockerManagementView } from './views/StockerManagementView';
+import { AdminAttendanceView } from './views/AdminAttendanceView';
+import { CompetitionsView } from './views/CompetitionsView';
 import { LoginView } from './views/LoginView';
 import { AiChatView } from './views/AiChatView';
 import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
@@ -295,6 +299,10 @@ export const App: React.FC = () => {
           />
         )}
         {managerTab === 'approvals' && <ApprovalsView />}
+        {managerTab === 'attendance' && <AdminAttendanceView />}
+        {managerTab === 'tp' && <MonthlyTpView />}
+        {managerTab === 'stockers' && <StockerManagementView />}
+        {managerTab === 'competitions' && <CompetitionsView />}
         {managerTab === 'reports' && <ReportsView lang={lang} />}
         {managerTab === 'ai' && (
           <AiChatView

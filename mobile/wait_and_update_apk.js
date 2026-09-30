@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = 'e5d09117-24ad-45f4-82c4-9ba2bbade661';
+const BUILD_ID = 'd57c2ae4-28f0-40c8-b6c5-2b7c2422d75a';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -73,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.5',
-        latestVersionCode: 5,
+        latestVersion: '1.0.5.1',
+        latestVersionCode: 6,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -84,8 +84,8 @@ async function checkBuild() {
         publishedBy: 'System Auto-Build',
         releaseNotes: [
           'WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions',
-          'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, POB ₹, Detailing)',
-          'Official AHTRI Pharmaceuticals Branding & High-Resolution App Logo (Launcher, Splash, Header)',
+          'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary',
+          'Official AHTRI BIOTECH Branding & High-Resolution App Logo (Launcher, Splash, Header)',
           'Automated In-App Update Notifications with one-tap APK installation flow',
           'Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding',
         ],
@@ -111,11 +111,11 @@ async function checkBuild() {
       }
 
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 5 - Official Logo & Notifications)
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.5.1 - History Page & Notifications)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.5\` (Version Code \`5\`)
-- **Branding**: Official AHTRI Pharmaceuticals App Logo (App Icon, Splash Screen, Login Screen, App Header)
+- **Version**: \`v1.0.5.1\` (Version Code \`6\`)
+- **Branding**: Official AHTRI BIOTECH App Logo (App Icon, Splash Screen, Login Screen, App Header)
 - **Git Commit**: \`${buildData.gitCommitHash || '206108bcef00'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
@@ -167,7 +167,7 @@ async function checkBuild() {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.5 (versionCode 5)"', {
+        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.5.1 (versionCode 6)"', {
           cwd: ROOT_DIR,
           shell: true,
         });

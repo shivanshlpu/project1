@@ -3,7 +3,7 @@ export type Language = 'en' | 'hi';
 export const translations = {
   en: {
     // Brand & Top Navigation
-    brandName: 'AHTRI PHARMA',
+    brandName: 'AHTRI BIOTECH',
     brandSub: 'Enterprise Field Operations',
     managerMode: 'Manager Command Center',
     salesmanMode: 'Field Salesman (MR) App',
@@ -18,6 +18,10 @@ export const translations = {
     tabTasks: 'Task Agenda & Audit',
     tabLocations: 'Live Map & Saved Locations',
     tabMembers: 'Employee Hub (Activity & Leaves)',
+    tabAttendance: 'Attendance & Integrity',
+    tabMonthlyTp: 'Monthly TP',
+    tabStockers: 'Stocker Management',
+    tabCompetitions: 'Competitions & Rewards',
     tabDoctors: 'Doctor Directory',
     tabApprovals: 'Approvals Hub',
     tabReports: 'Reports & Export',
@@ -184,6 +188,10 @@ export const translations = {
     tabTasks: 'कार्य एजेंडा और ऑडिट',
     tabLocations: 'लाइव मैप और सहेजे गए स्थान',
     tabMembers: 'कर्मचारी हब (गतिविधि एवं अवकाश)',
+    tabAttendance: 'उपस्थिति व सत्यापन',
+    tabMonthlyTp: 'मासिक टूर प्लान (TP)',
+    tabStockers: 'स्टॉकर प्रबंधन',
+    tabCompetitions: 'बिक्री प्रतियोगिता',
     tabDoctors: 'डॉक्टर निर्देशिका',
     tabApprovals: 'अनुमोदन केंद्र',
     tabReports: 'रिपोर्ट और निर्यात',

@@ -2,7 +2,7 @@
   "expo": {
     "name": "AHTRI FFA",
     "slug": "ahtri-ffa-mobile",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.ahtri.ffa",
-      "versionCode": 5,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B2545"
@@ -41,7 +41,7 @@
       "bundler": "metro",
       "shortName": "AHTRI FFA",
       "name": "AHTRI Field Force Automation",
-      "description": "AHTRI Pharma Field Force Automation Mobile App",
+      "description": "AHTRI BIOTECH Field Force Automation Mobile App",
       "backgroundColor": "#0B2545",
       "themeColor": "#0B2545",
       "display": "standalone",

@@ -11,10 +11,26 @@ import {
   Plus,
   Settings,
   Sparkles,
+  Clock,
+  Calendar,
+  Boxes,
+  Trophy,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 
-export type ManagerTab = 'overview' | 'tasks' | 'locations' | 'members' | 'approvals' | 'reports' | 'ai' | 'settings';
+export type ManagerTab =
+  | 'overview'
+  | 'tasks'
+  | 'locations'
+  | 'members'
+  | 'attendance'
+  | 'tp'
+  | 'stockers'
+  | 'competitions'
+  | 'approvals'
+  | 'reports'
+  | 'ai'
+  | 'settings';
 
 interface SubNavProps {
   currentTab: ManagerTab;
@@ -46,6 +62,10 @@ export const SubNav: React.FC<SubNavProps> = ({
       badgeColor: '#0F8B5A',
     },
     { id: 'members' as ManagerTab, label: t.tabMembers, Icon: Users },
+    { id: 'attendance' as ManagerTab, label: t.tabAttendance || 'Attendance & Integrity', Icon: Clock },
+    { id: 'tp' as ManagerTab, label: t.tabMonthlyTp || 'Monthly TP', Icon: Calendar },
+    { id: 'stockers' as ManagerTab, label: t.tabStockers || 'Stocker Management', Icon: Boxes },
+    { id: 'competitions' as ManagerTab, label: t.tabCompetitions || 'Competitions', Icon: Trophy },
     {
       id: 'approvals' as ManagerTab,
       label: t.tabApprovals,

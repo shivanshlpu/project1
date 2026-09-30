@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export type MobileTab = 'tasks' | 'doctors' | 'visits' | 'attendance' | 'profile';
+export type MobileTab = 'tasks' | 'doctors' | 'visits' | 'attendance' | 'history' | 'profile';
 
 interface BottomNavProps {
   currentTab: MobileTab;
@@ -11,10 +11,10 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
   const tabs = [
     { id: 'tasks' as MobileTab, label: 'Tasks', icon: '✓' },
+    { id: 'history' as MobileTab, label: 'History', icon: '📋' },
     { id: 'doctors' as MobileTab, label: 'Doctors', icon: '+' },
-    { id: 'visits' as MobileTab, label: 'Orders', icon: '₹' },
     { id: 'attendance' as MobileTab, label: 'Attendance', icon: '●' },
-    { id: 'profile' as MobileTab, label: 'Device', icon: 'ID' },
+    { id: 'profile' as MobileTab, label: 'More', icon: '⋯' },
   ];
 
   return (

@@ -15,7 +15,17 @@ export const PRESET_SERVER_URLS = [
 
 export const ApiConfig = {
   async getBaseUrl(): Promise<string> {
-    // Locked strictly to Render production server
+    try {
+      const custom = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
+      if (custom) return custom;
+      if (
+        typeof window !== 'undefined' &&
+        window.location &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ) {
+        return 'http://localhost:3000';
+      }
+    } catch {}
     return DEFAULT_API_URL;
   },
 

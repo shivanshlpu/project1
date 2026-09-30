@@ -9,6 +9,7 @@ import {
   Linking,
   TextInput,
   Modal,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DistanceIndicator } from '../components/DistanceIndicator';
@@ -31,7 +32,7 @@ export interface MobileTaskItem {
   longitude: number;
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
-  status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED';
+  status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' | 'ORDER_PENDING';
   started_at?: string;
   completed_at?: string;
   duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
@@ -228,9 +229,22 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         }
       })
       .catch(() => {});
+  }, [currentUserId]);
 
-    // Populate initial seen IDs
-    allTasks.forEach((t) => seenTaskIdsRef.current.add(t.id));
+  // Load persistent seen task IDs from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`)
+      .then((raw) => {
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr.forEach((id: string) => seenTaskIdsRef.current.add(id));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, [currentUserId]);
 
   // Live Auto-Fetch from Backend Server
@@ -287,26 +301,30 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             }
           });
 
-          // Check for newly assigned tasks and fire WhatsApp-style system notification
-          if (!isInitialLoadRef.current) {
-            data.forEach((t: any) => {
-              if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED') {
-                if (!seenTaskIdsRef.current.has(t.id)) {
-                  seenTaskIdsRef.current.add(t.id);
-                  NotificationService.notifyTaskAssigned({
-                    id: t.id,
-                    title: t.title,
-                    location_name: t.location_name,
-                    address: t.address,
-                    time: t.time,
-                    priority: t.priority,
-                  });
-                }
+          // Check for newly assigned tasks and fire WhatsApp-style system notification immediately
+          let hasNewTask = false;
+          data.forEach((t: any) => {
+            if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED') {
+              if (!seenTaskIdsRef.current.has(t.id)) {
+                seenTaskIdsRef.current.add(t.id);
+                hasNewTask = true;
+                NotificationService.notifyTaskAssigned({
+                  id: t.id,
+                  title: t.title,
+                  location_name: t.location_name,
+                  address: t.address,
+                  time: t.time,
+                  priority: t.priority,
+                });
               }
-            });
-          } else {
-            data.forEach((t: any) => seenTaskIdsRef.current.add(t.id));
-            isInitialLoadRef.current = false;
+            }
+          });
+
+          if (hasNewTask) {
+            AsyncStorage.setItem(
+              `@ahtri_seen_task_ids_${currentUserId}`,
+              JSON.stringify(Array.from(seenTaskIdsRef.current))
+            ).catch(() => {});
           }
 
           setAllTasks(mapped);
@@ -571,7 +589,58 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     setCompletingTask(task);
   };
 
-  // Submit Visit Completion & Immediate Order
+  // Skip Order for Now (§2) - Moves task to ORDER_PENDING status without losing task details
+  const handleSkipOrder = async () => {
+    if (!completingTask) return;
+
+    const endTime = new Date();
+    const startTime = completingTask.started_at
+      ? new Date(completingTask.started_at)
+      : new Date(Date.now() - 15 * 60 * 1000);
+    const duration = Math.max(60, Math.round((endTime.getTime() - startTime.getTime()) / 1000));
+
+    const pendingTask: MobileTaskItem = {
+      ...completingTask,
+      status: 'ORDER_PENDING',
+      duration_seconds: duration,
+      outcome: visitOutcome || 'Detailing concluded - Order skipped for now',
+    };
+
+    setAllTasks((prev) =>
+      prev.map((t) => (t.id === completingTask.id ? pendingTask : t)),
+    );
+
+    // Sync to backend via POST /tasks/:id/skip-order
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      await fetch(`${baseUrl}/tasks/${completingTask.id}/skip-order`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          latitude: deviceCoords?.latitude || completingTask.latitude,
+          longitude: deviceCoords?.longitude || completingTask.longitude,
+          gps_accuracy_m: deviceCoords?.accuracy || 10,
+          outcome: visitOutcome || 'Detailing finished; order pending',
+          photo_key: visitPhoto?.uri || undefined,
+        }),
+      });
+      fetchTasksFromBackend();
+    } catch {
+      // Offline fallback
+    }
+
+    const locName = completingTask.location_name;
+    setCompletingTask(null);
+
+    Alert.alert(
+      'Order Skipped for Now ⏸️',
+      `Visit recorded for ${locName}.\n\nStatus: ORDER PENDING.\nYou can return to this task from your agenda whenever you receive the doctor's order (e.g. this evening) to submit the final order and complete the task.`,
+      [{ text: 'OK' }],
+    );
+  };
+
+  // Submit Visit Completion & Immediate Order (or Pending Order submission)
   const handleSubmitCompletion = async () => {
     if (!completingTask) return;
 
@@ -614,11 +683,15 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return updated;
     });
 
-    // Sync completion to backend
+    // Sync completion to backend with photo verification & auto stock deduction
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const res = await fetch(`${baseUrl}/tasks/${completingTask.id}/complete`, {
+      const endpoint = completingTask.status === 'ORDER_PENDING'
+        ? `${baseUrl}/tasks/${completingTask.id}/submit-order`
+        : `${baseUrl}/tasks/${completingTask.id}/complete`;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -627,6 +700,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           gps_accuracy_m: deviceCoords?.accuracy || 10,
           outcome: visitOutcome,
           orders: validOrders,
+          photo_key: visitPhoto?.uri || undefined,
         }),
       });
       if (res.ok) {
@@ -759,11 +833,26 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                           ? styles.badgeInProgress
                           : task.status === 'SUSPENDED'
                           ? styles.badgeSuspended
+                          : task.status === 'ORDER_PENDING'
+                          ? styles.badgeOrderPending
                           : styles.badgeAssigned,
                       ]}
                     >
-                      <Text style={[styles.badgeText, task.status === 'SUSPENDED' ? { color: '#991B1B' } : {}]}>
-                        {task.status === 'SUSPENDED' ? 'SUSPENDED' : task.status}
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          task.status === 'SUSPENDED'
+                            ? { color: '#991B1B' }
+                            : task.status === 'ORDER_PENDING'
+                            ? { color: '#92400E' }
+                            : {},
+                        ]}
+                      >
+                        {task.status === 'SUSPENDED'
+                          ? 'SUSPENDED'
+                          : task.status === 'ORDER_PENDING'
+                          ? '● ORDER PENDING'
+                          : task.status}
                       </Text>
                     </View>
                   </View>
@@ -842,6 +931,18 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                       >
                         <Text style={styles.actionBtnText}>
                           ⏱ Detailing In Progress ({formatTimer(activeElapsedSeconds)}) • Resume &amp; Finalize
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Pending Order Later Entry Button (§2) */}
+                    {task.status === 'ORDER_PENDING' && (
+                      <TouchableOpacity
+                        style={styles.actionBtnOrderPending}
+                        onPress={() => handleOpenCompleteSheet(task)}
+                      >
+                        <Text style={styles.actionBtnText}>
+                          📝 Order Pending • Record &amp; Submit Order Now
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -1096,6 +1197,35 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                   ))}
                 </View>
 
+                {/* On-Site Visit Proof Camera Capture (§3) */}
+                <View style={{ backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 12 }}>
+                  <Text style={[styles.inputHeader, { marginBottom: 2 }]}>📸 On-Site Clinic / Doctor Visit Photo *</Text>
+                  <Text style={{ fontSize: 10.5, color: '#64748B', marginBottom: 8 }}>
+                    Direct camera capture required for visit verification.
+                  </Text>
+                  {visitPhoto ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0FDF4', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#86EFAC' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Image source={{ uri: visitPhoto.uri }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#166534' }} />
+                        <View>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ Live Camera Photo Attached</Text>
+                          <Text style={{ fontSize: 9.5, color: '#15803D' }}>GPS &amp; Timestamp encoded</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity onPress={handleCaptureVisitPhoto} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, borderWidth: 1, borderColor: '#CBD5E1' }}>
+                        <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#334155' }}>Retake</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={handleCaptureVisitPhoto}
+                      style={{ backgroundColor: '#1A3C6E', paddingVertical: 9, borderRadius: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>📷 Capture Visit Verification Photo</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
                 {/* Immediate Order Form */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <Text style={styles.inputHeader}>Immediate Medicine Orders:</Text>
@@ -1196,19 +1326,36 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                 </View>
 
                 {/* Finalize Action Buttons */}
-                <View style={styles.modalBtnRow}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setCompletingTask(null)}
-                  >
-                    <Text style={styles.cancelBtnText}>Minimize</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalSubmitBtn}
-                    onPress={handleSubmitCompletion}
-                  >
-                    <Text style={styles.submitBtnText}>✓ Finalize &amp; Complete Visit</Text>
-                  </TouchableOpacity>
+                <View style={{ marginTop: 14, gap: 8 }}>
+                  <View style={styles.modalBtnRow}>
+                    <TouchableOpacity
+                      style={styles.modalCancelBtn}
+                      onPress={() => setCompletingTask(null)}
+                    >
+                      <Text style={styles.cancelBtnText}>Minimize</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalSubmitBtn}
+                      onPress={handleSubmitCompletion}
+                    >
+                      <Text style={styles.submitBtnText}>
+                        {completingTask.status === 'ORDER_PENDING'
+                          ? '✓ Save Order & Complete Visit'
+                          : '✓ Finalize & Complete Visit'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Skip Order for Now (§2) */}
+                  {completingTask.status !== 'ORDER_PENDING' && (
+                    <TouchableOpacity
+                      style={styles.skipOrderBtn}
+                      onPress={handleSkipOrder}
+                    >
+                      <Text style={styles.skipOrderBtnText}>⏸ Skip Order for Now (Enter Later)</Text>
+                      <Text style={styles.skipOrderBtnSub}>Conclude visit now. You can record orders this evening.</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </ScrollView>
             </View>
@@ -1283,6 +1430,7 @@ const styles = StyleSheet.create({
   badgeInProgress: { backgroundColor: '#DBEAFE' },
   badgeCompleted: { backgroundColor: '#DCFCE7' },
   badgeSuspended: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' },
+  badgeOrderPending: { backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A' },
   badgeText: { fontSize: 10, fontWeight: '700', color: '#0F172A' },
   suspendedBanner: {
     backgroundColor: '#FEF2F2',
@@ -1357,6 +1505,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
+  },
+  actionBtnOrderPending: {
+    backgroundColor: '#D97706',
+    paddingVertical: 11,
+    borderRadius: 6,
+    alignItems: 'center',
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  skipOrderBtn: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  skipOrderBtnText: {
+    color: '#B45309',
+    fontWeight: '700',
+    fontSize: 12.5,
+  },
+  skipOrderBtnSub: {
+    color: '#92400E',
+    fontSize: 10,
+    marginTop: 2,
   },
   btnDisabled: { backgroundColor: '#94A3B8', opacity: 0.6 },
   actionBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },

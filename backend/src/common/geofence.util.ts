@@ -16,3 +16,11 @@ export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: n
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c * 100) / 100; // Rounded to 2 decimal places
 }
+
+export function getTodayDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+

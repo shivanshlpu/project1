@@ -9,7 +9,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { CreateTaskDto, VerifyLocationDto, UpdateTaskDto } from './dto/tasks.dto';
+import {
+  CreateTaskDto,
+  VerifyLocationDto,
+  UpdateTaskDto,
+  SkipOrderDto,
+  SubmitOrderDto,
+} from './dto/tasks.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
@@ -52,6 +58,26 @@ export class TasksController {
   ) {
     const userId = user?.id || 'usr-mr-01';
     return this.tasksService.startTask(id, userId, dto);
+  }
+
+  @Post(':id/skip-order')
+  async skipOrder(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: SkipOrderDto,
+  ) {
+    const userId = user?.id || 'usr-mr-01';
+    return this.tasksService.skipOrder(id, userId, dto);
+  }
+
+  @Post(':id/submit-order')
+  async submitOrder(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: SubmitOrderDto,
+  ) {
+    const userId = user?.id || 'usr-mr-01';
+    return this.tasksService.submitPendingOrder(id, userId, dto);
   }
 
   @Post(':id/complete')

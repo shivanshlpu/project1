@@ -25,6 +25,18 @@ import {
   Notification,
   AuditLog,
   DeviceAuthorizationRequest,
+  Headquarter,
+  HqArea,
+  Stocker,
+  Medicine,
+  StockerInventory,
+  InventoryTransaction,
+  VerificationPhoto,
+  MonthlyTourPlan,
+  MonthlyTpItem,
+  AttendanceSettings,
+  Competition,
+  RewardClaim,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
 
@@ -63,6 +75,26 @@ export class DatabaseService implements OnModuleInit {
   public announcements: any[] = [];
   public auditLogs: AuditLog[] = [];
   public deviceAuthorizations: DeviceAuthorizationRequest[] = [];
+
+  // Enhancement collections
+  public headquarters: Headquarter[] = [];
+  public hqAreas: HqArea[] = [];
+  public stockers: Stocker[] = [];
+  public medicines: Medicine[] = [];
+  public stockerInventory: StockerInventory[] = [];
+  public inventoryTransactions: InventoryTransaction[] = [];
+  public verificationPhotos: VerificationPhoto[] = [];
+  public monthlyTourPlans: MonthlyTourPlan[] = [];
+  public attendanceSettings: AttendanceSettings = {
+    id: 'att-settings-default',
+    expected_punch_in_time: '10:00:00',
+    allowed_punch_in_window_minutes: 30,
+    expected_punch_out_time: '18:00:00',
+    allowed_punch_out_window_minutes: 30,
+    updated_at: new Date().toISOString(),
+  };
+  public competitions: Competition[] = [];
+  public rewardClaims: RewardClaim[] = [];
 
   constructor(public readonly supabase: SupabaseService) {}
 
@@ -252,7 +284,8 @@ export class DatabaseService implements OnModuleInit {
     this.doctors.push(doc1, doc2);
 
     // 5. Seed Tasks for today
-    const todayStr = new Date().toISOString().split('T')[0];
+    const nowD = new Date();
+    const todayStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
     const task1: Task = {
       id: 'task-01',
       title: 'Dr. Rajesh Sharma Clinic Detailing',
@@ -367,7 +400,304 @@ export class DatabaseService implements OnModuleInit {
       distance_meters: 8.4,
       is_verified_location: true,
       status: 'PRESENT',
+      late_minutes: 0,
+      early_minutes: 0,
+      working_hours: 0,
+      device_integrity_status: 'VERIFIED',
+      hq_id: 'hq-shahdol',
+      hq_name: 'Shahdol',
       created_at: new Date().toISOString(),
+    });
+
+    // 10. Seed Headquarters (§6 & §10)
+    const hqShahdol: Headquarter = {
+      id: 'hq-shahdol',
+      name: 'Shahdol',
+      code: 'HQ-SHD',
+      state: 'Madhya Pradesh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const hqJaisinghnagar: Headquarter = {
+      id: 'hq-jaisinghnagar',
+      name: 'Jaisinghnagar',
+      code: 'HQ-JSN',
+      state: 'Madhya Pradesh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const hqBurhar: Headquarter = {
+      id: 'hq-burhar',
+      name: 'Burhar/Bauhari',
+      code: 'HQ-BRH',
+      state: 'Madhya Pradesh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const hqAmbikapur: Headquarter = {
+      id: 'hq-ambikapur',
+      name: 'Ambikapur',
+      code: 'HQ-AMB',
+      state: 'Chhattisgarh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const hqBilaspur: Headquarter = {
+      id: 'hq-bilaspur',
+      name: 'Bilaspur',
+      code: 'HQ-BSP',
+      state: 'Chhattisgarh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const hqKotma: Headquarter = {
+      id: 'hq-kotma',
+      name: 'Kotma',
+      code: 'HQ-KTM',
+      state: 'Madhya Pradesh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
+    this.headquarters.push(
+      hqShahdol,
+      hqJaisinghnagar,
+      hqBurhar,
+      hqAmbikapur,
+      hqBilaspur,
+      hqKotma,
+    );
+
+    // 11. Seed HQ Areas (§6)
+    const areas = [
+      { id: 'area-shd-01', hq_id: hqShahdol.id, name: 'Shahdol' },
+      { id: 'area-shd-02', hq_id: hqShahdol.id, name: 'Burhar' },
+      { id: 'area-shd-03', hq_id: hqShahdol.id, name: 'Goparu' },
+      { id: 'area-shd-04', hq_id: hqShahdol.id, name: 'Kotma' },
+      { id: 'area-shd-05', hq_id: hqShahdol.id, name: 'Ambikapur' },
+      { id: 'area-shd-06', hq_id: hqShahdol.id, name: 'Jaisinghnagar' },
+      { id: 'area-shd-07', hq_id: hqShahdol.id, name: 'Bauhari' },
+    ];
+    for (const a of areas) {
+      this.hqAreas.push({
+        id: a.id,
+        hq_id: a.hq_id,
+        name: a.name,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    // 12. Seed Stockers (§9 & §10)
+    const stocker1: Stocker = {
+      id: 'stk-shd-01',
+      hq_id: hqShahdol.id,
+      name: 'Shahdol Stocker 1 (Central Depot)',
+      contact_person: 'Ramesh Patel',
+      phone: '9826112233',
+      address: 'Main Market Road, Shahdol, MP',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker2: Stocker = {
+      id: 'stk-shd-02',
+      hq_id: hqShahdol.id,
+      name: 'Shahdol Stocker 2 (Station Road)',
+      contact_person: 'Sanjay Gupta',
+      phone: '9826144556',
+      address: 'Station Road, Near Bus Stand, Shahdol, MP',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker3: Stocker = {
+      id: 'stk-bsp-01',
+      hq_id: hqBilaspur.id,
+      name: 'Bilaspur Pharma Depot',
+      contact_person: 'Vijay Agrawal',
+      phone: '9827155667',
+      address: 'Vyapar Vihar, Bilaspur, CG',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.stockers.push(stocker1, stocker2, stocker3);
+
+    // 13. Seed Medicines Master (§11)
+    const med1: Medicine = {
+      id: 'med-01',
+      name: 'CardioFix-50 (Telmisartan 40mg)',
+      code: 'CF-50',
+      unit: 'Box of 10x10',
+      base_price: 180,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const med2: Medicine = {
+      id: 'med-02',
+      name: 'CardioFix-AM (Telmisartan + Amlodipine)',
+      code: 'CF-AM',
+      unit: 'Box of 10x10',
+      base_price: 220,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const med3: Medicine = {
+      id: 'med-03',
+      name: 'DermaSoothe Cream 30g',
+      code: 'DS-30',
+      unit: 'Tube',
+      base_price: 210,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const med4: Medicine = {
+      id: 'med-04',
+      name: 'Glucotrol-M (Metformin 500mg)',
+      code: 'GM-500',
+      unit: 'Box of 10x10',
+      base_price: 145,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const med5: Medicine = {
+      id: 'med-05',
+      name: 'AhtriCef-O 200mg (Cefixime)',
+      code: 'ACO-200',
+      unit: 'Strip of 10',
+      base_price: 165,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.medicines.push(med1, med2, med3, med4, med5);
+
+    // 14. Seed Stocker Inventory (§12 & §13)
+    this.stockerInventory.push(
+      {
+        id: 'inv-shd-01-m1',
+        hq_id: hqShahdol.id,
+        stocker_id: stocker1.id,
+        medicine_id: med1.id,
+        quantity: 50, // Available
+        low_stock_threshold: 15,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'inv-shd-01-m2',
+        hq_id: hqShahdol.id,
+        stocker_id: stocker1.id,
+        medicine_id: med2.id,
+        quantity: 10, // Low stock
+        low_stock_threshold: 15,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'inv-shd-01-m3',
+        hq_id: hqShahdol.id,
+        stocker_id: stocker1.id,
+        medicine_id: med3.id,
+        quantity: 0, // Out of stock (demonstrates shortage / negative stock per §17)
+        low_stock_threshold: 10,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'inv-shd-01-m4',
+        hq_id: hqShahdol.id,
+        stocker_id: stocker1.id,
+        medicine_id: med4.id,
+        quantity: 85,
+        low_stock_threshold: 20,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'inv-shd-02-m1',
+        hq_id: hqShahdol.id,
+        stocker_id: stocker2.id,
+        medicine_id: med1.id,
+        quantity: 30,
+        low_stock_threshold: 10,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'inv-bsp-01-m1',
+        hq_id: hqBilaspur.id,
+        stocker_id: stocker3.id,
+        medicine_id: med1.id,
+        quantity: 120,
+        low_stock_threshold: 25,
+        updated_at: new Date().toISOString(),
+      },
+    );
+
+    // Initial Audit Logs for stock seed
+    this.inventoryTransactions.push({
+      id: 'tx-init-01',
+      hq_id: hqShahdol.id,
+      stocker_id: stocker1.id,
+      medicine_id: med1.id,
+      quantity: 50,
+      balance_after: 50,
+      transaction_type: 'INITIAL',
+      user_id: 'usr-admin-shivansh',
+      reason: 'Initial stock intake on system commissioning',
+      timestamp: new Date().toISOString(),
+    });
+
+    // 15. Seed Active Competition (§27)
+    this.competitions.push({
+      id: 'comp-shd-01',
+      name: 'Shahdol CardioFix-50 Sprint',
+      start_date: '2026-09-01',
+      end_date: '2026-10-31',
+      hq_id: hqShahdol.id,
+      hq_name: 'Shahdol',
+      medicine_id: med1.id,
+      medicine_name: 'CardioFix-50 (Telmisartan 40mg)',
+      target_quantity: 100,
+      reward_amount: 2000,
+      description: 'Sell 100 units of CardioFix-50 in Shahdol territory during September & October 2026 to earn an instant ₹2,000 cash incentive.',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    });
+
+    // 16. Seed a sample submitted Monthly Tour Plan (§5-8)
+    this.monthlyTourPlans.push({
+      id: 'mtp-01',
+      mr_id: mr.id,
+      mr_name: mr.name,
+      month: '2026-09',
+      status: 'SUBMITTED',
+      submitted_at: new Date().toISOString(),
+      entries: [
+        {
+          id: 'tp-item-1',
+          date: '2026-09-02',
+          hq_id: hqShahdol.id,
+          hq_name: 'Shahdol',
+          planned_area: 'Shahdol',
+          work_type: 'Doctor Visit',
+          planned_kol_drs: 'Dr. Rajesh Sharma',
+          planned_activity: 'CardioFix-50 Detailing and Scheme Presentation',
+        },
+        {
+          id: 'tp-item-2',
+          date: '2026-09-04',
+          hq_id: hqShahdol.id,
+          hq_name: 'Shahdol',
+          planned_area: 'Burhar',
+          work_type: 'Order Collection',
+          planned_kol_drs: 'Dr. Priya Verma',
+          planned_activity: 'Antibiotic syrup follow-up and stockist order booking',
+        },
+        {
+          id: 'tp-item-3',
+          date: '2026-09-08',
+          hq_id: hqShahdol.id,
+          hq_name: 'Shahdol',
+          planned_area: 'Kotma',
+          work_type: 'Follow-up',
+          planned_kol_drs: 'Dr. Anita Desai',
+          planned_activity: 'DermaSoothe sample trials evaluation',
+        },
+      ],
     });
   }
 }

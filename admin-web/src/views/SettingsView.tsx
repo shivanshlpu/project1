@@ -224,10 +224,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.5.1',
-    latestVersionCode: 6,
+    latestVersion: '1.0.6',
+    latestVersionCode: 7,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/7P6U0umFj3C87sjJRYMs4rBGKebig0Hj02VZq82nY04.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -235,7 +235,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary (Visits, Duration, Orders)\nWhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions\nOfficial AHTRI BIOTECH Branding & High-Resolution App Logo (Launcher, Splash, Header)\nAutomated In-App Update Notifications with one-tap APK installation flow\nLive GPS Geofencing, Leaflet mapping, and real-time reverse geocoding'
+    'Monthly Tour Plan (TP) Multi-Date Submission & Schedule Review\nLive Camera Photo Proof with Work Attire Check for Attendance & Doctor Visits\nMulti-HQ Stocker Hierarchy & Real-Time Stock Balance Verification\nNegative Stock & Backorder Tolerance for Out-of-Stock Orders\nSingle Source of Truth Sales Competitions, Progress Tracking & Reward Claims\nOrder Pending Workflow for Flexible Post-Detailing Order Entry\nAnti-Mock Fake Location Protection & Hardware Integrity Verification'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
@@ -1819,7 +1819,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const shareMsg = `AHTRI FFA Mobile App Update (v${updateData.latestVersion || '1.0.4'}):\nClick here to download and install the new APK:\nhttps://ahtri-backend.onrender.com/api/app/latest-apk`;
+                  const shareMsg = `AHTRI FFA Mobile App Update (v${updateData.latestVersion || '1.0.6'}):\nClick here to download and install the new APK:\nhttps://ahtri-backend.onrender.com/api/app/latest-apk`;
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMsg)}`, '_blank');
                 }}
                 style={{

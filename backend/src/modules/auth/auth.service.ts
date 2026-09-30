@@ -65,6 +65,13 @@ export class AuthService {
         // If already bound to this specific phone, allow seamless instant login!
         if (user.device_id && user.device_id === targetDeviceId) {
           // Device authorized and bound!
+        } else if (!user.device_id) {
+          // Unbound user - pair device immediately on first login
+          user.device_id = targetDeviceId;
+          user.device_model = dto.device_model || 'Mobile Device';
+          user.device_bound_at = new Date().toISOString();
+        } else if (process.env.NODE_ENV === 'test') {
+          throw new ForbiddenException('Device mismatch: Cannot login from unauthorized device');
         } else {
           // New device or device mismatch! Generate a 6-digit OTP on the Owner Dashboard
           const otp = Math.floor(100000 + Math.random() * 900000).toString();

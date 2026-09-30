@@ -314,7 +314,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>AHTRI Pharmaceuticals - Executive Field Operations Report</title>
+        <title>AHTRI BIOTECH - Executive Field Operations Report</title>
         <style>
           @page { size: A4 landscape; margin: 15mm; }
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 0; padding: 24px; background: #ffffff; }
@@ -342,7 +342,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       <body>
         <div class="header">
           <div>
-            <div class="title">AHTRI PHARMACEUTICALS</div>
+            <div class="title">AHTRI BIOTECH</div>
             <div class="subtitle">Field Force Automation - Executive Compliance & Call Detailing Audit</div>
           </div>
           <div class="meta-box">

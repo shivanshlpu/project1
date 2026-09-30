@@ -1,0 +1,857 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Trophy,
+  Plus,
+  RefreshCw,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Calendar,
+  IndianRupee,
+  Building,
+  Package,
+  Award,
+  Filter,
+  Check,
+  X,
+  FileCheck,
+} from 'lucide-react';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+
+interface CompetitionItem {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  hq_id: string;
+  hq_name: string;
+  medicine_id: string;
+  medicine_name: string;
+  target_quantity: number;
+  reward_amount: number;
+  description: string;
+  status: 'ACTIVE' | 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
+  created_at: string;
+}
+
+interface MrProgressItem {
+  mr_id: string;
+  mr_name: string;
+  hq_id: string;
+  hq_name: string;
+  achieved_quantity: number;
+  target_quantity: number;
+  remaining_quantity: number;
+  is_eligible: boolean;
+  claim_status: 'IN_PROGRESS' | 'ELIGIBLE' | 'APPLIED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'PAID';
+  claim_id?: string | null;
+  supporting_orders_count: number;
+}
+
+interface RewardClaimItem {
+  id: string;
+  competition_id: string;
+  competition_name?: string;
+  mr_id: string;
+  mr_name?: string;
+  hq_name?: string;
+  medicine_name?: string;
+  achieved_quantity: number;
+  target_quantity?: number;
+  reward_amount: number;
+  status: 'APPLIED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'PAID';
+  claim_date: string;
+  supporting_orders_count: number;
+  notes?: string;
+}
+
+export const CompetitionsView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'CAMPAIGNS' | 'CLAIMS'>('CAMPAIGNS');
+  const [competitions, setCompetitions] = useState<CompetitionItem[]>([]);
+  const [selectedCompId, setSelectedCompId] = useState<string>('');
+  const [mrProgressList, setMrProgressList] = useState<MrProgressItem[]>([]);
+  const [claims, setClaims] = useState<RewardClaimItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Master options
+  const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>([]);
+  const [medicines, setMedicines] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Create Modal state (§27)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [compName, setCompName] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('2026-09-01');
+  const [endDate, setEndDate] = useState<string>('2026-09-30');
+  const [compHqId, setCompHqId] = useState<string>('hq-shahdol');
+  const [compMedicineId, setCompMedicineId] = useState<string>('');
+  const [compTargetQty, setCompTargetQty] = useState<string>('100');
+  const [compRewardAmount, setCompRewardAmount] = useState<string>('2000');
+  const [compDesc, setCompDesc] = useState<string>('Sell 100 units during competition period to claim ₹2,000 cash reward.');
+
+  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+
+  // Load HQs & Medicines master
+  useEffect(() => {
+    const fetchMaster = async () => {
+      try {
+        const [hqRes, medRes] = await Promise.all([
+          fetch(`${apiUrl}/inventory/hqs`),
+          fetch(`${apiUrl}/inventory/medicines?active_only=true`),
+        ]);
+        if (hqRes.ok) {
+          const data = await hqRes.json();
+          if (Array.isArray(data)) setHqs(data);
+        }
+        if (medRes.ok) {
+          const data = await medRes.json();
+          if (Array.isArray(data)) {
+            setMedicines(data);
+            if (data.length > 0) setCompMedicineId(data[0].id);
+          }
+        }
+      } catch {}
+    };
+    fetchMaster();
+  }, [apiUrl]);
+
+  // Fetch Competitions list (§27)
+  const fetchCompetitions = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/competitions`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCompetitions(data);
+          if (data.length > 0 && !selectedCompId) {
+            setSelectedCompId(data[0].id);
+          }
+        }
+      }
+    } catch {} finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch MR progress for selected competition (§34)
+  const fetchProgress = async () => {
+    if (!selectedCompId) return;
+    try {
+      const res = await fetch(`${apiUrl}/competitions/${selectedCompId}/progress`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setMrProgressList(data);
+        }
+      }
+    } catch {}
+  };
+
+  // Fetch all claims (§33 & §34)
+  const fetchClaims = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/competitions/claims/all`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setClaims(data);
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchCompetitions();
+    fetchClaims();
+  }, [apiUrl]);
+
+  useEffect(() => {
+    if (selectedCompId) fetchProgress();
+  }, [selectedCompId]);
+
+  // Handler: Create Competition (§27)
+  const handleCreateCompetition = async () => {
+    if (!compName.trim()) {
+      alert('Please enter competition name.');
+      return;
+    }
+    try {
+      const res = await fetch(`${apiUrl}/competitions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: compName.trim(),
+          start_date: startDate,
+          end_date: endDate,
+          hq_id: compHqId,
+          medicine_id: compMedicineId,
+          target_quantity: parseInt(compTargetQty) || 100,
+          reward_amount: parseFloat(compRewardAmount) || 2000,
+          description: compDesc.trim(),
+        }),
+      });
+      if (res.ok) {
+        setIsCreateModalOpen(false);
+        setCompName('');
+        fetchCompetitions();
+      }
+    } catch {}
+  };
+
+  // Handler: Decide Claim (Approve / Reject / Mark Paid) (§33 & §34)
+  const handleDecideClaim = async (claimId: string, status: 'APPROVED' | 'REJECTED' | 'PAID') => {
+    try {
+      const res = await fetch(`${apiUrl}/competitions/claims/${claimId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          notes: `Decision recorded by Admin on ${formatDateDDMMYYYY(new Date())}`,
+        }),
+      });
+      if (res.ok) {
+        fetchClaims();
+        fetchProgress();
+      }
+    } catch {}
+  };
+
+  const selectedComp = competitions.find((c) => c.id === selectedCompId);
+
+  return (
+    <div style={{ padding: '20px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Trophy size={22} color="var(--color-brand)" />
+            MR Sales Competitions &amp; Incentive Rewards (§27–§34)
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            Configure sales target campaigns, track live orders (single source of truth), and review cash reward claims.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className="btn-enterprise"
+            onClick={() => setIsCreateModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Plus size={14} />
+            <span>Create New Competition (§27)</span>
+          </button>
+
+          <button
+            className="btn-enterprise secondary"
+            onClick={() => {
+              fetchCompetitions();
+              fetchProgress();
+              fetchClaims();
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Segment Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 6,
+          background: 'var(--color-surface-secondary)',
+          padding: 4,
+          borderRadius: 8,
+          marginBottom: 20,
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <button
+          onClick={() => setActiveTab('CAMPAIGNS')}
+          style={{
+            flex: 1,
+            padding: '9px 12px',
+            borderRadius: 6,
+            border: 'none',
+            fontSize: 12.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: activeTab === 'CAMPAIGNS' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'CAMPAIGNS' ? 'var(--color-brand)' : 'var(--color-text-secondary)',
+            boxShadow: activeTab === 'CAMPAIGNS' ? 'var(--shadow-xs)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <Trophy size={14} />
+          <span>Active Competitions &amp; MR Progress</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('CLAIMS')}
+          style={{
+            flex: 1,
+            padding: '9px 12px',
+            borderRadius: 6,
+            border: 'none',
+            fontSize: 12.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: activeTab === 'CLAIMS' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'CLAIMS' ? '#166534' : 'var(--color-text-secondary)',
+            boxShadow: activeTab === 'CLAIMS' ? 'var(--shadow-xs)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <Award size={14} color="#166534" />
+          <span>Reward Claims Workflow ({claims.length})</span>
+        </button>
+      </div>
+
+      {/* ================= TAB 1: CAMPAIGNS & LIVE PROGRESS ================= */}
+      {activeTab === 'CAMPAIGNS' && (
+        <>
+          {/* Active Campaigns Cards Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 20 }}>
+            {competitions.map((comp) => {
+              const isSelected = selectedCompId === comp.id;
+              return (
+                <div
+                  key={comp.id}
+                  onClick={() => setSelectedCompId(comp.id)}
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 10,
+                    padding: 16,
+                    border: isSelected ? '2px solid var(--color-brand)' : '1px solid var(--color-border)',
+                    boxShadow: isSelected ? 'var(--shadow-md)' : 'var(--shadow-xs)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    <div>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-brand)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        HQ: {comp.hq_name}
+                      </span>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginTop: 2 }}>
+                        {comp.name}
+                      </h3>
+                    </div>
+                    <span
+                      style={{
+                        background: '#DCFCE7',
+                        color: '#166534',
+                        padding: '3px 8px',
+                        borderRadius: 12,
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
+                      ₹{comp.reward_amount.toLocaleString()} Reward
+                    </span>
+                  </div>
+
+                  <div style={{ background: '#F8FAFC', padding: 8, borderRadius: 6, marginBottom: 10, fontSize: 11.5 }}>
+                    <p style={{ color: '#334155' }}>
+                      Target: <strong>{comp.target_quantity} units</strong> of <strong>{comp.medicine_name}</strong>
+                    </p>
+                    <p style={{ color: '#64748B', marginTop: 2 }}>
+                      Period: {formatDateDDMMYYYY(comp.start_date)} to {formatDateDDMMYYYY(comp.end_date)}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isSelected ? 'var(--color-brand)' : '#64748B' }}>
+                      {isSelected ? '● Currently Selected' : 'Click to inspect MR progress →'}
+                    </span>
+                    <span
+                      style={{
+                        background: comp.status === 'ACTIVE' ? '#EFF6FF' : '#F1F5F9',
+                        color: comp.status === 'ACTIVE' ? '#1D4ED8' : '#64748B',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {comp.status}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Participating MR Progress Table (§34) */}
+          <div
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-xs)',
+            }}
+          >
+            <div
+              style={{
+                padding: '12px 18px',
+                borderBottom: '1px solid var(--color-border)',
+                background: 'var(--color-surface-secondary)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Participating MR Progress for "{selectedComp?.name || 'Selected Campaign'}" (§28 &amp; §34)
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
+                  Single source of truth: calculated directly from valid, completed orders in database
+                </span>
+              </div>
+            </div>
+
+            {mrProgressList.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                No MR progress recorded for this competition yet.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medical Representative</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>HQ Territory</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Target</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Achieved Sales (Valid Orders)</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Remaining to Goal</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Progress %</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Eligibility Status (§31)</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Reward Claim Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mrProgressList.map((prog) => {
+                      const percent = Math.min(100, Math.round((prog.achieved_quantity / prog.target_quantity) * 100));
+
+                      return (
+                        <tr key={prog.mr_id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
+                            {prog.mr_name}
+                          </td>
+                          <td style={{ padding: '11px 14px', color: '#1E40AF', fontWeight: 600 }}>
+                            {prog.hq_name}
+                          </td>
+                          <td style={{ padding: '11px 14px', fontWeight: 600 }}>
+                            {prog.target_quantity} units
+                          </td>
+                          <td style={{ padding: '11px 14px', fontWeight: 800, color: '#166534' }}>
+                            {prog.achieved_quantity} units
+                            <span style={{ fontSize: 10.5, color: '#64748B', fontWeight: 400, marginLeft: 4 }}>
+                              ({prog.supporting_orders_count} orders)
+                            </span>
+                          </td>
+                          <td style={{ padding: '11px 14px', fontWeight: 700, color: prog.remaining_quantity === 0 ? '#166534' : '#B45309' }}>
+                            {prog.remaining_quantity === 0 ? '✓ Goal Achieved' : `${prog.remaining_quantity} units`}
+                          </td>
+                          <td style={{ padding: '11px 14px', width: 140 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${percent}%`, height: '100%', background: percent >= 100 ? '#10B981' : 'var(--color-brand)' }} />
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 700 }}>{percent}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 10,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: prog.is_eligible ? '#DCFCE7' : '#F1F5F9',
+                                color: prog.is_eligible ? '#166534' : '#64748B',
+                              }}
+                            >
+                              {prog.is_eligible ? '🏆 Eligible for Reward' : 'In Progress'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background:
+                                  prog.claim_status === 'APPROVED' || prog.claim_status === 'PAID'
+                                    ? '#DCFCE7'
+                                    : prog.claim_status === 'APPLIED'
+                                    ? '#FEF3C7'
+                                    : '#F8FAFC',
+                                color:
+                                  prog.claim_status === 'APPROVED' || prog.claim_status === 'PAID'
+                                    ? '#166534'
+                                    : prog.claim_status === 'APPLIED'
+                                    ? '#92400E'
+                                    : '#64748B',
+                              }}
+                            >
+                              {prog.claim_status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ================= TAB 2: REWARD CLAIMS WORKFLOW (§33 & §34) ================= */}
+      {activeTab === 'CLAIMS' && (
+        <div
+          style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 8,
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-xs)',
+          }}
+        >
+          <div
+            style={{
+              padding: '12px 18px',
+              borderBottom: '1px solid var(--color-border)',
+              background: 'var(--color-surface-secondary)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
+                MR Incentive Reward Claims Queue (§33 &amp; §34)
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
+                Verify underlying orders before approving reward payout
+              </span>
+            </div>
+          </div>
+
+          {claims.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center' }}>
+              <Award size={36} color="#CBD5E1" style={{ margin: '0 auto 8px' }} />
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', marginBottom: 2 }}>
+                No Reward Claims Pending
+              </p>
+              <p style={{ fontSize: 12, color: '#64748B' }}>
+                When an MR hits their sales target and claims their incentive, it will appear here for verification.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Claim Date</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Representative</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Competition</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Achieved Sales</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Reward Amount</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Verification Status</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Admin Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {claims.map((cl) => (
+                    <tr key={cl.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td style={{ padding: '11px 14px', color: '#64748B', whiteSpace: 'nowrap' }}>
+                        {formatDateDDMMYYYY(cl.claim_date)}
+                      </td>
+                      <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
+                        {cl.mr_name}
+                      </td>
+                      <td style={{ padding: '11px 14px', fontWeight: 600, color: 'var(--color-brand)' }}>
+                        {cl.competition_name}
+                      </td>
+                      <td style={{ padding: '11px 14px', fontWeight: 800, color: '#166534' }}>
+                        {cl.achieved_quantity} units
+                        <span style={{ fontSize: 10.5, color: '#64748B', fontWeight: 400, marginLeft: 4 }}>
+                          ({cl.supporting_orders_count} valid orders)
+                        </span>
+                      </td>
+                      <td style={{ padding: '11px 14px', fontWeight: 800, color: '#0F172A' }}>
+                        ₹{cl.reward_amount.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '11px 14px' }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 10,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background:
+                              cl.status === 'PAID'
+                                ? '#DCFCE7'
+                                : cl.status === 'APPROVED'
+                                ? '#EFF6FF'
+                                : cl.status === 'REJECTED'
+                                ? '#FEE2E2'
+                                : '#FEF3C7',
+                            color:
+                              cl.status === 'PAID'
+                                ? '#166534'
+                                : cl.status === 'APPROVED'
+                                ? '#1D4ED8'
+                                : cl.status === 'REJECTED'
+                                ? '#991B1B'
+                                : '#92400E',
+                          }}
+                        >
+                          {cl.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                        {cl.status === 'APPLIED' || cl.status === 'UNDER_REVIEW' ? (
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => handleDecideClaim(cl.id, 'APPROVED')}
+                              style={{
+                                background: '#ECFDF5',
+                                color: '#065F46',
+                                border: '1px solid #A7F3D0',
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✓ Approve
+                            </button>
+                            <button
+                              onClick={() => handleDecideClaim(cl.id, 'REJECTED')}
+                              style={{
+                                background: '#FEF2F2',
+                                color: '#991B1B',
+                                border: '1px solid #FECDD3',
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✕ Reject
+                            </button>
+                          </div>
+                        ) : cl.status === 'APPROVED' ? (
+                          <button
+                            onClick={() => handleDecideClaim(cl.id, 'PAID')}
+                            style={{
+                              background: '#166534',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Mark Paid ₹{cl.reward_amount.toLocaleString()}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#94A3B8' }}>Concluded</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: Create New Competition (§27) */}
+      {isCreateModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 480,
+              padding: 22,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Trophy size={18} color="var(--color-brand)" />
+                Create Sales Incentive Competition (§27)
+              </h3>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                COMPETITION / CAMPAIGN NAME *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Shahdol CardioFix-50 Festive Sprint"
+                value={compName}
+                onChange={(e) => setCompName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  START DATE (§29)
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  END DATE (§29)
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET HEADQUARTERS (HQ)
+                </label>
+                <select
+                  value={compHqId}
+                  onChange={(e) => setCompHqId(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
+                >
+                  {hqs.map((hq) => (
+                    <option key={hq.id} value={hq.id}>{hq.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET MEDICINE / PRODUCT
+                </label>
+                <select
+                  value={compMedicineId}
+                  onChange={(e) => setCompMedicineId(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
+                >
+                  {medicines.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET QUANTITY (UNITS) *
+                </label>
+                <input
+                  type="number"
+                  value={compTargetQty}
+                  onChange={(e) => setCompTargetQty(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, fontWeight: 700 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  REWARD AMOUNT (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={compRewardAmount}
+                  onChange={(e) => setCompRewardAmount(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, fontWeight: 700, color: '#166534' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                TERMS &amp; ELIGIBILITY DESCRIPTION
+              </label>
+              <textarea
+                value={compDesc}
+                onChange={(e) => setCompDesc(e.target.value)}
+                rows={2}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                className="btn-enterprise secondary"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-enterprise"
+                onClick={handleCreateCompetition}
+              >
+                Launch Competition
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

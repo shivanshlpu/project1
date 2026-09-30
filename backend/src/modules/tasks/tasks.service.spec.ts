@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TasksService } from './tasks.service';
 import { DatabaseModule } from '../../database/database.module';
 import { DatabaseService } from '../../database/database.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { BadRequestException } from '@nestjs/common';
 
 describe('Tasks & 20m Geofence (Node 4 DoD Verification)', () => {
@@ -10,13 +12,20 @@ describe('Tasks & 20m Geofence (Node 4 DoD Verification)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [DatabaseModule],
+      imports: [DatabaseModule, NotificationsModule, InventoryModule],
       providers: [TasksService],
     }).compile();
 
     service = module.get<TasksService>(TasksService);
     db = module.get<DatabaseService>(DatabaseService);
     await db.onModuleInit();
+
+    const t1 = db.tasks.find((t) => t.id === 'task-01');
+    if (t1) {
+      const now = new Date();
+      t1.date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      t1.status = 'ASSIGNED';
+    }
   });
 
   it('should create task and record assignment history', async () => {

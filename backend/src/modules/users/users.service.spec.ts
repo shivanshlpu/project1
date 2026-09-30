@@ -42,7 +42,7 @@ describe('Users & Territories (Node 3 DoD Verification)', () => {
     const newUser = await usersService.createUser({
       name: 'Vikram Singh',
       phone: '9988776655',
-      email: 'vikram@ahtri.com',
+      email: 'vikram.singh@ahtri.com',
       password: 'Password@123',
       role: 'MR',
       area_id: 'area-sdelhi-1',

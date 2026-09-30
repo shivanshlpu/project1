@@ -55,14 +55,16 @@ export interface User {
   deleted_at?: string;
 }
 
-export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
+export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'ORDER_PENDING' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
 
 export interface TaskOrderItem {
+  product_id?: string;
   product_name: string;
   quantity: number;
   unit_price?: number;
   total_amount?: number;
   distributor?: string;
+  stocker_id?: string;
   notes?: string;
 }
 
@@ -83,10 +85,18 @@ export interface Task {
   deleted_at?: string;
   started_at?: string;
   completed_at?: string;
+  order_pending_at?: string;
   duration_seconds?: number; // Secret tracked on-site duration in seconds
   location_name?: string;
+  hq_id?: string;
+  hq_name?: string;
+  stocker_id?: string;
+  stocker_name?: string;
   outcome?: string; // Meeting summary / doctor reaction
   orders?: TaskOrderItem[]; // Immediate orders captured
+  verification_photo_key?: string;
+  verification_photo_source?: 'CAMERA' | 'GALLERY';
+  device_integrity_status?: string;
   suspended_at?: string;
   suspended_reason?: string;
   unsuspended_at?: string;
@@ -177,7 +187,17 @@ export interface Attendance {
   check_out_lng?: number;
   distance_meters?: number;
   is_verified_location?: boolean;
-  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
+  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'INCOMPLETE';
+  punch_in_photo_key?: string;
+  punch_in_photo_source?: 'CAMERA' | 'GALLERY';
+  punch_out_photo_key?: string;
+  punch_out_photo_source?: 'CAMERA' | 'GALLERY';
+  late_minutes?: number;
+  early_minutes?: number;
+  working_hours?: number;
+  device_integrity_status?: string;
+  hq_id?: string;
+  hq_name?: string;
   created_at?: string;
 }
 
@@ -294,4 +314,156 @@ export interface DeviceAuthorizationRequest {
   approved_at?: string;
   approved_by?: string;
 }
+
+// === NEW ENHANCEMENT MODELS ===
+
+export interface Headquarter {
+  id: string;
+  name: string;
+  code: string;
+  state?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface HqArea {
+  id: string;
+  hq_id: string;
+  name: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface Stocker {
+  id: string;
+  hq_id: string;
+  name: string;
+  contact_person?: string;
+  phone?: string;
+  address?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface Medicine {
+  id: string;
+  name: string;
+  code: string;
+  unit: string;
+  base_price: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface StockerInventory {
+  id: string;
+  hq_id: string;
+  stocker_id: string;
+  medicine_id: string;
+  quantity: number; // Can be negative for backorder / shortage per §17
+  low_stock_threshold: number;
+  updated_at: string;
+}
+
+export type InventoryTransactionType = 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN';
+
+export interface InventoryTransaction {
+  id: string;
+  hq_id: string;
+  stocker_id: string;
+  medicine_id: string;
+  quantity: number;
+  balance_after: number;
+  transaction_type: InventoryTransactionType;
+  order_id?: string;
+  task_id?: string;
+  user_id: string;
+  reason?: string;
+  timestamp: string;
+}
+
+export interface VerificationPhoto {
+  id: string;
+  user_id: string;
+  task_id?: string;
+  doctor_id?: string;
+  hq_id?: string;
+  photo_key: string;
+  photo_source: 'CAMERA' | 'GALLERY';
+  latitude: number;
+  longitude: number;
+  gps_accuracy_m: number;
+  timestamp: string;
+  created_at: string;
+}
+
+export interface MonthlyTpItem {
+  id: string;
+  date: string; // YYYY-MM-DD
+  hq_id: string;
+  hq_name: string;
+  planned_area: string;
+  work_type: string; // "Transit" | "Induction" | "Doctor Visit" | "Order Collection" | "Follow-up" | "Other"
+  planned_kol_drs: string;
+  planned_activity: string;
+}
+
+export interface MonthlyTourPlan {
+  id: string;
+  mr_id: string;
+  mr_name: string;
+  month: string; // YYYY-MM
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  entries: MonthlyTpItem[];
+  submitted_at: string;
+  approved_by?: string;
+  approved_at?: string;
+  remarks?: string;
+}
+
+export interface AttendanceSettings {
+  id: string;
+  expected_punch_in_time: string; // e.g. "10:00:00"
+  allowed_punch_in_window_minutes: number; // e.g. 30
+  expected_punch_out_time: string; // e.g. "18:00:00"
+  allowed_punch_out_window_minutes: number; // e.g. 30
+  updated_at: string;
+}
+
+export interface Competition {
+  id: string;
+  name: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  hq_id: string;
+  hq_name: string;
+  medicine_id: string;
+  medicine_name: string;
+  target_quantity: number;
+  reward_amount: number;
+  description: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
+  created_at: string;
+}
+
+export type RewardClaimStatus = 'ELIGIBLE' | 'APPLIED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'PAID';
+
+export interface RewardClaim {
+  id: string;
+  competition_id: string;
+  competition_name: string;
+  mr_id: string;
+  mr_name: string;
+  achieved_quantity: number;
+  target_quantity: number;
+  reward_amount: number;
+  eligible_at: string;
+  claimed_at: string;
+  status: RewardClaimStatus;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  admin_comment?: string;
+  order_ids: string[];
+}
+
 

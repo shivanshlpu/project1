@@ -300,7 +300,7 @@ export class AiAssistantService {
     } else {
       intent = 'EXECUTIVE_OVERVIEW';
       if (isHindi) {
-        answer = `### 📊 Ahtri Pharmaceuticals एग्जीक्यूटिव ओवरव्यू (${dateLabel})\n\n` +
+        answer = `### 📊 Ahtri Biotech एग्जीक्यूटिव ओवरव्यू (${dateLabel})\n\n` +
           `- **कुल निर्धारित कॉल्स**: **${totalTasks}**\n` +
           `- **सफलतापूर्वक पूरे हुए**: **${completedTasks}** (${completionRate})\n` +
           `- **शेष कॉल्स**: **${pendingTasks}** पेंडिंग, **${inProgressTasks}** प्रगति में\n` +
@@ -308,7 +308,7 @@ export class AiAssistantService {
           `आप मुझसे हिंदी या इंग्लिश में ऑर्डर्स, लीव बैलेंस, या अटेंडेंस के बारे में भी पूछ सकते हैं।`;
       } else {
         answer = `### 📊 Enterprise Field Force Executive Summary (${dateLabel})\n\n` +
-          `Here is the live operational snapshot for **Ahtri Pharmaceuticals**:\n\n` +
+          `Here is the live operational snapshot for **Ahtri Biotech**:\n\n` +
           `- **Total Scheduled Calls**: **${totalTasks}**\n` +
           `- **Calls Completed**: **${completedTasks}** (${completionRate})\n` +
           `- **Remaining Tasks**: **${pendingTasks}** pending, **${inProgressTasks}** in progress\n` +
@@ -363,7 +363,7 @@ export class AiAssistantService {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
     const summaryData = [
-      { Metric: 'Organization', Value: 'AHTRI PHARMACEUTICALS' },
+      { Metric: 'Organization', Value: 'AHTRI BIOTECH' },
       { Metric: 'System', Value: 'Enterprise Field Force Automation (FFA)' },
       { Metric: 'Report Generated At', Value: new Date().toLocaleString('en-IN') },
       { Metric: 'Date Range', Value: dateRange ? `${dateRange.start || 'Start'} to ${dateRange.end || 'End'}` : 'All Time' },
@@ -453,7 +453,7 @@ export class AiAssistantService {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AHTRI PHARMACEUTICALS - Executive Field Force Audit Report</title>
+  <title>AHTRI BIOTECH - Executive Field Force Audit Report</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; margin: 0; padding: 40px; background: #FFFFFF; }
     .header { border-bottom: 3px solid #1A3C6E; padding-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -470,7 +470,7 @@ export class AiAssistantService {
 <body>
   <div class="header">
     <div>
-      <h1 class="title">AHTRI PHARMACEUTICALS</h1>
+      <h1 class="title">AHTRI BIOTECH</h1>
       <div class="subtitle">Field Force Automation • Executive Performance & Territory Audit</div>
       <div style="margin-top:8px;font-size:12px;font-weight:600;color:#0F8B5A;">Report Scope: ${k.dateRangeLabel}</div>
     </div>
@@ -506,7 +506,7 @@ export class AiAssistantService {
   </table>
 
   <div style="margin-top:40px;border-top:1px solid #E2E8F0;padding-top:16px;font-size:11px;color:#94A3B8;display:flex;justify-content:space-between;">
-    <span>Ahtri Pharmaceuticals Enterprise Automation • Ground Truth Database Verified</span>
+    <span>Ahtri Biotech Enterprise Automation • Ground Truth Database Verified</span>
     <span>Page 1 of 1</span>
   </div>
 </body>

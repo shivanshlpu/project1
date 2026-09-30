@@ -163,7 +163,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             <Building size={26} color="#ffffff" />
           </div>
           <div className="login-brand-title">
-            <h2>AHTRI PHARMA</h2>
+            <h2>AHTRI BIOTECH</h2>
             <span>Field Force Automation Command Center</span>
           </div>
         </div>

@@ -32,6 +32,37 @@ export class NotificationsService {
 
     return list;
   }
+
+  async sendPushNotification(userId: string, title: string, body: string, data?: any) {
+    const token = this.db.fcmTokens.get(userId);
+    if (!token) {
+      console.log(`[Push] No push token registered for user ${userId}`);
+      return;
+    }
+
+    try {
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: token,
+          sound: 'default',
+          title,
+          body,
+          channelId: 'ahtri_tasks',
+          priority: 'high',
+          data,
+        }),
+      });
+      const result = await res.json();
+      console.log(`[Push] Sent push notification to ${userId}:`, result);
+    } catch (err: any) {
+      console.warn(`[Push] Error sending push notification to ${userId}:`, err?.message);
+    }
+  }
 }
 
 @Controller('notifications')

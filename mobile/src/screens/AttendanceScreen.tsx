@@ -23,14 +23,14 @@ interface AttendanceScreenProps {
     email: string;
     phone: string;
   } | null;
-  initialSubTab?: 'punch' | 'leave';
+  initialSubTab?: 'punch' | 'history' | 'leave';
 }
 
 export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   currentUser,
   initialSubTab = 'punch',
 }) => {
-  const [subTab, setSubTab] = useState<'punch' | 'leave'>(initialSubTab);
+  const [subTab, setSubTab] = useState<'punch' | 'history' | 'leave'>(initialSubTab);
   const [checkedIn, setCheckedIn] = useState<boolean>(false);
   const [checkedOut, setCheckedOut] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -41,6 +41,9 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkOutGps, setCheckOutGps] = useState<string | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
+  const [lateEntryNotice, setLateEntryNotice] = useState<string | null>(null);
+  const [earlyExitNotice, setEarlyExitNotice] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const userId = currentUser?.id || 'usr-mr-01';
@@ -67,7 +70,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       })
       .catch(() => {});
 
-    // 2. Fetch live status from backend
+    // 2. Fetch live status & history from backend
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -76,6 +79,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list)) {
+            setAttendanceHistory(list);
             const todayRec = list.find((a: any) => a.date === todayStr);
             if (todayRec) {
               const inTime = todayRec.check_in_at
@@ -89,11 +93,18 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               setCheckInTime(inTime);
               if (gpsStr) setCheckInGps(gpsStr);
 
+              if (todayRec.late_minutes && todayRec.late_minutes > 0) {
+                setLateEntryNotice(`Late Entry — ${todayRec.late_minutes} minutes`);
+              }
+
               let outTime: string | null = null;
               if (todayRec.check_out_at) {
                 outTime = new Date(todayRec.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 setCheckedOut(true);
                 setCheckOutTime(outTime);
+                if (todayRec.early_minutes && todayRec.early_minutes > 0) {
+                  setEarlyExitNotice(`Early Punch Out — ${todayRec.early_minutes} minutes`);
+                }
               }
 
               AsyncStorage.setItem(
@@ -113,54 +124,80 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     })();
   }, [userId, todayStr]);
 
-  // Take selfie photo via Camera
+  // Take selfie photo via Camera (§21)
   const handleTakeSelfie = async () => {
-    const photo = await CameraService.captureLivePhoto({
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (photo) {
-      setSelfiePhoto(photo);
-    } else {
-      Alert.alert(
-        'Camera Notice',
-        'Camera permission is required or capture was cancelled. You can retry taking your punch-in selfie.'
-      );
-    }
+    Alert.alert(
+      'Work Attire Verification',
+      'Please stand properly in front of the camera and capture a photo in proper company work attire.',
+      [
+        {
+          text: 'Open Camera',
+          onPress: async () => {
+            const photo = await CameraService.captureLivePhoto({
+              aspect: [4, 5],
+              quality: 0.8,
+            });
+            if (photo) {
+              setSelfiePhoto(photo);
+            } else {
+              Alert.alert(
+                'Camera Notice',
+                'Camera permission is required or capture was cancelled. You can retry taking your photo.'
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
-  // Perform GPS-tagged Punch-in
+  // Perform GPS-tagged Punch-in (§20, §21, §22, §24)
   const handleCheckIn = async () => {
     if (!selfiePhoto) {
       Alert.alert(
         'Camera Photo Required',
-        'Please click a photo using your camera before punching in.\n\nNote: The photo is taken solely as a real-time check-in process and is NOT stored in the database. No biometric face scan is required.'
+        'Stand properly in front of the camera and capture a photo in proper work attire before punching in.'
       );
       return;
     }
 
     setIsLoading(true);
     try {
-      // 1. Get Live GPS
+      // 1. Get Live GPS with Anti-Mock detection
       const coords = await LocationService.getCurrentLocation();
       const lat = coords?.latitude || 28.5245;
       const lon = coords?.longitude || 77.2066;
       const accuracy = coords?.accuracy ? Math.round(coords.accuracy) : 10;
+      const isMocked = (coords as any)?.isMocked || (coords as any)?.is_mocked || false;
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
       // 2. Post to Backend
+      let lateMsg = '';
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
-        await fetch(`${baseUrl}/attendance/check-in`, {
+        const res = await fetch(`${baseUrl}/attendance/check-in`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             latitude: lat,
             longitude: lon,
+            gps_accuracy_m: accuracy,
+            is_mocked: isMocked,
+            check_in_photo: selfiePhoto.uri,
+            photo_key: `photo_att_in_${Date.now()}`,
           }),
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.late_minutes && data.late_minutes > 0) {
+            lateMsg = `Late Entry — ${data.late_minutes} minutes`;
+            setLateEntryNotice(lateMsg);
+          } else {
+            setLateEntryNotice('On-Time Entry');
+          }
+        }
       } catch {
         // Safe offline queue fallback
       }
@@ -183,7 +220,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       Alert.alert(
         'Attendance Marked Done! ✓',
-        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n\nShift is now active. Your attendance has been submitted and verified.`,
+        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n${lateMsg ? `\n• ${lateMsg}` : '\n• On-Time Entry'}\n\nShift is now active. Your attendance has been submitted with live photo verification.`,
       );
     } catch (error: any) {
       Alert.alert('Attendance Error', error?.message || 'Failed to record attendance.');
@@ -192,7 +229,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     }
   };
 
-  // Perform GPS-tagged Punch-out
+  // Perform GPS-tagged Punch-out (§23, §24)
   const handleCheckOut = async () => {
     setIsLoading(true);
     try {
@@ -203,17 +240,27 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
+      let earlyMsg = '';
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
-        await fetch(`${baseUrl}/attendance/check-out`, {
+        const res = await fetch(`${baseUrl}/attendance/check-out`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             latitude: lat,
             longitude: lon,
+            gps_accuracy_m: accuracy,
+            photo_key: `photo_att_out_${Date.now()}`,
           }),
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.early_minutes && data.early_minutes > 0) {
+            earlyMsg = `Early Punch Out — ${data.early_minutes} minutes`;
+            setEarlyExitNotice(earlyMsg);
+          }
+        }
       } catch {
         // Safe offline queue
       }
@@ -235,7 +282,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         }),
       );
 
-      Alert.alert('Shift Ended', `Punch-out recorded at ${nowStr}. Shift marked as Completed.`);
+      Alert.alert(
+        'Shift Ended ✓',
+        `Punch-out recorded at ${nowStr}.\nShift marked as Completed.\n${earlyMsg ? `\n• ${earlyMsg}` : '\n• Standard Shift Hours Completed'}`
+      );
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to record checkout.');
     } finally {
@@ -255,6 +305,13 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.topSegmentBtn, styles.topSegmentBtnInactive]}
+            onPress={() => setSubTab('history')}
+          >
+            <Text style={styles.topSegmentText}>My Attendance Log</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.topSegmentBtn, styles.topSegmentBtnActive]}
             onPress={() => setSubTab('leave')}
           >
@@ -270,6 +327,139 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     );
   }
 
+  if (subTab === 'history') {
+    return (
+      <ScrollView style={[styles.container, { padding: 14 }]}>
+        <View style={styles.topSegmentBar}>
+          <TouchableOpacity
+            style={[styles.topSegmentBtn, styles.topSegmentBtnInactive]}
+            onPress={() => setSubTab('punch')}
+          >
+            <Text style={styles.topSegmentText}>Daily Geo-Punch</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.topSegmentBtn, styles.topSegmentBtnActive]}
+            onPress={() => setSubTab('history')}
+          >
+            <Text style={styles.topSegmentTextActive}>My Attendance Log</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.topSegmentBtn, styles.topSegmentBtnInactive]}
+            onPress={() => setSubTab('leave')}
+          >
+            <Text style={styles.topSegmentText}>Apply for Leave</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Attendance History</Text>
+          <Text style={styles.headerSub}>Punch-in/out records, working duration &amp; compliance</Text>
+        </View>
+
+        {attendanceHistory.length === 0 ? (
+          <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 12, alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, color: '#64748B' }}>No past attendance records found.</Text>
+          </View>
+        ) : (
+          attendanceHistory.map((rec: any, idx: number) => {
+            const isMissingPunchOut = rec.check_in_at && !rec.check_out_at && rec.date !== todayStr;
+            const inTimeStr = rec.check_in_at
+              ? new Date(rec.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '--';
+            const outTimeStr = rec.check_out_at
+              ? new Date(rec.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : isMissingPunchOut
+              ? 'MISSING'
+              : 'Pending';
+
+            return (
+              <View
+                key={rec.id || `att-hist-${idx}`}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 10,
+                  padding: 14,
+                  marginBottom: 10,
+                  borderWidth: 1,
+                  borderColor: isMissingPunchOut ? '#FCA5A5' : '#E2E8F0',
+                  borderLeftWidth: 4,
+                  borderLeftColor: isMissingPunchOut ? '#DC2626' : rec.check_out_at ? '#10B981' : '#F59E0B',
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                    📅 {formatDateDDMMYYYY(rec.date)}
+                  </Text>
+                  <View
+                    style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      backgroundColor: isMissingPunchOut ? '#FEE2E2' : rec.check_out_at ? '#DCFCE7' : '#FEF3C7',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '700',
+                        color: isMissingPunchOut ? '#991B1B' : rec.check_out_at ? '#166534' : '#92400E',
+                      }}
+                    >
+                      {isMissingPunchOut ? 'MISSING PUNCH-OUT' : rec.status || 'PRESENT'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                  <View>
+                    <Text style={{ fontSize: 10, color: '#64748B' }}>PUNCH IN</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F8B5A' }}>{inTimeStr}</Text>
+                    {rec.late_minutes && rec.late_minutes > 0 ? (
+                      <Text style={{ fontSize: 9.5, color: '#DC2626', fontWeight: '700' }}>
+                        Late: {rec.late_minutes}m
+                      </Text>
+                    ) : (
+                      <Text style={{ fontSize: 9.5, color: '#166534' }}>On-Time</Text>
+                    )}
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 10, color: '#64748B' }}>PUNCH OUT</Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: '700',
+                        color: isMissingPunchOut ? '#DC2626' : '#1E40AF',
+                      }}
+                    >
+                      {outTimeStr}
+                    </Text>
+                    {rec.early_minutes && rec.early_minutes > 0 ? (
+                      <Text style={{ fontSize: 9.5, color: '#DC2626', fontWeight: '700' }}>
+                        Early: {rec.early_minutes}m
+                      </Text>
+                    ) : rec.check_out_at ? (
+                      <Text style={{ fontSize: 9.5, color: '#166534' }}>Completed</Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {rec.total_working_hours !== undefined && (
+                  <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 10.5, color: '#64748B' }}>Duration: {rec.total_working_hours} hrs</Text>
+                    <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '600' }}>✓ GPS Verified</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.topSegmentBar}>
@@ -282,6 +472,13 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
         <TouchableOpacity
           style={[styles.topSegmentBtn, styles.topSegmentBtnInactive]}
+          onPress={() => setSubTab('history')}
+        >
+          <Text style={styles.topSegmentText}>My Attendance Log</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.topSegmentBtn, styles.topSegmentBtnInactive]}
           onPress={() => setSubTab('leave')}
         >
           <Text style={styles.topSegmentText}>Apply for Leave</Text>
@@ -290,7 +487,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Field Attendance & In/Out Log</Text>
-        <Text style={styles.headerSub}>Real-time GPS verification with check-in camera snapshot</Text>
+        <Text style={styles.headerSub}>Live camera verification in work attire &amp; GPS geofence</Text>
       </View>
 
       {/* Employee Reassurance Notice Card */}
@@ -364,15 +561,15 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </View>
         </View>
 
-        {/* Camera Photo Section (if not yet checked in) */}
+        {/* Camera Photo Section (if not yet checked in) (§21) */}
         {!checkedIn && (
           <View style={styles.selfieSection}>
             {selfiePhoto ? (
               <View style={styles.selfiePreviewBox}>
-                <Image source={{ uri: selfiePhoto.uri }} style={styles.selfieImage} />
+                <Image source={{ uri: selfiePhoto.uri }} style={[styles.selfieImage, { width: 120, height: 150, borderRadius: 10 }]} />
                 <View style={styles.photoVerifiedBadge}>
-                  <Text style={styles.photoVerifiedText}>✓ Check-in Photo Captured</Text>
-                  <Text style={styles.photoVerifiedSub}>Temporary preview only (not stored in database)</Text>
+                  <Text style={styles.photoVerifiedText}>✓ Work Attire Photo Captured</Text>
+                  <Text style={styles.photoVerifiedSub}>Direct camera capture verified</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.retakeBtn}
@@ -388,15 +585,18 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               >
                 <Text style={styles.cameraTriggerIcon}>📷</Text>
                 <Text style={styles.cameraTriggerText}>Click Photo with Camera</Text>
-                <Text style={styles.cameraTriggerSub}>
-                  Take a quick selfie to enable punch in (no face scan required)
+                <Text style={[styles.cameraTriggerSub, { fontWeight: '700', color: '#1E40AF', marginTop: 4 }]}>
+                  "Stand properly in front of the camera and capture a full-body photo in proper work attire."
+                </Text>
+                <Text style={[styles.cameraTriggerSub, { fontSize: 10, color: '#64748B', marginTop: 2 }]}>
+                  Direct camera verification required by company policy.
                 </Text>
               </TouchableOpacity>
             )}
           </View>
         )}
 
-        {/* Check-In Details Card */}
+        {/* Check-In Details Card (§20, §24) */}
         {checkedIn && (
           <View style={styles.recordBox}>
             <View style={styles.recordHeaderRow}>
@@ -405,16 +605,30 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 <Image source={{ uri: selfiePhoto.uri }} style={styles.thumbnailSelfie} />
               )}
             </View>
+            {lateEntryNotice ? (
+              <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>⏱ {lateEntryNotice}</Text>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ On-Time Shift Entry</Text>
+              </View>
+            )}
             <Text style={styles.recordDetails}>{checkInGps || 'GPS: 28.5245, 77.2066 (Accuracy: ±8m)'}</Text>
           </View>
         )}
 
-        {/* Check-Out Details Card */}
+        {/* Check-Out Details Card (§23, §24) */}
         {checkedOut && (
           <View style={[styles.recordBox, { backgroundColor: '#EBF8FF' }]}>
             <Text style={[styles.recordTitle, { color: '#0052cc' }]}>
               ✓ Out-Time Recorded: {checkOutTime || '06:15 PM'}
             </Text>
+            {earlyExitNotice && (
+              <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>⏱ {earlyExitNotice}</Text>
+              </View>
+            )}
             <Text style={[styles.recordDetails, { color: '#004099' }]}>
               {checkOutGps || 'GPS: 28.5300, 77.2100 (Accuracy: ±10m)'}
             </Text>
