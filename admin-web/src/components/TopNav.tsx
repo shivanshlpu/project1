@@ -28,6 +28,8 @@ interface TopNavProps {
   onLogout?: () => void;
   onToggleSidebar?: () => void;
   isSidebarCollapsed?: boolean;
+  onToggleMobileSidebar?: () => void;
+  isMobileSidebarOpen?: boolean;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -42,6 +44,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   onLogout,
   onToggleSidebar,
   isSidebarCollapsed,
+  onToggleMobileSidebar,
+  isMobileSidebarOpen,
 }) => {
   const t = translations[lang];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -138,35 +142,42 @@ export const TopNav: React.FC<TopNavProps> = ({
         <>
           {/* Brand Logo & Name */}
           <div className="nav-brand-cluster">
-            {onToggleSidebar && (
+            {(onToggleSidebar || onToggleMobileSidebar) && (
               <button
                 type="button"
                 className="btn-sidebar-toggle"
-                onClick={onToggleSidebar}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                    if (onToggleMobileSidebar) {
+                      onToggleMobileSidebar();
+                      return;
+                    }
+                  }
+                  if (onToggleSidebar) onToggleSidebar();
+                }}
                 title={
-                  isSidebarCollapsed
-                    ? lang === 'hi'
-                      ? 'साइडबार खोलें'
-                      : 'Expand Sidebar'
-                    : lang === 'hi'
-                    ? 'साइडबार समेटें'
-                    : 'Collapse Sidebar'
+                  isMobileSidebarOpen
+                    ? lang === 'hi' ? 'साइडबार बंद करें' : 'Close Navigation'
+                    : isSidebarCollapsed
+                    ? lang === 'hi' ? 'साइडबार खोलें' : 'Expand Sidebar'
+                    : lang === 'hi' ? 'साइडबार समेटें' : 'Collapse Sidebar'
                 }
                 style={{
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  background: isMobileSidebarOpen ? '#ECFDF5' : '#F8FAFC',
+                  border: isMobileSidebarOpen ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
                   borderRadius: '6px',
                   padding: '6px 8px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#334155',
+                  color: isMobileSidebarOpen ? '#0F8B5A' : '#334155',
                   marginRight: '6px',
                   transition: 'background 0.15s, border-color 0.15s',
                 }}
+                aria-label="Navigation Menu Toggle"
               >
-                <Menu size={16} />
+                {isMobileSidebarOpen ? <X size={17} /> : <Menu size={17} />}
               </button>
             )}
             <div
@@ -399,15 +410,36 @@ export const TopNav: React.FC<TopNavProps> = ({
               <span>{lang === 'en' ? 'HI' : 'EN'}</span>
             </button>
 
-            {/* Mobile Hamburger Menu Toggle Button */}
+            {/* Mobile User Profile Avatar Button (Opens Account / Settings / Logout Drawer) */}
             <button
               type="button"
-              className={`mobile-hamburger-btn mobile-only-action ${mobileMenuOpen ? 'active' : ''}`}
+              className="mobile-avatar-btn mobile-only-action"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              title={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-label="User Account Menu"
+              title={managerName}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: '#0B2545',
+                color: '#FFFFFF',
+                fontSize: '11px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: mobileMenuOpen ? '2px solid #0F8B5A' : '1.5px solid #CBD5E1',
+                cursor: 'pointer',
+                flexShrink: 0,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
             >
-              {mobileMenuOpen ? <X size={20} color="#0F172A" /> : <Menu size={20} color="#0F172A" />}
+              {managerName
+                .split(' ')
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)}
             </button>
           </div>
         </>

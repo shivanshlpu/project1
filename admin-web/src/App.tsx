@@ -60,12 +60,19 @@ export const App: React.FC = () => {
     return localStorage.getItem('ahtri_sidebar_collapsed') === 'true';
   });
 
+  // Mobile Drawer Navigation State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem('ahtri_sidebar_collapsed', String(next));
       return next;
     });
+  };
+
+  const handleToggleMobileSidebar = () => {
+    setIsMobileSidebarOpen((prev) => !prev);
   };
 
   const [assignedLocationTarget, setAssignedLocationTarget] = useState<{
@@ -274,6 +281,8 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleSidebar={handleToggleSidebar}
         isSidebarCollapsed={isSidebarCollapsed}
+        onToggleMobileSidebar={handleToggleMobileSidebar}
+        isMobileSidebarOpen={isMobileSidebarOpen}
       />
 
       {/* Main Body Layout with Scrollable Sidebar and Canvas */}
@@ -284,6 +293,7 @@ export const App: React.FC = () => {
           onSelectTab={(tab) => {
             if (tab !== 'tasks') setAssignedLocationTarget(null);
             setManagerTab(tab);
+            setIsMobileSidebarOpen(false);
           }}
           pendingApprovalsCount={3}
           newLocationsCount={recentNewLocations.length}
@@ -291,6 +301,8 @@ export const App: React.FC = () => {
           onAssignNewCall={handleAssignNewCall}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleSidebar}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Main Workspace Canvas */}

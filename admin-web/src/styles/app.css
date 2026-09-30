@@ -320,6 +320,14 @@
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
+.sidebar-mobile-backdrop {
+  display: none;
+}
+
+.sidebar-mobile-close-btn {
+  display: none;
+}
+
 /* Enterprise Top Bar (Salesforce / Meta Style) */
 .enterprise-navbar {
   height: 52px;
@@ -2501,6 +2509,96 @@
 @media (max-width: 768px) {
   .floating-ai-fab {
     display: none !important; /* Replaced by first-class AI Command Hub tab */
+  }
+
+  /* CRITICAL: Hide persistent sidebar on phone view completely to give 100% canvas width */
+  .enterprise-sidebar {
+    display: none !important;
+  }
+
+  /* When mobile drawer is toggled open, slide in as a full drawer over the content */
+  .enterprise-sidebar.mobile-open {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 1000 !important;
+    background: #FFFFFF !important;
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.28) !important;
+    animation: slideInMobileSidebar 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  .enterprise-sidebar.mobile-open .sidebar-item-label {
+    display: inline-block !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-group-title {
+    display: block !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-cta-btn {
+    justify-content: center !important;
+    padding: 10px 14px !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-cta-btn span {
+    display: inline !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-nav-item {
+    justify-content: flex-start !important;
+    padding: 10px 12px !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-export-btn span {
+    display: inline !important;
+  }
+  .enterprise-sidebar.mobile-open .sidebar-status-indicator {
+    display: flex !important;
+  }
+
+  @keyframes slideInMobileSidebar {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  /* Dark Backdrop for Mobile Sidebar Drawer */
+  .sidebar-mobile-backdrop {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+    z-index: 999 !important;
+    animation: fadeInSidebarBackdrop 0.18s ease forwards !important;
+  }
+
+  @keyframes fadeInSidebarBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .sidebar-mobile-close-btn {
+    border: 1px solid var(--color-border);
+    background: #F8FAFC;
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    color: #475569;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .sidebar-mobile-close-btn:hover {
+    background: #FEE2E2;
+    color: #DC2626;
+    border-color: #FCA5A5;
   }
 
   /* Mobile Enterprise TopBar */

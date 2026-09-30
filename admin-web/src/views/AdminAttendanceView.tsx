@@ -84,11 +84,21 @@ export const AdminAttendanceView: React.FC = () => {
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   // Load MR list on mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${apiUrl}/users`);
+        const res = await fetch(`${apiUrl}/users`, {
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -103,7 +113,9 @@ export const AdminAttendanceView: React.FC = () => {
   // Load Settings on mount (§22)
   const fetchSettings = async () => {
     try {
-      const res = await fetch(`${apiUrl}/attendance/settings`);
+      const res = await fetch(`${apiUrl}/attendance/settings`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
@@ -129,7 +141,9 @@ export const AdminAttendanceView: React.FC = () => {
       if (filterMissingPunchOutOnly) params.append('is_missing_punchout', 'true');
       if (filterSuspiciousOnly) params.append('is_suspicious', 'true');
 
-      const res = await fetch(`${apiUrl}/attendance?${params.toString()}`);
+      const res = await fetch(`${apiUrl}/attendance?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -160,7 +174,7 @@ export const AdminAttendanceView: React.FC = () => {
     try {
       const res = await fetch(`${apiUrl}/attendance/settings`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           expected_punch_in_time: settings.expected_punch_in_time,
           allowed_punch_in_window_minutes: Number(settings.allowed_punch_in_window_minutes),
@@ -189,36 +203,36 @@ export const AdminAttendanceView: React.FC = () => {
   const suspiciousCount = records.filter((r) => r.is_mocked).length;
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Clock size={22} color="var(--color-brand)" />
-            Field Attendance &amp; Identity Verification (§20–§26)
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 260, flex: '1 1 280px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Clock size={20} color="var(--color-brand)" style={{ flexShrink: 0 }} />
+            <span>Field Attendance &amp; Identity Verification</span>
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Geofenced GPS tracking, live work-attire camera snapshots, anti-mock integrity, and late/early deviation audit.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
             className="btn-enterprise secondary"
             onClick={() => setIsSettingsModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
           >
             <Sliders size={14} />
-            <span>Attendance Time Settings (§22)</span>
+            <span>Time Settings</span>
           </button>
 
           <button
             className="btn-enterprise secondary"
             onClick={fetchAttendance}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            <span>Refresh Logs</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -426,8 +440,8 @@ export const AdminAttendanceView: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Date</th>
@@ -631,6 +645,8 @@ export const AdminAttendanceView: React.FC = () => {
               borderRadius: 10,
               width: '100%',
               maxWidth: 460,
+              maxHeight: '90vh',
+              overflowY: 'auto',
               padding: 22,
               boxShadow: 'var(--shadow-lg)',
             }}
@@ -743,6 +759,8 @@ export const AdminAttendanceView: React.FC = () => {
               borderRadius: 12,
               width: '100%',
               maxWidth: 420,
+              maxHeight: '90vh',
+              overflowY: 'auto',
               padding: 18,
               boxShadow: 'var(--shadow-lg)',
             }}

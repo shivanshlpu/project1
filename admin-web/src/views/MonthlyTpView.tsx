@@ -50,13 +50,21 @@ export const MonthlyTpView: React.FC = () => {
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   // Fetch MRs & HQs on mount
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const [usersRes, hqsRes] = await Promise.all([
-          fetch(`${apiUrl}/users`),
-          fetch(`${apiUrl}/inventory/hqs`),
+          fetch(`${apiUrl}/users`, { headers: getAuthHeaders() }),
+          fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() }),
         ]);
         if (usersRes.ok) {
           const uData = await usersRes.json();
@@ -83,7 +91,9 @@ export const MonthlyTpView: React.FC = () => {
       if (selectedMr !== 'ALL') query += `&mr_id=${selectedMr}`;
       if (selectedHq !== 'ALL') query += `&hq_id=${selectedHq}`;
 
-      const res = await fetch(`${apiUrl}/tour-plans/admin-list${query}`);
+      const res = await fetch(`${apiUrl}/tour-plans/admin-list${query}`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -119,15 +129,15 @@ export const MonthlyTpView: React.FC = () => {
   });
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calendar size={22} color="var(--color-brand)" />
-            Monthly Tour Plan (TP) Management
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 260, flex: '1 1 280px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Calendar size={20} color="var(--color-brand)" style={{ flexShrink: 0 }} />
+            <span>Monthly Tour Plan (TP) Management</span>
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Review, verify, and monitor complete monthly travel schedules for Medical Representatives across HQs.
           </p>
         </div>
@@ -135,7 +145,7 @@ export const MonthlyTpView: React.FC = () => {
         <button
           className="btn-enterprise secondary"
           onClick={fetchMonthlyPlans}
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
         >
           <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
           <span>Refresh Plan Data</span>
@@ -332,8 +342,8 @@ export const MonthlyTpView: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Date</th>

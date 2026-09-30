@@ -33,6 +33,10 @@ interface CompetitionItem {
   description: string;
   status: 'ACTIVE' | 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
   created_at: string;
+  participants?: MrProgressItem[];
+  total_sales_all_mrs?: number;
+  eligible_mrs_count?: number;
+  claims_count?: number;
 }
 
 interface MrProgressItem {
@@ -91,13 +95,21 @@ export const CompetitionsView: React.FC = () => {
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   // Load HQs & Medicines master
   useEffect(() => {
     const fetchMaster = async () => {
       try {
         const [hqRes, medRes] = await Promise.all([
-          fetch(`${apiUrl}/inventory/hqs`),
-          fetch(`${apiUrl}/inventory/medicines?active_only=true`),
+          fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() }),
+          fetch(`${apiUrl}/inventory/medicines?active_only=true`, { headers: getAuthHeaders() }),
         ]);
         if (hqRes.ok) {
           const data = await hqRes.json();
@@ -119,13 +131,20 @@ export const CompetitionsView: React.FC = () => {
   const fetchCompetitions = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/competitions`);
+      const res = await fetch(`${apiUrl}/competitions/admin`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
           setCompetitions(data);
-          if (data.length > 0 && !selectedCompId) {
-            setSelectedCompId(data[0].id);
+          const activeId = selectedCompId || (data.length > 0 ? data[0].id : '');
+          if (activeId) {
+            setSelectedCompId(activeId);
+            const found = data.find((c: any) => c.id === activeId);
+            if (found && found.participants) {
+              setMrProgressList(found.participants);
+            }
           }
         }
       }
@@ -137,21 +156,18 @@ export const CompetitionsView: React.FC = () => {
   // Fetch MR progress for selected competition (§34)
   const fetchProgress = async () => {
     if (!selectedCompId) return;
-    try {
-      const res = await fetch(`${apiUrl}/competitions/${selectedCompId}/progress`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setMrProgressList(data);
-        }
-      }
-    } catch {}
+    const found = competitions.find((c: any) => c.id === selectedCompId);
+    if (found && found.participants) {
+      setMrProgressList(found.participants);
+    }
   };
 
   // Fetch all claims (§33 & §34)
   const fetchClaims = async () => {
     try {
-      const res = await fetch(`${apiUrl}/competitions/claims/all`);
+      const res = await fetch(`${apiUrl}/competitions/claims`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -167,8 +183,10 @@ export const CompetitionsView: React.FC = () => {
   }, [apiUrl]);
 
   useEffect(() => {
-    if (selectedCompId) fetchProgress();
-  }, [selectedCompId]);
+    if (selectedCompId && competitions.length > 0) {
+      fetchProgress();
+    }
+  }, [selectedCompId, competitions]);
 
   // Handler: Create Competition (§27)
   const handleCreateCompetition = async () => {
@@ -179,7 +197,7 @@ export const CompetitionsView: React.FC = () => {
     try {
       const res = await fetch(`${apiUrl}/competitions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: compName.trim(),
           start_date: startDate,
@@ -204,15 +222,15 @@ export const CompetitionsView: React.FC = () => {
     try {
       const res = await fetch(`${apiUrl}/competitions/claims/${claimId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           status,
-          notes: `Decision recorded by Admin on ${formatDateDDMMYYYY(new Date())}`,
+          comment: `Decision recorded by Admin on ${formatDateDDMMYYYY(new Date())}`,
         }),
       });
       if (res.ok) {
         fetchClaims();
-        fetchProgress();
+        fetchCompetitions();
       }
     } catch {}
   };
@@ -220,27 +238,27 @@ export const CompetitionsView: React.FC = () => {
   const selectedComp = competitions.find((c) => c.id === selectedCompId);
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Trophy size={22} color="var(--color-brand)" />
-            MR Sales Competitions &amp; Incentive Rewards (§27–§34)
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 260, flex: '1 1 280px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Trophy size={20} color="var(--color-brand)" style={{ flexShrink: 0 }} />
+            <span>MR Sales Competitions &amp; Incentive Rewards</span>
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Configure sales target campaigns, track live orders (single source of truth), and review cash reward claims.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
             className="btn-enterprise"
             onClick={() => setIsCreateModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
           >
             <Plus size={14} />
-            <span>Create New Competition (§27)</span>
+            <span>Create Competition</span>
           </button>
 
           <button
@@ -250,7 +268,7 @@ export const CompetitionsView: React.FC = () => {
               fetchProgress();
               fetchClaims();
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -258,7 +276,7 @@ export const CompetitionsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Segment Tabs */}
+      {/* Segment Tabs - Swipeable on mobile */}
       <div
         style={{
           display: 'flex',
@@ -266,18 +284,23 @@ export const CompetitionsView: React.FC = () => {
           background: 'var(--color-surface-secondary)',
           padding: 4,
           borderRadius: 8,
-          marginBottom: 20,
+          marginBottom: 16,
           border: '1px solid var(--color-border)',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          flexWrap: 'nowrap',
         }}
       >
         <button
           onClick={() => setActiveTab('CAMPAIGNS')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'CAMPAIGNS' ? '#FFFFFF' : 'transparent',
@@ -287,6 +310,7 @@ export const CompetitionsView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <Trophy size={14} />
@@ -296,11 +320,11 @@ export const CompetitionsView: React.FC = () => {
         <button
           onClick={() => setActiveTab('CLAIMS')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'CLAIMS' ? '#FFFFFF' : 'transparent',
@@ -310,10 +334,11 @@ export const CompetitionsView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <Award size={14} color="#166534" />
-          <span>Reward Claims Workflow ({claims.length})</span>
+          <span>Reward Claims ({claims.length})</span>
         </button>
       </div>
 
@@ -427,8 +452,8 @@ export const CompetitionsView: React.FC = () => {
                 No MR progress recorded for this competition yet.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medical Representative</th>
@@ -564,8 +589,8 @@ export const CompetitionsView: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Claim Date</th>
@@ -709,6 +734,8 @@ export const CompetitionsView: React.FC = () => {
               borderRadius: 10,
               width: '100%',
               maxWidth: 480,
+              maxHeight: '90vh',
+              overflowY: 'auto',
               padding: 22,
               boxShadow: 'var(--shadow-lg)',
             }}

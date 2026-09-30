@@ -113,11 +113,21 @@ export const StockerManagementView: React.FC = () => {
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   // Load HQs on mount
   useEffect(() => {
     const fetchHqs = async () => {
       try {
-        const res = await fetch(`${apiUrl}/inventory/hqs`);
+        const res = await fetch(`${apiUrl}/inventory/hqs`, {
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -134,7 +144,9 @@ export const StockerManagementView: React.FC = () => {
   const fetchStockers = async () => {
     if (!selectedHqId) return;
     try {
-      const res = await fetch(`${apiUrl}/inventory/stockers?hq_id=${selectedHqId}`);
+      const res = await fetch(`${apiUrl}/inventory/stockers?hq_id=${selectedHqId}`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -162,7 +174,9 @@ export const StockerManagementView: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/inventory/stocker/${selectedStockerId}/products`);
+      const res = await fetch(`${apiUrl}/inventory/stockers/${selectedStockerId}/inventory`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -181,7 +195,9 @@ export const StockerManagementView: React.FC = () => {
   // Fetch medicines master (§11)
   const fetchMedicines = async () => {
     try {
-      const res = await fetch(`${apiUrl}/inventory/medicines`);
+      const res = await fetch(`${apiUrl}/inventory/medicines`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -194,7 +210,9 @@ export const StockerManagementView: React.FC = () => {
   // Fetch alerts (§18)
   const fetchAlerts = async () => {
     try {
-      const res = await fetch(`${apiUrl}/inventory/alerts`);
+      const res = await fetch(`${apiUrl}/inventory/alerts`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -207,7 +225,9 @@ export const StockerManagementView: React.FC = () => {
   // Fetch audit trail (§19)
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch(`${apiUrl}/inventory/audit-trail`);
+      const res = await fetch(`${apiUrl}/inventory/transactions`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -232,7 +252,7 @@ export const StockerManagementView: React.FC = () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           hq_id: selectedHqId,
           name: newStockerName.trim(),
@@ -261,7 +281,7 @@ export const StockerManagementView: React.FC = () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/medicines`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newMedName.trim(),
           product_code: newMedCode.trim() || `MED-${Date.now().toString().slice(-4)}`,
@@ -284,13 +304,13 @@ export const StockerManagementView: React.FC = () => {
   const handleSaveStockAdjustment = async () => {
     if (!stockEditTarget || !selectedStockerId) return;
     try {
-      const res = await fetch(`${apiUrl}/inventory/stocker/${selectedStockerId}/update-stock`, {
+      const res = await fetch(`${apiUrl}/inventory/stockers/${selectedStockerId}/adjust`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           medicine_id: stockEditTarget.medicine_id,
           quantity: parseInt(stockAdjustmentQty) || 0,
-          type: 'SET',
+          transaction_type: 'ADJUSTMENT',
           reason: stockAdjustmentReason.trim(),
         }),
       });
@@ -307,20 +327,20 @@ export const StockerManagementView: React.FC = () => {
   const selectedHq = hqs.find((h) => h.id === selectedHqId);
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Boxes size={22} color="var(--color-brand)" />
-            HQ Stocker &amp; Medicine Inventory Management
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 260, flex: '1 1 280px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Boxes size={20} color="var(--color-brand)" style={{ flexShrink: 0 }} />
+            <span>HQ Stocker &amp; Medicine Inventory</span>
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Multi-HQ isolated inventory, medicine master catalog, real-time stock deduction, and shortage tracking.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
           <button
             className="btn-enterprise secondary"
             onClick={() => {
@@ -328,7 +348,7 @@ export const StockerManagementView: React.FC = () => {
               fetchInventory();
               fetchAlerts();
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             <span>Sync Live Stock</span>
@@ -336,7 +356,7 @@ export const StockerManagementView: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
+      {/* Navigation Sub-Tabs - Smooth Horizontal Swipe on Mobile */}
       <div
         style={{
           display: 'flex',
@@ -344,18 +364,24 @@ export const StockerManagementView: React.FC = () => {
           background: 'var(--color-surface-secondary)',
           padding: 4,
           borderRadius: 8,
-          marginBottom: 20,
+          marginBottom: 16,
           border: '1px solid var(--color-border)',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          flexWrap: 'nowrap',
+          width: '100%',
         }}
       >
         <button
           onClick={() => setActiveTab('INVENTORY')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'INVENTORY' ? '#FFFFFF' : 'transparent',
@@ -365,6 +391,7 @@ export const StockerManagementView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <Layers size={14} />
@@ -374,11 +401,11 @@ export const StockerManagementView: React.FC = () => {
         <button
           onClick={() => setActiveTab('STOCKERS')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'STOCKERS' ? '#FFFFFF' : 'transparent',
@@ -388,6 +415,7 @@ export const StockerManagementView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <Building size={14} />
@@ -397,11 +425,11 @@ export const StockerManagementView: React.FC = () => {
         <button
           onClick={() => setActiveTab('MEDICINES')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'MEDICINES' ? '#FFFFFF' : 'transparent',
@@ -411,6 +439,7 @@ export const StockerManagementView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <Package size={14} />
@@ -420,11 +449,11 @@ export const StockerManagementView: React.FC = () => {
         <button
           onClick={() => setActiveTab('ALERTS')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'ALERTS' ? '#FFFFFF' : 'transparent',
@@ -434,6 +463,7 @@ export const StockerManagementView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <AlertTriangle size={14} color="#DC2626" />
@@ -443,11 +473,11 @@ export const StockerManagementView: React.FC = () => {
         <button
           onClick={() => setActiveTab('AUDIT')}
           style={{
-            flex: 1,
-            padding: '9px 12px',
+            flex: 'none',
+            padding: '8px 14px',
             borderRadius: 6,
             border: 'none',
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
             background: activeTab === 'AUDIT' ? '#FFFFFF' : 'transparent',
@@ -457,6 +487,7 @@ export const StockerManagementView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            whiteSpace: 'nowrap',
           }}
         >
           <FileText size={14} />
@@ -471,14 +502,14 @@ export const StockerManagementView: React.FC = () => {
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 8,
-            padding: '14px 18px',
-            marginBottom: 18,
+            padding: '14px 16px',
+            marginBottom: 16,
             boxShadow: 'var(--shadow-xs)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 1. Select Headquarters (HQ):
               </span>
               <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
@@ -497,6 +528,7 @@ export const StockerManagementView: React.FC = () => {
                         fontWeight: isSelected ? 800 : 600,
                         fontSize: 12,
                         cursor: 'pointer',
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       {hq.name}
@@ -509,12 +541,12 @@ export const StockerManagementView: React.FC = () => {
             {/* Stocker Selector under this HQ */}
             {activeTab === 'INVENTORY' && (
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
-                  2. Select Stocker under {selectedHq?.name}:
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  2. Select Stocker under {selectedHq?.name || 'Selected HQ'}:
                 </span>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {stockers.length === 0 ? (
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
                       No stockers registered under this HQ yet.
                     </span>
                   ) : (
@@ -529,13 +561,18 @@ export const StockerManagementView: React.FC = () => {
                             borderRadius: 6,
                             border: isSelected ? '1.5px solid #0F8B5A' : '1px solid var(--color-border)',
                             background: isSelected ? '#ECFDF5' : '#FFFFFF',
-                            color: isSelected ? '#0F8B5A' : 'var(--color-text-main)',
+                            color: isSelected ? '#065F46' : 'var(--color-text-main)',
                             fontWeight: isSelected ? 800 : 600,
                             fontSize: 12,
                             cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          📦 {st.name}
+                          <Boxes size={13} color={isSelected ? '#0F8B5A' : '#64748B'} />
+                          <span>{st.name}</span>
                         </button>
                       );
                     })
@@ -560,12 +597,14 @@ export const StockerManagementView: React.FC = () => {
         >
           <div
             style={{
-              padding: '12px 18px',
+              padding: '12px 16px',
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-surface-secondary)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
             }}
           >
             <div>
@@ -577,18 +616,18 @@ export const StockerManagementView: React.FC = () => {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 200px', maxWidth: 280, minWidth: 180 }}>
               <input
                 type="text"
                 placeholder="Search medicine in this stocker..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
-                  padding: '5px 10px',
+                  padding: '6px 10px',
                   borderRadius: 6,
                   border: '1px solid var(--color-border)',
                   fontSize: 12,
-                  width: 220,
+                  width: '100%',
                 }}
               />
             </div>
@@ -603,8 +642,8 @@ export const StockerManagementView: React.FC = () => {
               No inventory records initialized for this stocker.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medicine / Product</th>
@@ -762,8 +801,8 @@ export const StockerManagementView: React.FC = () => {
               No stockers found for {selectedHq?.name}. Click "Add Stocker" to register one.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Stocker Name</th>
@@ -855,6 +894,8 @@ export const StockerManagementView: React.FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
             }}
           >
             <div>
@@ -876,8 +917,8 @@ export const StockerManagementView: React.FC = () => {
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medicine Name</th>
@@ -971,8 +1012,8 @@ export const StockerManagementView: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: '#FFF1F2', borderBottom: '1px solid #FECDD3' }}>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: '#991B1B' }}>Medicine</th>
@@ -1043,6 +1084,8 @@ export const StockerManagementView: React.FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
             }}
           >
             <div>
@@ -1060,8 +1103,8 @@ export const StockerManagementView: React.FC = () => {
               No inventory transactions recorded yet.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Timestamp</th>
