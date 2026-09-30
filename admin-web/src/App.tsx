@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TopNav, AppMode } from './components/TopNav';
 import { SubNav, ManagerTab } from './components/SubNav';
+import { SidebarNav } from './components/SidebarNav';
 import { DashboardView } from './views/DashboardView';
 import { TasksView } from './views/TasksView';
 import { SavedLocationsView } from './views/SavedLocationsView';
@@ -53,6 +54,19 @@ export const App: React.FC = () => {
   const [managerName, setManagerName] = useState<string>(() => {
     return localStorage.getItem('ahtri_manager_name') || 'Shivansh Tiwari';
   });
+
+  // Sidebar Navigation State (Expand / Collapse with Persistence)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('ahtri_sidebar_collapsed') === 'true';
+  });
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('ahtri_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const [assignedLocationTarget, setAssignedLocationTarget] = useState<{
     name: string;
@@ -248,7 +262,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-shell">
-      {/* Enterprise Top Navigation */}
+      {/* Enterprise Top Navigation with Sidebar Toggle */}
       <TopNav
         pendingApprovalsCount={3}
         pendingDeviceApprovalsCount={deviceApprovalsCount}
@@ -258,69 +272,76 @@ export const App: React.FC = () => {
         managerName={managerName}
         onOpenSettings={() => setManagerTab('settings')}
         onLogout={handleLogout}
+        onToggleSidebar={handleToggleSidebar}
+        isSidebarCollapsed={isSidebarCollapsed}
       />
 
-      {/* Subnav for Manager Command Center */}
-      <SubNav
-        currentTab={managerTab}
-        onSelectTab={(tab) => {
-          if (tab !== 'tasks') setAssignedLocationTarget(null);
-          setManagerTab(tab);
-        }}
-        pendingApprovalsCount={3}
-        newLocationsCount={recentNewLocations.length}
-        lang={lang}
-        onAssignNewCall={handleAssignNewCall}
-      />
+      {/* Main Body Layout with Scrollable Sidebar and Canvas */}
+      <div className="app-body-layout">
+        {/* Enterprise Vertical Sidebar (Scrollable & Categorized) */}
+        <SidebarNav
+          currentTab={managerTab}
+          onSelectTab={(tab) => {
+            if (tab !== 'tasks') setAssignedLocationTarget(null);
+            setManagerTab(tab);
+          }}
+          pendingApprovalsCount={3}
+          newLocationsCount={recentNewLocations.length}
+          lang={lang}
+          onAssignNewCall={handleAssignNewCall}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+        />
 
-      {/* Main Workspace Canvas */}
-      <main className="workspace-canvas">
-        {managerTab === 'overview' && <DashboardView lang={lang} />}
-        {managerTab === 'tasks' && (
-          <TasksView
-            prefilledLocation={assignedLocationTarget}
-            onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
-          />
-        )}
-        {managerTab === 'locations' && (
-          <SavedLocationsView
-            onAssignTaskToLocation={handleAssignTaskToLocation}
-            targetLocationId={focusedLocationId}
-            onClearTargetLocation={() => setFocusedLocationId(null)}
-            onLocationAcknowledge={handleAcknowledgeLocation}
-          />
-        )}
-        {managerTab === 'members' && (
-          <MembersManagementView
-            onNavigateToLocation={(locId) => {
-              setFocusedLocationId(locId);
-              setManagerTab('locations');
-            }}
-          />
-        )}
-        {managerTab === 'approvals' && <ApprovalsView />}
-        {managerTab === 'attendance' && <AdminAttendanceView />}
-        {managerTab === 'tp' && <MonthlyTpView />}
-        {managerTab === 'stockers' && <StockerManagementView />}
-        {managerTab === 'competitions' && <CompetitionsView />}
-        {managerTab === 'reports' && <ReportsView lang={lang} />}
-        {managerTab === 'ai' && (
-          <AiChatView
-            lang={lang}
-            onNavigateTab={(tab) => {
-              if (tab !== 'tasks') setAssignedLocationTarget(null);
-              setManagerTab(tab as any);
-            }}
-          />
-        )}
-        {managerTab === 'settings' && (
-          <SettingsView
-            lang={lang}
-            managerName={managerName}
-            onUpdateManagerName={handleUpdateManagerName}
-          />
-        )}
-      </main>
+        {/* Main Workspace Canvas */}
+        <main className="workspace-canvas">
+          {managerTab === 'overview' && <DashboardView lang={lang} />}
+          {managerTab === 'tasks' && (
+            <TasksView
+              prefilledLocation={assignedLocationTarget}
+              onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
+            />
+          )}
+          {managerTab === 'locations' && (
+            <SavedLocationsView
+              onAssignTaskToLocation={handleAssignTaskToLocation}
+              targetLocationId={focusedLocationId}
+              onClearTargetLocation={() => setFocusedLocationId(null)}
+              onLocationAcknowledge={handleAcknowledgeLocation}
+            />
+          )}
+          {managerTab === 'members' && (
+            <MembersManagementView
+              onNavigateToLocation={(locId) => {
+                setFocusedLocationId(locId);
+                setManagerTab('locations');
+              }}
+            />
+          )}
+          {managerTab === 'approvals' && <ApprovalsView />}
+          {managerTab === 'attendance' && <AdminAttendanceView />}
+          {managerTab === 'tp' && <MonthlyTpView />}
+          {managerTab === 'stockers' && <StockerManagementView />}
+          {managerTab === 'competitions' && <CompetitionsView />}
+          {managerTab === 'reports' && <ReportsView lang={lang} />}
+          {managerTab === 'ai' && (
+            <AiChatView
+              lang={lang}
+              onNavigateTab={(tab) => {
+                if (tab !== 'tasks') setAssignedLocationTarget(null);
+                setManagerTab(tab as any);
+              }}
+            />
+          )}
+          {managerTab === 'settings' && (
+            <SettingsView
+              lang={lang}
+              managerName={managerName}
+              onUpdateManagerName={handleUpdateManagerName}
+            />
+          )}
+        </main>
+      </div>
 
       {/* Owner Device Approvals & 6-Digit OTP Modal */}
       <DeviceApprovalsModal

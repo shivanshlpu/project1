@@ -26,6 +26,8 @@ interface TopNavProps {
   managerName?: string;
   onOpenSettings?: () => void;
   onLogout?: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -38,6 +40,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   managerName = 'Shivansh Tiwari',
   onOpenSettings,
   onLogout,
+  onToggleSidebar,
+  isSidebarCollapsed,
 }) => {
   const t = translations[lang];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -134,6 +138,37 @@ export const TopNav: React.FC<TopNavProps> = ({
         <>
           {/* Brand Logo & Name */}
           <div className="nav-brand-cluster">
+            {onToggleSidebar && (
+              <button
+                type="button"
+                className="btn-sidebar-toggle"
+                onClick={onToggleSidebar}
+                title={
+                  isSidebarCollapsed
+                    ? lang === 'hi'
+                      ? 'साइडबार खोलें'
+                      : 'Expand Sidebar'
+                    : lang === 'hi'
+                    ? 'साइडबार समेटें'
+                    : 'Collapse Sidebar'
+                }
+                style={{
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#334155',
+                  marginRight: '6px',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+              >
+                <Menu size={16} />
+              </button>
+            )}
             <div
               className="company-badge"
               style={{
