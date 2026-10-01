@@ -17,6 +17,8 @@ import {
   CreateMedicineDto,
   UpdateMedicineDto,
   AdjustStockDto,
+  CreateMonthlyStockEntryDto,
+  BatchMonthlyStockEntryDto,
 } from './inventory.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -119,5 +121,34 @@ export class InventoryController {
     @Query('medicine_id') medicineId?: string,
   ) {
     return this.inventoryService.getTransactions({ hq_id: hqId, stocker_id: stockerId, medicine_id: medicineId });
+  }
+
+  // === MONTHLY STOCK INWARD ENTRIES ===
+  @Get('monthly-entries')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async getMonthlyStockEntries(
+    @Query('hq_id') hqId?: string,
+    @Query('stocker_id') stockerId?: string,
+    @Query('month') month?: string,
+  ) {
+    return this.inventoryService.getMonthlyStockEntries({ hq_id: hqId, stocker_id: stockerId, month });
+  }
+
+  @Post('monthly-entries')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async createMonthlyStockEntry(
+    @Body() dto: CreateMonthlyStockEntryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.createMonthlyStockEntry(dto, user.id);
+  }
+
+  @Post('monthly-entries/batch')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async createBatchMonthlyStockEntries(
+    @Body() dto: BatchMonthlyStockEntryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.createBatchMonthlyStockEntries(dto, user.id);
   }
 }

@@ -13,6 +13,8 @@ import {
   CreateMedicineDto,
   UpdateMedicineDto,
   AdjustStockDto,
+  CreateMonthlyStockEntryDto,
+  BatchMonthlyStockEntryDto,
 } from './inventory.dto';
 import {
   Headquarter,
@@ -21,6 +23,7 @@ import {
   Medicine,
   StockerInventory,
   InventoryTransaction,
+  MonthlyStockEntry,
 } from '../../database/database.types';
 import { NotificationsService } from '../notifications/notifications.module';
 
@@ -142,20 +145,28 @@ export class InventoryService {
   }
 
   // === 4. MEDICINES MASTER ===
-  async getMedicines(includeInactive = false): Promise<Medicine[]> {
-    if (includeInactive) {
-      return this.db.medicines;
-    }
-    return this.db.medicines.filter((m) => m.status === 'ACTIVE');
+  async getMedicines(includeInactive = false): Promise<any[]> {
+    const list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
+    return list.map((m) => ({
+      ...m,
+      product_code: m.code,
+      is_active: m.status === 'ACTIVE',
+      low_stock_threshold: m.low_stock_threshold || 10,
+    }));
   }
 
-  async createMedicine(dto: CreateMedicineDto): Promise<Medicine> {
+  async createMedicine(dto: CreateMedicineDto): Promise<any> {
+    const rawCode = dto.code || dto.product_code || `MED-${Math.random().toString(36).substring(2, 6)}`;
+    const code = rawCode.toUpperCase();
+    const threshold = Number(dto.low_stock_threshold) || 10;
+
     const med: Medicine = {
       id: `med-${uuidv4().substring(0, 8)}`,
-      name: dto.name,
-      code: dto.code.toUpperCase(),
-      unit: dto.unit,
-      base_price: dto.base_price,
+      name: dto.name.trim(),
+      code,
+      unit: dto.unit || 'Units',
+      base_price: Number(dto.base_price) || 0,
+      low_stock_threshold: threshold,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
@@ -170,12 +181,16 @@ export class InventoryService {
         stocker_id: stk.id,
         medicine_id: med.id,
         quantity: 0,
-        low_stock_threshold: 10,
+        low_stock_threshold: threshold,
         updated_at: new Date().toISOString(),
       });
     }
 
-    return med;
+    return {
+      ...med,
+      product_code: med.code,
+      is_active: true,
+    };
   }
 
   async updateMedicine(id: string, dto: UpdateMedicineDto): Promise<Medicine> {
@@ -471,5 +486,129 @@ export class InventoryService {
           user_name: user?.name || 'System / Admin',
         };
       });
+  }
+
+  // === 8. MONTHLY MEDICINE STOCK INWARD ENTRIES ===
+  async getMonthlyStockEntries(filter: { hq_id?: string; stocker_id?: string; month?: string }): Promise<MonthlyStockEntry[]> {
+    return this.db.monthlyStockEntries
+      .filter((e) => (filter.hq_id ? e.hq_id === filter.hq_id : true))
+      .filter((e) => (filter.stocker_id ? e.stocker_id === filter.stocker_id : true))
+      .filter((e) => (filter.month ? e.month === filter.month : true))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+
+  async createMonthlyStockEntry(dto: CreateMonthlyStockEntryDto, userId: string): Promise<any> {
+    const stocker = this.db.stockers.find((s) => s.id === dto.stocker_id);
+    if (!stocker) throw new NotFoundException('Stocker not found');
+
+    const hq = this.db.headquarters.find((h) => h.id === dto.hq_id || h.id === stocker.hq_id);
+    if (!hq) throw new NotFoundException('Headquarter not found');
+
+    const med = this.db.medicines.find((m) => m.id === dto.medicine_id);
+    if (!med) throw new NotFoundException('Medicine not found in catalog');
+
+    const user = this.db.users.find((u) => u.id === userId);
+
+    // 1. Update or create stocker inventory
+    let inventory = this.db.stockerInventory.find(
+      (inv) => inv.stocker_id === dto.stocker_id && inv.medicine_id === dto.medicine_id,
+    );
+
+    if (!inventory) {
+      inventory = {
+        id: `inv-${stocker.id}-${med.id}`,
+        hq_id: stocker.hq_id,
+        stocker_id: stocker.id,
+        medicine_id: med.id,
+        quantity: 0,
+        low_stock_threshold: med.low_stock_threshold || 10,
+        updated_at: new Date().toISOString(),
+      };
+      this.db.stockerInventory.push(inventory);
+    }
+
+    const previousStock = inventory.quantity;
+    inventory.quantity += Number(dto.quantity);
+    inventory.updated_at = new Date().toISOString();
+
+    // 2. Create Audit Transaction record
+    const reasonText = `[Monthly Inward ${dto.month}] Inflow: +${dto.quantity} ${med.unit}${
+      dto.batch_no ? ` | Batch: ${dto.batch_no}` : ''
+    }${dto.invoice_no ? ` | Inv: ${dto.invoice_no}` : ''}${dto.notes ? ` (${dto.notes})` : ''}`;
+
+    const tx: InventoryTransaction = {
+      id: `tx-${uuidv4().substring(0, 8)}`,
+      hq_id: stocker.hq_id,
+      stocker_id: stocker.id,
+      medicine_id: med.id,
+      quantity: Number(dto.quantity),
+      balance_after: inventory.quantity,
+      transaction_type: 'RESTOCK',
+      user_id: userId,
+      reason: reasonText,
+      timestamp: new Date().toISOString(),
+    };
+    this.db.inventoryTransactions.push(tx);
+
+    // 3. Create Monthly Stock Entry record
+    const entry: MonthlyStockEntry = {
+      id: `entry-${uuidv4().substring(0, 8)}`,
+      hq_id: stocker.hq_id,
+      hq_name: hq.name,
+      stocker_id: stocker.id,
+      stocker_name: stocker.name,
+      month: dto.month,
+      entry_date: dto.entry_date || new Date().toISOString().split('T')[0],
+      invoice_no: dto.invoice_no || '',
+      medicine_id: med.id,
+      medicine_name: med.name,
+      medicine_code: med.code,
+      quantity: Number(dto.quantity),
+      unit: med.unit,
+      batch_no: dto.batch_no || '',
+      expiry_date: dto.expiry_date || '',
+      notes: dto.notes || '',
+      user_id: userId,
+      user_name: user?.name || 'Shivansh Tripathi (Admin)',
+      created_at: new Date().toISOString(),
+    };
+    this.db.monthlyStockEntries.push(entry);
+
+    return {
+      message: 'Monthly medicine entry recorded successfully',
+      entry,
+      inventory,
+      previous_quantity: previousStock,
+      current_quantity: inventory.quantity,
+    };
+  }
+
+  async createBatchMonthlyStockEntries(dto: BatchMonthlyStockEntryDto, userId: string): Promise<any> {
+    const results = [];
+    if (dto.items && Array.isArray(dto.items)) {
+      for (const item of dto.items) {
+        if (!item.medicine_id || !item.quantity || Number(item.quantity) <= 0) continue;
+        const res = await this.createMonthlyStockEntry(
+          {
+            hq_id: dto.hq_id,
+            stocker_id: dto.stocker_id,
+            month: dto.month,
+            entry_date: dto.entry_date,
+            invoice_no: dto.invoice_no,
+            medicine_id: item.medicine_id,
+            quantity: Number(item.quantity),
+            batch_no: item.batch_no,
+            expiry_date: item.expiry_date,
+            notes: item.notes,
+          },
+          userId,
+        );
+        results.push(res);
+      }
+    }
+    return {
+      message: `Batch recorded: ${results.length} medicine inward entries saved.`,
+      entries: results.map((r) => r.entry),
+    };
   }
 }

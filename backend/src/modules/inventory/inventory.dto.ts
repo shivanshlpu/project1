@@ -81,8 +81,12 @@ export class CreateMedicineDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  @IsOptional()
+  code?: string;
+
+  @IsString()
+  @IsOptional()
+  product_code?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -91,6 +95,10 @@ export class CreateMedicineDto {
   @IsNumber()
   @Min(0)
   base_price: number;
+
+  @IsNumber()
+  @IsOptional()
+  low_stock_threshold?: number;
 }
 
 export class UpdateMedicineDto {
@@ -130,4 +138,93 @@ export class AdjustStockDto {
   @IsString()
   @IsOptional()
   reason?: string;
+}
+
+export class CreateMonthlyStockEntryDto {
+  @IsString()
+  @IsNotEmpty()
+  hq_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  stocker_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  month: string; // e.g. "2026-10"
+
+  @IsString()
+  @IsNotEmpty()
+  entry_date: string; // e.g. "2026-10-01"
+
+  @IsString()
+  @IsNotEmpty()
+  medicine_id: string;
+
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+
+  @IsString()
+  @IsOptional()
+  batch_no?: string;
+
+  @IsString()
+  @IsOptional()
+  expiry_date?: string;
+
+  @IsString()
+  @IsOptional()
+  invoice_no?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class MonthlyStockItemDto {
+  @IsString()
+  @IsNotEmpty()
+  medicine_id: string;
+
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+
+  @IsString()
+  @IsOptional()
+  batch_no?: string;
+
+  @IsString()
+  @IsOptional()
+  expiry_date?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class BatchMonthlyStockEntryDto {
+  @IsString()
+  @IsNotEmpty()
+  hq_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  stocker_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  month: string;
+
+  @IsString()
+  @IsNotEmpty()
+  entry_date: string;
+
+  @IsString()
+  @IsOptional()
+  invoice_no?: string;
+
+  @IsOptional()
+  items?: MonthlyStockItemDto[];
 }

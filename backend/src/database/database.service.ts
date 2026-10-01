@@ -37,6 +37,7 @@ import {
   AttendanceSettings,
   Competition,
   RewardClaim,
+  MonthlyStockEntry,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
 
@@ -95,6 +96,7 @@ export class DatabaseService implements OnModuleInit {
   };
   public competitions: Competition[] = [];
   public rewardClaims: RewardClaim[] = [];
+  public monthlyStockEntries: MonthlyStockEntry[] = [];
 
   constructor(public readonly supabase: SupabaseService) {}
 
@@ -640,6 +642,52 @@ export class DatabaseService implements OnModuleInit {
       reason: 'Initial stock intake on system commissioning',
       timestamp: new Date().toISOString(),
     });
+
+    // Seed Sample Monthly Stock Inward Entries
+    this.monthlyStockEntries.push(
+      {
+        id: 'entry-oct-01',
+        hq_id: hqShahdol.id,
+        hq_name: hqShahdol.name,
+        stocker_id: stocker1.id,
+        stocker_name: stocker1.name,
+        month: '2026-10',
+        entry_date: '2026-10-01',
+        invoice_no: 'INV-AHTRI-2026/10-01',
+        medicine_id: med1.id,
+        medicine_name: med1.name,
+        medicine_code: med1.code,
+        quantity: 50,
+        unit: med1.unit,
+        batch_no: 'CF50-B2610',
+        expiry_date: '2028-09-30',
+        notes: 'Monthly batch delivery from central warehouse',
+        user_id: 'usr-admin-shivansh',
+        user_name: 'Shivansh Tripathi (Admin)',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'entry-oct-02',
+        hq_id: hqShahdol.id,
+        hq_name: hqShahdol.name,
+        stocker_id: stocker1.id,
+        stocker_name: stocker1.name,
+        month: '2026-10',
+        entry_date: '2026-10-01',
+        invoice_no: 'INV-AHTRI-2026/10-01',
+        medicine_id: med4.id,
+        medicine_name: med4.name,
+        medicine_code: med4.code,
+        quantity: 85,
+        unit: med4.unit,
+        batch_no: 'GM500-B2610',
+        expiry_date: '2028-11-30',
+        notes: 'Regular monthly replenishment',
+        user_id: 'usr-admin-shivansh',
+        user_name: 'Shivansh Tripathi (Admin)',
+        created_at: new Date().toISOString(),
+      },
+    );
 
     // 15. Seed Active Competition (§27)
     this.competitions.push({

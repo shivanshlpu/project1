@@ -351,7 +351,30 @@ export interface Medicine {
   code: string;
   unit: string;
   base_price: number;
+  low_stock_threshold?: number;
   status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface MonthlyStockEntry {
+  id: string;
+  hq_id: string;
+  hq_name?: string;
+  stocker_id: string;
+  stocker_name?: string;
+  month: string; // e.g. "2026-10"
+  entry_date: string; // "2026-10-01"
+  invoice_no?: string;
+  medicine_id: string;
+  medicine_name: string;
+  medicine_code: string;
+  quantity: number;
+  unit: string;
+  batch_no?: string;
+  expiry_date?: string;
+  notes?: string;
+  user_id: string;
+  user_name?: string;
   created_at: string;
 }
 
