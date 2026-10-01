@@ -4,6 +4,7 @@ import {
   Building,
   Plus,
   Edit2,
+  Trash2,
   AlertTriangle,
   FileText,
   Search,
@@ -23,7 +24,73 @@ import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 interface Headquarter {
   id: string;
   name: string;
+  code?: string;
+  state?: string;
+  isHeadquarters?: boolean;
 }
+
+const DEFAULT_HQS: Headquarter[] = [
+  { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
+  { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
+  { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
+  { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar', code: 'HQ-JSN', state: 'Madhya Pradesh' },
+  { id: 'hq-burhar', name: 'Burhar/Bauhari', code: 'HQ-BRH', state: 'Madhya Pradesh' },
+  { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
+];
+
+const getMergedHqs = (): Headquarter[] => {
+  const map = new Map<string, Headquarter>();
+  for (const hq of DEFAULT_HQS) {
+    map.set(hq.name.toLowerCase().trim(), { ...hq });
+  }
+
+  try {
+    const saved = localStorage.getItem('ahtri_inventory_hqs');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item && item.name) {
+            const key = item.name.toLowerCase().trim();
+            map.set(key, {
+              id: item.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+              name: item.name.trim(),
+              code: item.code || `HQ-${item.name.substring(0, 3).toUpperCase()}`,
+              state: item.state || '',
+              isHeadquarters: !!item.isHeadquarters,
+            });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  try {
+    const savedCities = localStorage.getItem('ahtri_operating_cities');
+    if (savedCities) {
+      const parsed = JSON.parse(savedCities);
+      if (Array.isArray(parsed)) {
+        for (const c of parsed) {
+          const name = c.cityName || c.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            const isHq = !!c.isHeadquarters || c.branchType === 'HEADQUARTERS';
+            const existing = map.get(key);
+            map.set(key, {
+              id: existing?.id || (c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`),
+              name: name.trim(),
+              code: existing?.code || `HQ-${name.substring(0, 3).toUpperCase()}`,
+              state: c.state || existing?.state || '',
+              isHeadquarters: isHq,
+            });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return Array.from(map.values());
+};
 
 interface StockerItem {
   id: string;
@@ -101,17 +168,42 @@ interface InventoryAuditItem {
 
 export const StockerManagementView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'INVENTORY' | 'MONTHLY_INWARD' | 'STOCKERS' | 'MEDICINES' | 'ALERTS' | 'AUDIT'>('INVENTORY');
-  const [hqs, setHqs] = useState<Headquarter[]>([]);
-  const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
+
+  const initialHqs = getMergedHqs();
+  const defaultSelectedHq = initialHqs.find((h) => h.isHeadquarters) || initialHqs[0];
+
+  const [hqs, setHqs] = useState<Headquarter[]>(initialHqs);
+  const [selectedHqId, setSelectedHqId] = useState<string>(defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol');
+
+  // HQ Modals state
+  const [isAddHqModalOpen, setIsAddHqModalOpen] = useState<boolean>(false);
+  const [isEditHqModalOpen, setIsEditHqModalOpen] = useState<boolean>(false);
+  const [editingHq, setEditingHq] = useState<Headquarter | null>(null);
+  const [newHqName, setNewHqName] = useState<string>('');
+  const [newHqCode, setNewHqCode] = useState<string>('');
+  const [newHqState, setNewHqState] = useState<string>('');
+  const [editHqName, setEditHqName] = useState<string>('');
+  const [editHqCode, setEditHqCode] = useState<string>('');
+  const [editHqState, setEditHqState] = useState<string>('');
 
   // Stockers state
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [isAddStockerModalOpen, setIsAddStockerModalOpen] = useState<boolean>(false);
+  const [newStockerHqId, setNewStockerHqId] = useState<string>(defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol');
   const [newStockerName, setNewStockerName] = useState<string>('');
   const [newStockerContact, setNewStockerContact] = useState<string>('');
   const [newStockerPhone, setNewStockerPhone] = useState<string>('');
   const [newStockerAddress, setNewStockerAddress] = useState<string>('');
+
+  // Edit Stocker Modal state
+  const [isEditStockerModalOpen, setIsEditStockerModalOpen] = useState<boolean>(false);
+  const [editingStocker, setEditingStocker] = useState<StockerItem | null>(null);
+  const [editStockerName, setEditStockerName] = useState<string>('');
+  const [editStockerContact, setEditStockerContact] = useState<string>('');
+  const [editStockerPhone, setEditStockerPhone] = useState<string>('');
+  const [editStockerAddress, setEditStockerAddress] = useState<string>('');
+  const [editStockerStatus, setEditStockerStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
   // Inventory state
   const [inventory, setInventory] = useState<StockerProductItem[]>([]);
@@ -148,6 +240,16 @@ export const StockerManagementView: React.FC = () => {
   const [newMedPrice, setNewMedPrice] = useState<string>('150');
   const [newMedThreshold, setNewMedThreshold] = useState<string>('15');
 
+  // Edit Medicine Modal state
+  const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState<boolean>(false);
+  const [editingMedicine, setEditingMedicine] = useState<MedicineItem | null>(null);
+  const [editMedName, setEditMedName] = useState<string>('');
+  const [editMedCode, setEditMedCode] = useState<string>('');
+  const [editMedUnit, setEditMedUnit] = useState<string>('Strip of 10');
+  const [editMedPrice, setEditMedPrice] = useState<string>('150');
+  const [editMedThreshold, setEditMedThreshold] = useState<string>('15');
+  const [editMedStatus, setEditMedStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+
   // Alerts & Audit
   const [alerts, setAlerts] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<InventoryAuditItem[]>([]);
@@ -164,23 +266,55 @@ export const StockerManagementView: React.FC = () => {
     };
   };
 
-  // Load HQs on mount
-  useEffect(() => {
-    const fetchHqs = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/inventory/hqs`, {
-          headers: getAuthHeaders(),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setHqs(data);
-            setSelectedHqId(data[0].id);
-          }
+  // Load HQs on mount and sync with settings
+  const fetchHqs = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/inventory/hqs`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const current = getMergedHqs();
+          const map = new Map<string, Headquarter>();
+          current.forEach((h) => map.set(h.name.toLowerCase().trim(), h));
+          data.forEach((h: any) => {
+            const key = h.name.toLowerCase().trim();
+            const existing = map.get(key);
+            map.set(key, {
+              id: h.id,
+              name: h.name,
+              code: h.code || `HQ-${h.name.substring(0, 3).toUpperCase()}`,
+              state: h.state || '',
+              isHeadquarters: existing?.isHeadquarters || false,
+            });
+          });
+          const merged = Array.from(map.values());
+          setHqs(merged);
+          try {
+            localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(merged));
+          } catch {}
+          return;
         }
-      } catch {}
-    };
+      }
+    } catch {}
+    const merged = getMergedHqs();
+    setHqs(merged);
+  };
+
+  useEffect(() => {
     fetchHqs();
+
+    const handleHqUpdate = () => {
+      fetchHqs();
+    };
+
+    window.addEventListener('ahtri_hq_updated', handleHqUpdate);
+    window.addEventListener('storage', handleHqUpdate);
+    return () => {
+      window.removeEventListener('ahtri_hq_updated', handleHqUpdate);
+      window.removeEventListener('storage', handleHqUpdate);
+    };
   }, [apiUrl]);
 
   // Load stockers when HQ changes (§10)
@@ -311,18 +445,135 @@ export const StockerManagementView: React.FC = () => {
     if (activeTab === 'AUDIT') fetchAuditLogs();
   }, [activeTab, selectedHqId, selectedStockerId, monthlyFilterMonth]);
 
-  // Handler: Add Stocker under HQ (§10)
+  // === HQ CRUD HANDLERS ===
+  const handleAddHq = async () => {
+    if (!newHqName.trim()) {
+      alert('Please enter Headquarters name.');
+      return;
+    }
+    const name = newHqName.trim();
+    const code = (newHqCode.trim() || `HQ-${name.substring(0, 3).toUpperCase()}`).toUpperCase();
+    const state = newHqState.trim() || 'Madhya Pradesh';
+    let createdId = `hq-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+
+    try {
+      const res = await fetch(`${apiUrl}/inventory/hqs`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name, code, state }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) createdId = data.id;
+      }
+    } catch {}
+
+    const newHqObj: Headquarter = { id: createdId, name, code, state };
+    const updated = [...hqs.filter((h) => h.name.toLowerCase() !== name.toLowerCase()), newHqObj];
+    setHqs(updated);
+    setSelectedHqId(createdId);
+    setNewStockerHqId(createdId);
+    try {
+      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
+      const citiesRaw = localStorage.getItem('ahtri_operating_cities');
+      const cities = citiesRaw ? JSON.parse(citiesRaw) : [];
+      if (!cities.some((c: any) => (c.cityName || c.name || '').toLowerCase() === name.toLowerCase())) {
+        cities.push({
+          id: `city-${Date.now()}`,
+          cityName: name,
+          state,
+          country: 'India',
+          latitude: 23.29,
+          longitude: 81.35,
+          radiusKm: 25,
+          isHeadquarters: false,
+          branchType: 'HEADQUARTERS',
+        });
+        localStorage.setItem('ahtri_operating_cities', JSON.stringify(cities));
+      }
+    } catch {}
+
+    setIsAddHqModalOpen(false);
+    setNewHqName('');
+    setNewHqCode('');
+    setNewHqState('');
+  };
+
+  const handleOpenEditHq = (hq: Headquarter) => {
+    setEditingHq(hq);
+    setEditHqName(hq.name);
+    setEditHqCode(hq.code || `HQ-${hq.name.substring(0, 3).toUpperCase()}`);
+    setEditHqState(hq.state || '');
+    setIsEditHqModalOpen(true);
+  };
+
+  const handleSaveEditHq = async () => {
+    if (!editingHq || !editHqName.trim()) return;
+    const name = editHqName.trim();
+    const code = (editHqCode.trim() || `HQ-${name.substring(0, 3).toUpperCase()}`).toUpperCase();
+    const state = editHqState.trim();
+
+    try {
+      await fetch(`${apiUrl}/inventory/hqs/${editingHq.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name, code, state }),
+      });
+    } catch {}
+
+    const updated = hqs.map((h) => (h.id === editingHq.id ? { ...h, name, code, state } : h));
+    setHqs(updated);
+    try {
+      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
+    } catch {}
+
+    setIsEditHqModalOpen(false);
+    setEditingHq(null);
+  };
+
+  const handleDeleteHq = async (hqId: string) => {
+    const target = hqs.find((h) => h.id === hqId);
+    if (!target) return;
+    if (hqs.length <= 1) {
+      alert('At least one headquarters must remain configured.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete headquarters "${target.name}"? Stockers under this HQ will be removed.`)) {
+      return;
+    }
+
+    try {
+      await fetch(`${apiUrl}/inventory/hqs/${hqId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+    } catch {}
+
+    const updated = hqs.filter((h) => h.id !== hqId);
+    setHqs(updated);
+    try {
+      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
+    } catch {}
+
+    if (selectedHqId === hqId && updated.length > 0) {
+      setSelectedHqId(updated[0].id);
+      setNewStockerHqId(updated[0].id);
+    }
+  };
+
+  // === STOCKER CRUD HANDLERS ===
   const handleAddStocker = async () => {
     if (!newStockerName.trim()) {
       alert('Please enter stocker name.');
       return;
     }
+    const targetHqId = newStockerHqId || selectedHqId;
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          hq_id: selectedHqId,
+          hq_id: targetHqId,
           name: newStockerName.trim(),
           contact_person: newStockerContact.trim(),
           phone: newStockerPhone.trim(),
@@ -335,12 +586,78 @@ export const StockerManagementView: React.FC = () => {
         setNewStockerContact('');
         setNewStockerPhone('');
         setNewStockerAddress('');
+        if (selectedHqId !== targetHqId) {
+          setSelectedHqId(targetHqId);
+        } else {
+          fetchStockers();
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to add stocker.');
+      }
+    } catch (err: any) {
+      alert('Error creating stocker: ' + err.message);
+    }
+  };
+
+  const handleOpenEditStocker = (st: StockerItem) => {
+    setEditingStocker(st);
+    setEditStockerName(st.name);
+    setEditStockerContact(st.contact_person || '');
+    setEditStockerPhone(st.phone || '');
+    setEditStockerAddress(st.address || '');
+    setEditStockerStatus(st.status || 'ACTIVE');
+    setIsEditStockerModalOpen(true);
+  };
+
+  const handleSaveEditStocker = async () => {
+    if (!editingStocker || !editStockerName.trim()) return;
+    try {
+      const res = await fetch(`${apiUrl}/inventory/stockers/${editingStocker.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: editStockerName.trim(),
+          contact_person: editStockerContact.trim(),
+          phone: editStockerPhone.trim(),
+          address: editStockerAddress.trim(),
+          status: editStockerStatus,
+        }),
+      });
+      if (res.ok) {
+        setIsEditStockerModalOpen(false);
+        setEditingStocker(null);
+        fetchStockers();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to update stocker.');
+      }
+    } catch (err: any) {
+      alert('Error updating stocker: ' + err.message);
+    }
+  };
+
+  const handleDeleteStocker = async (stockerId: string) => {
+    const target = stockers.find((s) => s.id === stockerId);
+    if (!target) return;
+    if (!confirm(`Are you sure you want to delete stocker "${target.name}"?`)) return;
+
+    try {
+      const res = await fetch(`${apiUrl}/inventory/stockers/${stockerId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        if (selectedStockerId === stockerId) {
+          setSelectedStockerId('');
+          setInventory([]);
+        }
         fetchStockers();
       }
     } catch {}
   };
 
-  // Handler: Add Medicine (§11)
+  // === MEDICINE CRUD HANDLERS ===
   const handleAddMedicine = async () => {
     if (!newMedName.trim()) {
       alert('Please enter medicine name.');
@@ -378,6 +695,62 @@ export const StockerManagementView: React.FC = () => {
     } catch (err: any) {
       alert('Error creating medicine: ' + err.message);
     }
+  };
+
+  const handleOpenEditMedicine = (med: MedicineItem) => {
+    setEditingMedicine(med);
+    setEditMedName(med.name);
+    setEditMedCode(med.product_code || med.code || '');
+    setEditMedUnit(med.unit || 'Strip of 10');
+    setEditMedPrice(String(med.base_price || 100));
+    setEditMedThreshold(String(med.low_stock_threshold || 10));
+    setEditMedStatus(med.is_active ? 'ACTIVE' : 'INACTIVE');
+    setIsEditMedicineModalOpen(true);
+  };
+
+  const handleSaveEditMedicine = async () => {
+    if (!editingMedicine || !editMedName.trim()) return;
+    try {
+      const res = await fetch(`${apiUrl}/inventory/medicines/${editingMedicine.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: editMedName.trim(),
+          code: (editMedCode.trim() || editingMedicine.code || '').toUpperCase(),
+          unit: editMedUnit.trim(),
+          base_price: parseFloat(editMedPrice) || 100,
+          status: editMedStatus,
+        }),
+      });
+      if (res.ok) {
+        setIsEditMedicineModalOpen(false);
+        setEditingMedicine(null);
+        fetchMedicines();
+        if (selectedStockerId) fetchInventory();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to update medicine.');
+      }
+    } catch (err: any) {
+      alert('Error updating medicine: ' + err.message);
+    }
+  };
+
+  const handleDeleteMedicine = async (medId: string) => {
+    const target = medicines.find((m) => m.id === medId);
+    if (!target) return;
+    if (!confirm(`Are you sure you want to delete "${target.name}" from the master catalog?`)) return;
+
+    try {
+      const res = await fetch(`${apiUrl}/inventory/medicines/${medId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        fetchMedicines();
+        if (selectedStockerId) fetchInventory();
+      }
+    } catch {}
   };
 
   // Handler: Save Monthly Stock Inward Entry
@@ -684,16 +1057,58 @@ export const StockerManagementView: React.FC = () => {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                1. Select Headquarters (HQ):
-              </span>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  1. Select Headquarters (HQ):
+                </span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {selectedHq && (
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditHq(selectedHq)}
+                        className="btn-enterprise secondary"
+                        style={{ padding: '3px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        title="Edit selected Headquarters"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit HQ</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHq(selectedHq.id)}
+                        className="btn-enterprise secondary"
+                        style={{ padding: '3px 8px', fontSize: 11, color: '#DC2626', borderColor: '#FECACA', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        title="Delete selected Headquarters"
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete HQ</span>
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsAddHqModalOpen(true)}
+                    className="btn-enterprise"
+                    style={{ padding: '4px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--color-brand)', color: '#FFFFFF' }}
+                  >
+                    <Plus size={13} />
+                    <span>+ Add HQ</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {hqs.map((hq) => {
                   const isSelected = selectedHqId === hq.id;
                   return (
                     <button
                       key={hq.id}
-                      onClick={() => setSelectedHqId(hq.id)}
+                      type="button"
+                      onClick={() => {
+                        setSelectedHqId(hq.id);
+                        setNewStockerHqId(hq.id);
+                      }}
                       style={{
                         padding: '6px 14px',
                         borderRadius: 6,
@@ -704,9 +1119,18 @@ export const StockerManagementView: React.FC = () => {
                         fontSize: 12,
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
                       }}
                     >
-                      {hq.name}
+                      <Building size={12} color={isSelected ? 'var(--color-brand)' : '#64748B'} />
+                      <span>{hq.name}</span>
+                      {hq.isHeadquarters && (
+                        <span style={{ fontSize: 9, background: '#DCFCE7', color: '#166534', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+                          HQ
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -1686,24 +2110,69 @@ export const StockerManagementView: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => {
-                            setSelectedStockerId(st.id);
-                            setActiveTab('INVENTORY');
-                          }}
-                          style={{
-                            background: '#F0FDF4',
-                            color: '#166534',
-                            border: '1px solid #BBF7D0',
-                            padding: '4px 10px',
-                            borderRadius: 4,
-                            fontSize: 11.5,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          View Inventory →
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedStockerId(st.id);
+                              setActiveTab('INVENTORY');
+                            }}
+                            style={{
+                              background: '#F0FDF4',
+                              color: '#166534',
+                              border: '1px solid #BBF7D0',
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            View Inventory →
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditStocker(st)}
+                            style={{
+                              background: '#EFF6FF',
+                              color: '#1D4ED8',
+                              border: '1px solid #BFDBFE',
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                            }}
+                            title="Edit Stocker"
+                          >
+                            <Edit2 size={12} />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStocker(st.id)}
+                            style={{
+                              background: '#FEF2F2',
+                              color: '#DC2626',
+                              border: '1px solid #FECACA',
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                            }}
+                            title="Delete Stocker"
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1766,6 +2235,7 @@ export const StockerManagementView: React.FC = () => {
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Fixed Base Price</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Low Stock Threshold</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Catalog Status</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1799,6 +2269,52 @@ export const StockerManagementView: React.FC = () => {
                       >
                         {med.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
+                    </td>
+                    <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditMedicine(med)}
+                          style={{
+                            background: '#EFF6FF',
+                            color: '#1D4ED8',
+                            border: '1px solid #BFDBFE',
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                          title="Edit Medicine Details"
+                        >
+                          <Edit2 size={12} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMedicine(med.id)}
+                          style={{
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA',
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                          title="Delete Medicine from Catalog"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2108,6 +2624,201 @@ export const StockerManagementView: React.FC = () => {
         </div>
       )}
 
+      {/* MODAL: Add Headquarters */}
+      {isAddHqModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 440,
+              padding: 20,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Building size={16} color="var(--color-brand)" />
+                <span>Add New Headquarters (HQ)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddHqModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                HEADQUARTERS / CITY NAME *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Rewa, Indore, Raipur, Delhi"
+                value={newHqName}
+                onChange={(e) => setNewHqName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  HQ CODE (OPTIONAL)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. HQ-REW"
+                  value={newHqCode}
+                  onChange={(e) => setNewHqCode(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  STATE
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Madhya Pradesh"
+                  value={newHqState}
+                  onChange={(e) => setNewHqState(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsAddHqModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleAddHq}
+              >
+                Add Headquarters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Headquarters */}
+      {isEditHqModalOpen && editingHq && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 440,
+              padding: 20,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Edit2 size={16} color="var(--color-brand)" />
+                <span>Edit Headquarters ({editingHq.name})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditHqModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                HEADQUARTERS NAME *
+              </label>
+              <input
+                type="text"
+                value={editHqName}
+                onChange={(e) => setEditHqName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  HQ CODE
+                </label>
+                <input
+                  type="text"
+                  value={editHqCode}
+                  onChange={(e) => setEditHqCode(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  STATE
+                </label>
+                <input
+                  type="text"
+                  value={editHqState}
+                  onChange={(e) => setEditHqState(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsEditHqModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleSaveEditHq}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Add Stocker under HQ (§10) */}
       {isAddStockerModalOpen && (
         <div
@@ -2134,14 +2845,40 @@ export const StockerManagementView: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)' }}>
-                Add New Stocker under {selectedHq?.name}
+                Add New Stocker under {hqs.find((h) => h.id === newStockerHqId)?.name || selectedHq?.name || 'Selected HQ'}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddStockerModalOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
                 <X size={18} />
               </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                SELECT HEADQUARTERS (HQ) *
+              </label>
+              <select
+                value={newStockerHqId}
+                onChange={(e) => setNewStockerHqId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: '#FFFFFF',
+                }}
+              >
+                {hqs.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} ({h.code || 'HQ'}) {h.state ? `— ${h.state}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: 10 }}>
@@ -2198,16 +2935,138 @@ export const StockerManagementView: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
+                type="button"
                 className="btn-enterprise secondary"
                 onClick={() => setIsAddStockerModalOpen(false)}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 className="btn-enterprise"
                 onClick={handleAddStocker}
               >
                 Register Stocker
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Stocker */}
+      {isEditStockerModalOpen && editingStocker && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 440,
+              padding: 20,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Edit2 size={16} color="var(--color-brand)" />
+                <span>Edit Stocker ({editingStocker.name})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditStockerModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                STOCKER / SHOP NAME *
+              </label>
+              <input
+                type="text"
+                value={editStockerName}
+                onChange={(e) => setEditStockerName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                CONTACT PERSON
+              </label>
+              <input
+                type="text"
+                value={editStockerContact}
+                onChange={(e) => setEditStockerContact(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                PHONE NUMBER
+              </label>
+              <input
+                type="text"
+                value={editStockerPhone}
+                onChange={(e) => setEditStockerPhone(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                ADDRESS / LOCATION
+              </label>
+              <input
+                type="text"
+                value={editStockerAddress}
+                onChange={(e) => setEditStockerAddress(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                STATUS
+              </label>
+              <select
+                value={editStockerStatus}
+                onChange={(e) => setEditStockerStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12, background: '#FFFFFF' }}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsEditStockerModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleSaveEditStocker}
+              >
+                Save Changes
               </button>
             </div>
           </div>
@@ -2243,6 +3102,7 @@ export const StockerManagementView: React.FC = () => {
                 Add Medicine to Master Catalog (§11)
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddMedicineModalOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
@@ -2321,16 +3181,142 @@ export const StockerManagementView: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
+                type="button"
                 className="btn-enterprise secondary"
                 onClick={() => setIsAddMedicineModalOpen(false)}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 className="btn-enterprise"
                 onClick={handleAddMedicine}
               >
                 Save Medicine
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Medicine Master */}
+      {isEditMedicineModalOpen && editingMedicine && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 440,
+              padding: 20,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Edit2 size={16} color="var(--color-brand)" />
+                <span>Edit Medicine ({editingMedicine.name})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditMedicineModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                PRODUCT / MEDICINE NAME *
+              </label>
+              <input
+                type="text"
+                value={editMedName}
+                onChange={(e) => setEditMedName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  PRODUCT CODE / SKU
+                </label>
+                <input
+                  type="text"
+                  value={editMedCode}
+                  onChange={(e) => setEditMedCode(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  PACKAGING UNIT
+                </label>
+                <input
+                  type="text"
+                  value={editMedUnit}
+                  onChange={(e) => setEditMedUnit(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  BASE PRICE (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={editMedPrice}
+                  onChange={(e) => setEditMedPrice(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  STATUS
+                </label>
+                <select
+                  value={editMedStatus}
+                  onChange={(e) => setEditMedStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12, background: '#FFFFFF' }}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsEditMedicineModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleSaveEditMedicine}
+              >
+                Save Changes
               </button>
             </div>
           </div>

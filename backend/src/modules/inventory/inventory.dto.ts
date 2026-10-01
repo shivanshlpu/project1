@@ -21,6 +21,24 @@ export class CreateHqDto {
   state?: string;
 }
 
+export class UpdateHqDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  code?: string;
+
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @IsEnum(['ACTIVE', 'INACTIVE'])
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
 export class CreateHqAreaDto {
   @IsString()
   @IsNotEmpty()

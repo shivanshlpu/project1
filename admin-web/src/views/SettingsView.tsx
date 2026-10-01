@@ -627,7 +627,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setOperatingCities(updatedList);
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedList));
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
+
+    if (newCityBranchTag === 'HEADQUARTERS' || newCity.isHeadquarters) {
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      fetch(`${apiUrl}/inventory/hqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: newCity.cityName.trim(),
+          code: `HQ-${newCity.cityName.trim().substring(0, 3).toUpperCase()}`,
+          state: newCity.state || '',
+        }),
+      }).catch(() => {});
+    }
 
     const branchLabel = newCityBranchTag === 'HEADQUARTERS' ? 'Official Headquarters' : newCityBranchTag.replace(/_/g, ' ');
     setCityNotice(`Saved "${currentCityPin.cityName}" as ${branchLabel}!`);
@@ -681,7 +699,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setOperatingCities(updated);
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updated));
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
+
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    fetch(`${apiUrl}/inventory/hqs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        name: target.cityName.trim(),
+        code: `HQ-${target.cityName.trim().substring(0, 3).toUpperCase()}`,
+        state: target.state || '',
+      }),
+    }).catch(() => {});
 
     setCityNotice(`Official Headquarters transferred to "${target.cityName}"!`);
     setTimeout(() => setCityNotice(null), 3500);

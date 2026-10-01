@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -11,6 +12,7 @@ import {
 import { InventoryService } from './inventory.service';
 import {
   CreateHqDto,
+  UpdateHqDto,
   CreateHqAreaDto,
   CreateStockerDto,
   UpdateStockerDto,
@@ -40,6 +42,18 @@ export class InventoryController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   async createHeadquarter(@Body() dto: CreateHqDto) {
     return this.inventoryService.createHeadquarter(dto);
+  }
+
+  @Patch('hqs/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async updateHeadquarter(@Param('id') id: string, @Body() dto: UpdateHqDto) {
+    return this.inventoryService.updateHeadquarter(id, dto);
+  }
+
+  @Delete('hqs/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteHeadquarter(@Param('id') id: string) {
+    return this.inventoryService.deleteHeadquarter(id);
   }
 
   // === HQ AREAS ===
@@ -72,6 +86,12 @@ export class InventoryController {
     return this.inventoryService.updateStocker(id, dto);
   }
 
+  @Delete('stockers/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteStocker(@Param('id') id: string) {
+    return this.inventoryService.deleteStocker(id);
+  }
+
   // === MEDICINES MASTER ===
   @Get('medicines')
   async getMedicines(@Query('all') all?: string) {
@@ -88,6 +108,12 @@ export class InventoryController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   async updateMedicine(@Param('id') id: string, @Body() dto: UpdateMedicineDto) {
     return this.inventoryService.updateMedicine(id, dto);
+  }
+
+  @Delete('medicines/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteMedicine(@Param('id') id: string) {
+    return this.inventoryService.deleteMedicine(id);
   }
 
   // === STOCKER INVENTORY ===

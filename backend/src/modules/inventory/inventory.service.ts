@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import {
   CreateHqDto,
+  UpdateHqDto,
   CreateHqAreaDto,
   CreateStockerDto,
   UpdateStockerDto,
@@ -58,6 +59,36 @@ export class InventoryService {
 
     this.db.headquarters.push(hq);
     return hq;
+  }
+
+  async updateHeadquarter(id: string, dto: UpdateHqDto): Promise<Headquarter> {
+    const hq = this.db.headquarters.find((h) => h.id === id);
+    if (!hq) throw new NotFoundException('Headquarter not found');
+
+    if (dto.name) {
+      const existing = this.db.headquarters.find(
+        (h) => h.id !== id && h.name.toLowerCase() === dto.name!.trim().toLowerCase(),
+      );
+      if (existing) {
+        throw new BadRequestException(`Headquarter "${dto.name}" already exists`);
+      }
+      hq.name = dto.name.trim();
+    }
+    if (dto.code) hq.code = dto.code.trim().toUpperCase();
+    if (dto.state !== undefined) hq.state = dto.state.trim();
+    if (dto.status) hq.status = dto.status;
+
+    return hq;
+  }
+
+  async deleteHeadquarter(id: string): Promise<{ success: boolean; message: string }> {
+    const index = this.db.headquarters.findIndex((h) => h.id === id);
+    if (index === -1) throw new NotFoundException('Headquarter not found');
+
+    this.db.headquarters.splice(index, 1);
+    this.db.stockers = this.db.stockers.filter((s) => s.hq_id !== id);
+    this.db.hqAreas = this.db.hqAreas.filter((a) => a.hq_id !== id);
+    return { success: true, message: 'Headquarter deleted successfully' };
   }
 
   // === 2. HQ AREAS ===
@@ -144,6 +175,15 @@ export class InventoryService {
     return stocker;
   }
 
+  async deleteStocker(id: string): Promise<{ success: boolean; message: string }> {
+    const index = this.db.stockers.findIndex((s) => s.id === id);
+    if (index === -1) throw new NotFoundException('Stocker not found');
+
+    this.db.stockers.splice(index, 1);
+    this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.stocker_id !== id);
+    return { success: true, message: 'Stocker deleted successfully' };
+  }
+
   // === 4. MEDICINES MASTER ===
   async getMedicines(includeInactive = false): Promise<any[]> {
     const list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
@@ -204,6 +244,15 @@ export class InventoryService {
     if (dto.status) med.status = dto.status;
 
     return med;
+  }
+
+  async deleteMedicine(id: string): Promise<{ success: boolean; message: string }> {
+    const index = this.db.medicines.findIndex((m) => m.id === id);
+    if (index === -1) throw new NotFoundException('Medicine not found');
+
+    this.db.medicines.splice(index, 1);
+    this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.medicine_id !== id);
+    return { success: true, message: 'Medicine deleted successfully' };
   }
 
   // === 5. STOCKER INVENTORY & STOCK ISOLATION ===
