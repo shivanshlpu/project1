@@ -23,7 +23,7 @@ export const MapMarkerView: React.FC<MapMarkerViewProps> = ({
       <div className="panel-header-bar">
         <div className="panel-headline">
           <Crosshair size={16} color="#0052cc" />
-          <span>Geofence Perimeter Inspector (Non-Live Static Map per PRD §21)</span>
+          <span>Geofence Perimeter Inspector (Static Map)</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span className={`status-pill ${verified ? 'success' : 'alert'}`}>

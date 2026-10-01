@@ -1337,7 +1337,7 @@ export const StockerManagementView: React.FC = () => {
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Unit</th>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Base Price</th>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Current Stock Quantity</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status (§12 &amp; §17)</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status</th>
                     <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
@@ -2273,7 +2273,7 @@ export const StockerManagementView: React.FC = () => {
           >
             <div>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
-                Medicine &amp; Pharmaceutical Product Master Catalog (§11)
+                Medicine &amp; Pharmaceutical Product Master Catalog
               </span>
               <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                 Fixed price, unit of measure, and active business status
@@ -2413,7 +2413,7 @@ export const StockerManagementView: React.FC = () => {
             <div>
               <span style={{ fontSize: 13, fontWeight: 800, color: '#991B1B', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <AlertTriangle size={16} />
-                Critical Inventory Shortage &amp; Low Stock Warnings (§18)
+                Critical Inventory Shortage &amp; Low Stock Warnings
               </span>
               <span style={{ fontSize: 11, color: '#7F1D1D', display: 'block', marginTop: 2 }}>
                 Items where stock has reached 0, fallen negative (backorders), or dropped below configured threshold.
@@ -2510,7 +2510,7 @@ export const StockerManagementView: React.FC = () => {
           >
             <div>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
-                Inventory Audit Trail &amp; Transaction Ledger (§19)
+                Inventory Audit Trail &amp; Transaction Ledger
               </span>
               <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                 Every stock addition, order deduction, and adjustment is recorded with user and timestamp
@@ -2653,13 +2653,13 @@ export const StockerManagementView: React.FC = () => {
                 }}
               />
               <span style={{ fontSize: 10.5, color: '#64748B', marginTop: 2, display: 'block' }}>
-                Negative numbers indicate backorders/shortage (§17).
+                Negative numbers indicate backorders/shortage.
               </span>
             </div>
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                REASON / AUDIT NOTE (§19)
+                REASON / AUDIT NOTE
               </label>
               <input
                 type="text"
@@ -3202,7 +3202,7 @@ export const StockerManagementView: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)' }}>
-                Add Medicine to Master Catalog (§11)
+                Add Medicine to Master Catalog
               </h3>
               <button
                 type="button"

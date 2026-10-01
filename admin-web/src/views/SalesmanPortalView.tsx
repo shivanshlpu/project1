@@ -862,7 +862,7 @@ export const SalesmanPortalView: React.FC = () => {
                 Daily Call Report (DCR) Pre-Fill
               </div>
               <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                Auto-aggregated from completed geofence calls (§4.2)
+                Auto-aggregated from completed geofence calls
               </div>
 
               <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '10px', marginBottom: '10px' }}>

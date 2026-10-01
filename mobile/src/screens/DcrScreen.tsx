@@ -29,7 +29,7 @@ export const DcrScreen: React.FC = () => {
     setDcrSubmitted(true);
     Alert.alert(
       'DCR Submitted',
-      'Today Daily Call Report submitted for Manager review. No manual re-typing required (§16).',
+      'Today Daily Call Report submitted for Manager review. No manual re-typing required.',
     );
   };
 
@@ -38,7 +38,7 @@ export const DcrScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Daily Call Report (DCR)</Text>
         <Text style={styles.headerSub}>
-          Auto-populated from today's GPS-verified doctor detailing visits (§4.2)
+          Auto-populated from today's GPS-verified doctor detailing visits
         </Text>
       </View>
 

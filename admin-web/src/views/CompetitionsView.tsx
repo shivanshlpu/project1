@@ -439,7 +439,7 @@ export const CompetitionsView: React.FC = () => {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
-                  Participating MR Progress for "{selectedComp?.name || 'Selected Campaign'}" (§28 &amp; §34)
+                  Participating MR Progress for "{selectedComp?.name || 'Selected Campaign'}"
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                   Single source of truth: calculated directly from valid, completed orders in database
@@ -462,7 +462,7 @@ export const CompetitionsView: React.FC = () => {
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Achieved Sales (Valid Orders)</th>
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Remaining to Goal</th>
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Progress %</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Eligibility Status (§31)</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Eligibility Status</th>
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Reward Claim Status</th>
                     </tr>
                   </thead>
@@ -570,7 +570,7 @@ export const CompetitionsView: React.FC = () => {
           >
             <div>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
-                MR Incentive Reward Claims Queue (§33 &amp; §34)
+                MR Incentive Reward Claims Queue
               </span>
               <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                 Verify underlying orders before approving reward payout
@@ -743,7 +743,7 @@ export const CompetitionsView: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Trophy size={18} color="var(--color-brand)" />
-                Create Sales Incentive Competition (§27)
+                Create Sales Incentive Competition
               </h3>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
@@ -769,7 +769,7 @@ export const CompetitionsView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  START DATE (§29)
+                  START DATE
                 </label>
                 <input
                   type="date"
@@ -781,7 +781,7 @@ export const CompetitionsView: React.FC = () => {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  END DATE (§29)
+                  END DATE
                 </label>
                 <input
                   type="date"

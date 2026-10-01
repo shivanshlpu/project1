@@ -262,14 +262,14 @@ export const AdminAttendanceView: React.FC = () => {
 
         <div style={{ background: '#FFFFFF', padding: '14px 18px', borderRadius: 8, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase' }}>
-            Missing Punch-Out (§23)
+            Missing Punch-Out
           </span>
           <p style={{ fontSize: 22, fontWeight: 800, color: '#991B1B', marginTop: 2 }}>{missingPunchOutCount}</p>
         </div>
 
         <div style={{ background: '#FFFFFF', padding: '14px 18px', borderRadius: 8, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase' }}>
-            Suspicious GPS (§4)
+            Suspicious GPS
           </span>
           <p style={{ fontSize: 22, fontWeight: 800, color: '#991B1B', marginTop: 2 }}>{suspiciousCount}</p>
         </div>
@@ -289,7 +289,7 @@ export const AdminAttendanceView: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Filter size={15} color="var(--color-brand)" />
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-primary)' }}>
-            Attendance Filters (§26)
+            Attendance Filters
           </span>
         </div>
 
@@ -365,7 +365,7 @@ export const AdminAttendanceView: React.FC = () => {
               checked={filterLateOnly}
               onChange={(e) => setFilterLateOnly(e.target.checked)}
             />
-            <span>Show Late Only (§24)</span>
+            <span>Show Late Only</span>
           </label>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
@@ -374,7 +374,7 @@ export const AdminAttendanceView: React.FC = () => {
               checked={filterEarlyOnly}
               onChange={(e) => setFilterEarlyOnly(e.target.checked)}
             />
-            <span>Show Early Punch-Out Only (§24)</span>
+            <span>Show Early Punch-Out Only</span>
           </label>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
@@ -383,7 +383,7 @@ export const AdminAttendanceView: React.FC = () => {
               checked={filterMissingPunchOutOnly}
               onChange={(e) => setFilterMissingPunchOutOnly(e.target.checked)}
             />
-            <span>Show Missing Punch-Out Only (§23)</span>
+            <span>Show Missing Punch-Out Only</span>
           </label>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
@@ -392,7 +392,7 @@ export const AdminAttendanceView: React.FC = () => {
               checked={filterSuspiciousOnly}
               onChange={(e) => setFilterSuspiciousOnly(e.target.checked)}
             />
-            <span>Show Suspicious / Mock Location (§4)</span>
+            <span>Show Suspicious / Mock Location</span>
           </label>
         </div>
       </div>
@@ -446,12 +446,12 @@ export const AdminAttendanceView: React.FC = () => {
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Date</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Representative</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Punch In (§22)</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Punch Out (§23)</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Late / Early (§24)</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Punch In</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Punch Out</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Late / Early</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Duration</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>GPS / Integrity (§4)</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Photo Proof (§21)</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>GPS / Integrity</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Photo Proof</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status</th>
                 </tr>
               </thead>
@@ -654,7 +654,7 @@ export const AdminAttendanceView: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Sliders size={18} color="var(--color-brand)" />
-                Attendance Time Settings (§22)
+                Attendance Time Settings
               </h3>
               <button
                 onClick={() => setIsSettingsModalOpen(false)}
@@ -768,7 +768,7 @@ export const AdminAttendanceView: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
                 <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary)' }}>
-                  Work-Attire Attendance Photo (§21)
+                  Work-Attire Attendance Photo
                 </h4>
                 <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                   {previewPhoto.userName} • {formatDateDDMMYYYY(previewPhoto.date)} at {previewPhoto.time}
