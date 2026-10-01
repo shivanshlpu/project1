@@ -256,7 +256,20 @@ export const StockerManagementView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const [isSubmittingStocker, setIsSubmittingStocker] = useState<boolean>(false);
+  const [stockerModalError, setStockerModalError] = useState<string>('');
+
+  const getApiUrl = () => {
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://localhost:3000';
+    }
+    return (
+      (import.meta as any).env?.VITE_API_URL ||
+      localStorage.getItem('ahtri_backend_url') ||
+      'http://localhost:3000'
+    );
+  };
+  const apiUrl = getApiUrl();
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -320,6 +333,18 @@ export const StockerManagementView: React.FC = () => {
   // Load stockers when HQ changes (§10)
   const fetchStockers = async () => {
     if (!selectedHqId) return;
+
+    let localForHq: StockerItem[] = [];
+    try {
+      const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+      if (savedStkRaw) {
+        const allSaved = JSON.parse(savedStkRaw);
+        if (Array.isArray(allSaved)) {
+          localForHq = allSaved.filter((s: any) => s.hq_id === selectedHqId);
+        }
+      }
+    } catch {}
+
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers?hq_id=${selectedHqId}`, {
         headers: getAuthHeaders(),
@@ -327,16 +352,26 @@ export const StockerManagementView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setStockers(data);
-          if (data.length > 0) {
-            setSelectedStockerId(data[0].id);
+          const map = new Map<string, StockerItem>();
+          localForHq.forEach((s) => map.set(s.id, s));
+          data.forEach((s: any) => map.set(s.id, s));
+          const merged = Array.from(map.values());
+          setStockers(merged);
+          if (merged.length > 0) {
+            setSelectedStockerId((prev) => (merged.some((m) => m.id === prev) ? prev : merged[0].id));
           } else {
             setSelectedStockerId('');
             setInventory([]);
           }
+          return;
         }
       }
     } catch {}
+
+    if (localForHq.length > 0) {
+      setStockers(localForHq);
+      setSelectedStockerId((prev) => (localForHq.some((m) => m.id === prev) ? prev : localForHq[0].id));
+    }
   };
 
   useEffect(() => {
@@ -562,12 +597,28 @@ export const StockerManagementView: React.FC = () => {
   };
 
   // === STOCKER CRUD HANDLERS ===
-  const handleAddStocker = async () => {
+  const handleAddStocker = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!newStockerName.trim()) {
-      alert('Please enter stocker name.');
+      setStockerModalError('Please enter stocker or shop name.');
       return;
     }
     const targetHqId = newStockerHqId || selectedHqId;
+    const targetHq = hqs.find((h) => h.id === targetHqId);
+    setIsSubmittingStocker(true);
+    setStockerModalError('');
+
+    const newStkLocal: StockerItem = {
+      id: `stk-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      hq_id: targetHqId,
+      hq_name: targetHq?.name || 'HQ',
+      name: newStockerName.trim(),
+      contact_person: newStockerContact.trim(),
+      phone: newStockerPhone.trim(),
+      address: newStockerAddress.trim(),
+      status: 'ACTIVE',
+    };
+
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers`, {
         method: 'POST',
@@ -580,23 +631,37 @@ export const StockerManagementView: React.FC = () => {
           address: newStockerAddress.trim(),
         }),
       });
+
       if (res.ok) {
-        setIsAddStockerModalOpen(false);
-        setNewStockerName('');
-        setNewStockerContact('');
-        setNewStockerPhone('');
-        setNewStockerAddress('');
-        if (selectedHqId !== targetHqId) {
-          setSelectedHqId(targetHqId);
-        } else {
-          fetchStockers();
+        const saved = await res.json().catch(() => null);
+        if (saved && saved.id) {
+          newStkLocal.id = saved.id;
         }
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Failed to add stocker.');
       }
     } catch (err: any) {
-      alert('Error creating stocker: ' + err.message);
+      console.warn('Network sync failed, saving locally:', err);
+    } finally {
+      try {
+        const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+        const savedList: StockerItem[] = savedStkRaw ? JSON.parse(savedStkRaw) : [];
+        const updatedList = [newStkLocal, ...savedList.filter((s) => s.id !== newStkLocal.id)];
+        localStorage.setItem('ahtri_inventory_stockers', JSON.stringify(updatedList));
+      } catch {}
+
+      setIsSubmittingStocker(false);
+      setIsAddStockerModalOpen(false);
+      setStockerModalError('');
+      setNewStockerName('');
+      setNewStockerContact('');
+      setNewStockerPhone('');
+      setNewStockerAddress('');
+
+      if (selectedHqId !== targetHqId) {
+        setSelectedHqId(targetHqId);
+      } else {
+        await fetchStockers();
+      }
+      setSelectedStockerId(newStkLocal.id);
     }
   };
 
@@ -2538,7 +2603,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveStockAdjustment();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -2553,6 +2622,7 @@ export const StockerManagementView: React.FC = () => {
                 Set Stock Quantity
               </h3>
               <button
+                type="button"
                 onClick={() => setIsUpdateStockModalOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
@@ -2608,19 +2678,20 @@ export const StockerManagementView: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
+                type="button"
                 className="btn-enterprise secondary"
                 onClick={() => setIsUpdateStockModalOpen(false)}
               >
                 Cancel
               </button>
               <button
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleSaveStockAdjustment}
               >
                 Save Stock Quantity
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -2638,7 +2709,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddHq();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -2671,6 +2746,7 @@ export const StockerManagementView: React.FC = () => {
                 placeholder="e.g. Rewa, Indore, Raipur, Delhi"
                 value={newHqName}
                 onChange={(e) => setNewHqName(e.target.value)}
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -2712,14 +2788,13 @@ export const StockerManagementView: React.FC = () => {
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleAddHq}
               >
                 Add Headquarters
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -2737,7 +2812,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveEditHq();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -2769,6 +2848,7 @@ export const StockerManagementView: React.FC = () => {
                 type="text"
                 value={editHqName}
                 onChange={(e) => setEditHqName(e.target.value)}
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -2808,14 +2888,13 @@ export const StockerManagementView: React.FC = () => {
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleSaveEditHq}
               >
                 Save Changes
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -2833,7 +2912,8 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={handleAddStocker}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -2849,12 +2929,21 @@ export const StockerManagementView: React.FC = () => {
               </h3>
               <button
                 type="button"
-                onClick={() => setIsAddStockerModalOpen(false)}
+                onClick={() => {
+                  setIsAddStockerModalOpen(false);
+                  setStockerModalError('');
+                }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
                 <X size={18} />
               </button>
             </div>
+
+            {stockerModalError && (
+              <div style={{ color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', padding: '6px 10px', borderRadius: 6, fontSize: 11.5, marginBottom: 12 }}>
+                {stockerModalError}
+              </div>
+            )}
 
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
@@ -2890,6 +2979,8 @@ export const StockerManagementView: React.FC = () => {
                 placeholder="e.g. Shahdol Stocker 3, City Medico"
                 value={newStockerName}
                 onChange={(e) => setNewStockerName(e.target.value)}
+                required
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -2937,19 +3028,23 @@ export const StockerManagementView: React.FC = () => {
               <button
                 type="button"
                 className="btn-enterprise secondary"
-                onClick={() => setIsAddStockerModalOpen(false)}
+                onClick={() => {
+                  setIsAddStockerModalOpen(false);
+                  setStockerModalError('');
+                }}
               >
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleAddStocker}
+                disabled={isSubmittingStocker}
+                style={{ opacity: isSubmittingStocker ? 0.7 : 1 }}
               >
-                Register Stocker
+                {isSubmittingStocker ? 'Registering...' : 'Register Stocker'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -2967,7 +3062,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveEditStocker();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -2999,6 +3098,7 @@ export const StockerManagementView: React.FC = () => {
                 type="text"
                 value={editStockerName}
                 onChange={(e) => setEditStockerName(e.target.value)}
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -3062,14 +3162,13 @@ export const StockerManagementView: React.FC = () => {
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleSaveEditStocker}
               >
                 Save Changes
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -3087,7 +3186,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddMedicine();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -3119,6 +3222,7 @@ export const StockerManagementView: React.FC = () => {
                 placeholder="e.g. CardioFix-50 (Telmisartan 40mg)"
                 value={newMedName}
                 onChange={(e) => setNewMedName(e.target.value)}
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -3188,14 +3292,13 @@ export const StockerManagementView: React.FC = () => {
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleAddMedicine}
               >
                 Save Medicine
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -3213,7 +3316,11 @@ export const StockerManagementView: React.FC = () => {
             padding: 16,
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveEditMedicine();
+            }}
             style={{
               background: '#FFFFFF',
               borderRadius: 10,
@@ -3245,6 +3352,7 @@ export const StockerManagementView: React.FC = () => {
                 type="text"
                 value={editMedName}
                 onChange={(e) => setEditMedName(e.target.value)}
+                autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
             </div>
@@ -3312,14 +3420,13 @@ export const StockerManagementView: React.FC = () => {
                 Cancel
               </button>
               <button
-                type="button"
+                type="submit"
                 className="btn-enterprise"
-                onClick={handleSaveEditMedicine}
               >
                 Save Changes
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>
