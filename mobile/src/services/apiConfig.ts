@@ -16,8 +16,6 @@ export const PRESET_SERVER_URLS = [
 export const ApiConfig = {
   async getBaseUrl(): Promise<string> {
     try {
-      const custom = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
-      if (custom) return custom;
       if (
         typeof window !== 'undefined' &&
         window.location &&
@@ -25,6 +23,8 @@ export const ApiConfig = {
       ) {
         return 'http://localhost:3000';
       }
+      const custom = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
+      if (custom) return custom;
     } catch {}
     return DEFAULT_API_URL;
   },

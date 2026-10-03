@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
-import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { formatDateDDMMYYYY, formatMonthMMYYYY } from '../utils/dateFormatter';
 
 interface MonthlyTpScreenProps {
   currentUserId?: string;
@@ -73,7 +73,9 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   // Form inputs
   const [formDate, setFormDate] = useState<string>(() => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${d.getFullYear()}`;
   });
   const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
   const [selectedArea, setSelectedArea] = useState<string>('Shahdol');
@@ -181,18 +183,24 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setKolDrsName('');
     setPlannedActivity('');
 
-    // Advance date to next day automatically
+    // Advance date to next day automatically in DD-MM-YYYY format
     try {
-      const parts = formDate.split('-');
-      if (parts.length === 3) {
-        const nextD = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]) + 1);
-        setFormDate(
-          `${nextD.getFullYear()}-${String(nextD.getMonth() + 1).padStart(2, '0')}-${String(nextD.getDate()).padStart(2, '0')}`,
-        );
+      let dObj: Date | null = null;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(formDate)) {
+        const [d, m, y] = formDate.split('-').map(Number);
+        dObj = new Date(y, m - 1, d + 1);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(formDate)) {
+        const [y, m, d] = formDate.split('-').map(Number);
+        dObj = new Date(y, m - 1, d + 1);
+      }
+      if (dObj && !isNaN(dObj.getTime())) {
+        const day = String(dObj.getDate()).padStart(2, '0');
+        const month = String(dObj.getMonth() + 1).padStart(2, '0');
+        setFormDate(`${day}-${month}-${dObj.getFullYear()}`);
       }
     } catch {}
 
-    Alert.alert('TP Added', `Added visit for ${newItem.date}. You can add more dates or submit.`);
+    Alert.alert('TP Added', `Added visit for ${formatDateDDMMYYYY(newItem.date)}. You can add more dates or submit.`);
   };
 
   const handleRemoveWorkingItem = (id: string) => {
@@ -287,7 +295,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               onPress={() => setSelectedMonth(m)}
             >
               <Text style={[styles.monthPillText, selectedMonth === m && styles.monthPillTextActive]}>
-                {m}
+                {formatMonthMMYYYY(m)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -301,12 +309,12 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             <Text style={styles.cardHeader}>Add Planned Visit Date</Text>
 
             {/* Date Input */}
-            <Text style={styles.fieldLabel}>Planned Date (YYYY-MM-DD):</Text>
+            <Text style={styles.fieldLabel}>Planned Date (DD-MM-YYYY):</Text>
             <TextInput
               style={styles.textInput}
               value={formDate}
               onChangeText={setFormDate}
-              placeholder="2026-09-15"
+              placeholder="15-09-2026"
             />
 
             {/* HQ Selector */}
@@ -495,7 +503,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 </View>
 
                 <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
-                  Submitted: {new Date(plan.submitted_at).toLocaleDateString()} • {plan.entries?.length || 0} visits scheduled
+                  Submitted: {formatDateDDMMYYYY(plan.submitted_at)} • {plan.entries?.length || 0} visits scheduled
                 </Text>
 
                 {plan.remarks ? (

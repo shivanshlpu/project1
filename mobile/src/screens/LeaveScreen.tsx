@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
-import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { formatDateDDMMYYYY, parseDateString } from '../utils/dateFormatter';
 
 export interface LeaveItem {
   id: string;
@@ -40,12 +40,16 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   const [startDate, setStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${d.getFullYear()}`;
   });
   const [endDate, setEndDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 2);
-    return d.toISOString().split('T')[0];
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${d.getFullYear()}`;
   });
   const [reason, setReason] = useState<string>('Family occasion');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -101,8 +105,8 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   // Calculate day count between start and end date
   const calculateDays = (s: string, e: string): number => {
     try {
-      const d1 = new Date(s);
-      const d2 = new Date(e);
+      const d1 = parseDateString(s);
+      const d2 = parseDateString(e);
       const diffTime = d2.getTime() - d1.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       return diffDays > 0 ? diffDays : 1;
@@ -160,8 +164,8 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     s.setDate(s.getDate() + offsetDays);
     const e = new Date();
     e.setDate(e.getDate() + offsetDays + (durationDays - 1));
-    setStartDate(s.toISOString().split('T')[0]);
-    setEndDate(e.toISOString().split('T')[0]);
+    setStartDate(formatDateDDMMYYYY(s));
+    setEndDate(formatDateDDMMYYYY(e));
   };
 
   // Submit Leave Request
@@ -171,7 +175,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
       return;
     }
 
-    if (new Date(endDate) < new Date(startDate)) {
+    if (parseDateString(endDate) < parseDateString(startDate)) {
       Alert.alert('Invalid Date Range', 'End date cannot be earlier than start date.');
       return;
     }
@@ -377,22 +381,22 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
           {/* Date Range Inputs */}
           <View style={styles.rowTwoCols}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>From Date *</Text>
+              <Text style={styles.label}>From Date (DD-MM-YYYY) *</Text>
               <TextInput
                 style={styles.input}
                 value={startDate}
                 onChangeText={setStartDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="DD-MM-YYYY"
               />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>To Date *</Text>
+              <Text style={styles.label}>To Date (DD-MM-YYYY) *</Text>
               <TextInput
                 style={styles.input}
                 value={endDate}
                 onChangeText={setEndDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="DD-MM-YYYY"
               />
             </View>
           </View>
@@ -557,7 +561,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
 
                   <View style={styles.historyFooter}>
                     <Text style={styles.historyTimestamp}>
-                      Submitted: {item.created_at ? item.created_at.split('T')[0] : 'Recent'}
+                      Submitted: {item.created_at ? formatDateDDMMYYYY(item.created_at) : 'Recent'}
                     </Text>
                     <Text
                       style={[

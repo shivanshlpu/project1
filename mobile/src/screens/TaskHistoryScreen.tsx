@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
-import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { formatDateDDMMYYYY, toApiDateYYYYMMDD } from '../utils/dateFormatter';
 
 interface CompletedTask {
   id: string;
@@ -182,14 +182,17 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         });
         break;
       }
-      case 'custom':
+      case 'custom': {
+        const startComp = toApiDateYYYYMMDD(customStartDate);
+        const endComp = toApiDateYYYYMMDD(customEndDate);
         filtered = allCompletedTasks.filter(t => {
           const taskDate = t.completed_at ? t.completed_at.substring(0, 10) : t.date;
-          if (customStartDate && taskDate < customStartDate) return false;
-          if (customEndDate && taskDate > customEndDate) return false;
+          if (startComp && taskDate < startComp) return false;
+          if (endComp && taskDate > endComp) return false;
           return true;
         });
         break;
+      }
       default: // 'all'
         filtered = [...allCompletedTasks];
     }
@@ -418,14 +421,14 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
           <View style={styles.dateModal}>
             <Text style={styles.dateModalTitle}>📅 Select Date Range</Text>
             <Text style={styles.dateModalSubtitle}>
-              Enter dates in YYYY-MM-DD format
+              Enter dates in DD-MM-YYYY format
             </Text>
 
             <View style={styles.dateInputGroup}>
-              <Text style={styles.dateInputLabel}>From:</Text>
+              <Text style={styles.dateInputLabel}>From (DD-MM-YYYY):</Text>
               <TextInput
                 style={styles.dateInput}
-                placeholder="2026-09-01"
+                placeholder="01-09-2026"
                 placeholderTextColor="#94A3B8"
                 value={customStartDate}
                 onChangeText={setCustomStartDate}
@@ -434,10 +437,10 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
             </View>
 
             <View style={styles.dateInputGroup}>
-              <Text style={styles.dateInputLabel}>To:</Text>
+              <Text style={styles.dateInputLabel}>To (DD-MM-YYYY):</Text>
               <TextInput
                 style={styles.dateInput}
-                placeholder="2026-09-12"
+                placeholder="12-09-2026"
                 placeholderTextColor="#94A3B8"
                 value={customEndDate}
                 onChangeText={setCustomEndDate}
