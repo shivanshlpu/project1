@@ -62,4 +62,11 @@ export class AttendanceController {
   async getAdminAttendance(@Query() filter: AttendanceFilterDto) {
     return this.attendanceService.getAdminAttendance(filter);
   }
+
+  @Post('purge-expired-photos')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async purgeExpiredPhotos() {
+    return this.attendanceService.purgeExpiredPhotos();
+  }
 }

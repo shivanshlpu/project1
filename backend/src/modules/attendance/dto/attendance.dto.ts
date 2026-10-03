@@ -24,6 +24,14 @@ export class CheckInDto {
 
   @IsString()
   @IsOptional()
+  check_in_photo?: string;
+
+  @IsString()
+  @IsOptional()
+  location_name?: string;
+
+  @IsString()
+  @IsOptional()
   photo_key?: string;
 
   @IsEnum(['CAMERA', 'GALLERY'])

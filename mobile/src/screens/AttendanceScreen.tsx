@@ -127,15 +127,15 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   // Take selfie photo via Camera (§21)
   const handleTakeSelfie = async () => {
     Alert.alert(
-      'Work Attire Verification',
-      'Please stand properly in front of the camera and capture a photo in proper company work attire.',
+      'Work Attire & ID Card Verification',
+      'Please ensure you are in full dress / formal company uniform with your official ID card clearly visible on your chest. Stand in a well-lit area.',
       [
         {
           text: 'Open Camera',
           onPress: async () => {
             const photo = await CameraService.captureLivePhoto({
-              aspect: [4, 5],
-              quality: 0.8,
+              aspect: [4, 4],
+              quality: 0.5, // Compressed to conserve 512MB database storage
             });
             if (photo) {
               setSelfiePhoto(photo);
@@ -155,8 +155,8 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const handleCheckIn = async () => {
     if (!selfiePhoto) {
       Alert.alert(
-        'Camera Photo Required',
-        'Stand properly in front of the camera and capture a photo in proper work attire before punching in.'
+        'Full Dress & ID Card Photo Required',
+        'Please capture a live photo in full formal attire with your official ID card clearly visible before punching in.'
       );
       return;
     }
@@ -172,7 +172,12 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
-      // 2. Post to Backend
+      // 2. Prepare compressed photo payload
+      const photoPayload = selfiePhoto.base64
+        ? `data:image/jpeg;base64,${selfiePhoto.base64}`
+        : selfiePhoto.uri;
+
+      // 3. Post to Backend with Photo & Geo-Location
       let lateMsg = '';
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -185,7 +190,8 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             longitude: lon,
             gps_accuracy_m: accuracy,
             is_mocked: isMocked,
-            check_in_photo: selfiePhoto.uri,
+            check_in_photo: photoPayload,
+            location_name: `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
             photo_key: `photo_att_in_${Date.now()}`,
           }),
         });
@@ -206,7 +212,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       setCheckInTime(nowStr);
       setCheckInGps(gpsFormatted);
 
-      // 3. Save locally in AsyncStorage immediately
+      // 4. Save locally in AsyncStorage immediately
       await AsyncStorage.setItem(
         ATTENDANCE_KEY,
         JSON.stringify({
@@ -220,7 +226,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       Alert.alert(
         'Attendance Marked Done! ✓',
-        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n${lateMsg ? `\n• ${lateMsg}` : '\n• On-Time Entry'}\n\nShift is now active. Your attendance has been submitted with live photo verification.`,
+        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n${lateMsg ? `\n• ${lateMsg}` : '\n• On-Time Entry'}\n\n✓ Full dress & ID card photo captured\n✓ Geo-location tagged\n🛡️ Stored compressed (Auto-purges after 24 hours to protect database storage).`,
       );
     } catch (error: any) {
       Alert.alert('Attendance Error', error?.message || 'Failed to record attendance.');
@@ -490,11 +496,13 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         <Text style={styles.headerSub}>Live camera verification in work attire &amp; GPS geofence</Text>
       </View>
 
-      {/* Employee Reassurance Notice Card */}
+      {/* Attendance & Dress Code Notice Card */}
       <View style={styles.reassuranceCard}>
-        <Text style={styles.reassuranceTitle}>Attendance Process Notice</Text>
+        <Text style={styles.reassuranceTitle}>👔 Mandatory Work Attire &amp; ID Card Verification</Text>
         <Text style={styles.reassuranceBody}>
-          Click a live camera photo to verify your physical presence. This photo is NOT stored in the database, and NO facial biometric scanning or AI face recognition is required. Your attendance is approved directly upon punch-in.
+          • Capture a live photo in <Text style={{ fontWeight: '700', color: '#0F172A' }}>full dress / company uniform</Text> with your <Text style={{ fontWeight: '700', color: '#0F172A' }}>official ID card clearly worn and visible</Text>.{'\n'}
+          • Your exact <Text style={{ fontWeight: '700', color: '#0F172A' }}>GPS Geo-location</Text> is recorded automatically upon punch-in.{'\n'}
+          • <Text style={{ fontWeight: '700', color: '#0F172A' }}>24-Hour Storage Policy</Text>: Photos are compressed to protect the 512MB storage quota and are <Text style={{ fontWeight: '700', color: '#0F172A' }}>automatically purged after 24 hours</Text>. All attendance records, punch times, and GPS logs remain permanently preserved for administration.
         </Text>
       </View>
 
@@ -566,10 +574,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           <View style={styles.selfieSection}>
             {selfiePhoto ? (
               <View style={styles.selfiePreviewBox}>
-                <Image source={{ uri: selfiePhoto.uri }} style={[styles.selfieImage, { width: 120, height: 150, borderRadius: 10 }]} />
+                <Image source={{ uri: selfiePhoto.uri }} style={[styles.selfieImage, { width: 130, height: 160, borderRadius: 10 }]} />
                 <View style={styles.photoVerifiedBadge}>
-                  <Text style={styles.photoVerifiedText}>✓ Work Attire Photo Captured</Text>
-                  <Text style={styles.photoVerifiedSub}>Direct camera capture verified</Text>
+                  <Text style={styles.photoVerifiedText}>✓ Full Dress &amp; ID Card Photo Captured</Text>
+                  <Text style={styles.photoVerifiedSub}>Compressed for 512MB quota • Auto-purges in 24h</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.retakeBtn}
@@ -584,12 +592,12 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 onPress={handleTakeSelfie}
               >
                 <Text style={styles.cameraTriggerIcon}>📷</Text>
-                <Text style={styles.cameraTriggerText}>Click Photo with Camera</Text>
+                <Text style={styles.cameraTriggerText}>Click Photo (Full Dress &amp; ID Card)</Text>
                 <Text style={[styles.cameraTriggerSub, { fontWeight: '700', color: '#1E40AF', marginTop: 4 }]}>
-                  "Stand properly in front of the camera and capture a full-body photo in proper work attire."
+                  "Stand properly wearing full formal attire with your company ID card clearly visible."
                 </Text>
                 <Text style={[styles.cameraTriggerSub, { fontSize: 10, color: '#64748B', marginTop: 2 }]}>
-                  Direct camera verification required by company policy.
+                  Live camera photo + GPS geo-tag required. Auto-purged after 24h.
                 </Text>
               </TouchableOpacity>
             )}

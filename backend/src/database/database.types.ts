@@ -182,9 +182,14 @@ export interface Attendance {
   check_in_at: string;
   check_in_lat: number;
   check_in_lng: number;
+  check_in_location_name?: string;
+  check_in_photo?: string | null; // Compressed photo data URL or URL (< 24h)
+  photo_captured_at?: string;
+  photo_purged?: boolean; // True when photo is auto-deleted after 24 hours
   check_out_at?: string;
   check_out_lat?: number;
   check_out_lng?: number;
+  check_out_location_name?: string;
   distance_meters?: number;
   is_verified_location?: boolean;
   status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'INCOMPLETE';

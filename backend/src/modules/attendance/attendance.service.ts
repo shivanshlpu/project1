@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
@@ -22,8 +23,59 @@ function parseTimeToDate(dateStr: string, timeStr: string): Date {
 }
 
 @Injectable()
-export class AttendanceService {
+export class AttendanceService implements OnModuleInit {
   constructor(private readonly db: DatabaseService) {}
+
+  onModuleInit() {
+    // Initial purge check on server startup
+    this.purgeExpiredPhotos();
+
+    // Routine purge every 15 minutes to guarantee 512MB quota protection
+    setInterval(() => {
+      this.purgeExpiredPhotos();
+    }, 15 * 60 * 1000);
+  }
+
+  /**
+   * 24-Hour Auto-Purge Service
+   * Automatically clears compressed attendance photos older than 24 hours to prevent overloading
+   * the database (512MB storage quota protection).
+   * ALL other attendance records, check-in/out timestamps, GPS coordinates, and statuses remain PERMANENTLY INTACT.
+   */
+  purgeExpiredPhotos(): { purgedCount: number; message: string } {
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    let purgedCount = 0;
+
+    for (const record of this.db.attendance) {
+      if (record.check_in_photo) {
+        const photoTime = record.photo_captured_at
+          ? new Date(record.photo_captured_at).getTime()
+          : record.check_in_at
+          ? new Date(record.check_in_at).getTime()
+          : record.created_at
+          ? new Date(record.created_at).getTime()
+          : 0;
+
+        if (photoTime > 0 && now - photoTime >= TWENTY_FOUR_HOURS_MS) {
+          record.check_in_photo = null;
+          record.photo_purged = true;
+          purgedCount++;
+        }
+      }
+    }
+
+    if (purgedCount > 0) {
+      console.log(
+        `[Storage Quota Protection] Purged ${purgedCount} attendance photo(s) older than 24h. Attendance & GPS data intact.`,
+      );
+    }
+
+    return {
+      purgedCount,
+      message: `24-hour purge executed. ${purgedCount} expired photo(s) deleted from database. Attendance logs preserved.`,
+    };
+  }
 
   // === 1. SETTINGS (§22) ===
   async getSettings(): Promise<AttendanceSettings> {
@@ -49,6 +101,8 @@ export class AttendanceService {
 
   // === 2. PUNCH-IN (§20, §21, §22, §24) ===
   async checkIn(userId: string, dto: CheckInDto) {
+    this.purgeExpiredPhotos();
+
     const todayStr = new Date().toISOString().split('T')[0];
     const existing = this.db.attendance.find(
       (a) => a.user_id === userId && a.date === todayStr,
@@ -118,6 +172,10 @@ export class AttendanceService {
       check_in_at: now.toISOString(),
       check_in_lat: dto.latitude,
       check_in_lng: dto.longitude,
+      check_in_location_name: dto.location_name || `Lat: ${dto.latitude.toFixed(4)}, Lng: ${dto.longitude.toFixed(4)}`,
+      check_in_photo: dto.check_in_photo || null,
+      photo_captured_at: now.toISOString(),
+      photo_purged: false,
       distance_meters: accuracy,
       is_verified_location: true,
       status: isLate ? 'LATE' : 'PRESENT',
@@ -217,6 +275,7 @@ export class AttendanceService {
 
   // === 4. MR ATTENDANCE HISTORY (§25) ===
   async getMyAttendance(userId: string, month?: string) {
+    this.purgeExpiredPhotos();
     const todayStr = new Date().toISOString().split('T')[0];
 
     return this.db.attendance
@@ -236,6 +295,7 @@ export class AttendanceService {
 
   // === 5. ADMIN ATTENDANCE TABLE & FILTERS (§26) ===
   async getAdminAttendance(filter: AttendanceFilterDto) {
+    this.purgeExpiredPhotos();
     const todayStr = new Date().toISOString().split('T')[0];
 
     return this.db.attendance

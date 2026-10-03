@@ -54,12 +54,63 @@ export const CameraService = {
           const reader = new FileReader();
           reader.onload = (event: any) => {
             const dataUrl = event.target.result as string;
-            resolve({
-              uri: dataUrl,
-              width: 400,
-              height: 400,
-              base64: dataUrl.split(',')[1] || null,
-            });
+            // Compress with Canvas to keep size ~25KB-35KB (prevents database 512MB quota overflow)
+            try {
+              const img = document.createElement('img');
+              img.onload = () => {
+                const MAX_DIM = 480;
+                let width = img.width || 400;
+                let height = img.height || 400;
+                if (width > height) {
+                  if (width > MAX_DIM) {
+                    height = Math.round((height * MAX_DIM) / width);
+                    width = MAX_DIM;
+                  }
+                } else {
+                  if (height > MAX_DIM) {
+                    width = Math.round((width * MAX_DIM) / height);
+                    height = MAX_DIM;
+                  }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(img, 0, 0, width, height);
+                  const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                  resolve({
+                    uri: compressedDataUrl,
+                    width,
+                    height,
+                    base64: compressedDataUrl.split(',')[1] || null,
+                  });
+                  return;
+                }
+                resolve({
+                  uri: dataUrl,
+                  width: 400,
+                  height: 400,
+                  base64: dataUrl.split(',')[1] || null,
+                });
+              };
+              img.onerror = () => {
+                resolve({
+                  uri: dataUrl,
+                  width: 400,
+                  height: 400,
+                  base64: dataUrl.split(',')[1] || null,
+                });
+              };
+              img.src = dataUrl;
+            } catch {
+              resolve({
+                uri: dataUrl,
+                width: 400,
+                height: 400,
+                base64: dataUrl.split(',')[1] || null,
+              });
+            }
           };
           reader.onerror = () => resolve(null);
           reader.readAsDataURL(file);
@@ -99,8 +150,8 @@ export const CameraService = {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: options?.allowsEditing ?? true,
-        aspect: options?.aspect ?? [4, 3],
-        quality: options?.quality ?? 0.7,
+        aspect: options?.aspect ?? [4, 4],
+        quality: options?.quality ?? 0.5, // Compressed quality to protect 512MB storage
         base64: true,
       });
 
