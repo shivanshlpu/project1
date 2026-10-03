@@ -30,7 +30,7 @@ import {
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
 interface SavedLocationsViewProps {
-  onAssignTaskToLocation: (loc: {
+  onAssignTaskToLocation?: (loc: {
     name: string;
     address: string;
     latitude: number;
@@ -539,7 +539,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             Live Map & Saved Territory Locations
           </h1>
           <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
-            Mark doctor clinics, hospitals, and pharmacies on the live map. Saved locations can be assigned directly to MRs.
+            Mark and manage doctor clinics, hospitals, and pharmacies on the territory map.
           </p>
         </div>
 
@@ -917,34 +917,6 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
                           }}
                         >
                           <Trash2 size={11} color="#DC2626" /> Delete
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAssignTaskToLocation({
-                              name: loc.clinic || loc.name,
-                              address: loc.address || loc.clinic,
-                              latitude: loc.latitude,
-                              longitude: loc.longitude,
-                              geofence_radius_m: 50,
-                            });
-                          }}
-                          style={{
-                            padding: '3px 8px',
-                            background: '#1A3C6E',
-                            color: '#FFFFFF',
-                            borderRadius: '4px',
-                            border: 'none',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                          }}
-                        >
-                          <Calendar size={11} /> Assign
                         </button>
                       </div>
                     </div>

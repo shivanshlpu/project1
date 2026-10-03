@@ -278,6 +278,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(Boolean(prefilledLocation));
 
   // Form State
+  const [locationMode, setLocationMode] = useState<'saved' | 'custom'>('saved');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('doc-01');
   const [taskTitle, setTaskTitle] = useState('Dr. Rajesh Sharma Detailing - CardioFix Launch');
   const [callCategory, setCallCategory] = useState<'DETAILING' | 'LAUNCH' | 'POB' | 'SAMPLE' | 'HOSPITAL'>('DETAILING');
@@ -440,25 +441,37 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Global handler for Leaflet popup "Assign Task Here" button
-  useEffect(() => {
-    window.__assignTaskToLocation = (locId: string) => {
-      const loc = savedLocations.find((l) => l.id === locId);
-      if (loc) {
-        setTaskLocationName(loc.clinic || loc.name);
-        setTaskAddress(loc.address || '');
-        setTaskLat(loc.latitude);
-        setTaskLng(loc.longitude);
-        setTaskRadius(loc.geofence_radius_m || 50);
-        setTaskTitle(`Detailing Call at ${loc.clinic || loc.name}`);
-        setIsCreateModalOpen(true);
-        setSelectedPresetId('custom');
+  // Open create task modal cleanly with preset or custom mode
+  const handleOpenCreateModal = (mode: 'saved' | 'custom' = 'saved') => {
+    setLocationMode(mode);
+    const activeZone = zones.find((z) => z.id === modalSelectedZoneId) || zones[0];
+    if (mode === 'custom') {
+      setMatchedSavedLocation(null);
+      setSelectedPresetId('custom');
+      setTaskLocationName('');
+      setTaskAddress('');
+      setTaskTitle('');
+      if (activeZone) {
+        setTaskLat(activeZone.latitude);
+        setTaskLng(activeZone.longitude);
+        if (markerRef.current) markerRef.current.setLatLng([activeZone.latitude, activeZone.longitude]);
+        if (circleRef.current) circleRef.current.setLatLng([activeZone.latitude, activeZone.longitude]);
+        if (mapInstanceRef.current) mapInstanceRef.current.setView([activeZone.latitude, activeZone.longitude], 15);
       }
-    };
-    return () => {
-      delete window.__assignTaskToLocation;
-    };
-  }, [savedLocations]);
+    } else {
+      const inZone = savedLocations.filter((l) => {
+        if (!activeZone) return true;
+        const d = calculateDistanceKm(activeZone.latitude, activeZone.longitude, l.latitude, l.longitude);
+        return d <= activeZone.radiusKm;
+      });
+      if (inZone.length > 0) {
+        handleSelectSavedLocationPreset(inZone[0].id);
+      } else if (savedLocations.length > 0) {
+        handleSelectSavedLocationPreset(savedLocations[0].id);
+      }
+    }
+    setIsCreateModalOpen(true);
+  };
 
 
   const toggleZoneMapInteraction = () => {
@@ -597,7 +610,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </div>
           <div style="margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:700;background:#EFF6FF;color:#1A3C6E;padding:2px 6px;border-radius:4px;">${loc.category || 'CLINIC'}</span>
-            <button onclick="window.__assignTaskToLocation('${loc.id}')" style="background:#1A3C6E;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Plan Visit Here</button>
+            <span style="font-size:10.5px;color:#64748B;font-weight:600;">Saved Point of Care</span>
           </div>
         </div>
       `;
@@ -663,6 +676,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
   // Listen for prefilled location changes
   useEffect(() => {
     if (prefilledLocation) {
+      setLocationMode('custom');
+      setMatchedSavedLocation(null);
+      setSelectedPresetId('custom');
       setTaskLocationName(prefilledLocation.name);
       setTaskAddress(prefilledLocation.address);
       setTaskLat(prefilledLocation.latitude);
@@ -670,7 +686,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
       setTaskRadius(prefilledLocation.geofence_radius_m || 50);
       setTaskTitle(`Detailing Call at ${prefilledLocation.name}`);
       setIsCreateModalOpen(true);
-      setSelectedPresetId('custom');
     }
   }, [prefilledLocation]);
 
@@ -720,6 +735,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   // Helper to select a saved location preset
   const handleSelectSavedLocationPreset = (locId: string) => {
+    setLocationMode('saved');
     setSelectedPresetId(`saved-${locId}`);
     const loc = savedLocations.find((l) => l.id === locId);
     if (loc) {
@@ -775,53 +791,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
       }
     }
 
-    // Check if there are saved locations in this zone
-    const inZone = savedLocations.filter((l) => {
-      const dist = calculateDistanceKm(zone.latitude, zone.longitude, l.latitude, l.longitude);
-      return dist <= zone.radiusKm;
-    });
-
-    if (inZone.length > 0) {
-      handleSelectSavedLocationPreset(inZone[0].id);
-    } else {
-      setTaskLat(zone.latitude);
-      setTaskLng(zone.longitude);
-      setTaskLocationName(`${zone.name} Point of Care`);
-      setTaskAddress(zone.description);
-      setMatchedSavedLocation(null);
-      setSelectedPresetId('custom');
-      if (markerRef.current) markerRef.current.setLatLng([zone.latitude, zone.longitude]);
-      if (circleRef.current) circleRef.current.setLatLng([zone.latitude, zone.longitude]);
-    }
-  };
-
-  // Listen for prefilled location changes
-  useEffect(() => {
-    if (prefilledLocation) {
-      setTaskLocationName(prefilledLocation.name);
-      setTaskAddress(prefilledLocation.address);
-      setTaskLat(prefilledLocation.latitude);
-      setTaskLng(prefilledLocation.longitude);
-      setTaskRadius(prefilledLocation.geofence_radius_m || 50);
-      setTaskTitle(`Detailing Call at ${prefilledLocation.name}`);
-      setIsCreateModalOpen(true);
-      setSelectedPresetId('custom');
-
-      // Proximity check on prefilled location to snap to existing saved location
-      const nearby = savedLocations.find((l) => {
-        const d = calculateDistanceKm(prefilledLocation.latitude, prefilledLocation.longitude, l.latitude, l.longitude);
-        return d <= 0.08;
+    // Only auto-pick saved customer preset if currently in 'saved' mode
+    if (locationMode === 'saved') {
+      const inZone = savedLocations.filter((l) => {
+        const dist = calculateDistanceKm(zone.latitude, zone.longitude, l.latitude, l.longitude);
+        return dist <= zone.radiusKm;
       });
-      if (nearby) {
-        setMatchedSavedLocation(nearby);
-        setSelectedPresetId(`saved-${nearby.id}`);
+
+      if (inZone.length > 0) {
+        handleSelectSavedLocationPreset(inZone[0].id);
       }
     }
-  }, [prefilledLocation, savedLocations]);
+  };
 
   // Global handler for Leaflet popup "Use This Saved Location" button
   useEffect(() => {
     window.__selectModalLocation = (locId: string) => {
+      setLocationMode('saved');
       handleSelectSavedLocationPreset(locId);
     };
     return () => {
@@ -940,19 +926,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   // Update coordinates and reverse geocode when clicking/dragging map
   const updateLocationFromMap = async (lat: number, lng: number, nameHint?: string) => {
-    // Proximity Snap Check: If user clicks within 80m of an already saved point of care, snap to it!
-    const nearbySaved = savedLocations.find((l) => {
-      const dist = calculateDistanceKm(lat, lng, l.latitude, l.longitude);
-      return dist <= 0.08; // 80 meters
-    });
+    // Only snap to saved customer if in SAVED mode
+    if (locationMode === 'saved') {
+      const nearbySaved = savedLocations.find((l) => {
+        const dist = calculateDistanceKm(lat, lng, l.latitude, l.longitude);
+        return dist <= 0.08; // 80 meters
+      });
 
-    if (nearbySaved) {
-      handleSelectSavedLocationPreset(nearbySaved.id);
-      showToast(`Snapped to existing saved point: ${nearbySaved.clinic || nearbySaved.name}`, 'info');
-      return;
+      if (nearbySaved) {
+        handleSelectSavedLocationPreset(nearbySaved.id);
+        showToast(`Selected saved customer: ${nearbySaved.clinic || nearbySaved.name}`, 'info');
+        return;
+      }
     }
 
-    // No existing saved point nearby; custom pin location
+    // Custom Mode (or no saved point nearby): update custom coordinates directly without snapping
     setMatchedSavedLocation(null);
     setTaskLat(lat);
     setTaskLng(lng);
@@ -964,7 +952,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
     if (nameHint) {
       setTaskLocationName(nameHint);
-      setTaskTitle(`Detailing Call at ${nameHint}`);
+      if (!taskTitle || taskTitle.startsWith('Detailing Call at') || taskTitle === '') {
+        setTaskTitle(`Detailing Call at ${nameHint}`);
+      }
     }
 
     try {
@@ -973,10 +963,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
         const data = await res.json();
         if (data && data.display_name) {
           setTaskAddress(data.display_name);
-          if (!nameHint) {
-            const shortName = data.name || (data.address && (data.address.hospital || data.address.amenity || data.address.road)) || 'Doctor Clinic';
+          if (!nameHint && !taskLocationName) {
+            const shortName = data.name || (data.address && (data.address.hospital || data.address.amenity || data.address.road || data.address.suburb)) || 'Custom Destination';
             setTaskLocationName(shortName);
-            setTaskTitle(`Detailing Call at ${shortName}`);
+            if (!taskTitle || taskTitle.startsWith('Detailing Call at')) {
+              setTaskTitle(`Detailing Call at ${shortName}`);
+            }
           }
         }
       }
@@ -1012,15 +1004,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Legacy preset selection fallback
+  // Preset or custom selection
   const handleSelectPreset = (presetId: string) => {
+    if (presetId === 'custom') {
+      setLocationMode('custom');
+      setMatchedSavedLocation(null);
+      setSelectedPresetId('custom');
+      return;
+    }
     if (presetId.startsWith('saved-')) {
+      setLocationMode('saved');
       handleSelectSavedLocationPreset(presetId.replace('saved-', ''));
       return;
     }
     setSelectedPresetId(presetId);
     const preset = doctorPresets.find((p) => p.id === presetId);
     if (preset) {
+      setLocationMode('saved');
       setMatchedSavedLocation(null);
       setTaskLocationName(preset.clinic);
       setTaskAddress(preset.address);
@@ -1293,7 +1293,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </div>
 
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => handleOpenCreateModal('saved')}
             style={{
               padding: '9px 16px',
               background: '#1A3C6E',
@@ -1973,42 +1973,17 @@ export const TasksView: React.FC<TasksViewProps> = ({
                                       }
                                     }}
                                     style={{
-                                      padding: '4px 8px',
+                                      padding: '4px 12px',
                                       background: '#FFFFFF',
                                       border: '1px solid #CBD5E1',
                                       borderRadius: '4px',
-                                      fontSize: '10.5px',
+                                      fontSize: '11px',
                                       fontWeight: '700',
                                       color: '#334155',
                                       cursor: 'pointer',
                                     }}
                                   >
                                     View on Map
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setTaskLocationName(loc.clinic || loc.name);
-                                      setTaskAddress(loc.address || '');
-                                      setTaskLat(loc.latitude);
-                                      setTaskLng(loc.longitude);
-                                      setTaskRadius(loc.geofence_radius_m || 50);
-                                      setTaskTitle(`Detailing Call at ${loc.clinic || loc.name}`);
-                                      setIsCreateModalOpen(true);
-                                      setSelectedPresetId('custom');
-                                    }}
-                                    style={{
-                                      padding: '4px 10px',
-                                      background: '#1A3C6E',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      fontSize: '10.5px',
-                                      fontWeight: '700',
-                                      color: '#FFFFFF',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    + Assign Task
                                   </button>
                                 </div>
                               </div>
@@ -2831,62 +2806,190 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </div>
                   </div>
 
-                  {/* 2. Pick Saved Location (Point of Care) in Zone */}
-                  <div style={{ background: matchedSavedLocation ? '#F0FDF4' : '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: matchedSavedLocation ? '1.5px solid #10B981' : '1.5px solid #CBD5E1' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <label style={{ fontSize: '12px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Building size={14} color={matchedSavedLocation ? '#059669' : '#1A3C6E'} />
-                        Saved Point of Care in Zone (Doctor / Clinic / Hospital / Chemist)
+                  {/* 2. Destination Location Option: Saved Customer vs Custom Location */}
+                  <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1.5px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <MapPin size={14} color="#1A3C6E" />
+                        Destination Location Option *
                       </label>
-                      {matchedSavedLocation && (
-                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#059669', background: '#DCFCE7', padding: '2px 6px', borderRadius: '4px' }}>
-                          Linked (No Re-marking)
-                        </span>
-                      )}
-                    </div>
-                    <select
-                      value={selectedPresetId}
-                      onChange={(e) => handleSelectPreset(e.target.value)}
-                      style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12.5px', background: '#FFFFFF', fontWeight: '600' }}
-                    >
-                      <optgroup label="Saved Locations in this Zone">
-                        {savedLocations
-                          .filter((loc) => {
+                      {/* Segmented 2-way toggle */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', background: '#F1F5F9', padding: '3px', borderRadius: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLocationMode('saved');
                             const currentZone = zones.find((z) => z.id === modalSelectedZoneId);
-                            if (!currentZone) return true;
-                            const dist = calculateDistanceKm(currentZone.latitude, currentZone.longitude, loc.latitude, loc.longitude);
-                            return dist <= currentZone.radiusKm;
-                          })
-                          .map((loc) => (
-                            <option key={loc.id} value={`saved-${loc.id}`}>
-                              {loc.clinic || loc.name} ({loc.category || 'CLINIC'}) - {loc.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                      <optgroup label="All Other Saved Locations">
-                        {savedLocations
-                          .filter((loc) => {
-                            const currentZone = zones.find((z) => z.id === modalSelectedZoneId);
-                            if (!currentZone) return false;
-                            const dist = calculateDistanceKm(currentZone.latitude, currentZone.longitude, loc.latitude, loc.longitude);
-                            return dist > currentZone.radiusKm;
-                          })
-                          .map((loc) => (
-                            <option key={loc.id} value={`saved-${loc.id}`}>
-                              {loc.clinic || loc.name} ({loc.area_name || loc.category})
-                            </option>
-                          ))}
-                      </optgroup>
-                      <option value="custom">Custom Location Pin (Marked on Map)</option>
-                    </select>
-                    {matchedSavedLocation ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '11px', color: '#059669' }}>
-                        <CheckCircle2 size={13} color="#059669" />
-                        <span>Linked to existing <strong>{matchedSavedLocation.clinic || matchedSavedLocation.name}</strong>. Will NOT duplicate or re-mark.</span>
+                            const inZone = savedLocations.filter((loc) => {
+                              if (!currentZone) return true;
+                              return calculateDistanceKm(currentZone.latitude, currentZone.longitude, loc.latitude, loc.longitude) <= currentZone.radiusKm;
+                            });
+                            if (inZone.length > 0) {
+                              handleSelectSavedLocationPreset(inZone[0].id);
+                            } else if (savedLocations.length > 0) {
+                              handleSelectSavedLocationPreset(savedLocations[0].id);
+                            }
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            background: locationMode === 'saved' ? '#1A3C6E' : 'transparent',
+                            color: locationMode === 'saved' ? '#FFFFFF' : '#475569',
+                            boxShadow: locationMode === 'saved' ? '0 2px 5px rgba(26,60,110,0.2)' : 'none',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <Building size={13} />
+                          <span>Saved Customer</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLocationMode('custom');
+                            setMatchedSavedLocation(null);
+                            setSelectedPresetId('custom');
+                            if (matchedSavedLocation) {
+                              setTaskLocationName('');
+                              setTaskAddress('');
+                              setTaskTitle('');
+                            }
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            background: locationMode === 'custom' ? '#0F8B5A' : 'transparent',
+                            color: locationMode === 'custom' ? '#FFFFFF' : '#475569',
+                            boxShadow: locationMode === 'custom' ? '0 2px 5px rgba(15,139,90,0.2)' : 'none',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <Compass size={13} />
+                          <span>Custom Location</span>
+                        </button>
                       </div>
-                    ) : (
-                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-                        Pick an existing saved point of care or drag/click on the interactive map to select.
+                    </div>
+
+                    {/* Mode A: Saved Customer */}
+                    {locationMode === 'saved' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>
+                            Pick Doctor, Clinic, Hospital or Chemist:
+                          </span>
+                          {matchedSavedLocation && (
+                            <span style={{ fontSize: '10px', fontWeight: '800', color: '#059669', background: '#DCFCE7', padding: '2px 6px', borderRadius: '4px' }}>
+                              ✓ Linked Customer
+                            </span>
+                          )}
+                        </div>
+                        <select
+                          value={selectedPresetId}
+                          onChange={(e) => handleSelectPreset(e.target.value)}
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12.5px', background: '#FFFFFF', fontWeight: '600' }}
+                        >
+                          <optgroup label="Saved Locations in this Zone">
+                            {savedLocations
+                              .filter((loc) => {
+                                const currentZone = zones.find((z) => z.id === modalSelectedZoneId);
+                                if (!currentZone) return true;
+                                const dist = calculateDistanceKm(currentZone.latitude, currentZone.longitude, loc.latitude, loc.longitude);
+                                return dist <= currentZone.radiusKm;
+                              })
+                              .map((loc) => (
+                                <option key={loc.id} value={`saved-${loc.id}`}>
+                                  {loc.clinic || loc.name} ({loc.category || 'CLINIC'}) — {loc.name}
+                                </option>
+                              ))}
+                          </optgroup>
+                          <optgroup label="All Other Saved Locations">
+                            {savedLocations
+                              .filter((loc) => {
+                                const currentZone = zones.find((z) => z.id === modalSelectedZoneId);
+                                if (!currentZone) return false;
+                                const dist = calculateDistanceKm(currentZone.latitude, currentZone.longitude, loc.latitude, loc.longitude);
+                                return dist > currentZone.radiusKm;
+                              })
+                              .map((loc) => (
+                                <option key={loc.id} value={`saved-${loc.id}`}>
+                                  {loc.clinic || loc.name} ({loc.area_name || loc.category}) — {loc.name}
+                                </option>
+                              ))}
+                          </optgroup>
+                        </select>
+                        {matchedSavedLocation && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#059669' }}>
+                            <CheckCircle2 size={13} color="#059669" />
+                            <span>Linked to existing <strong>{matchedSavedLocation.clinic || matchedSavedLocation.name}</strong>. Will NOT duplicate or re-mark.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Mode B: Custom Location */}
+                    {locationMode === 'custom' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px dashed #0F8B5A' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <CheckCircle2 size={13} color="#0F8B5A" /> Custom Location Active
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#64748B' }}>
+                            Click or drag pin on map to set position
+                          </span>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '3px' }}>
+                            Custom Location / Destination Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={taskLocationName}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setTaskLocationName(val);
+                              if (!taskTitle || taskTitle.startsWith('Detailing Call at') || taskTitle === '') {
+                                setTaskTitle(val ? `Detailing Call at ${val}` : '');
+                              }
+                            }}
+                            placeholder="e.g. City Diagnostic Center, Sub-Office, Sector-18 Meeting Spot"
+                            style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '3px' }}>
+                            Address / Landmark Details *
+                          </label>
+                          <input
+                            type="text"
+                            value={taskAddress}
+                            onChange={(e) => setTaskAddress(e.target.value)}
+                            placeholder="e.g. Near Metro Gate 2, Commercial Complex Road"
+                            style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '10.5px', color: '#475569', background: '#FFFFFF', padding: '5px 8px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                          <span>📍 Coordinates: <strong>{taskLat.toFixed(4)}, {taskLng.toFixed(4)}</strong></span>
+                          <span>•</span>
+                          <span style={{ color: '#0F8B5A', fontWeight: '600' }}>Will NOT overwrite with any saved customer</span>
+                        </div>
                       </div>
                     )}
                   </div>
