@@ -49,6 +49,28 @@ export class CreateHqAreaDto {
   name: string;
 }
 
+export class UpdateHqAreaDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsEnum(['ACTIVE', 'INACTIVE'])
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export class BatchHqAreasDto {
+  @IsString()
+  @IsNotEmpty()
+  hq_id: string;
+
+  areas: string[];
+}
+
 export class CreateStockerDto {
   @IsString()
   @IsNotEmpty()

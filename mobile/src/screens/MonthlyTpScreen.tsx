@@ -8,9 +8,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
-import { formatDateDDMMYYYY, formatMonthMMYYYY } from '../utils/dateFormatter';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
 interface MonthlyTpScreenProps {
   currentUserId?: string;
@@ -34,41 +35,86 @@ const WORK_TYPES = [
   'Order Collection',
   'Follow-up',
   'Transit',
-  'Induction',
+  'Induction / Camp',
+  'Stockist Detailing',
   'Other',
 ];
 
 const DEFAULT_HQS = [
-  { id: 'hq-shahdol', name: 'Shahdol' },
-  { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar' },
-  { id: 'hq-burhar', name: 'Burhar/Bauhari' },
-  { id: 'hq-ambikapur', name: 'Ambikapur' },
-  { id: 'hq-bilaspur', name: 'Bilaspur' },
-  { id: 'hq-kotma', name: 'Kotma' },
+  { id: 'hq-shahdol', name: 'Shahdol', state: 'Madhya Pradesh' },
+  { id: 'hq-ambikapur', name: 'Ambikapur', state: 'Chhattisgarh' },
+  { id: 'hq-bilaspur', name: 'Bilaspur', state: 'Chhattisgarh' },
+  { id: 'hq-kotma', name: 'Kotma', state: 'Madhya Pradesh' },
+  { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar', state: 'Madhya Pradesh' },
+  { id: 'hq-burhar', name: 'Burhar', state: 'Madhya Pradesh' },
 ];
 
-const DEFAULT_AREAS = [
-  'Shahdol',
-  'Burhar',
-  'Goparu',
-  'Kotma',
-  'Ambikapur',
-  'Jaisinghnagar',
-  'Bauhari',
+const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
+  'hq-shahdol': [
+    'Burhar',
+    'Gohparu',
+    'Beohari',
+    'Jaisinghnagar',
+    'Sohagpur',
+    'Singhpur',
+    'Shahdol Central',
+  ],
+  'hq-ambikapur': [
+    'Sitapur',
+    'Lundra',
+    'Batoli',
+    'Mainpat',
+    'Udaipur',
+    'Lakhanpur',
+    'Surguja',
+    'Ramanujganj',
+    'Ambikapur Central',
+  ],
+  'hq-bilaspur': [
+    'Kota',
+    'Takhatpur',
+    'Masturi',
+    'Bilha',
+    'Ratanpur',
+    'Bodri',
+    'Sakri',
+    'Bilaspur City',
+  ],
+  'hq-kotma': [
+    'Kotma Town',
+    'Anuppur',
+    'Jaithari',
+    'Bijuri',
+    'Rajendragram',
+    'Bhalumuda',
+  ],
+  'hq-jaisinghnagar': [
+    'Jaisinghnagar Town',
+    'Amdih',
+    'Janakpur Road',
+  ],
+  'hq-burhar': [
+    'Burhar Town',
+    'Dhanpuri',
+    'Amlai',
+    'Bakaho',
+  ],
+};
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   currentUserId = 'usr-mr-01',
   currentUserName = 'Rahul Sharma',
   onBack,
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-
-  const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>(DEFAULT_HQS);
-  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS);
+  const [hqs, setHqs] = useState<Array<{ id: string; name: string; state?: string }>>(DEFAULT_HQS);
+  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_HQ_AREAS_MAP['hq-shahdol']);
 
   // Form inputs
   const [formDate, setFormDate] = useState<string>(() => {
@@ -78,7 +124,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     return `${day}-${month}-${d.getFullYear()}`;
   });
   const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
-  const [selectedArea, setSelectedArea] = useState<string>('Shahdol');
+  const [selectedArea, setSelectedArea] = useState<string>(DEFAULT_HQ_AREAS_MAP['hq-shahdol'][0]);
   const [selectedWorkType, setSelectedWorkType] = useState<string>('Doctor Visit');
   const [kolDrsName, setKolDrsName] = useState<string>('');
   const [plannedActivity, setPlannedActivity] = useState<string>('');
@@ -89,28 +135,93 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [submittedPlans, setSubmittedPlans] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'CREATE' | 'VIEW_SUBMITTED'>('CREATE');
 
-  // Load HQs from backend
-  useEffect(() => {
-    (async () => {
-      try {
-        const baseUrl = await ApiConfig.getBaseUrl();
-        const headers = await ApiConfig.getAuthHeaders();
-        const res = await fetch(`${baseUrl}/inventory/hqs`, { headers });
-        if (res.ok) {
-          const list = await res.json();
-          if (Array.isArray(list) && list.length > 0) {
-            setHqs(list);
-            if (!list.some((h) => h.id === selectedHqId)) {
-              setSelectedHqId(list[0].id);
-            }
-          }
+  // Calendar modal state
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [calendarYear, setCalendarYear] = useState<number>(() => {
+    const d = new Date();
+    return d.getFullYear();
+  });
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => {
+    const d = new Date();
+    return d.getMonth(); // 0-indexed
+  });
+
+  // Helper to extract YYYY-MM from DD-MM-YYYY
+  const getMonthKeyFromDate = (dateStr: string): string => {
+    try {
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [d, m, y] = dateStr.split('-');
+        return `${y}-${m}`;
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-');
+        return `${y}-${m}`;
+      }
+    } catch {}
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // Helper to get areas for an HQ (from localStorage settings or fallback)
+  const getStoredAreasForHq = (hqId: string): string[] => {
+    try {
+      const savedRaw = localStorage.getItem('ahtri_hq_subareas');
+      if (savedRaw) {
+        const list = JSON.parse(savedRaw);
+        if (Array.isArray(list)) {
+          const matched = list
+            .filter((a: any) => a.hq_id === hqId && a.status !== 'INACTIVE')
+            .map((a: any) => a.name);
+          if (matched.length > 0) return matched;
         }
-      } catch {}
-    })();
+      }
+    } catch {}
+    return DEFAULT_HQ_AREAS_MAP[hqId] || ['Main Market', 'Station Road'];
+  };
+
+  // Load HQs from backend & localStorage
+  const loadHqs = async () => {
+    let loadedHqs = DEFAULT_HQS;
+    try {
+      const savedRaw = localStorage.getItem('ahtri_inventory_hqs');
+      if (savedRaw) {
+        const list = JSON.parse(savedRaw);
+        if (Array.isArray(list) && list.length > 0) {
+          loadedHqs = list;
+          setHqs(list);
+        }
+      }
+    } catch {}
+
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(`${baseUrl}/inventory/hqs`, { headers });
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          setHqs(list);
+          loadedHqs = list;
+        }
+      }
+    } catch {}
+
+    // Ensure selected HQ exists
+    if (!loadedHqs.some((h) => h.id === selectedHqId)) {
+      setSelectedHqId(loadedHqs[0].id);
+    }
+  };
+
+  useEffect(() => {
+    loadHqs();
   }, []);
 
   // Load areas when HQ changes
   useEffect(() => {
+    let activeAreas = getStoredAreasForHq(selectedHqId);
+    setAvailableAreas(activeAreas);
+    setSelectedArea(activeAreas[0] || 'Main Area');
+
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -121,24 +232,26 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           if (Array.isArray(list) && list.length > 0) {
             const areaNames = list.map((a: any) => a.name);
             setAvailableAreas(areaNames);
-            setSelectedArea(areaNames[0]);
-          } else {
-            setAvailableAreas(DEFAULT_AREAS);
+            if (!areaNames.includes(selectedArea)) {
+              setSelectedArea(areaNames[0]);
+            }
           }
         }
       } catch {}
     })();
   }, [selectedHqId]);
 
-  // Load previously submitted plans for this MR
+  // Load submitted plans for this MR
   const fetchMyTourPlans = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const res = await fetch(`${baseUrl}/tour-plans/my?month=${selectedMonth}`, { headers });
+      const res = await fetch(`${baseUrl}/tour-plans/my`, { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
+          // Sort newest submission first
+          data.sort((a, b) => new Date(b.submitted_at || b.created_at || 0).getTime() - new Date(a.submitted_at || a.created_at || 0).getTime());
           setSubmittedPlans(data);
         }
       }
@@ -147,12 +260,67 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
   useEffect(() => {
     fetchMyTourPlans();
-  }, [selectedMonth]);
+  }, []);
 
-  // Add Next TP handler (§7)
+  // Handle HQ selection change
+  const handleHqChange = (newHqId: string) => {
+    setSelectedHqId(newHqId);
+    const newAreas = getStoredAreasForHq(newHqId);
+    setAvailableAreas(newAreas);
+    setSelectedArea(newAreas[0] || 'Main Area');
+  };
+
+  // Open calendar with current formDate
+  const handleOpenCalendar = () => {
+    try {
+      if (/^\d{2}-\d{2}-\d{4}$/.test(formDate)) {
+        const [d, m, y] = formDate.split('-').map(Number);
+        setCalendarYear(y);
+        setCalendarMonth(m - 1);
+      }
+    } catch {}
+    setIsCalendarOpen(true);
+  };
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear((y) => y - 1);
+    } else {
+      setCalendarMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear((y) => y + 1);
+    } else {
+      setCalendarMonth((m) => m + 1);
+    }
+  };
+
+  const handleSelectDay = (day: number) => {
+    const dayStr = String(day).padStart(2, '0');
+    const monthStr = String(calendarMonth + 1).padStart(2, '0');
+    setFormDate(`${dayStr}-${monthStr}-${calendarYear}`);
+    setIsCalendarOpen(false);
+  };
+
+  const handleSelectToday = () => {
+    const d = new Date();
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+    setFormDate(`${dayStr}-${monthStr}-${d.getFullYear()}`);
+    setCalendarYear(d.getFullYear());
+    setCalendarMonth(d.getMonth());
+    setIsCalendarOpen(false);
+  };
+
+  // Add Next TP handler
   const handleAddNextTp = () => {
     if (!formDate.trim()) {
-      Alert.alert('Date Required', 'Please enter or select a planned date.');
+      Alert.alert('Date Required', 'Please enter or select a planned visit date.');
       return;
     }
     if (!kolDrsName.trim()) {
@@ -200,19 +368,21 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }
     } catch {}
 
-    Alert.alert('TP Added', `Added visit for ${formatDateDDMMYYYY(newItem.date)}. You can add more dates or submit.`);
+    Alert.alert('Visit Added', `Added visit for ${formatDateDDMMYYYY(newItem.date)}. You can add more dates or submit the full plan.`);
   };
 
   const handleRemoveWorkingItem = (id: string) => {
     setWorkingEntries((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // Submit complete monthly TP together (§7)
+  // Submit complete monthly TP together
   const handleSubmitMonthlyPlan = async () => {
     if (workingEntries.length === 0) {
-      Alert.alert('No Entries', 'Please add at least one planned date using "Add Next TP" before submitting.');
+      Alert.alert('No Entries', 'Please add at least one planned visit date using "+ Add Next TP" before submitting.');
       return;
     }
+
+    const targetMonth = getMonthKeyFromDate(workingEntries[0].date);
 
     setIsSubmitting(true);
     try {
@@ -223,7 +393,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         method: 'POST',
         headers,
         body: JSON.stringify({
-          month: selectedMonth,
+          month: targetMonth,
           entries: workingEntries,
           remarks: `Submitted by ${currentUserName}`,
         }),
@@ -232,7 +402,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         Alert.alert(
           'Monthly TP Submitted! ✓',
-          `Successfully submitted Tour Plan for ${selectedMonth} with ${workingEntries.length} planned calls.\n\nYour manager will review and approve.`,
+          `Successfully submitted Tour Plan for ${targetMonth} with ${workingEntries.length} planned calls.\n\nYour manager will review and approve.`,
         );
         setWorkingEntries([]);
         fetchMyTourPlans();
@@ -247,6 +417,32 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  // Calendar calculations
+  const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInCurrentMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const calendarDays = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
+  const blankDays = Array.from({ length: firstDayIndex }, (_, i) => i);
+
+  // Check if a calendar day matches formDate
+  const isSelectedDay = (day: number) => {
+    if (!formDate) return false;
+    const dayStr = String(day).padStart(2, '0');
+    const monthStr = String(calendarMonth + 1).padStart(2, '0');
+    return formDate === `${dayStr}-${monthStr}-${calendarYear}`;
+  };
+
+  const isToday = (day: number) => {
+    const today = new Date();
+    return (
+      day === today.getDate() &&
+      calendarMonth === today.getMonth() &&
+      calendarYear === today.getFullYear()
+    );
+  };
+
+  // Active HQ name
+  const activeHqName = hqs.find((h) => h.id === selectedHqId)?.name || 'HQ';
 
   return (
     <ScrollView style={styles.container}>
@@ -270,36 +466,21 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           onPress={() => setActiveTab('CREATE')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'CREATE' && styles.tabBtnTextActive]}>
-            📝 Plan Month ({workingEntries.length})
+            📝 Plan Visits ({workingEntries.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'VIEW_SUBMITTED' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('VIEW_SUBMITTED')}
+          onPress={() => {
+            setActiveTab('VIEW_SUBMITTED');
+            fetchMyTourPlans();
+          }}
         >
           <Text style={[styles.tabBtnText, activeTab === 'VIEW_SUBMITTED' && styles.tabBtnTextActive]}>
             📋 Submitted TPs ({submittedPlans.length})
           </Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Month Selector */}
-      <View style={styles.monthCard}>
-        <Text style={styles.sectionLabel}>Target Month:</Text>
-        <View style={styles.monthRow}>
-          {['2026-09', '2026-10', '2026-11'].map((m) => (
-            <TouchableOpacity
-              key={m}
-              style={[styles.monthPill, selectedMonth === m && styles.monthPillActive]}
-              onPress={() => setSelectedMonth(m)}
-            >
-              <Text style={[styles.monthPillText, selectedMonth === m && styles.monthPillTextActive]}>
-                {formatMonthMMYYYY(m)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       {activeTab === 'CREATE' && (
@@ -308,71 +489,77 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           <View style={styles.card}>
             <Text style={styles.cardHeader}>Add Planned Visit Date</Text>
 
-            {/* Date Input */}
-            <Text style={styles.fieldLabel}>Planned Date (DD-MM-YYYY):</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formDate}
-              onChangeText={setFormDate}
-              placeholder="15-09-2026"
-            />
+            {/* Date Input with Calendar Trigger */}
+            <Text style={styles.fieldLabel}>Planned Visit Date (DD-MM-YYYY):</Text>
+            <View style={styles.dateInputRow}>
+              <TextInput
+                style={[styles.textInput, { flex: 1 }]}
+                value={formDate}
+                onChangeText={setFormDate}
+                placeholder="DD-MM-YYYY (e.g. 15-10-2026)"
+              />
+              <TouchableOpacity style={styles.calendarBtn} onPress={handleOpenCalendar}>
+                <Text style={styles.calendarBtnText}>📅 Pick Date</Text>
+              </TouchableOpacity>
+            </View>
 
-            {/* HQ Selector */}
+            {/* HQ Selector Dropdown */}
             <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {hqs.map((hq) => {
-                const isSelected = selectedHqId === hq.id;
-                return (
-                  <TouchableOpacity
-                    key={hq.id}
-                    style={[styles.chip, isSelected && styles.chipActive]}
-                    onPress={() => setSelectedHqId(hq.id)}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {hq.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.dropdownBox}>
+              <select
+                value={selectedHqId}
+                onChange={(e: any) => handleHqChange(e.target.value)}
+                style={dropdownSelectStyle}
+              >
+                {hqs.map((hq) => (
+                  <option key={hq.id} value={hq.id}>
+                    {hq.name} {hq.state ? `(${hq.state})` : ''}
+                  </option>
+                ))}
+              </select>
+              <Text style={styles.dropdownChevron}>▼</Text>
+            </View>
 
-            {/* Planned Area */}
-            <Text style={styles.fieldLabel}>Planned Area / Sub-Territory:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {availableAreas.map((area) => {
-                const isSelected = selectedArea === area;
-                return (
-                  <TouchableOpacity
-                    key={area}
-                    style={[styles.chip, isSelected && styles.chipActive]}
-                    onPress={() => setSelectedArea(area)}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {area}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            {/* Planned Area Dropdown (Filtered Strictly for selected HQ) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
+              <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
+                Planned Area / Sub-Territory:
+              </Text>
+              <Text style={{ fontSize: 10.5, color: '#0369A1', fontWeight: '700' }}>
+                Filtered for {activeHqName} ({availableAreas.length})
+              </Text>
+            </View>
+            <View style={styles.dropdownBox}>
+              <select
+                value={selectedArea}
+                onChange={(e: any) => setSelectedArea(e.target.value)}
+                style={dropdownSelectStyle}
+              >
+                {availableAreas.map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+              <Text style={styles.dropdownChevron}>▼</Text>
+            </View>
 
-            {/* Type of Work */}
+            {/* Type of Work Dropdown */}
             <Text style={styles.fieldLabel}>Type of Work:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {WORK_TYPES.map((wt) => {
-                const isSelected = selectedWorkType === wt;
-                return (
-                  <TouchableOpacity
-                    key={wt}
-                    style={[styles.chip, isSelected && styles.chipActiveSecondary]}
-                    onPress={() => setSelectedWorkType(wt)}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {wt}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.dropdownBox}>
+              <select
+                value={selectedWorkType}
+                onChange={(e: any) => setSelectedWorkType(e.target.value)}
+                style={dropdownSelectStyle}
+              >
+                {WORK_TYPES.map((wt) => (
+                  <option key={wt} value={wt}>
+                    {wt}
+                  </option>
+                ))}
+              </select>
+              <Text style={styles.dropdownChevron}>▼</Text>
+            </View>
 
             {/* Planned KOL DRS */}
             <Text style={styles.fieldLabel}>PLANNED KOL DRS (Name):</Text>
@@ -393,16 +580,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               multiline
             />
 
-            {/* Add Next TP Button (§7) */}
+            {/* Add Next TP Button */}
             <TouchableOpacity style={styles.addNextBtn} onPress={handleAddNextTp}>
-              <Text style={styles.addNextBtnText}>+ Add Next TP (Continue Month)</Text>
+              <Text style={styles.addNextBtnText}>+ Add Next TP (Continue Plan)</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Working Entries Review Table (§7) */}
+          {/* Working Entries Review Table */}
           <View style={styles.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={styles.cardHeader}>Month Plan Entries ({workingEntries.length})</Text>
+              <Text style={styles.cardHeader}>Planned Visits for Month ({workingEntries.length})</Text>
               {workingEntries.length > 0 && (
                 <TouchableOpacity onPress={() => setWorkingEntries([])}>
                   <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700' }}>Clear All</Text>
@@ -412,16 +599,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
             {workingEntries.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>No TP entries added for this month yet.</Text>
+                <Text style={styles.emptyText}>No TP entries added yet.</Text>
                 <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
-                  Fill the form above and click "+ Add Next TP" to add dates.
+                  Select a date from calendar or type it, choose HQ & sub-area, and click "+ Add Next TP".
                 </Text>
               </View>
             ) : (
-              workingEntries.map((item, idx) => (
+              workingEntries.map((item) => (
                 <View key={item.id} style={styles.entryRow}>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <Text style={styles.entryDate}>{formatDateDDMMYYYY(item.date)}</Text>
                       <View style={styles.tagHq}>
                         <Text style={styles.tagHqText}>{item.hq_name} • {item.planned_area}</Text>
@@ -443,7 +630,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               ))
             )}
 
-            {/* Final Submit Button (§7) */}
+            {/* Final Submit Button */}
             {workingEntries.length > 0 && (
               <TouchableOpacity
                 style={[styles.submitPlanBtn, isSubmitting && { opacity: 0.7 }]}
@@ -465,16 +652,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
       {activeTab === 'VIEW_SUBMITTED' && (
         <View style={styles.card}>
-          <Text style={styles.cardHeader}>Submitted Tour Plans for {selectedMonth}</Text>
+          <Text style={styles.cardHeader}>My Submitted Tour Plans ({submittedPlans.length})</Text>
           {submittedPlans.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No submitted plans found for {selectedMonth}.</Text>
+              <Text style={styles.emptyText}>No submitted plans found yet.</Text>
             </View>
           ) : (
             submittedPlans.map((plan) => (
               <View key={plan.id} style={styles.submittedCard}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                  <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#0F172A' }}>
                     Month: {plan.month}
                   </Text>
                   <View
@@ -535,8 +722,103 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           )}
         </View>
       )}
+
+      {/* Calendar Picker Modal */}
+      {isCalendarOpen && (
+        <Modal
+          visible={isCalendarOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsCalendarOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.calendarModalBox}>
+              {/* Calendar Month & Year Navigation Header */}
+              <View style={styles.calHeader}>
+                <TouchableOpacity onPress={handlePrevMonth} style={styles.calNavBtn}>
+                  <Text style={styles.calNavBtnText}>◀</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.calMonthTitle}>
+                  {MONTH_NAMES[calendarMonth]} {calendarYear}
+                </Text>
+
+                <TouchableOpacity onPress={handleNextMonth} style={styles.calNavBtn}>
+                  <Text style={styles.calNavBtnText}>▶</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Day of Week Row */}
+              <View style={styles.calWeekRow}>
+                {DAY_NAMES.map((d) => (
+                  <Text key={d} style={styles.calWeekText}>{d}</Text>
+                ))}
+              </View>
+
+              {/* Day Grid */}
+              <View style={styles.calGrid}>
+                {blankDays.map((b) => (
+                  <View key={`b-${b}`} style={styles.calBlankCell} />
+                ))}
+
+                {calendarDays.map((day) => {
+                  const selected = isSelectedDay(day);
+                  const currentToday = isToday(day);
+                  return (
+                    <TouchableOpacity
+                      key={`d-${day}`}
+                      onPress={() => handleSelectDay(day)}
+                      style={[
+                        styles.calDayCell,
+                        selected && styles.calDaySelected,
+                        !selected && currentToday && styles.calDayToday,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.calDayText,
+                          selected && styles.calDayTextSelected,
+                          !selected && currentToday && styles.calDayTextToday,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Calendar Footer Shortcuts */}
+              <View style={styles.calFooter}>
+                <TouchableOpacity style={styles.calTodayBtn} onPress={handleSelectToday}>
+                  <Text style={styles.calTodayBtnText}>Select Today</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.calCloseBtn} onPress={() => setIsCalendarOpen(false)}>
+                  <Text style={styles.calCloseBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </ScrollView>
   );
+};
+
+const dropdownSelectStyle: any = {
+  width: '100%',
+  padding: '9px 12px',
+  borderRadius: 6,
+  border: 'none',
+  background: 'transparent',
+  fontSize: 12.5,
+  fontWeight: '600',
+  color: '#0F172A',
+  outline: 'none',
+  cursor: 'pointer',
+  appearance: 'none',
+  WebkitAppearance: 'none',
 };
 
 const styles = StyleSheet.create({
@@ -560,26 +842,6 @@ const styles = StyleSheet.create({
   tabBtnActive: { borderBottomColor: '#0F8B5A' },
   tabBtnText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
   tabBtnTextActive: { color: '#0F8B5A', fontWeight: '800' },
-  monthCard: {
-    backgroundColor: '#FFFFFF',
-    margin: 12,
-    marginBottom: 0,
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6 },
-  monthRow: { flexDirection: 'row', gap: 8 },
-  monthPill: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-  },
-  monthPillActive: { backgroundColor: '#1A3C6E' },
-  monthPillText: { fontSize: 12, color: '#334155', fontWeight: '600' },
-  monthPillTextActive: { color: '#FFFFFF', fontWeight: '800' },
   card: {
     backgroundColor: '#FFFFFF',
     margin: 12,
@@ -590,6 +852,11 @@ const styles = StyleSheet.create({
   },
   cardHeader: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginBottom: 10 },
   fieldLabel: { fontSize: 11, fontWeight: '700', color: '#334155', marginTop: 8, marginBottom: 4 },
+  dateInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   textInput: {
     borderWidth: 1,
     borderColor: '#CBD5E1',
@@ -600,20 +867,34 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     backgroundColor: '#FAFAFA',
   },
-  chipRow: { flexDirection: 'row', marginBottom: 4 },
-  chip: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  calendarBtn: {
+    backgroundColor: '#1A3C6E',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 6,
-    marginRight: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  dropdownBox: {
     borderWidth: 1,
     borderColor: '#CBD5E1',
+    borderRadius: 6,
+    backgroundColor: '#FAFAFA',
+    position: 'relative',
+    justifyContent: 'center',
   },
-  chipActive: { backgroundColor: '#1A3C6E', borderColor: '#1A3C6E' },
-  chipActiveSecondary: { backgroundColor: '#0F8B5A', borderColor: '#0F8B5A' },
-  chipText: { fontSize: 11, fontWeight: '600', color: '#334155' },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '700' },
+  dropdownChevron: {
+    position: 'absolute',
+    right: 12,
+    fontSize: 10,
+    color: '#64748B',
+    pointerEvents: 'none' as any,
+  },
   addNextBtn: {
     backgroundColor: '#0F8B5A',
     paddingVertical: 11,
@@ -663,5 +944,123 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#EDF2F7',
+  },
+  // Calendar Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  calendarModalBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  calHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  calNavBtn: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+  },
+  calNavBtnText: {
+    fontSize: 12,
+    color: '#1A3C6E',
+    fontWeight: '800',
+  },
+  calMonthTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  calWeekRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  calWeekText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  calGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calBlankCell: {
+    width: '14.28%',
+    height: 36,
+  },
+  calDayCell: {
+    width: '14.28%',
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  calDaySelected: {
+    backgroundColor: '#1A3C6E',
+  },
+  calDayToday: {
+    borderWidth: 1.5,
+    borderColor: '#0F8B5A',
+  },
+  calDayText: {
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  calDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  calDayTextToday: {
+    color: '#0F8B5A',
+    fontWeight: '800',
+  },
+  calFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  calTodayBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#E0F2FE',
+  },
+  calTodayBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  calCloseBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+  },
+  calCloseBtnText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#475569',
   },
 });

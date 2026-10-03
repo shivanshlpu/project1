@@ -470,15 +470,56 @@ export class DatabaseService implements OnModuleInit {
       hqKotma,
     );
 
-    // 11. Seed HQ Areas (§6)
+    // 11. Seed HQ Areas (Mapped strictly per HQ)
     const areas = [
-      { id: 'area-shd-01', hq_id: hqShahdol.id, name: 'Shahdol' },
-      { id: 'area-shd-02', hq_id: hqShahdol.id, name: 'Burhar' },
-      { id: 'area-shd-03', hq_id: hqShahdol.id, name: 'Goparu' },
-      { id: 'area-shd-04', hq_id: hqShahdol.id, name: 'Kotma' },
-      { id: 'area-shd-05', hq_id: hqShahdol.id, name: 'Ambikapur' },
-      { id: 'area-shd-06', hq_id: hqShahdol.id, name: 'Jaisinghnagar' },
-      { id: 'area-shd-07', hq_id: hqShahdol.id, name: 'Bauhari' },
+      // Shahdol District Sub-Areas & Villages
+      { id: 'area-shd-01', hq_id: hqShahdol.id, name: 'Burhar' },
+      { id: 'area-shd-02', hq_id: hqShahdol.id, name: 'Gohparu' },
+      { id: 'area-shd-03', hq_id: hqShahdol.id, name: 'Beohari' },
+      { id: 'area-shd-04', hq_id: hqShahdol.id, name: 'Jaisinghnagar' },
+      { id: 'area-shd-05', hq_id: hqShahdol.id, name: 'Sohagpur' },
+      { id: 'area-shd-06', hq_id: hqShahdol.id, name: 'Singhpur' },
+      { id: 'area-shd-07', hq_id: hqShahdol.id, name: 'Shahdol Central' },
+
+      // Ambikapur District Sub-Areas & Villages
+      { id: 'area-amb-01', hq_id: hqAmbikapur.id, name: 'Sitapur' },
+      { id: 'area-amb-02', hq_id: hqAmbikapur.id, name: 'Lundra' },
+      { id: 'area-amb-03', hq_id: hqAmbikapur.id, name: 'Batoli' },
+      { id: 'area-amb-04', hq_id: hqAmbikapur.id, name: 'Mainpat' },
+      { id: 'area-amb-05', hq_id: hqAmbikapur.id, name: 'Udaipur' },
+      { id: 'area-amb-06', hq_id: hqAmbikapur.id, name: 'Lakhanpur' },
+      { id: 'area-amb-07', hq_id: hqAmbikapur.id, name: 'Surguja' },
+      { id: 'area-amb-08', hq_id: hqAmbikapur.id, name: 'Ramanujganj' },
+      { id: 'area-amb-09', hq_id: hqAmbikapur.id, name: 'Ambikapur Central' },
+
+      // Bilaspur District Sub-Areas & Villages
+      { id: 'area-bsp-01', hq_id: hqBilaspur.id, name: 'Kota' },
+      { id: 'area-bsp-02', hq_id: hqBilaspur.id, name: 'Takhatpur' },
+      { id: 'area-bsp-03', hq_id: hqBilaspur.id, name: 'Masturi' },
+      { id: 'area-bsp-04', hq_id: hqBilaspur.id, name: 'Bilha' },
+      { id: 'area-bsp-05', hq_id: hqBilaspur.id, name: 'Ratanpur' },
+      { id: 'area-bsp-06', hq_id: hqBilaspur.id, name: 'Bodri' },
+      { id: 'area-bsp-07', hq_id: hqBilaspur.id, name: 'Sakri' },
+      { id: 'area-bsp-08', hq_id: hqBilaspur.id, name: 'Bilaspur City' },
+
+      // Kotma Sub-Areas & Villages
+      { id: 'area-ktm-01', hq_id: hqKotma.id, name: 'Kotma Town' },
+      { id: 'area-ktm-02', hq_id: hqKotma.id, name: 'Anuppur' },
+      { id: 'area-ktm-03', hq_id: hqKotma.id, name: 'Jaithari' },
+      { id: 'area-ktm-04', hq_id: hqKotma.id, name: 'Bijuri' },
+      { id: 'area-ktm-05', hq_id: hqKotma.id, name: 'Rajendragram' },
+      { id: 'area-ktm-06', hq_id: hqKotma.id, name: 'Bhalumuda' },
+
+      // Jaisinghnagar Sub-Areas
+      { id: 'area-jsn-01', hq_id: hqJaisinghnagar.id, name: 'Jaisinghnagar Town' },
+      { id: 'area-jsn-02', hq_id: hqJaisinghnagar.id, name: 'Amdih' },
+      { id: 'area-jsn-03', hq_id: hqJaisinghnagar.id, name: 'Janakpur Road' },
+
+      // Burhar Sub-Areas
+      { id: 'area-bhr-01', hq_id: hqBurhar.id, name: 'Burhar Town' },
+      { id: 'area-bhr-02', hq_id: hqBurhar.id, name: 'Dhanpuri' },
+      { id: 'area-bhr-03', hq_id: hqBurhar.id, name: 'Amlai' },
+      { id: 'area-bhr-04', hq_id: hqBurhar.id, name: 'Bakaho' },
     ];
     for (const a of areas) {
       this.hqAreas.push({

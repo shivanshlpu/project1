@@ -9,6 +9,8 @@ import {
   CreateHqDto,
   UpdateHqDto,
   CreateHqAreaDto,
+  UpdateHqAreaDto,
+  BatchHqAreasDto,
   CreateStockerDto,
   UpdateStockerDto,
   CreateMedicineDto,
@@ -112,6 +114,57 @@ export class InventoryService {
     };
     this.db.hqAreas.push(area);
     return area;
+  }
+
+  async updateHqArea(id: string, dto: UpdateHqAreaDto): Promise<HqArea> {
+    const area = this.db.hqAreas.find((a) => a.id === id);
+    if (!area) throw new NotFoundException('Area not found');
+    if (dto.name) area.name = dto.name.trim();
+    if (dto.hq_id) {
+      const hq = this.db.headquarters.find((h) => h.id === dto.hq_id);
+      if (!hq) throw new NotFoundException('Target headquarter not found');
+      area.hq_id = dto.hq_id;
+    }
+    if (dto.status) area.status = dto.status;
+    return area;
+  }
+
+  async deleteHqArea(id: string): Promise<{ success: boolean; message: string }> {
+    const index = this.db.hqAreas.findIndex((a) => a.id === id);
+    if (index === -1) throw new NotFoundException('Area not found');
+    this.db.hqAreas.splice(index, 1);
+    return { success: true, message: 'Area deleted successfully' };
+  }
+
+  async syncHqAreas(dto: BatchHqAreasDto): Promise<HqArea[]> {
+    const hq = this.db.headquarters.find((h) => h.id === dto.hq_id);
+    if (!hq) throw new NotFoundException('Headquarter not found');
+
+    const cleanNames = Array.from(
+      new Set(
+        (dto.areas || [])
+          .map((n) => (typeof n === 'string' ? n.trim() : ''))
+          .filter((n) => n.length > 0)
+      )
+    );
+
+    // Keep existing areas for this HQ, or add missing
+    const existing = this.db.hqAreas.filter((a) => a.hq_id === dto.hq_id);
+    const existingNames = new Set(existing.map((a) => a.name.toLowerCase()));
+
+    for (const name of cleanNames) {
+      if (!existingNames.has(name.toLowerCase())) {
+        this.db.hqAreas.push({
+          id: `area-${uuidv4().substring(0, 8)}`,
+          hq_id: dto.hq_id,
+          name,
+          status: 'ACTIVE',
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    return this.db.hqAreas.filter((a) => a.hq_id === dto.hq_id && a.status === 'ACTIVE');
   }
 
   // === 3. STOCKERS ===

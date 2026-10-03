@@ -14,6 +14,8 @@ import {
   CreateHqDto,
   UpdateHqDto,
   CreateHqAreaDto,
+  UpdateHqAreaDto,
+  BatchHqAreasDto,
   CreateStockerDto,
   UpdateStockerDto,
   CreateMedicineDto,
@@ -66,6 +68,24 @@ export class InventoryController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   async createHqArea(@Body() dto: CreateHqAreaDto) {
     return this.inventoryService.createHqArea(dto);
+  }
+
+  @Patch('areas/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async updateHqArea(@Param('id') id: string, @Body() dto: UpdateHqAreaDto) {
+    return this.inventoryService.updateHqArea(id, dto);
+  }
+
+  @Delete('areas/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteHqArea(@Param('id') id: string) {
+    return this.inventoryService.deleteHqArea(id);
+  }
+
+  @Post('areas/sync')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async syncHqAreas(@Body() dto: BatchHqAreasDto) {
+    return this.inventoryService.syncHqAreas(dto);
   }
 
   // === STOCKERS ===

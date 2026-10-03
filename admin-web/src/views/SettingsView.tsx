@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { HqTerritoryManager } from '../components/HqTerritoryManager';
 
 interface SettingsViewProps {
   lang?: Language;
@@ -67,7 +68,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const t = translations[lang];
 
   // Settings Sub-Tabs
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'city' | 'policy' | 'updates'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'hq_territory' | 'city' | 'policy' | 'updates'>('profile');
 
   // 1. Profile State
   const [name, setName] = useState(managerName);
@@ -882,6 +883,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {[
             { id: 'profile' as const, label: t.tabProfile, Icon: User },
             { id: 'security' as const, label: t.tabSecurity, Icon: Key },
+            { id: 'hq_territory' as const, label: 'HQ & Territory Areas', Icon: Layers },
             { id: 'city' as const, label: t.tabCityPinpoint, Icon: MapPin },
             { id: 'policy' as const, label: t.tabFieldPolicy, Icon: ShieldCheck },
             { id: 'updates' as const, label: (t as any).tabAppUpdates || 'Update Settings (OTA)', Icon: UploadCloud },
@@ -1199,6 +1201,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 2.5 HQ & TERRITORY SUB-AREAS TAB */}
+      {activeTab === 'hq_territory' && (
+        <HqTerritoryManager />
       )}
 
       {/* 3. CITY PINPOINT & OPERATING ZONE MAP */}
