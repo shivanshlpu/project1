@@ -82,6 +82,10 @@ export class CreateStockerDto {
 
   @IsString()
   @IsOptional()
+  sub_area?: string;
+
+  @IsString()
+  @IsOptional()
   contact_person?: string;
 
   @IsString()
@@ -97,6 +101,10 @@ export class UpdateStockerDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  @IsString()
+  @IsOptional()
+  sub_area?: string;
 
   @IsString()
   @IsOptional()

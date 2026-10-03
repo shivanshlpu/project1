@@ -20,6 +20,7 @@ interface StockerItem {
   id: string;
   hq_id: string;
   hq_name: string;
+  sub_area?: string;
   name: string;
   contact_person?: string;
   phone?: string;
@@ -39,6 +40,66 @@ interface InventoryProductItem {
   hq_name: string;
 }
 
+const DEFAULT_AREAS_BY_HQ: Record<string, string[]> = {
+  'hq-shahdol': [
+    'Shahdol Central',
+    'Burhar',
+    'Gohparu',
+    'Beohari',
+    'Jaisinghnagar',
+    'Sohagpur',
+    'Singhpur',
+    'Amdih',
+    'Dhanpuri',
+    'Amlai',
+    'Janakpur Road',
+    'Bakaho',
+  ],
+  'hq-ambikapur': [
+    'Ambikapur Central',
+    'Sitapur',
+    'Lundra',
+    'Batoli',
+    'Mainpat',
+    'Udaipur',
+    'Lakhanpur',
+    'Surguja',
+    'Ramanujganj',
+  ],
+  'hq-bilaspur': [
+    'Bilaspur City',
+    'Kota',
+    'Takhatpur',
+    'Masturi',
+    'Bilha',
+    'Ratanpur',
+    'Bodri',
+    'Sakri',
+  ],
+  'hq-kotma': [
+    'Kotma Town',
+    'Anuppur',
+    'Jaithari',
+    'Bijuri',
+    'Rajendragram',
+    'Bhalumuda',
+  ],
+};
+
+const NON_HQ_NAMES = new Set([
+  'jaisinghnagar',
+  'burhar',
+  'bauhari',
+  'burhar/bauhari',
+  'gohparu',
+  'beohari',
+  'sohagpur',
+  'singhpur',
+  'amdih',
+  'dhanpuri',
+  'amlai',
+]);
+
 export const StocklistScreen: React.FC<StocklistScreenProps> = ({
   currentUserId = 'usr-mr-01',
   currentUserName = 'Rahul Sharma',
@@ -46,21 +107,21 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
 }) => {
   const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>([
     { id: 'hq-shahdol', name: 'Shahdol' },
-    { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar' },
-    { id: 'hq-burhar', name: 'Burhar/Bauhari' },
     { id: 'hq-ambikapur', name: 'Ambikapur' },
     { id: 'hq-bilaspur', name: 'Bilaspur' },
     { id: 'hq-kotma', name: 'Kotma' },
   ]);
 
   const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
+  const [selectedSubArea, setSelectedSubArea] = useState<string>('ALL');
+  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-shahdol'] || []);
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryProductItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // 1. Fetch HQs
+  // 1. Fetch HQs (Excluding sub-areas like Jaisinghnagar or Burhar)
   useEffect(() => {
     (async () => {
       try {
@@ -70,9 +131,15 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list) && list.length > 0) {
-            setHqs(list);
-            if (!list.some((h) => h.id === selectedHqId)) {
-              setSelectedHqId(list[0].id);
+            const filtered = list.filter((h: any) => {
+              const name = (h.name || '').toLowerCase().trim();
+              return !NON_HQ_NAMES.has(name);
+            });
+            if (filtered.length > 0) {
+              setHqs(filtered);
+              if (!filtered.some((h) => h.id === selectedHqId)) {
+                setSelectedHqId(filtered[0].id);
+              }
             }
           }
         }
@@ -80,28 +147,62 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     })();
   }, []);
 
-  // 2. Fetch stockers under selected HQ
+  // 2. Fetch stockers and sub-areas under selected HQ
   useEffect(() => {
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
+
+        // Sub-areas for this HQ
+        const areasRes = await fetch(`${baseUrl}/inventory/areas?hq_id=${selectedHqId}`, { headers }).catch(() => null);
+        let dynamicAreas: string[] = [];
+        if (areasRes && areasRes.ok) {
+          const areasData = await areasRes.json();
+          if (Array.isArray(areasData) && areasData.length > 0) {
+            dynamicAreas = areasData.map((a: any) => (typeof a === 'string' ? a : a.name || a.area_name)).filter(Boolean);
+          }
+        }
+        const defaultAreas = DEFAULT_AREAS_BY_HQ[selectedHqId] || [];
+        const mergedAreas = Array.from(new Set([...dynamicAreas, ...defaultAreas]));
+        setAvailableAreas(mergedAreas);
+
+        // Stockers for this HQ
         const res = await fetch(`${baseUrl}/inventory/stockers?hq_id=${selectedHqId}`, { headers });
         if (res.ok) {
-          const list = await res.json();
+          const list: StockerItem[] = await res.json();
           if (Array.isArray(list)) {
             setStockers(list);
-            if (list.length > 0) {
-              setSelectedStockerId(list[0].id);
-            } else {
-              setSelectedStockerId('');
-              setInventory([]);
-            }
+            // Collect any custom sub_areas from stockers
+            list.forEach((s) => {
+              if (s.sub_area && !mergedAreas.includes(s.sub_area)) {
+                mergedAreas.push(s.sub_area);
+              }
+            });
+            setAvailableAreas([...mergedAreas]);
           }
         }
       } catch {}
     })();
   }, [selectedHqId]);
+
+  // Dynamic filter of stockers by chosen sub-area
+  const filteredStockers = stockers.filter((stk) => {
+    if (selectedSubArea === 'ALL') return true;
+    return (stk.sub_area || '').toLowerCase() === selectedSubArea.toLowerCase();
+  });
+
+  // Auto-select active stocker when filter changes
+  useEffect(() => {
+    if (filteredStockers.length > 0) {
+      if (!filteredStockers.some((s) => s.id === selectedStockerId)) {
+        setSelectedStockerId(filteredStockers[0].id);
+      }
+    } else {
+      setSelectedStockerId('');
+      setInventory([]);
+    }
+  }, [selectedSubArea, stockers]);
 
   // 3. Fetch inventory for selected stocker
   useEffect(() => {
@@ -133,7 +234,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     );
   });
 
-  const selectedStocker = stockers.find((s) => s.id === selectedStockerId);
+  const selectedStocker = filteredStockers.find((s) => s.id === selectedStockerId) || stockers.find((s) => s.id === selectedStockerId);
 
   return (
     <ScrollView style={styles.container}>
@@ -160,7 +261,10 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
               <TouchableOpacity
                 key={hq.id}
                 style={[styles.chip, isSelected && styles.chipActive]}
-                onPress={() => setSelectedHqId(hq.id)}
+                onPress={() => {
+                  setSelectedHqId(hq.id);
+                  setSelectedSubArea('ALL');
+                }}
               >
                 <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                   {hq.name}
@@ -171,16 +275,49 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         </ScrollView>
       </View>
 
-      {/* 2. Stocker Selector under HQ (§14) */}
+      {/* 2. Sub-Area / Tehsil / Market Filter */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>2. Select Stocker / Distributor Depot:</Text>
-        {stockers.length === 0 ? (
-          <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>
-            No stockers registered under this HQ yet.
+        <Text style={styles.cardLabel}>2. Select Sub-Area / Market / Tehsil:</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+          <TouchableOpacity
+            style={[styles.chip, selectedSubArea === 'ALL' && styles.chipActiveTertiary]}
+            onPress={() => setSelectedSubArea('ALL')}
+          >
+            <Text style={[styles.chipText, selectedSubArea === 'ALL' && styles.chipTextActive]}>
+              All Areas ({stockers.length})
+            </Text>
+          </TouchableOpacity>
+          {availableAreas.map((area) => {
+            const isSelected = selectedSubArea.toLowerCase() === area.toLowerCase();
+            const count = stockers.filter((s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()).length;
+            return (
+              <TouchableOpacity
+                key={area}
+                style={[styles.chip, isSelected && styles.chipActiveTertiary]}
+                onPress={() => setSelectedSubArea(area)}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                  📍 {area} {count > 0 ? `(${count})` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* 3. Stocker Selector under HQ & Sub-Area (§14) */}
+      <View style={styles.card}>
+        <Text style={styles.cardLabel}>
+          3. Select Stocker / Distributor Depot:
+          {selectedSubArea !== 'ALL' ? ` (${selectedSubArea})` : ''}
+        </Text>
+        {filteredStockers.length === 0 ? (
+          <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
+            No stockers registered in {selectedSubArea === 'ALL' ? 'this HQ' : selectedSubArea} yet.
           </Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {stockers.map((stk) => {
+            {filteredStockers.map((stk) => {
               const isSelected = selectedStockerId === stk.id;
               return (
                 <TouchableOpacity
@@ -199,11 +336,20 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
 
         {selectedStocker && (
           <View style={styles.stockerInfoBox}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>
-              📍 {selectedStocker.name}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
+                📦 {selectedStocker.name}
+              </Text>
+              {selectedStocker.sub_area ? (
+                <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
+                    📍 {selectedStocker.sub_area}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             {selectedStocker.contact_person ? (
-              <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 2 }}>
+              <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
                 Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
               </Text>
             ) : null}
@@ -216,11 +362,11 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         )}
       </View>
 
-      {/* 3. Medicines Inventory Table / Cards (§12, §14, §17) */}
+      {/* 4. Medicines Inventory Table / Cards (§12, §14, §17) */}
       <View style={styles.card}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <Text style={styles.cardLabel}>
-            3. Available Medicines ({filteredInventory.length})
+            4. Available Medicines ({filteredInventory.length})
           </Text>
         </View>
 
@@ -342,6 +488,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: '#1A3C6E', borderColor: '#1A3C6E' },
   chipActiveSecondary: { backgroundColor: '#0F8B5A', borderColor: '#0F8B5A' },
+  chipActiveTertiary: { backgroundColor: '#4338CA', borderColor: '#4338CA' },
   chipText: { fontSize: 11.5, fontWeight: '600', color: '#334155' },
   chipTextActive: { color: '#FFFFFF', fontWeight: '800' },
   stockerInfoBox: {

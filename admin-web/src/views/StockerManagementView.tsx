@@ -31,12 +31,72 @@ interface Headquarter {
 
 const DEFAULT_HQS: Headquarter[] = [
   { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
-  { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
   { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
-  { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar', code: 'HQ-JSN', state: 'Madhya Pradesh' },
-  { id: 'hq-burhar', name: 'Burhar/Bauhari', code: 'HQ-BRH', state: 'Madhya Pradesh' },
+  { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
   { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
 ];
+
+export const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
+  'hq-shahdol': [
+    'Shahdol Central',
+    'Burhar',
+    'Gohparu',
+    'Beohari',
+    'Jaisinghnagar',
+    'Sohagpur',
+    'Singhpur',
+    'Amdih',
+    'Dhanpuri',
+    'Amlai',
+    'Janakpur Road',
+    'Bakaho',
+  ],
+  'hq-ambikapur': [
+    'Ambikapur Central',
+    'Sitapur',
+    'Lundra',
+    'Batoli',
+    'Mainpat',
+    'Udaipur',
+    'Lakhanpur',
+    'Surguja',
+    'Ramanujganj',
+  ],
+  'hq-bilaspur': [
+    'Bilaspur City',
+    'Kota',
+    'Takhatpur',
+    'Masturi',
+    'Bilha',
+    'Ratanpur',
+    'Bodri',
+    'Sakri',
+  ],
+  'hq-kotma': [
+    'Kotma Town',
+    'Anuppur',
+    'Jaithari',
+    'Bijuri',
+    'Rajendragram',
+    'Bhalumuda',
+  ],
+};
+
+const NON_HQ_NAMES = new Set([
+  'jaisinghnagar',
+  'burhar',
+  'bauhari',
+  'burhar/bauhari',
+  'gohparu',
+  'beohari',
+  'sohagpur',
+  'singhpur',
+  'amdih',
+  'dhanpuri',
+  'amlai',
+  'janakpur road',
+  'bakaho',
+]);
 
 const getMergedHqs = (): Headquarter[] => {
   const map = new Map<string, Headquarter>();
@@ -52,6 +112,8 @@ const getMergedHqs = (): Headquarter[] => {
         for (const item of parsed) {
           if (item && item.name) {
             const key = item.name.toLowerCase().trim();
+            // Jaisinghnagar, Burhar etc. are sub-areas, never HQs
+            if (NON_HQ_NAMES.has(key)) continue;
             map.set(key, {
               id: item.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
               name: item.name.trim(),
@@ -74,7 +136,9 @@ const getMergedHqs = (): Headquarter[] => {
           const name = c.cityName || c.name;
           if (name) {
             const key = name.toLowerCase().trim();
+            if (NON_HQ_NAMES.has(key)) continue;
             const isHq = !!c.isHeadquarters || c.branchType === 'HEADQUARTERS';
+            if (!isHq) continue; // Only actual HQs should be merged
             const existing = map.get(key);
             map.set(key, {
               id: existing?.id || (c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`),
@@ -96,6 +160,7 @@ interface StockerItem {
   id: string;
   hq_id: string;
   hq_name: string;
+  sub_area?: string;
   name: string;
   contact_person?: string;
   phone?: string;
@@ -189,8 +254,10 @@ export const StockerManagementView: React.FC = () => {
   // Stockers state
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
+  const [selectedSubAreaFilter, setSelectedSubAreaFilter] = useState<string>('ALL');
   const [isAddStockerModalOpen, setIsAddStockerModalOpen] = useState<boolean>(false);
   const [newStockerHqId, setNewStockerHqId] = useState<string>(defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol');
+  const [newStockerSubArea, setNewStockerSubArea] = useState<string>('');
   const [newStockerName, setNewStockerName] = useState<string>('');
   const [newStockerContact, setNewStockerContact] = useState<string>('');
   const [newStockerPhone, setNewStockerPhone] = useState<string>('');
@@ -199,11 +266,43 @@ export const StockerManagementView: React.FC = () => {
   // Edit Stocker Modal state
   const [isEditStockerModalOpen, setIsEditStockerModalOpen] = useState<boolean>(false);
   const [editingStocker, setEditingStocker] = useState<StockerItem | null>(null);
+  const [editStockerSubArea, setEditStockerSubArea] = useState<string>('');
   const [editStockerName, setEditStockerName] = useState<string>('');
   const [editStockerContact, setEditStockerContact] = useState<string>('');
   const [editStockerPhone, setEditStockerPhone] = useState<string>('');
   const [editStockerAddress, setEditStockerAddress] = useState<string>('');
   const [editStockerStatus, setEditStockerStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+
+  // Helper to dynamically resolve Sub-Areas / Markets for an HQ
+  const getSubAreasForHq = (hqId: string): string[] => {
+    const list: string[] = [];
+    const normalizedHqId = (hqId || '').toLowerCase().trim();
+    try {
+      const raw = localStorage.getItem('ahtri_hq_subareas');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((a: any) => {
+            if (a && a.name) {
+              const matchesHq =
+                a.hq_id === normalizedHqId ||
+                (normalizedHqId.includes('shahdol') &&
+                  (a.hq_id === 'hq-jaisinghnagar' || a.hq_id === 'hq-burhar'));
+              if (matchesHq && !list.includes(a.name.trim())) {
+                list.push(a.name.trim());
+              }
+            }
+          });
+        }
+      }
+    } catch {}
+
+    const defaults = DEFAULT_HQ_AREAS_MAP[normalizedHqId] || [];
+    defaults.forEach((d) => {
+      if (!list.includes(d)) list.push(d);
+    });
+    return list;
+  };
 
   // Inventory state
   const [inventory, setInventory] = useState<StockerProductItem[]>([]);
@@ -293,6 +392,7 @@ export const StockerManagementView: React.FC = () => {
           current.forEach((h) => map.set(h.name.toLowerCase().trim(), h));
           data.forEach((h: any) => {
             const key = h.name.toLowerCase().trim();
+            if (NON_HQ_NAMES.has(key)) return;
             const existing = map.get(key);
             map.set(key, {
               id: h.id,
@@ -612,6 +712,7 @@ export const StockerManagementView: React.FC = () => {
       id: `stk-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       hq_id: targetHqId,
       hq_name: targetHq?.name || 'HQ',
+      sub_area: newStockerSubArea.trim() || undefined,
       name: newStockerName.trim(),
       contact_person: newStockerContact.trim(),
       phone: newStockerPhone.trim(),
@@ -625,6 +726,7 @@ export const StockerManagementView: React.FC = () => {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           hq_id: targetHqId,
+          sub_area: newStockerSubArea.trim() || undefined,
           name: newStockerName.trim(),
           contact_person: newStockerContact.trim(),
           phone: newStockerPhone.trim(),
@@ -652,6 +754,7 @@ export const StockerManagementView: React.FC = () => {
       setIsAddStockerModalOpen(false);
       setStockerModalError('');
       setNewStockerName('');
+      setNewStockerSubArea('');
       setNewStockerContact('');
       setNewStockerPhone('');
       setNewStockerAddress('');
@@ -668,6 +771,7 @@ export const StockerManagementView: React.FC = () => {
   const handleOpenEditStocker = (st: StockerItem) => {
     setEditingStocker(st);
     setEditStockerName(st.name);
+    setEditStockerSubArea(st.sub_area || '');
     setEditStockerContact(st.contact_person || '');
     setEditStockerPhone(st.phone || '');
     setEditStockerAddress(st.address || '');
@@ -683,6 +787,7 @@ export const StockerManagementView: React.FC = () => {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           name: editStockerName.trim(),
+          sub_area: editStockerSubArea.trim() || undefined,
           contact_person: editStockerContact.trim(),
           phone: editStockerPhone.trim(),
           address: editStockerAddress.trim(),
@@ -690,6 +795,26 @@ export const StockerManagementView: React.FC = () => {
         }),
       });
       if (res.ok) {
+        try {
+          const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+          if (savedStkRaw) {
+            const list: StockerItem[] = JSON.parse(savedStkRaw);
+            const idx = list.findIndex((s) => s.id === editingStocker.id);
+            if (idx >= 0) {
+              list[idx] = {
+                ...list[idx],
+                name: editStockerName.trim(),
+                sub_area: editStockerSubArea.trim() || undefined,
+                contact_person: editStockerContact.trim(),
+                phone: editStockerPhone.trim(),
+                address: editStockerAddress.trim(),
+                status: editStockerStatus,
+              };
+              localStorage.setItem('ahtri_inventory_stockers', JSON.stringify(list));
+            }
+          }
+        } catch {}
+
         setIsEditStockerModalOpen(false);
         setEditingStocker(null);
         fetchStockers();
@@ -1158,7 +1283,7 @@ export const StockerManagementView: React.FC = () => {
                     style={{ padding: '4px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--color-brand)', color: '#FFFFFF' }}
                   >
                     <Plus size={13} />
-                    <span>+ Add HQ</span>
+                    <span>Add HQ</span>
                   </button>
                 </div>
               </div>
@@ -1173,6 +1298,7 @@ export const StockerManagementView: React.FC = () => {
                       onClick={() => {
                         setSelectedHqId(hq.id);
                         setNewStockerHqId(hq.id);
+                        setSelectedSubAreaFilter('ALL');
                       }}
                       style={{
                         padding: '6px 14px',
@@ -2110,13 +2236,51 @@ export const StockerManagementView: React.FC = () => {
               alignItems: 'center',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
-              Stockers &amp; Shops under {selectedHq?.name || 'Selected HQ'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>
+                Stockers &amp; Shops under {selectedHq?.name || 'Selected HQ'}
+              </span>
+
+              {/* Sub-Area Dropdown Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                  SUB-AREA / MARKET:
+                </span>
+                <select
+                  value={selectedSubAreaFilter}
+                  onChange={(e) => setSelectedSubAreaFilter(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    border: '1px solid var(--color-border)',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    background: '#FFFFFF',
+                    color: 'var(--color-text-main)',
+                  }}
+                >
+                  <option value="ALL">All Sub-Areas ({stockers.length})</option>
+                  {getSubAreasForHq(selectedHqId).map((area) => {
+                    const count = stockers.filter(
+                      (s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()
+                    ).length;
+                    return (
+                      <option key={area} value={area}>
+                        📍 {area} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
 
             <button
               className="btn-enterprise"
-              onClick={() => setIsAddStockerModalOpen(true)}
+              onClick={() => {
+                const available = getSubAreasForHq(selectedHqId);
+                setNewStockerSubArea(available[0] || '');
+                setIsAddStockerModalOpen(true);
+              }}
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }}
             >
               <Plus size={14} />
@@ -2124,56 +2288,84 @@ export const StockerManagementView: React.FC = () => {
             </button>
           </div>
 
-          {stockers.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              No stockers found for {selectedHq?.name}. Click "Add Stocker" to register one.
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Stocker Name</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>HQ Territory</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Contact Person</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Phone</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Address</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockers.map((st) => (
-                    <tr key={st.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '11px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>
-                        📦 {st.name}
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#1E40AF', fontWeight: 600 }}>
-                        {st.hq_name}
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#334155' }}>
-                        {st.contact_person || '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#64748B' }}>
-                        {st.phone || '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#475569' }}>
-                        {st.address || '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px' }}>
-                        <span
-                          style={{
-                            background: st.status === 'ACTIVE' ? '#DCFCE7' : '#F1F5F9',
-                            color: st.status === 'ACTIVE' ? '#166534' : '#64748B',
-                            padding: '2px 8px',
-                            borderRadius: 10,
-                            fontSize: 11,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {st.status}
-                        </span>
-                      </td>
+          {(() => {
+            const displayedStockers = stockers.filter((st) => {
+              if (selectedSubAreaFilter === 'ALL') return true;
+              return (st.sub_area || '').toLowerCase() === selectedSubAreaFilter.toLowerCase();
+            });
+
+            if (displayedStockers.length === 0) {
+              return (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  No stockers found for {selectedHq?.name}{selectedSubAreaFilter !== 'ALL' ? ` under ${selectedSubAreaFilter}` : ''}. Click "Add Stocker" to register one.
+                </div>
+              );
+            }
+
+            return (
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Stocker Name</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>HQ Territory</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Sub-Area / Market</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Contact Person</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Phone</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Address</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status</th>
+                      <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedStockers.map((st) => (
+                      <tr key={st.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          📦 {st.name}
+                        </td>
+                        <td style={{ padding: '11px 14px', color: '#1E40AF', fontWeight: 600 }}>
+                          {st.hq_name}
+                        </td>
+                        <td style={{ padding: '11px 14px' }}>
+                          <span
+                            style={{
+                              background: '#F1F5F9',
+                              color: '#0F172A',
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                            }}
+                          >
+                            📍 {st.sub_area || 'Shahdol Central'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '11px 14px', color: '#334155' }}>
+                          {st.contact_person || '—'}
+                        </td>
+                        <td style={{ padding: '11px 14px', color: '#64748B' }}>
+                          {st.phone || '—'}
+                        </td>
+                        <td style={{ padding: '11px 14px', color: '#475569' }}>
+                          {st.address || '—'}
+                        </td>
+                        <td style={{ padding: '11px 14px' }}>
+                          <span
+                            style={{
+                              background: st.status === 'ACTIVE' ? '#DCFCE7' : '#F1F5F9',
+                              color: st.status === 'ACTIVE' ? '#166534' : '#64748B',
+                              padding: '2px 8px',
+                              borderRadius: 10,
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {st.status}
+                          </span>
+                        </td>
                       <td style={{ padding: '11px 14px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button
@@ -2244,7 +2436,8 @@ export const StockerManagementView: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -2951,7 +3144,11 @@ export const StockerManagementView: React.FC = () => {
               </label>
               <select
                 value={newStockerHqId}
-                onChange={(e) => setNewStockerHqId(e.target.value)}
+                onChange={(e) => {
+                  setNewStockerHqId(e.target.value);
+                  const available = getSubAreasForHq(e.target.value);
+                  setNewStockerSubArea(available[0] || '');
+                }}
                 style={{
                   width: '100%',
                   padding: '8px 10px',
@@ -2965,6 +3162,32 @@ export const StockerManagementView: React.FC = () => {
                 {hqs.map((h) => (
                   <option key={h.id} value={h.id}>
                     {h.name} ({h.code || 'HQ'}) {h.state ? `— ${h.state}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                SELECT SUB-AREA / TEHSIL / VILLAGE *
+              </label>
+              <select
+                value={newStockerSubArea}
+                onChange={(e) => setNewStockerSubArea(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: '#FFFFFF',
+                }}
+              >
+                <option value="">-- Select Sub-Area / Tehsil / Village --</option>
+                {getSubAreasForHq(newStockerHqId || selectedHqId).map((area) => (
+                  <option key={area} value={area}>
+                    📍 {area}
                   </option>
                 ))}
               </select>
@@ -3101,6 +3324,32 @@ export const StockerManagementView: React.FC = () => {
                 autoFocus
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
               />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                SUB-AREA / TEHSIL / VILLAGE
+              </label>
+              <select
+                value={editStockerSubArea}
+                onChange={(e) => setEditStockerSubArea(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: '#FFFFFF',
+                }}
+              >
+                <option value="">-- Select Sub-Area / Tehsil / Village --</option>
+                {getSubAreasForHq(editingStocker?.hq_id || selectedHqId).map((area) => (
+                  <option key={area} value={area}>
+                    📍 {area}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: 10 }}>

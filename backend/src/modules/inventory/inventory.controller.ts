@@ -64,6 +64,11 @@ export class InventoryController {
     return this.inventoryService.getHqAreas(hqId);
   }
 
+  @Get('hq-areas')
+  async getHqAreasAlias(@Query('hq_id') hqId?: string) {
+    return this.inventoryService.getHqAreas(hqId);
+  }
+
   @Post('areas')
   @Roles('SUPER_ADMIN', 'ADMIN')
   async createHqArea(@Body() dto: CreateHqAreaDto) {
@@ -90,8 +95,11 @@ export class InventoryController {
 
   // === STOCKERS ===
   @Get('stockers')
-  async getStockers(@Query('hq_id') hqId?: string) {
-    return this.inventoryService.getStockers(hqId);
+  async getStockers(
+    @Query('hq_id') hqId?: string,
+    @Query('sub_area') subArea?: string,
+  ) {
+    return this.inventoryService.getStockers(hqId, subArea);
   }
 
   @Post('stockers')

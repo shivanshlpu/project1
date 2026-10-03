@@ -420,22 +420,6 @@ export class DatabaseService implements OnModuleInit {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    const hqJaisinghnagar: Headquarter = {
-      id: 'hq-jaisinghnagar',
-      name: 'Jaisinghnagar',
-      code: 'HQ-JSN',
-      state: 'Madhya Pradesh',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const hqBurhar: Headquarter = {
-      id: 'hq-burhar',
-      name: 'Burhar/Bauhari',
-      code: 'HQ-BRH',
-      state: 'Madhya Pradesh',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
     const hqAmbikapur: Headquarter = {
       id: 'hq-ambikapur',
       name: 'Ambikapur',
@@ -463,8 +447,6 @@ export class DatabaseService implements OnModuleInit {
 
     this.headquarters.push(
       hqShahdol,
-      hqJaisinghnagar,
-      hqBurhar,
       hqAmbikapur,
       hqBilaspur,
       hqKotma,
@@ -510,16 +492,14 @@ export class DatabaseService implements OnModuleInit {
       { id: 'area-ktm-05', hq_id: hqKotma.id, name: 'Rajendragram' },
       { id: 'area-ktm-06', hq_id: hqKotma.id, name: 'Bhalumuda' },
 
-      // Jaisinghnagar Sub-Areas
-      { id: 'area-jsn-01', hq_id: hqJaisinghnagar.id, name: 'Jaisinghnagar Town' },
-      { id: 'area-jsn-02', hq_id: hqJaisinghnagar.id, name: 'Amdih' },
-      { id: 'area-jsn-03', hq_id: hqJaisinghnagar.id, name: 'Janakpur Road' },
-
-      // Burhar Sub-Areas
-      { id: 'area-bhr-01', hq_id: hqBurhar.id, name: 'Burhar Town' },
-      { id: 'area-bhr-02', hq_id: hqBurhar.id, name: 'Dhanpuri' },
-      { id: 'area-bhr-03', hq_id: hqBurhar.id, name: 'Amlai' },
-      { id: 'area-bhr-04', hq_id: hqBurhar.id, name: 'Bakaho' },
+      // Jaisinghnagar & Burhar are Sub-Areas under Shahdol HQ
+      { id: 'area-jsn-01', hq_id: hqShahdol.id, name: 'Jaisinghnagar Town' },
+      { id: 'area-jsn-02', hq_id: hqShahdol.id, name: 'Amdih' },
+      { id: 'area-jsn-03', hq_id: hqShahdol.id, name: 'Janakpur Road' },
+      { id: 'area-bhr-01', hq_id: hqShahdol.id, name: 'Burhar Town' },
+      { id: 'area-bhr-02', hq_id: hqShahdol.id, name: 'Dhanpuri' },
+      { id: 'area-bhr-03', hq_id: hqShahdol.id, name: 'Amlai' },
+      { id: 'area-bhr-04', hq_id: hqShahdol.id, name: 'Bakaho' },
     ];
     for (const a of areas) {
       this.hqAreas.push({
@@ -531,11 +511,12 @@ export class DatabaseService implements OnModuleInit {
       });
     }
 
-    // 12. Seed Stockers (§9 & §10)
+    // 12. Seed Stockers (§9 & §10) with sub_area assigned
     const stocker1: Stocker = {
       id: 'stk-shd-01',
       hq_id: hqShahdol.id,
       name: 'Shahdol Stocker 1 (Central Depot)',
+      sub_area: 'Shahdol Central',
       contact_person: 'Ramesh Patel',
       phone: '9826112233',
       address: 'Main Market Road, Shahdol, MP',
@@ -546,6 +527,7 @@ export class DatabaseService implements OnModuleInit {
       id: 'stk-shd-02',
       hq_id: hqShahdol.id,
       name: 'Shahdol Stocker 2 (Station Road)',
+      sub_area: 'Shahdol Central',
       contact_person: 'Sanjay Gupta',
       phone: '9826144556',
       address: 'Station Road, Near Bus Stand, Shahdol, MP',
@@ -553,16 +535,61 @@ export class DatabaseService implements OnModuleInit {
       created_at: new Date().toISOString(),
     };
     const stocker3: Stocker = {
+      id: 'stk-shd-03',
+      hq_id: hqShahdol.id,
+      name: 'Jaisinghnagar Medical Agency',
+      sub_area: 'Jaisinghnagar',
+      contact_person: 'Anil Mishra',
+      phone: '9826188990',
+      address: 'Block Colony, Jaisinghnagar, MP',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker4: Stocker = {
+      id: 'stk-shd-04',
+      hq_id: hqShahdol.id,
+      name: 'Burhar Pharma Distributors',
+      sub_area: 'Burhar',
+      contact_person: 'Manoj Soni',
+      phone: '9826177889',
+      address: 'Railway Gate Road, Burhar, MP',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker5: Stocker = {
       id: 'stk-bsp-01',
       hq_id: hqBilaspur.id,
       name: 'Bilaspur Pharma Depot',
+      sub_area: 'Vyapar Vihar',
       contact_person: 'Vijay Agrawal',
       phone: '9827155667',
       address: 'Vyapar Vihar, Bilaspur, CG',
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    this.stockers.push(stocker1, stocker2, stocker3);
+    const stocker6: Stocker = {
+      id: 'stk-amb-01',
+      hq_id: hqAmbikapur.id,
+      name: 'Ambikapur Medical Store',
+      sub_area: 'Main Market',
+      contact_person: 'Rajesh Singhal',
+      phone: '9827199001',
+      address: 'Hospital Road, Ambikapur, CG',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker7: Stocker = {
+      id: 'stk-ktm-01',
+      hq_id: hqKotma.id,
+      name: 'Kotma Healthcare Depot',
+      sub_area: 'Station Chowk',
+      contact_person: 'Deepak Tiwari',
+      phone: '9827133445',
+      address: 'Colliery Road, Kotma, MP',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
 
     // 13. Seed Medicines Master (§11)
     const med1: Medicine = {

@@ -338,6 +338,7 @@ export interface Stocker {
   id: string;
   hq_id: string;
   name: string;
+  sub_area?: string;
   contact_person?: string;
   phone?: string;
   address?: string;

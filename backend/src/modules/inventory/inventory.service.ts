@@ -168,10 +168,14 @@ export class InventoryService {
   }
 
   // === 3. STOCKERS ===
-  async getStockers(hqId?: string): Promise<any[]> {
-    const list = hqId
-      ? this.db.stockers.filter((s) => s.hq_id === hqId)
-      : this.db.stockers;
+  async getStockers(hqId?: string, subArea?: string): Promise<any[]> {
+    let list = this.db.stockers;
+    if (hqId && hqId !== 'ALL') {
+      list = list.filter((s) => s.hq_id === hqId);
+    }
+    if (subArea && subArea !== 'ALL') {
+      list = list.filter((s) => s.sub_area && s.sub_area.toLowerCase() === subArea.toLowerCase());
+    }
 
     return list.map((s) => {
       const hq = this.db.headquarters.find((h) => h.id === s.hq_id);
@@ -190,6 +194,7 @@ export class InventoryService {
       id: `stk-${uuidv4().substring(0, 8)}`,
       hq_id: dto.hq_id,
       name: dto.name,
+      sub_area: dto.sub_area || '',
       contact_person: dto.contact_person || '',
       phone: dto.phone || '',
       address: dto.address || '',
@@ -220,6 +225,7 @@ export class InventoryService {
     if (!stocker) throw new NotFoundException('Stocker not found');
 
     if (dto.name) stocker.name = dto.name;
+    if (dto.sub_area !== undefined) stocker.sub_area = dto.sub_area;
     if (dto.contact_person !== undefined) stocker.contact_person = dto.contact_person;
     if (dto.phone !== undefined) stocker.phone = dto.phone;
     if (dto.address !== undefined) stocker.address = dto.address;

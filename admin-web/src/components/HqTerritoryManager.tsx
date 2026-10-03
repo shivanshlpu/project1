@@ -36,8 +36,6 @@ export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [
   { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh', status: 'ACTIVE' },
   { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh', status: 'ACTIVE' },
   { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh', status: 'ACTIVE' },
-  { id: 'hq-jaisinghnagar', name: 'Jaisinghnagar', code: 'HQ-JSN', state: 'Madhya Pradesh', status: 'ACTIVE' },
-  { id: 'hq-burhar', name: 'Burhar', code: 'HQ-BHR', state: 'Madhya Pradesh', status: 'ACTIVE' },
 ];
 
 export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
@@ -49,6 +47,11 @@ export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   { id: 'area-shd-05', hq_id: 'hq-shahdol', name: 'Sohagpur', status: 'ACTIVE' },
   { id: 'area-shd-06', hq_id: 'hq-shahdol', name: 'Singhpur', status: 'ACTIVE' },
   { id: 'area-shd-07', hq_id: 'hq-shahdol', name: 'Shahdol Central', status: 'ACTIVE' },
+  { id: 'area-shd-08', hq_id: 'hq-shahdol', name: 'Amdih', status: 'ACTIVE' },
+  { id: 'area-shd-09', hq_id: 'hq-shahdol', name: 'Janakpur Road', status: 'ACTIVE' },
+  { id: 'area-shd-10', hq_id: 'hq-shahdol', name: 'Dhanpuri', status: 'ACTIVE' },
+  { id: 'area-shd-11', hq_id: 'hq-shahdol', name: 'Amlai', status: 'ACTIVE' },
+  { id: 'area-shd-12', hq_id: 'hq-shahdol', name: 'Bakaho', status: 'ACTIVE' },
 
   // Ambikapur District Sub-Areas & Villages
   { id: 'area-amb-01', hq_id: 'hq-ambikapur', name: 'Sitapur', status: 'ACTIVE' },
@@ -78,17 +81,6 @@ export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   { id: 'area-ktm-04', hq_id: 'hq-kotma', name: 'Bijuri', status: 'ACTIVE' },
   { id: 'area-ktm-05', hq_id: 'hq-kotma', name: 'Rajendragram', status: 'ACTIVE' },
   { id: 'area-ktm-06', hq_id: 'hq-kotma', name: 'Bhalumuda', status: 'ACTIVE' },
-
-  // Jaisinghnagar Sub-Areas
-  { id: 'area-jsn-01', hq_id: 'hq-jaisinghnagar', name: 'Jaisinghnagar Town', status: 'ACTIVE' },
-  { id: 'area-jsn-02', hq_id: 'hq-jaisinghnagar', name: 'Amdih', status: 'ACTIVE' },
-  { id: 'area-jsn-03', hq_id: 'hq-jaisinghnagar', name: 'Janakpur Road', status: 'ACTIVE' },
-
-  // Burhar Sub-Areas
-  { id: 'area-bhr-01', hq_id: 'hq-burhar', name: 'Burhar Town', status: 'ACTIVE' },
-  { id: 'area-bhr-02', hq_id: 'hq-burhar', name: 'Dhanpuri', status: 'ACTIVE' },
-  { id: 'area-bhr-03', hq_id: 'hq-burhar', name: 'Amlai', status: 'ACTIVE' },
-  { id: 'area-bhr-04', hq_id: 'hq-burhar', name: 'Bakaho', status: 'ACTIVE' },
 ];
 
 export const HqTerritoryManager: React.FC = () => {
@@ -102,13 +94,19 @@ export const HqTerritoryManager: React.FC = () => {
     };
   };
 
-  // State: Headquarters
+  // State: Headquarters (Cleaned up - Jaisinghnagar & Burhar are sub-areas under Shahdol, NOT HQs)
   const [hqs, setHqs] = useState<HeadquarterItem[]>(() => {
     try {
       const saved = localStorage.getItem('ahtri_inventory_hqs');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const filtered = parsed.filter((h: any) => {
+            const name = (h.name || '').toLowerCase().trim();
+            return !['jaisinghnagar', 'burhar', 'burhar/bauhari', 'bauhari'].includes(name);
+          });
+          if (filtered.length > 0) return filtered;
+        }
       }
     } catch {}
     return DEFAULT_MANAGED_HQS;
@@ -116,13 +114,20 @@ export const HqTerritoryManager: React.FC = () => {
 
   const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
 
-  // State: Sub-Areas
+  // State: Sub-Areas (Sub-areas for Jaisinghnagar & Burhar normalized under hq-shahdol)
   const [areas, setAreas] = useState<SubAreaItem[]>(() => {
     try {
       const saved = localStorage.getItem('ahtri_hq_subareas');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((a: any) => {
+            if (a.hq_id === 'hq-jaisinghnagar' || a.hq_id === 'hq-burhar') {
+              return { ...a, hq_id: 'hq-shahdol' };
+            }
+            return a;
+          });
+        }
       }
     } catch {}
     return DEFAULT_MANAGED_AREAS;
