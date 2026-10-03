@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LocationService } from '../services/locationService';
@@ -34,6 +35,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const [checkedIn, setCheckedIn] = useState<boolean>(false);
   const [checkedOut, setCheckedOut] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPolicyModal, setShowPolicyModal] = useState<boolean>(false);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkInGps, setCheckInGps] = useState<string | null>(null);
@@ -226,7 +228,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       Alert.alert(
         'Attendance Marked Done! ✓',
-        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n${lateMsg ? `\n• ${lateMsg}` : '\n• On-Time Entry'}\n\n✓ Full dress & ID card photo captured\n✓ Geo-location tagged\n🛡️ Stored compressed (Auto-purges after 24 hours to protect database storage).`,
+        `Punch-in recorded at ${nowStr}.\nStatus: PRESENT\nLocation: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n${lateMsg ? `\n• ${lateMsg}` : '\n• On-Time Entry'}\n\n✓ Full dress & ID card verified\n✓ Geo-location tagged`,
       );
     } catch (error: any) {
       Alert.alert('Attendance Error', error?.message || 'Failed to record attendance.');
@@ -496,13 +498,29 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         <Text style={styles.headerSub}>Live camera verification in work attire &amp; GPS geofence</Text>
       </View>
 
-      {/* Attendance & Dress Code Notice Card */}
+      {/* Attendance & Dress Code Notice Card with Policy Link */}
       <View style={styles.reassuranceCard}>
-        <Text style={styles.reassuranceTitle}>👔 Mandatory Work Attire &amp; ID Card Verification</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Text style={{ fontSize: 16 }}>👔</Text>
+            <Text style={styles.reassuranceTitle}>Full Dress &amp; ID Card Required</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowPolicyModal(true)}
+            style={{
+              paddingVertical: 5,
+              paddingHorizontal: 10,
+              backgroundColor: '#EEF2FF',
+              borderRadius: 6,
+              borderWidth: 1,
+              borderColor: '#C7D2FE',
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#4338CA' }}>View Policy 📋</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.reassuranceBody}>
-          • Capture a live photo in <Text style={{ fontWeight: '700', color: '#0F172A' }}>full dress / company uniform</Text> with your <Text style={{ fontWeight: '700', color: '#0F172A' }}>official ID card clearly worn and visible</Text>.{'\n'}
-          • Your exact <Text style={{ fontWeight: '700', color: '#0F172A' }}>GPS Geo-location</Text> is recorded automatically upon punch-in.{'\n'}
-          • <Text style={{ fontWeight: '700', color: '#0F172A' }}>24-Hour Storage Policy</Text>: Photos are compressed to protect the 512MB storage quota and are <Text style={{ fontWeight: '700', color: '#0F172A' }}>automatically purged after 24 hours</Text>. All attendance records, punch times, and GPS logs remain permanently preserved for administration.
+          Every attendance punch requires a live photo in full formal attire with your company ID card clearly visible. Location is verified automatically.
         </Text>
       </View>
 
@@ -577,7 +595,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 <Image source={{ uri: selfiePhoto.uri }} style={[styles.selfieImage, { width: 130, height: 160, borderRadius: 10 }]} />
                 <View style={styles.photoVerifiedBadge}>
                   <Text style={styles.photoVerifiedText}>✓ Full Dress &amp; ID Card Photo Captured</Text>
-                  <Text style={styles.photoVerifiedSub}>Compressed for 512MB quota • Auto-purges in 24h</Text>
+                  <Text style={styles.photoVerifiedSub}>Identity &amp; uniform verified for shift</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.retakeBtn}
@@ -593,11 +611,11 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               >
                 <Text style={styles.cameraTriggerIcon}>📷</Text>
                 <Text style={styles.cameraTriggerText}>Click Photo (Full Dress &amp; ID Card)</Text>
-                <Text style={[styles.cameraTriggerSub, { fontWeight: '700', color: '#1E40AF', marginTop: 4 }]}>
-                  "Stand properly wearing full formal attire with your company ID card clearly visible."
+                <Text style={[styles.cameraTriggerSub, { fontWeight: '600', color: '#1E40AF', marginTop: 4 }]}>
+                  Stand properly in full uniform with your company ID card clearly visible.
                 </Text>
                 <Text style={[styles.cameraTriggerSub, { fontSize: 10, color: '#64748B', marginTop: 2 }]}>
-                  Live camera photo + GPS geo-tag required. Auto-purged after 24h.
+                  Live camera verification &amp; GPS geotag required.
                 </Text>
               </TouchableOpacity>
             )}
@@ -670,6 +688,85 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </>
         )}
       </View>
+
+      {/* Attendance & Uniform Policy Modal (§ Employee Policy Guide) */}
+      <Modal
+        visible={showPolicyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPolicyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.policyModalContainer}>
+            <View style={styles.policyModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 22 }}>📋</Text>
+                <View>
+                  <Text style={styles.policyModalTitle}>Attendance &amp; Attire Policy</Text>
+                  <Text style={{ fontSize: 11, color: '#64748B' }}>Field Representative Guidelines</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowPolicyModal(false)}
+                style={styles.policyModalCloseBtn}
+              >
+                <Text style={styles.policyModalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {/* Section 1: Dress Code */}
+              <View style={styles.policySection}>
+                <Text style={styles.policySectionTitle}>👔 1. Mandatory Formal Dress Code</Text>
+                <Text style={styles.policySectionBody}>
+                  All field representatives must report for duty in complete formal attire or prescribed company uniform. Professional grooming is mandatory for all field visits.
+                </Text>
+              </View>
+
+              {/* Section 2: ID Card */}
+              <View style={styles.policySection}>
+                <Text style={styles.policySectionTitle}>🪪 2. Official ID Card Placement</Text>
+                <Text style={styles.policySectionBody}>
+                  Your official company ID card must be worn visibly on your chest during check-in. The live camera photo verifies your identity and credentials for administration.
+                </Text>
+              </View>
+
+              {/* Section 3: GPS Geotagging */}
+              <View style={styles.policySection}>
+                <Text style={styles.policySectionTitle}>📍 3. Live GPS Field Verification</Text>
+                <Text style={styles.policySectionBody}>
+                  Exact GPS coordinates are recorded upon punch-in and punch-out to verify your assigned headquarters or area presence. Simulated or mock location tools are strictly prohibited.
+                </Text>
+              </View>
+
+              {/* Section 4: Photo Retention & Privacy */}
+              <View style={styles.policySection}>
+                <Text style={styles.policySectionTitle}>🛡️ 4. Photo Retention &amp; Privacy Policy</Text>
+                <Text style={styles.policySectionBody}>
+                  • Daily verification photos are stored temporarily for 24 hours for administrative review and audit.{'\n'}
+                  • Photos are automatically cleared after 24 hours to keep the system fast and private.{'\n'}
+                  • All your punch times, working hours, attendance status, and GPS logs remain permanently preserved in your employee record.
+                </Text>
+              </View>
+
+              {/* Section 5: Punctuality */}
+              <View style={styles.policySection}>
+                <Text style={styles.policySectionTitle}>⏱️ 5. Shift Timings &amp; Working Hours</Text>
+                <Text style={styles.policySectionBody}>
+                  Standard check-in is expected by 10:00 AM. A 30-minute grace window is provided, after which late entries are calculated automatically. Punch-out before 06:00 PM is recorded as early departure.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.policyAgreeBtn}
+              onPress={() => setShowPolicyModal(false)}
+            >
+              <Text style={styles.policyAgreeBtnText}>I Understand the Policy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -883,6 +980,78 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: '#15803D',
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 18,
+  },
+  policyModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    width: '100%',
+    maxWidth: 440,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  policyModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  policyModalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  policyModalCloseBtn: {
+    padding: 6,
+  },
+  policyModalCloseText: {
+    fontSize: 18,
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  policySection: {
+    marginBottom: 10,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  policySectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  policySectionBody: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 16,
+  },
+  policyAgreeBtn: {
+    backgroundColor: '#0F8B5A',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  policyAgreeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   btnDisabled: {
     backgroundColor: '#94A3B8',

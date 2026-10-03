@@ -77,8 +77,9 @@ export const AdminAttendanceView: React.FC = () => {
   const [filterMissingPunchOutOnly, setFilterMissingPunchOutOnly] = useState<boolean>(false);
   const [filterSuspiciousOnly, setFilterSuspiciousOnly] = useState<boolean>(false);
 
-  // Settings Modal (§22)
+  // Settings & Policy Modals
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState<boolean>(false);
   const [settings, setSettings] = useState<AttendanceSettingsData>({
     expected_punch_in_time: '10:00',
     allowed_punch_in_window_minutes: 30,
@@ -250,11 +251,19 @@ export const AdminAttendanceView: React.FC = () => {
             <span>Field Attendance &amp; Identity Verification</span>
           </h1>
           <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            Geofenced GPS tracking, live full-dress &amp; ID card photo proof, anti-mock integrity, and 24-hour auto-purge quota protection.
+            Geofenced GPS tracking, live work attire &amp; ID card verification, and employee shift registers.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            className="btn-enterprise secondary"
+            onClick={() => setIsPolicyModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
+          >
+            <span>📋 Attendance Policy</span>
+          </button>
+
           <button
             className="btn-enterprise secondary"
             onClick={() => setIsSettingsModalOpen(true)}
@@ -273,109 +282,6 @@ export const AdminAttendanceView: React.FC = () => {
             <span>Refresh</span>
           </button>
         </div>
-      </div>
-
-      {/* 512MB Quota Protection & 24h Auto-Purge Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F8FAFC 100%)',
-          border: '1px solid #A7F3D0',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          boxShadow: 'var(--shadow-xs)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 280, flex: '1 1 300px' }}>
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              background: '#DCFCE7',
-              border: '1px solid #86EFAC',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <HardDrive size={18} color="#059669" />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#065F46' }}>
-                512MB Database Quota Protection • 24-Hour Auto-Purge Active
-              </span>
-              <span
-                style={{
-                  background: '#059669',
-                  color: '#FFFFFF',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Safe Quota Mode
-              </span>
-            </div>
-            <p style={{ fontSize: 11.5, color: '#047857', marginTop: 3, lineHeight: 1.45 }}>
-              Attendance punch images are compressed on device (&lt;35KB) and <strong>automatically purged after 24 hours</strong> to ensure the 512MB database limit is never exceeded.
-              <span style={{ color: '#0F172A', fontWeight: 600 }}>
-                {' '}All punch-in/out timestamps, working hours, status, employee details, and live GPS coordinates remain permanently preserved.
-              </span>
-            </p>
-            {purgeNotice && (
-              <div
-                style={{
-                  marginTop: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#065F46',
-                  background: '#D1FAE5',
-                  padding: '4px 8px',
-                  borderRadius: 4,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <CheckCircle size={13} color="#059669" />
-                <span>{purgeNotice}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <button
-          className="btn-enterprise secondary"
-          onClick={handleManualPurge}
-          disabled={isPurging}
-          style={{
-            fontSize: 11.5,
-            padding: '6px 12px',
-            background: '#FFFFFF',
-            borderColor: '#6EE7B7',
-            color: '#065F46',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-          }}
-          title="Manually trigger the 24-hour expired photo cleanup routine"
-        >
-          <Trash2 size={13} color={isPurging ? '#94A3B8' : '#059669'} />
-          <span>{isPurging ? 'Purging Expired Photos...' : 'Run 24h Purge Check Now'}</span>
-        </button>
       </div>
 
       {/* KPI Highlight Strip */}
@@ -777,9 +683,9 @@ export const AdminAttendanceView: React.FC = () => {
                                 alignItems: 'center',
                                 gap: 4,
                               }}
-                              title="Photo auto-purged after 24 hours to prevent DB overload (512MB quota). Attendance, hours, and GPS records remain intact."
+                              title="Photo archived according to 24-hour retention policy. Attendance records and GPS logs remain permanently preserved."
                             >
-                              🛡️ Photo Purged (24h Policy)
+                              🛡️ Photo Archived (24h Policy)
                             </span>
                             <span style={{ fontSize: 9.5, color: '#64748B', marginTop: 2 }}>
                               Attendance Record Intact
@@ -1092,11 +998,11 @@ export const AdminAttendanceView: React.FC = () => {
               </div>
             )}
 
-            {/* 24-Hour Purge & 512MB Quota Notice */}
+            {/* Photo Retention Policy Note */}
             <div
               style={{
-                background: '#FEF3C7',
-                border: '1px solid #FDE68A',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
                 borderRadius: 6,
                 padding: '9px 12px',
                 marginBottom: 16,
@@ -1105,11 +1011,11 @@ export const AdminAttendanceView: React.FC = () => {
                 gap: 8,
               }}
             >
-              <Info size={16} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ fontSize: 11, color: '#92400E', lineHeight: 1.4 }}>
-                <strong>24-Hour Database Quota Protection:</strong> This image is auto-deleted after 24 hours to prevent the 512MB database limit from getting filled.
-                <span style={{ color: '#78350F' }}>
-                  {' '}The attendance timestamp, working hours, and GPS records remain permanently saved.
+              <Info size={16} color="#475569" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.4 }}>
+                <strong style={{ color: '#0F172A' }}>24-Hour Photo Retention Policy:</strong> Verification images are archived after 24 hours for privacy and performance.
+                <span style={{ color: '#0F172A', fontWeight: 600 }}>
+                  {' '}All shift timestamps, hours, status, and GPS coordinates remain permanently preserved.
                 </span>
               </div>
             </div>
@@ -1121,6 +1027,112 @@ export const AdminAttendanceView: React.FC = () => {
                 onClick={() => setPreviewPhoto(null)}
               >
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Organizational Attendance & Uniform Policy (§ Admin Policy Reference) */}
+      {isPolicyModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 520,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 22,
+              boxShadow: 'var(--shadow-lg)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>📋</span>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
+                  Field Attendance &amp; Attire Policy
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPolicyModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+              Standard operating procedures and compliance guidelines for Field Medical Representatives.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+              <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
+                  👔 1. Mandatory Formal Dress Code
+                </div>
+                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
+                  Employees must be dressed in complete formal office attire or designated company uniform while on field duty. Professional presentation is mandatory for all doctor and hospital visits.
+                </div>
+              </div>
+
+              <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
+                  🪪 2. Official ID Card Placement
+                </div>
+                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
+                  The company ID card must be worn visibly on the chest in the punch-in verification photo. This confirms the physical identity of the representative.
+                </div>
+              </div>
+
+              <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
+                  📍 3. Live GPS Geofencing &amp; Anti-Mocking
+                </div>
+                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
+                  Punch-in and punch-out events automatically verify genuine phone GPS coordinates against assigned headquarters or territories. Mock or simulated locations are blocked.
+                </div>
+              </div>
+
+              <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
+                  🛡️ 4. Photo Retention &amp; Shift Data Preservation
+                </div>
+                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
+                  Daily verification photos are retained for 24 hours for administrative spot-checks and are then automatically cleared. All shift hours, punch times, and GPS logs remain permanently preserved in employee records.
+                </div>
+              </div>
+
+              <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
+                  ⏱️ 5. Shift Hours &amp; Deviations
+                </div>
+                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
+                  Expected check-in is 10:00 AM and check-out is 06:00 PM. Deviations outside the configured tolerance window are logged as late entry or early departure.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="btn-enterprise secondary"
+                onClick={() => setIsPolicyModalOpen(false)}
+              >
+                Close Policy
               </button>
             </div>
           </div>
