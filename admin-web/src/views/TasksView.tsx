@@ -42,6 +42,7 @@ import {
   calculateDistanceKm,
 } from '../utils/savedLocationsStore';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { InStockProduct, getStoredInStockProducts, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 
 declare global {
   interface Window {
@@ -144,14 +145,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
     },
   ];
 
-  // Available Products for Detailing Focus
-  const availableProducts = [
-    'CardioFix-50 (Telmisartan)',
-    'CardioFix-AM Suspension',
-    'DermaSoothe Anti-Itch Cream',
-    'Pediatric FeverDrop Syrup',
-    'MultiVit Active Capsules',
-  ];
+  // Available Products for Detailing Focus (Only in-stock products with quantity > 0 in store)
+  const [inStockProducts, setInStockProducts] = useState<InStockProduct[]>(getStoredInStockProducts);
 
   // Tasks State
   const [tasks, setTasks] = useState<TaskItem[]>([
@@ -302,8 +297,49 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [selectedTimeZone, setSelectedTimeZone] = useState<string>('Asia/Kolkata');
   const [matchedSavedLocation, setMatchedSavedLocation] = useState<DoctorItem | null>(null);
   const [taskPriority, setTaskPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>(['CardioFix-50 (Telmisartan)', 'CardioFix-AM Suspension']);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>(() => {
+    const initial = getStoredInStockProducts();
+    return initial.slice(0, 2).map((p) => p.name);
+  });
   const [taskDescription, setTaskDescription] = useState('Present clinical trial efficacy data for CardioFix-50; confirm monthly prescription potential.');
+
+  // Live Sync In-Stock Products with Store Inventory
+  useEffect(() => {
+    syncInStockProductsWithBackend().then((items) => {
+      if (items && items.length > 0) {
+        setInStockProducts(items);
+      }
+    });
+
+    const handleInventoryChange = (e: any) => {
+      if (e && e.detail && Array.isArray(e.detail)) {
+        setInStockProducts(e.detail);
+      } else {
+        setInStockProducts(getStoredInStockProducts());
+      }
+    };
+
+    window.addEventListener('ahtri_inventory_updated', handleInventoryChange);
+    window.addEventListener('storage', handleInventoryChange);
+
+    return () => {
+      window.removeEventListener('ahtri_inventory_updated', handleInventoryChange);
+      window.removeEventListener('storage', handleInventoryChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (inStockProducts.length > 0) {
+      setSelectedProducts((prev) => {
+        const stillInStock = prev.filter((p) =>
+          inStockProducts.some((isp) => isp.name === p || isp.name.includes(p) || p.includes(isp.name))
+        );
+        return stillInStock.length > 0 ? stillInStock : [inStockProducts[0].name];
+      });
+    } else {
+      setSelectedProducts([]);
+    }
+  }, [inStockProducts]);
   const [unsuspendingId, setUnsuspendingId] = useState<string | null>(null);
   const [isSuspendedModalOpen, setIsSuspendedModalOpen] = useState<boolean>(false);
   const [isBulkUnsuspending, setIsBulkUnsuspending] = useState<boolean>(false);
@@ -593,9 +629,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const pinIcon = L.divIcon({
         html: create3DMapPinHtml({ category: loc.category || 'CLINIC', isSelected: false }),
         className: 'saved-location-3d-marker',
-        iconSize: [42, 55],
-        iconAnchor: [21, 55],
-        popupAnchor: [0, -50],
+        iconSize: [24, 32],
+        iconAnchor: [12, 32],
+        popupAnchor: [0, -30],
       });
 
       const marker = L.marker([loc.latitude, loc.longitude], { icon: pinIcon }).addTo(zoneMarkersGroupRef.current!);
@@ -704,9 +740,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const icon = L.divIcon({
         html: pinHtml,
         className: 'saved-location-3d-marker',
-        iconSize: [40, 52],
-        iconAnchor: [20, 52],
-        popupAnchor: [0, -48],
+        iconSize: isSelected ? [28, 37] : [24, 32],
+        iconAnchor: isSelected ? [14, 37] : [12, 32],
+        popupAnchor: [0, isSelected ? -35 : -30],
       });
 
       const m = L.marker([loc.latitude, loc.longitude], { icon }).addTo(modalSavedLocationsLayerRef.current!);
@@ -855,9 +891,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const customIcon = L.divIcon({
         html: create3DMapPinHtml({ category: 'CLINIC', isSelected: true }),
         className: 'saved-location-3d-marker',
-        iconSize: [45, 59],
-        iconAnchor: [22.5, 59],
-        popupAnchor: [0, -56],
+        iconSize: [28, 37],
+        iconAnchor: [14, 37],
+        popupAnchor: [0, -35],
       });
 
       const marker = L.marker([taskLat, taskLng], {
@@ -3117,37 +3153,63 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
                   {/* Product Detailing Focus Multi-Select Chips */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      {t.productFocus} (Click to toggle)
-                    </label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {availableProducts.map((prod) => {
-                        const isSelected = selectedProducts.includes(prod);
-                        return (
-                          <button
-                            key={prod}
-                            type="button"
-                            onClick={() => toggleProduct(prod)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '16px',
-                              border: isSelected ? '1.5px solid #1A3C6E' : '1px solid #CBD5E1',
-                              background: isSelected ? '#EFF6FF' : '#FFFFFF',
-                              color: isSelected ? '#1A3C6E' : '#475569',
-                              fontSize: '11px',
-                              fontWeight: isSelected ? '700' : '500',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                            }}
-                          >
-                            {isSelected ? <CheckCircle2 size={12} color="#1A3C6E" /> : <Plus size={12} color="#64748B" />}
-                            <span>{prod}</span>
-                          </button>
-                        );
-                      })}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>
+                        {t.productFocus} (Click to toggle)
+                      </label>
+                      <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#0F8B5A', background: '#DCFCE7', padding: '2px 8px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+                        ● Store In-Stock Only ({inStockProducts.length})
+                      </span>
                     </div>
+
+                    {inStockProducts.length === 0 ? (
+                      <div style={{ padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '11.5px', color: '#92400E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <AlertTriangle size={14} color="#D97706" />
+                        <span>No medicines currently in stock in store. Please inward stock in HQ Stocker &amp; Medicine Inventory.</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {inStockProducts.map((prod) => {
+                          const isSelected = selectedProducts.includes(prod.name);
+                          return (
+                            <button
+                              key={prod.id || prod.name}
+                              type="button"
+                              onClick={() => toggleProduct(prod.name)}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '16px',
+                                border: isSelected ? '1.5px solid #1A3C6E' : '1px solid #CBD5E1',
+                                background: isSelected ? '#EFF6FF' : '#FFFFFF',
+                                color: isSelected ? '#1A3C6E' : '#475569',
+                                fontSize: '11px',
+                                fontWeight: isSelected ? '700' : '500',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {isSelected ? <CheckCircle2 size={12} color="#1A3C6E" /> : <Plus size={12} color="#64748B" />}
+                              <span>{prod.name}</span>
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  padding: '1px 5px',
+                                  borderRadius: '8px',
+                                  background: prod.quantity <= 15 ? '#FEF3C7' : '#DCFCE7',
+                                  color: prod.quantity <= 15 ? '#B45309' : '#15803D',
+                                  fontWeight: '700',
+                                }}
+                              >
+                                {prod.quantity} in stock
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Geofence Perimeter Radius Controller */}

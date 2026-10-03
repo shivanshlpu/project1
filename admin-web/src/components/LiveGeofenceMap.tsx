@@ -142,9 +142,9 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     const clinicIcon = L.divIcon({
       html: create3DMapPinHtml({ category: 'CLINIC', isSelected: selectedPin?.type === 'doctor' }),
       className: 'saved-location-3d-marker',
-      iconSize: [42, 54],
-      iconAnchor: [21, 54],
-      popupAnchor: [0, -50],
+      iconSize: selectedPin?.type === 'doctor' ? [28, 37] : [24, 32],
+      iconAnchor: selectedPin?.type === 'doctor' ? [14, 37] : [12, 32],
+      popupAnchor: [0, selectedPin?.type === 'doctor' ? -35 : -30],
     });
 
     const clinicMarker = L.marker([fieldData.clinic.lat, fieldData.clinic.lng], { icon: clinicIcon });
@@ -188,9 +188,9 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     const mrIcon = L.divIcon({
       html: create3DMapPinHtml({ category: 'MR', isSelected: selectedPin?.type === 'mr' }),
       className: 'saved-location-3d-marker',
-      iconSize: [42, 54],
-      iconAnchor: [21, 54],
-      popupAnchor: [0, -50],
+      iconSize: selectedPin?.type === 'mr' ? [28, 37] : [24, 32],
+      iconAnchor: selectedPin?.type === 'mr' ? [14, 37] : [12, 32],
+      popupAnchor: [0, selectedPin?.type === 'mr' ? -35 : -30],
     });
 
     const mrMarker = L.marker([fieldData.activeMR.lat, fieldData.activeMR.lng], { icon: mrIcon });
@@ -233,9 +233,9 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
       const otherIcon = L.divIcon({
         html: create3DMapPinHtml({ category: isHospital ? 'HOSPITAL' : 'CLINIC', isSelected: false }),
         className: 'saved-location-3d-marker',
-        iconSize: [36, 47],
-        iconAnchor: [18, 47],
-        popupAnchor: [0, -44],
+        iconSize: [24, 32],
+        iconAnchor: [12, 32],
+        popupAnchor: [0, -30],
       });
       const m = L.marker([oc.lat, oc.lng], { icon: otherIcon });
       m.bindPopup(`<strong>${oc.name}</strong><br/><span style="font-size:11px;color:#64748B;">${oc.clinic}</span>`);

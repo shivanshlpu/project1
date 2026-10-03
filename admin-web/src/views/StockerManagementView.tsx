@@ -20,6 +20,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 
 interface Headquarter {
   id: string;
@@ -493,6 +494,8 @@ export const StockerManagementView: React.FC = () => {
         const data = await res.json();
         if (Array.isArray(data)) {
           setInventory(data);
+          syncInStockFromInventoryItems(data);
+          syncInStockProductsWithBackend();
         }
       }
     } catch {} finally {
@@ -877,6 +880,7 @@ export const StockerManagementView: React.FC = () => {
           setSelectedMedicineId(saved.id);
         }
         if (selectedStockerId) fetchInventory();
+        syncInStockProductsWithBackend();
         setInwardSuccessMsg(`✨ New medicine "${saved.name || newMedName}" added to catalog and selected!`);
       } else {
         const err = await res.json();
@@ -917,6 +921,7 @@ export const StockerManagementView: React.FC = () => {
         setEditingMedicine(null);
         fetchMedicines();
         if (selectedStockerId) fetchInventory();
+        syncInStockProductsWithBackend();
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || 'Failed to update medicine.');
@@ -939,6 +944,7 @@ export const StockerManagementView: React.FC = () => {
       if (res.ok) {
         fetchMedicines();
         if (selectedStockerId) fetchInventory();
+        syncInStockProductsWithBackend();
       }
     } catch {}
   };
@@ -994,6 +1000,7 @@ export const StockerManagementView: React.FC = () => {
         fetchMonthlyEntries();
         fetchInventory();
         fetchAlerts();
+        syncInStockProductsWithBackend();
         // Reset quantity & batch for quick sequential entries
         setInwardQuantity('50');
         setInwardBatchNo('');
@@ -1028,6 +1035,7 @@ export const StockerManagementView: React.FC = () => {
         setStockEditTarget(null);
         fetchInventory();
         fetchAlerts();
+        syncInStockProductsWithBackend();
       }
     } catch {}
   };

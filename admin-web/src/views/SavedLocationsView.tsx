@@ -287,9 +287,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         const customIcon = L.divIcon({
           html: pinHtml,
           className: 'saved-location-3d-marker',
-          iconSize: isSelected ? [45, 59] : [38, 50],
-          iconAnchor: isSelected ? [22.5, 59] : [19, 50],
-          popupAnchor: [0, isSelected ? -56 : -48],
+          iconSize: isSelected ? [28, 37] : [24, 32],
+          iconAnchor: isSelected ? [14, 37] : [12, 32],
+          popupAnchor: [0, isSelected ? -35 : -30],
         });
 
         const marker = L.marker([lat, lng], { icon: customIcon });

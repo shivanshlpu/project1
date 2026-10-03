@@ -116,9 +116,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       const customIcon = L.divIcon({
         html: create3DMapPinHtml({ category, isSelected: true }),
         className: 'saved-location-3d-marker',
-        iconSize: [45, 59],
-        iconAnchor: [22.5, 59],
-        popupAnchor: [0, -56],
+        iconSize: [28, 37],
+        iconAnchor: [14, 37],
+        popupAnchor: [0, -35],
       });
 
       const marker = L.marker([selectedLat, selectedLng], {
@@ -163,9 +163,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       const updatedIcon = L.divIcon({
         html: create3DMapPinHtml({ category, isSelected: true }),
         className: 'saved-location-3d-marker',
-        iconSize: [45, 59],
-        iconAnchor: [22.5, 59],
-        popupAnchor: [0, -56],
+        iconSize: [28, 37],
+        iconAnchor: [14, 37],
+        popupAnchor: [0, -35],
       });
       markerRef.current.setIcon(updatedIcon);
     }
@@ -213,9 +213,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       const updatedIcon = L.divIcon({
         html: create3DMapPinHtml({ category, isSelected: true }),
         className: 'saved-location-3d-marker',
-        iconSize: [45, 59],
-        iconAnchor: [22.5, 59],
-        popupAnchor: [0, -56],
+        iconSize: [28, 37],
+        iconAnchor: [14, 37],
+        popupAnchor: [0, -35],
       });
       markerRef.current.setIcon(updatedIcon);
     }
