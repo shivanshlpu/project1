@@ -527,18 +527,14 @@ export const HqTerritoryManager: React.FC = () => {
               type="button"
               onClick={fetchBackendData}
               disabled={isLoading}
+              className="btn-enterprise secondary"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 14px',
-                background: '#F1F5F9',
-                border: '1px solid #CBD5E1',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#334155',
-                cursor: 'pointer',
+                padding: '9px 16px',
+                fontSize: '12.5px',
+                fontWeight: '700',
               }}
             >
               <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
@@ -559,7 +555,7 @@ export const HqTerritoryManager: React.FC = () => {
               }}
             >
               <Plus size={16} />
-              <span>+ Add Headquarters</span>
+              <span>Add Headquarters</span>
             </button>
           </div>
         </div>
@@ -669,14 +665,7 @@ export const HqTerritoryManager: React.FC = () => {
                           e.stopPropagation();
                           handleOpenEditHq(hq);
                         }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '4px',
-                          color: '#64748B',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                        }}
+                        className="btn-icon-subtle"
                         title="Edit HQ Name / State"
                       >
                         <Edit2 size={13} />
@@ -687,14 +676,7 @@ export const HqTerritoryManager: React.FC = () => {
                           e.stopPropagation();
                           handleDeleteHq(hq.id);
                         }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '4px',
-                          color: '#DC2626',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                        }}
+                        className="btn-icon-danger"
                         title="Delete HQ"
                       >
                         <Trash2 size={13} />
@@ -755,9 +737,9 @@ export const HqTerritoryManager: React.FC = () => {
                 type="button"
                 onClick={() => setIsBulkOpen(!isBulkOpen)}
                 style={{
-                  background: isBulkOpen ? '#FFFFFF' : 'rgba(255,255,255,0.15)',
+                  background: isBulkOpen ? '#FFFFFF' : 'rgba(255,255,255,0.18)',
                   color: isBulkOpen ? '#1A3C6E' : '#FFFFFF',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  border: isBulkOpen ? '1px solid #FFFFFF' : '1px solid rgba(255,255,255,0.4)',
                   padding: '7px 14px',
                   borderRadius: '6px',
                   fontSize: '12px',
@@ -766,6 +748,25 @@ export const HqTerritoryManager: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isBulkOpen) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+                    e.currentTarget.style.color = '#FFFFFF';
+                  } else {
+                    e.currentTarget.style.background = '#F1F5F9';
+                    e.currentTarget.style.color = '#0F172A';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isBulkOpen) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.18)';
+                    e.currentTarget.style.color = '#FFFFFF';
+                  } else {
+                    e.currentTarget.style.background = '#FFFFFF';
+                    e.currentTarget.style.color = '#1A3C6E';
+                  }
                 }}
               >
                 <Upload size={14} />
@@ -810,14 +811,11 @@ export const HqTerritoryManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsBulkOpen(false)}
+                  className="btn-enterprise secondary"
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    background: '#FFFFFF',
+                    padding: '7px 16px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    cursor: 'pointer',
                   }}
                 >
                   Cancel
@@ -825,15 +823,11 @@ export const HqTerritoryManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleBulkAddAreas}
+                  className="btn-enterprise success"
                   style={{
-                    padding: '6px 18px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#0F8B5A',
-                    color: '#FFFFFF',
+                    padding: '7px 18px',
                     fontSize: '12px',
                     fontWeight: '700',
-                    cursor: 'pointer',
                   }}
                 >
                   Import All to {activeHq.name}
@@ -860,7 +854,7 @@ export const HqTerritoryManager: React.FC = () => {
             />
             <button
               type="submit"
-              className="btn-enterprise primary"
+              className="btn-enterprise success"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -868,13 +862,11 @@ export const HqTerritoryManager: React.FC = () => {
                 padding: '10px 20px',
                 fontSize: '13px',
                 fontWeight: '700',
-                background: '#0F8B5A',
-                borderColor: '#0F8B5A',
                 whiteSpace: 'nowrap',
               }}
             >
               <Plus size={16} />
-              <span>+ Add Sub-Area</span>
+              <span>Add Sub-Area</span>
             </button>
           </form>
 
@@ -935,15 +927,13 @@ export const HqTerritoryManager: React.FC = () => {
                     showNotice('success', `Populated ${demo.length} default areas for ${activeHq.name}!`);
                   }
                 }}
+                className="btn-enterprise secondary"
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  border: '1px solid #1A3C6E',
-                  background: '#FFFFFF',
+                  padding: '8px 18px',
+                  borderColor: '#1A3C6E',
                   color: '#1A3C6E',
-                  fontSize: '12px',
+                  fontSize: '12.5px',
                   fontWeight: '700',
-                  cursor: 'pointer',
                 }}
               >
                 + Load Recommended District Villages
@@ -991,14 +981,8 @@ export const HqTerritoryManager: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleSaveEditArea(area.id)}
-                                style={{
-                                  background: '#0F8B5A',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  padding: '5px 8px',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                }}
+                                className="btn-enterprise success sm"
+                                style={{ padding: '5px 8px' }}
                                 title="Save"
                               >
                                 <Check size={14} />
@@ -1006,14 +990,8 @@ export const HqTerritoryManager: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setEditingAreaId(null)}
-                                style={{
-                                  background: '#94A3B8',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  padding: '5px 8px',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                }}
+                                className="btn-enterprise secondary sm"
+                                style={{ padding: '5px 8px' }}
                                 title="Cancel"
                               >
                                 <X size={14} />
@@ -1027,13 +1005,7 @@ export const HqTerritoryManager: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleStartEditArea(area)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  padding: '2px 4px',
-                                  color: '#94A3B8',
-                                  cursor: 'pointer',
-                                }}
+                                className="btn-icon-subtle"
                                 title="Rename Area"
                               >
                                 <Edit2 size={12} />
@@ -1089,17 +1061,11 @@ export const HqTerritoryManager: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDeleteArea(area.id)}
+                            className="btn-icon-danger"
                             style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#DC2626',
-                              padding: '4px 6px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
+                              padding: '5px 8px',
                               fontSize: '11.5px',
                               fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
                               gap: '4px',
                             }}
                             title="Delete Sub-Area"
@@ -1151,7 +1117,8 @@ export const HqTerritoryManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAddHqModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                className="btn-icon-subtle"
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -1224,14 +1191,11 @@ export const HqTerritoryManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddHqModalOpen(false)}
+                  className="btn-enterprise secondary"
                   style={{
-                    padding: '9px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    background: '#FFFFFF',
+                    padding: '9px 18px',
                     fontSize: '13px',
                     fontWeight: '600',
-                    cursor: 'pointer',
                   }}
                 >
                   Cancel
@@ -1286,7 +1250,8 @@ export const HqTerritoryManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditingHq(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                className="btn-icon-subtle"
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -1356,14 +1321,11 @@ export const HqTerritoryManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setEditingHq(null)}
+                  className="btn-enterprise secondary"
                   style={{
-                    padding: '9px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    background: '#FFFFFF',
+                    padding: '9px 18px',
                     fontSize: '13px',
                     fontWeight: '600',
-                    cursor: 'pointer',
                   }}
                 >
                   Cancel

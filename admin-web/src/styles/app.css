@@ -740,49 +740,113 @@
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-xs, 4px);
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-enterprise:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .btn-enterprise.primary {
-  background: var(--color-primary);
-  color: #ffffff;
+  background: var(--color-primary, #0F172A);
+  color: #ffffff !important;
+  border-color: var(--color-primary, #0F172A);
 }
 
-.btn-enterprise.primary:hover {
-  background: var(--color-primary-hover);
+.btn-enterprise.primary:hover:not(:disabled) {
+  background: var(--color-primary-hover, #1E293B) !important;
+  color: #ffffff !important;
+  border-color: var(--color-primary-hover, #1E293B) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
 }
 
 .btn-enterprise.secondary {
   background: #ffffff;
-  border-color: var(--color-border);
-  color: var(--color-text-main);
+  border-color: var(--color-border, #CBD5E1);
+  color: var(--color-text-main, #0F172A) !important;
 }
 
-.btn-enterprise.secondary:hover {
-  background: #f4f5f7;
-  border-color: #b3bac5;
+.btn-enterprise.secondary:hover:not(:disabled) {
+  background: #F1F5F9 !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
 }
 
 .btn-enterprise.success {
-  background: var(--color-accent);
-  color: #ffffff;
+  background: var(--color-accent, #0F8B5A);
+  color: #ffffff !important;
+  border-color: var(--color-accent, #0F8B5A);
 }
 
-.btn-enterprise.success:hover {
-  background: var(--color-accent-hover);
+.btn-enterprise.success:hover:not(:disabled) {
+  background: var(--color-accent-hover, #0B6B45) !important;
+  color: #ffffff !important;
+  border-color: var(--color-accent-hover, #0B6B45) !important;
+  box-shadow: 0 2px 6px rgba(15, 139, 90, 0.25);
 }
 
 .btn-enterprise.danger {
-  background: var(--color-alert);
-  color: #ffffff;
+  background: var(--color-alert, #DC2626);
+  color: #ffffff !important;
+  border-color: var(--color-alert, #DC2626);
+}
+
+.btn-enterprise.danger:hover:not(:disabled) {
+  background: #B91C1C !important;
+  color: #ffffff !important;
+  border-color: #B91C1C !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
 }
 
 .btn-enterprise.sm {
   padding: 3px 8px;
   font-size: 11px;
+}
+
+/* Icon action buttons with robust hover contrast */
+.btn-icon-subtle {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748B;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-subtle:hover:not(:disabled) {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+.btn-icon-danger {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #DC2626;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-danger:hover:not(:disabled) {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+  border-color: #FCA5A5 !important;
 }
 
 /* Radar & Schematic Geofence Inspector */

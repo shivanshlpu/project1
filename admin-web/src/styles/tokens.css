@@ -1,6 +1,8 @@
 :root {
   /* Modern Enterprise SaaS Color Palette (Slate, Navy & Medical Emerald) */
   --color-primary: #0F172A;
+  --color-primary-hover: #1E293B;
+  --color-primary-light: #F1F5F9;
   --color-brand: #1A3C6E;
   --color-brand-hover: #15325B;
   --color-brand-light: #EFF6FF;
