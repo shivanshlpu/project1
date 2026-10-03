@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import {
   SubmitMonthlyTpDto,
+  MonthlyTpItemDto,
   UpdateTpStatusDto,
   FilterMonthlyTpDto,
 } from './tour-plans.dto';
@@ -37,14 +38,14 @@ export class TourPlansService {
     );
 
     const items: MonthlyTpItem[] = dto.entries.map((e) => ({
-      id: `tp-item-${uuidv4().substring(0, 8)}`,
+      id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
       date: e.date,
       hq_id: e.hq_id,
       hq_name: e.hq_name,
       planned_area: e.planned_area,
       work_type: e.work_type,
-      planned_kol_drs: e.planned_kol_drs,
-      planned_activity: e.planned_activity,
+      planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
+      planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
     }));
 
     if (existing) {
@@ -70,6 +71,135 @@ export class TourPlansService {
 
     this.db.monthlyTourPlans.push(plan);
     this.notifyAdminsOfTpSubmission(user.name, dto.month, items.length);
+    return plan;
+  }
+
+  /**
+   * Punch a single planned visit date immediately
+   */
+  async punchVisit(userId: string, dto: MonthlyTpItemDto): Promise<MonthlyTourPlan> {
+    const user = this.db.users.find((u) => u.id === userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    let month = '';
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dto.date)) {
+      const [d, m, y] = dto.date.split('-');
+      month = `${y}-${m}`;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(dto.date)) {
+      const [y, m, d] = dto.date.split('-');
+      month = `${y}-${m}`;
+    } else {
+      const now = new Date();
+      month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    let plan = this.db.monthlyTourPlans.find(
+      (tp) => tp.mr_id === userId && tp.month === month,
+    );
+
+    const newItem: MonthlyTpItem = {
+      id: dto.id || `tp-item-${uuidv4().substring(0, 8)}`,
+      date: dto.date,
+      hq_id: dto.hq_id,
+      hq_name: dto.hq_name,
+      planned_area: dto.planned_area,
+      work_type: dto.work_type,
+      planned_kol_drs: dto.planned_kol_drs?.trim() || 'General Field Coverage',
+      planned_activity: dto.planned_activity?.trim() || 'Doctor & Chemist Detailing',
+    };
+
+    if (plan) {
+      const existingIdx = plan.entries.findIndex((e) => e.date === dto.date);
+      if (existingIdx >= 0) {
+        const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
+        const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+        if (elapsedHours > 24) {
+          throw new BadRequestException(
+            'The 24-Hour Edit Window has expired. This Tour Plan was submitted over 24 hours ago and cannot be modified.',
+          );
+        }
+        plan.entries[existingIdx] = newItem;
+      } else {
+        plan.entries.push(newItem);
+        plan.submitted_at = new Date().toISOString();
+      }
+    } else {
+      plan = {
+        id: `mtp-${uuidv4().substring(0, 8)}`,
+        mr_id: userId,
+        mr_name: user.name,
+        month,
+        status: 'SUBMITTED',
+        entries: [newItem],
+        submitted_at: new Date().toISOString(),
+        remarks: 'Punched from Mobile App',
+      };
+      this.db.monthlyTourPlans.push(plan);
+    }
+
+    this.notifyAdminsOfTpSubmission(user.name, month, plan.entries.length);
+    return plan;
+  }
+
+  /**
+   * Edit Tour Plan with strict 24-hour window enforcement (§24h)
+   */
+  async editTourPlan(userId: string, planId: string, dto: SubmitMonthlyTpDto): Promise<MonthlyTourPlan> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+
+    if (plan.mr_id !== userId) {
+      const user = this.db.users.find((u) => u.id === userId);
+      const isManager = user && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+      if (!isManager) {
+        throw new BadRequestException('You can only edit your own tour plan');
+      }
+    }
+
+    // 24-Hour Edit Window Check
+    const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
+    const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+
+    if (elapsedHours > 24) {
+      throw new BadRequestException(
+        `The 24-Hour Edit Window has expired (${Math.floor(elapsedHours)} hours since submission). Tour Plans cannot be modified after 1 day.`,
+      );
+    }
+
+    if (dto.entries && dto.entries.length > 0) {
+      plan.entries = dto.entries.map((e) => ({
+        id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
+        date: e.date,
+        hq_id: e.hq_id,
+        hq_name: e.hq_name,
+        planned_area: e.planned_area,
+        work_type: e.work_type,
+        planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
+        planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
+      }));
+    }
+
+    if (dto.remarks !== undefined) plan.remarks = dto.remarks;
+    return plan;
+  }
+
+  /**
+   * Delete an entry from a Tour Plan with strict 24-hour window enforcement
+   */
+  async deleteTourPlanEntry(userId: string, planId: string, entryId: string): Promise<MonthlyTourPlan> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+
+    const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
+    const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+
+    if (elapsedHours > 24) {
+      throw new BadRequestException(
+        'The 24-Hour Edit Window has expired. This Tour Plan cannot be modified after 1 day.',
+      );
+    }
+
+    plan.entries = plan.entries.filter((e) => e.id !== entryId);
     return plan;
   }
 

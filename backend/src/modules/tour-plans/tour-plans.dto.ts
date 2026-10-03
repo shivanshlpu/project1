@@ -30,12 +30,16 @@ export class MonthlyTpItemDto {
   work_type: string;
 
   @IsString()
-  @IsNotEmpty()
-  planned_kol_drs: string;
+  @IsOptional()
+  id?: string;
 
   @IsString()
-  @IsNotEmpty()
-  planned_activity: string;
+  @IsOptional()
+  planned_kol_drs?: string;
+
+  @IsString()
+  @IsOptional()
+  planned_activity?: string;
 }
 
 export class SubmitMonthlyTpDto {

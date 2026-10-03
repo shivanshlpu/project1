@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -129,24 +128,34 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [kolDrsName, setKolDrsName] = useState<string>('');
   const [plannedActivity, setPlannedActivity] = useState<string>('');
 
-  // Working list of TP entries
+  // Status Notification Banner
+  const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Punching & Submitting States
+  const [isPunching, setIsPunching] = useState<boolean>(false);
   const [workingEntries, setWorkingEntries] = useState<WorkingTpItem[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState<boolean>(false);
   const [submittedPlans, setSubmittedPlans] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'CREATE' | 'VIEW_SUBMITTED'>('CREATE');
 
   // Calendar modal state
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
-  const [calendarYear, setCalendarYear] = useState<number>(() => {
-    const d = new Date();
-    return d.getFullYear();
-  });
-  const [calendarMonth, setCalendarMonth] = useState<number>(() => {
-    const d = new Date();
-    return d.getMonth(); // 0-indexed
-  });
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
 
-  // Helper to extract YYYY-MM from DD-MM-YYYY
+  // 24-Hour Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [editingEntry, setEditingEntry] = useState<any | null>(null);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editHqId, setEditHqId] = useState<string>('');
+  const [editArea, setEditArea] = useState<string>('');
+  const [editWorkType, setEditWorkType] = useState<string>('Doctor Visit');
+  const [editDoctor, setEditDoctor] = useState<string>('');
+  const [editActivity, setEditActivity] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+
+  // Helper to extract YYYY-MM
   const getMonthKeyFromDate = (dateStr: string): string => {
     try {
       if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
@@ -206,7 +215,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }
     } catch {}
 
-    // Ensure selected HQ exists
     if (!loadedHqs.some((h) => h.id === selectedHqId)) {
       setSelectedHqId(loadedHqs[0].id);
     }
@@ -218,7 +226,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
   // Load areas when HQ changes
   useEffect(() => {
-    let activeAreas = getStoredAreasForHq(selectedHqId);
+    const activeAreas = getStoredAreasForHq(selectedHqId);
     setAvailableAreas(activeAreas);
     setSelectedArea(activeAreas[0] || 'Main Area');
 
@@ -250,7 +258,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Sort newest submission first
           data.sort((a, b) => new Date(b.submitted_at || b.created_at || 0).getTime() - new Date(a.submitted_at || a.created_at || 0).getTime());
           setSubmittedPlans(data);
         }
@@ -317,41 +324,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setIsCalendarOpen(false);
   };
 
-  // Add Next TP handler
-  const handleAddNextTp = () => {
-    if (!formDate.trim()) {
-      Alert.alert('Date Required', 'Please enter or select a planned visit date.');
-      return;
-    }
-    if (!kolDrsName.trim()) {
-      Alert.alert('KOL / Doctor Required', 'Please enter Planned KOL DRS name.');
-      return;
-    }
-    if (!plannedActivity.trim()) {
-      Alert.alert('Activity Required', 'Please specify the Planned Activity.');
-      return;
-    }
-
-    const currentHq = hqs.find((h) => h.id === selectedHqId) || hqs[0];
-
-    const newItem: WorkingTpItem = {
-      id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      date: formDate,
-      hq_id: currentHq.id,
-      hq_name: currentHq.name,
-      planned_area: selectedArea,
-      work_type: selectedWorkType,
-      planned_kol_drs: kolDrsName.trim(),
-      planned_activity: plannedActivity.trim(),
-    };
-
-    setWorkingEntries((prev) => [...prev, newItem]);
-
-    // Reset inputs for fast next entry
-    setKolDrsName('');
-    setPlannedActivity('');
-
-    // Advance date to next day automatically in DD-MM-YYYY format
+  const advanceFormDate = () => {
     try {
       let dObj: Date | null = null;
       if (/^\d{2}-\d{2}-\d{4}$/.test(formDate)) {
@@ -367,24 +340,134 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         setFormDate(`${day}-${month}-${dObj.getFullYear()}`);
       }
     } catch {}
+  };
 
-    Alert.alert('Visit Added', `Added visit for ${formatDateDDMMYYYY(newItem.date)}. You can add more dates or submit the full plan.`);
+  // 1. Direct Punch & Save Visit Handler
+  const handlePunchVisitDirectly = async () => {
+    if (!formDate.trim()) {
+      setStatusNotice({ type: 'error', message: 'Please enter or select a planned visit date.' });
+      return;
+    }
+
+    setIsPunching(true);
+    const currentHq = hqs.find((h) => h.id === selectedHqId) || hqs[0];
+    const finalDoctor = kolDrsName.trim() || 'General Field Detailing';
+    const finalActivity = plannedActivity.trim() || 'Routine Field Detailing & Sampling';
+
+    const punchItem = {
+      date: formDate,
+      hq_id: currentHq.id,
+      hq_name: currentHq.name,
+      planned_area: selectedArea,
+      work_type: selectedWorkType,
+      planned_kol_drs: finalDoctor,
+      planned_activity: finalActivity,
+    };
+
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+
+      const res = await fetch(`${baseUrl}/tour-plans/punch`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(punchItem),
+      });
+
+      if (res.ok) {
+        setStatusNotice({
+          type: 'success',
+          message: `✓ Visit successfully Punched & Saved for ${formatDateDDMMYYYY(formDate)} (${currentHq.name} • ${selectedArea})! Editable for 24 hours.`,
+        });
+
+        advanceFormDate();
+        setKolDrsName('');
+        setPlannedActivity('');
+        fetchMyTourPlans();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStatusNotice({
+          type: 'error',
+          message: err.message || 'Failed to save Tour Plan. Please try again.',
+        });
+      }
+    } catch (e: any) {
+      // Local fallback
+      try {
+        const savedRaw = localStorage.getItem('ahtri_punched_tour_plans');
+        const list = savedRaw ? JSON.parse(savedRaw) : [];
+        list.push({
+          id: `local-tp-${Date.now()}`,
+          ...punchItem,
+          submitted_at: new Date().toISOString(),
+        });
+        localStorage.setItem('ahtri_punched_tour_plans', JSON.stringify(list));
+      } catch {}
+
+      setStatusNotice({
+        type: 'success',
+        message: `✓ Visit Punched locally for ${formatDateDDMMYYYY(formDate)} (${currentHq.name} • ${selectedArea})! Editable for 24 hours.`,
+      });
+      advanceFormDate();
+      setKolDrsName('');
+      setPlannedActivity('');
+    } finally {
+      setIsPunching(false);
+      setTimeout(() => setStatusNotice(null), 6000);
+    }
+  };
+
+  // 2. Add to Working Batch (Plan Month)
+  const handleAddNextTp = () => {
+    if (!formDate.trim()) {
+      setStatusNotice({ type: 'error', message: 'Please enter or select a planned visit date.' });
+      return;
+    }
+
+    const currentHq = hqs.find((h) => h.id === selectedHqId) || hqs[0];
+    const finalDoctor = kolDrsName.trim() || 'General Field Detailing';
+    const finalActivity = plannedActivity.trim() || 'Routine Field Detailing & Sampling';
+
+    const newItem: WorkingTpItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date: formDate,
+      hq_id: currentHq.id,
+      hq_name: currentHq.name,
+      planned_area: selectedArea,
+      work_type: selectedWorkType,
+      planned_kol_drs: finalDoctor,
+      planned_activity: finalActivity,
+    };
+
+    setWorkingEntries((prev) => [...prev, newItem]);
+    setStatusNotice({
+      type: 'success',
+      message: `✓ Added visit for ${formatDateDDMMYYYY(newItem.date)} to working batch below.`,
+    });
+
+    setKolDrsName('');
+    setPlannedActivity('');
+    advanceFormDate();
+    setTimeout(() => setStatusNotice(null), 4000);
   };
 
   const handleRemoveWorkingItem = (id: string) => {
     setWorkingEntries((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // Submit complete monthly TP together
+  // 3. Submit complete monthly TP together
   const handleSubmitMonthlyPlan = async () => {
     if (workingEntries.length === 0) {
-      Alert.alert('No Entries', 'Please add at least one planned visit date using "+ Add Next TP" before submitting.');
+      setStatusNotice({
+        type: 'error',
+        message: 'Please add at least one planned visit date to the batch before submitting.',
+      });
       return;
     }
 
     const targetMonth = getMonthKeyFromDate(workingEntries[0].date);
 
-    setIsSubmitting(true);
+    setIsSubmittingBatch(true);
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -400,21 +483,148 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       });
 
       if (res.ok) {
-        Alert.alert(
-          'Monthly TP Submitted! ✓',
-          `Successfully submitted Tour Plan for ${targetMonth} with ${workingEntries.length} planned calls.\n\nYour manager will review and approve.`,
-        );
+        setStatusNotice({
+          type: 'success',
+          message: `✓ Monthly TP submitted for ${targetMonth} (${workingEntries.length} visits)! You can edit within 24 hours.`,
+        });
         setWorkingEntries([]);
         fetchMyTourPlans();
         setActiveTab('VIEW_SUBMITTED');
       } else {
         const err = await res.json().catch(() => ({}));
-        Alert.alert('Submission Error', err.message || 'Failed to submit monthly TP.');
+        setStatusNotice({
+          type: 'error',
+          message: err.message || 'Failed to submit monthly TP.',
+        });
       }
     } catch (e: any) {
-      Alert.alert('Network Error', e?.message || 'Failed to connect to server.');
+      setStatusNotice({
+        type: 'error',
+        message: e?.message || 'Failed to connect to server.',
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingBatch(false);
+      setTimeout(() => setStatusNotice(null), 6000);
+    }
+  };
+
+  // 4. 24-Hour Edit Window Calculation
+  const getPlanEditStatus = (plan: any) => {
+    const submittedTime = new Date(plan.submitted_at || plan.created_at || Date.now()).getTime();
+    const now = Date.now();
+    const elapsedHours = (now - submittedTime) / (1000 * 60 * 60);
+    const remainingHours = 24 - elapsedHours;
+
+    if (remainingHours <= 0) {
+      return {
+        canEdit: false,
+        badgeText: '🔒 Locked (24hr Window Expired)',
+        badgeColor: '#64748B',
+        badgeBg: '#F1F5F9',
+      };
+    }
+
+    const wholeHours = Math.floor(remainingHours);
+    const wholeMinutes = Math.floor((remainingHours % 1) * 60);
+    return {
+      canEdit: true,
+      remainingHours,
+      badgeText: `⏳ Editable (${wholeHours}h ${wholeMinutes}m left)`,
+      badgeColor: '#0F8B5A',
+      badgeBg: '#DCFCE7',
+    };
+  };
+
+  // Open Edit Modal for a punched plan/entry
+  const handleOpenEditModal = (plan: any, entry: any) => {
+    const status = getPlanEditStatus(plan);
+    if (!status.canEdit) {
+      setStatusNotice({
+        type: 'error',
+        message: 'The 24-hour edit window has expired for this Tour Plan. It cannot be edited.',
+      });
+      return;
+    }
+
+    setEditingPlan(plan);
+    setEditingEntry(entry);
+    setEditDate(entry.date);
+    setEditHqId(entry.hq_id || selectedHqId);
+    setEditArea(entry.planned_area || availableAreas[0]);
+    setEditWorkType(entry.work_type || 'Doctor Visit');
+    setEditDoctor(entry.planned_kol_drs || '');
+    setEditActivity(entry.planned_activity || '');
+    setIsEditModalOpen(true);
+  };
+
+  // Save changes from Edit Modal (Strictly enforced 24-hour window)
+  const handleSaveEditedPlan = async () => {
+    if (!editingPlan || !editingEntry) return;
+
+    const editStatus = getPlanEditStatus(editingPlan);
+    if (!editStatus.canEdit) {
+      setStatusNotice({
+        type: 'error',
+        message: 'The 24-hour edit window has expired. Changes can no longer be saved for this plan.',
+      });
+      setIsEditModalOpen(false);
+      return;
+    }
+
+    setIsSavingEdit(true);
+    const targetHq = hqs.find((h) => h.id === editHqId) || { id: editHqId, name: editingEntry.hq_name };
+
+    const updatedEntries = (editingPlan.entries || []).map((e: any) => {
+      if (e.id === editingEntry.id) {
+        return {
+          ...e,
+          date: editDate,
+          hq_id: editHqId,
+          hq_name: targetHq.name,
+          planned_area: editArea,
+          work_type: editWorkType,
+          planned_kol_drs: editDoctor.trim() || 'General Field Detailing',
+          planned_activity: editActivity.trim() || 'Routine Field Detailing & Sampling',
+        };
+      }
+      return e;
+    });
+
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+
+      const res = await fetch(`${baseUrl}/tour-plans/${editingPlan.id}/edit`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          month: editingPlan.month,
+          entries: updatedEntries,
+        }),
+      });
+
+      if (res.ok) {
+        setStatusNotice({
+          type: 'success',
+          message: '✓ Tour Plan updated successfully! (Changes saved within 24h window).',
+        });
+        setIsEditModalOpen(false);
+        fetchMyTourPlans();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStatusNotice({
+          type: 'error',
+          message: err.message || 'Failed to update tour plan.',
+        });
+      }
+    } catch (e: any) {
+      setStatusNotice({
+        type: 'error',
+        message: e?.message || 'Network error while updating tour plan.',
+      });
+    } finally {
+      setIsSavingEdit(false);
+      setTimeout(() => setStatusNotice(null), 5000);
     }
   };
 
@@ -424,7 +634,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const calendarDays = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
   const blankDays = Array.from({ length: firstDayIndex }, (_, i) => i);
 
-  // Check if a calendar day matches formDate
   const isSelectedDay = (day: number) => {
     if (!formDate) return false;
     const dayStr = String(day).padStart(2, '0');
@@ -441,7 +650,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     );
   };
 
-  // Active HQ name
   const activeHqName = hqs.find((h) => h.id === selectedHqId)?.name || 'HQ';
 
   return (
@@ -455,9 +663,18 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         )}
         <Text style={styles.headerTitle}>Monthly Tour Plan (TP)</Text>
         <Text style={styles.headerSub}>
-          {currentUserName} • Field Schedule Planning
+          {currentUserName} • Field Schedule Planning & Punching
         </Text>
       </View>
+
+      {/* Notice Banner */}
+      {statusNotice && (
+        <View style={[styles.statusNoticeBox, statusNotice.type === 'error' ? styles.statusNoticeBoxError : styles.statusNoticeBoxSuccess]}>
+          <Text style={[styles.statusNoticeText, statusNotice.type === 'error' ? styles.statusNoticeTextError : styles.statusNoticeTextSuccess]}>
+            {statusNotice.message}
+          </Text>
+        </View>
+      )}
 
       {/* Segmented View Mode */}
       <View style={styles.tabBar}>
@@ -466,7 +683,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           onPress={() => setActiveTab('CREATE')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'CREATE' && styles.tabBtnTextActive]}>
-            📝 Plan Visits ({workingEntries.length})
+            📝 Punch & Schedule Visit
           </Text>
         </TouchableOpacity>
 
@@ -478,7 +695,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           }}
         >
           <Text style={[styles.tabBtnText, activeTab === 'VIEW_SUBMITTED' && styles.tabBtnTextActive]}>
-            📋 Submitted TPs ({submittedPlans.length})
+            📋 Punched Plans ({submittedPlans.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -487,7 +704,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         <>
           {/* New TP Entry Form Card */}
           <View style={styles.card}>
-            <Text style={styles.cardHeader}>Add Planned Visit Date</Text>
+            <Text style={styles.cardHeader}>Schedule & Punch Planned Visit</Text>
 
             {/* Date Input with Calendar Trigger */}
             <Text style={styles.fieldLabel}>Planned Visit Date (DD-MM-YYYY):</Text>
@@ -496,7 +713,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 style={[styles.textInput, { flex: 1 }]}
                 value={formDate}
                 onChangeText={setFormDate}
-                placeholder="DD-MM-YYYY (e.g. 15-10-2026)"
+                placeholder="DD-MM-YYYY (e.g. 04-10-2026)"
               />
               <TouchableOpacity style={styles.calendarBtn} onPress={handleOpenCalendar}>
                 <Text style={styles.calendarBtnText}>📅 Pick Date</Text>
@@ -561,35 +778,68 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               <Text style={styles.dropdownChevron}>▼</Text>
             </View>
 
-            {/* Planned KOL DRS */}
-            <Text style={styles.fieldLabel}>PLANNED KOL DRS (Name):</Text>
+            {/* Planned KOL DRS (Optional) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 4 }}>
+              <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
+                PLANNED KOL DRS (Name):
+              </Text>
+              <Text style={{ fontSize: 10.5, color: '#94A3B8' }}>Optional</Text>
+            </View>
             <TextInput
               style={styles.textInput}
               value={kolDrsName}
               onChangeText={setKolDrsName}
-              placeholder="e.g. Dr. Rajesh Sharma (Cardio Specialist)"
+              placeholder="e.g. Dr. Rajesh Sharma (Cardio Specialist) [Optional]"
             />
 
-            {/* Planned Activity */}
-            <Text style={styles.fieldLabel}>PLANNED ACTIVITY (Specify):</Text>
+            {/* Planned Activity (Optional) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 4 }}>
+              <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
+                PLANNED ACTIVITY (Specify):
+              </Text>
+              <Text style={{ fontSize: 10.5, color: '#94A3B8' }}>Optional</Text>
+            </View>
             <TextInput
-              style={[styles.textInput, { height: 60 }]}
+              style={[styles.textInput, { height: 52 }]}
               value={plannedActivity}
               onChangeText={setPlannedActivity}
-              placeholder="e.g. CardioFix-50 scheme presentation & sample distribution"
+              placeholder="e.g. CardioFix-50 scheme presentation & sample distribution [Optional]"
               multiline
             />
 
-            {/* Add Next TP Button */}
-            <TouchableOpacity style={styles.addNextBtn} onPress={handleAddNextTp}>
-              <Text style={styles.addNextBtnText}>+ Add Next TP (Continue Plan)</Text>
-            </TouchableOpacity>
+            {/* Dual Action Buttons: Punch Now or Add to Batch */}
+            <View style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* PRIMARY ACTION: PUNCH & SAVE NOW */}
+              <TouchableOpacity
+                style={[styles.punchDirectBtn, isPunching && { opacity: 0.7 }]}
+                onPress={handlePunchVisitDirectly}
+                disabled={isPunching}
+              >
+                {isPunching ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.punchDirectBtnText}>
+                    ✓ Punch &amp; Save Visit for {formatDateDDMMYYYY(formDate)}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* SECONDARY ACTION: ADD TO WORKING BATCH */}
+              <TouchableOpacity
+                style={styles.addBatchBtn}
+                onPress={handleAddNextTp}
+              >
+                <Text style={styles.addBatchBtnText}>
+                  + Add to Working Batch (Plan Multi-Date Month)
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Working Entries Review Table */}
+          {/* Working Entries Review Table (Batch Planning) */}
           <View style={styles.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={styles.cardHeader}>Planned Visits for Month ({workingEntries.length})</Text>
+              <Text style={styles.cardHeader}>Working Batch Visits ({workingEntries.length})</Text>
               {workingEntries.length > 0 && (
                 <TouchableOpacity onPress={() => setWorkingEntries([])}>
                   <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700' }}>Clear All</Text>
@@ -599,9 +849,9 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
             {workingEntries.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>No TP entries added yet.</Text>
-                <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
-                  Select a date from calendar or type it, choose HQ & sub-area, and click "+ Add Next TP".
+                <Text style={styles.emptyText}>No visits in working batch yet.</Text>
+                <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, textAlign: 'center' }}>
+                  Click "✓ Punch &amp; Save Visit" above to save directly, or "+ Add to Working Batch" to prepare multiple dates before submitting together.
                 </Text>
               </View>
             ) : (
@@ -630,18 +880,18 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               ))
             )}
 
-            {/* Final Submit Button */}
+            {/* Final Batch Submit Button */}
             {workingEntries.length > 0 && (
               <TouchableOpacity
-                style={[styles.submitPlanBtn, isSubmitting && { opacity: 0.7 }]}
+                style={[styles.submitPlanBtn, isSubmittingBatch && { opacity: 0.7 }]}
                 onPress={handleSubmitMonthlyPlan}
-                disabled={isSubmitting}
+                disabled={isSubmittingBatch}
               >
-                {isSubmitting ? (
+                {isSubmittingBatch ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text style={styles.submitPlanBtnText}>
-                    ✓ Submit Complete Monthly TP ({workingEntries.length} Dates)
+                    ✓ Submit Complete Batch TP ({workingEntries.length} Dates)
                   </Text>
                 )}
               </TouchableOpacity>
@@ -652,73 +902,109 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
       {activeTab === 'VIEW_SUBMITTED' && (
         <View style={styles.card}>
-          <Text style={styles.cardHeader}>My Submitted Tour Plans ({submittedPlans.length})</Text>
+          <Text style={styles.cardHeader}>My Punched Tour Plans ({submittedPlans.length})</Text>
+          <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 12 }}>
+            ⏱️ 24-Hour Rule: Any Tour Plan or punched visit can be edited/changed within 24 hours of submission. After 1 day, the edit option locks permanently.
+          </Text>
+
           {submittedPlans.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No submitted plans found yet.</Text>
+              <Text style={styles.emptyText}>No punched plans found yet.</Text>
             </View>
           ) : (
-            submittedPlans.map((plan) => (
-              <View key={plan.id} style={styles.submittedCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#0F172A' }}>
-                    Month: {plan.month}
-                  </Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      plan.status === 'APPROVED'
-                        ? { backgroundColor: '#DCFCE7' }
-                        : plan.status === 'REJECTED'
-                        ? { backgroundColor: '#FEE2E2' }
-                        : { backgroundColor: '#FEF3C7' },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusBadgeText,
-                        plan.status === 'APPROVED'
-                          ? { color: '#15803D' }
-                          : plan.status === 'REJECTED'
-                          ? { color: '#B91C1C' }
-                          : { color: '#B45309' },
-                      ]}
-                    >
-                      ● {plan.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
-                  Submitted: {formatDateDDMMYYYY(plan.submitted_at)} • {plan.entries?.length || 0} visits scheduled
-                </Text>
-
-                {plan.remarks ? (
-                  <Text style={{ fontSize: 11, color: '#334155', marginTop: 4, fontStyle: 'italic' }}>
-                    Remarks: "{plan.remarks}"
-                  </Text>
-                ) : null}
-
-                {/* Entries table */}
-                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
-                  {(plan.entries || []).map((e: any, i: number) => (
-                    <View key={e.id || i} style={styles.subItemRow}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B', width: 85 }}>
-                        {formatDateDDMMYYYY(e.date)}
+            submittedPlans.map((plan) => {
+              const editStatus = getPlanEditStatus(plan);
+              return (
+                <View key={plan.id} style={styles.submittedCard}>
+                  {/* Plan Top Header */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                    <div>
+                      <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#0F172A' }}>
+                        Month: {plan.month}
                       </Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
-                          {e.planned_kol_drs} ({e.work_type})
+                      <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                        Submitted: {formatDateDDMMYYYY(plan.submitted_at)}
+                      </Text>
+                    </div>
+
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      {/* 24-Hour Edit Window Badge */}
+                      <View style={[styles.statusBadge, { backgroundColor: editStatus.badgeBg }]}>
+                        <Text style={[styles.statusBadgeText, { color: editStatus.badgeColor }]}>
+                          {editStatus.badgeText}
                         </Text>
-                        <Text style={{ fontSize: 10, color: '#64748B' }}>
-                          {e.hq_name} / {e.planned_area} • {e.planned_activity}
+                      </View>
+
+                      {/* Approval Status Badge */}
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          plan.status === 'APPROVED'
+                            ? { backgroundColor: '#DCFCE7' }
+                            : plan.status === 'REJECTED'
+                            ? { backgroundColor: '#FEE2E2' }
+                            : { backgroundColor: '#FEF3C7' },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusBadgeText,
+                            plan.status === 'APPROVED'
+                              ? { color: '#15803D' }
+                              : plan.status === 'REJECTED'
+                              ? { color: '#B91C1C' }
+                              : { color: '#B45309' },
+                          ]}
+                        >
+                          ● {plan.status}
                         </Text>
                       </View>
                     </View>
-                  ))}
+                  </View>
+
+                  {plan.remarks ? (
+                    <Text style={{ fontSize: 11, color: '#334155', marginTop: 6, fontStyle: 'italic' }}>
+                      Remarks: "{plan.remarks}"
+                    </Text>
+                  ) : null}
+
+                  {/* Punched Visits Table */}
+                  <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
+                    {(plan.entries || []).map((e: any, i: number) => (
+                      <View key={e.id || i} style={styles.subItemRow}>
+                        <View style={{ width: 85 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>
+                            {formatDateDDMMYYYY(e.date)}
+                          </Text>
+                          <Text style={{ fontSize: 9.5, color: '#0369A1', fontWeight: '600' }}>
+                            {e.work_type}
+                          </Text>
+                        </View>
+
+                        <View style={{ flex: 1, paddingHorizontal: 6 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
+                            {e.hq_name} • {e.planned_area}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: '#64748B' }}>
+                            Dr: {e.planned_kol_drs} • {e.planned_activity}
+                          </Text>
+                        </View>
+
+                        {/* 24-HOUR EDIT BUTTON: ONLY APPEARS IF WITHIN 24 HOURS */}
+                        {editStatus.canEdit && (
+                          <TouchableOpacity
+                            style={styles.editVisitBtn}
+                            onPress={() => handleOpenEditModal(plan, e)}
+                          >
+                            <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       )}
@@ -802,6 +1088,143 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           </View>
         </Modal>
       )}
+
+      {/* 24-HOUR EDIT TOUR PLAN MODAL */}
+      {isEditModalOpen && editingPlan && (
+        <Modal
+          visible={isEditModalOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsEditModalOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.calendarModalBox, { maxWidth: 380, maxHeight: '90%' }]}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Header */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <View>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>
+                      ✏️ Change / Edit Tour Plan
+                    </Text>
+                    <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700', marginTop: 2 }}>
+                      {getPlanEditStatus(editingPlan).badgeText}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setIsEditModalOpen(false)} style={{ padding: 4 }}>
+                    <Text style={{ fontSize: 16, color: '#64748B', fontWeight: '800' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Edit Date */}
+                <Text style={styles.fieldLabel}>Planned Visit Date (DD-MM-YYYY):</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editDate}
+                  onChangeText={setEditDate}
+                  placeholder="DD-MM-YYYY"
+                />
+
+                {/* Edit HQ Dropdown */}
+                <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
+                <View style={styles.dropdownBox}>
+                  <select
+                    value={editHqId}
+                    onChange={(e: any) => {
+                      const newHq = e.target.value;
+                      setEditHqId(newHq);
+                      const areasForHq = getStoredAreasForHq(newHq);
+                      setEditArea(areasForHq[0] || 'Main Area');
+                    }}
+                    style={dropdownSelectStyle}
+                  >
+                    {hqs.map((hq) => (
+                      <option key={hq.id} value={hq.id}>
+                        {hq.name} {hq.state ? `(${hq.state})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <Text style={styles.dropdownChevron}>▼</Text>
+                </View>
+
+                {/* Edit Planned Area Dropdown Filtered for editHq */}
+                <Text style={styles.fieldLabel}>Planned Area / Sub-Territory:</Text>
+                <View style={styles.dropdownBox}>
+                  <select
+                    value={editArea}
+                    onChange={(e: any) => setEditArea(e.target.value)}
+                    style={dropdownSelectStyle}
+                  >
+                    {getStoredAreasForHq(editHqId).map((area) => (
+                      <option key={area} value={area}>
+                        {area}
+                      </option>
+                    ))}
+                  </select>
+                  <Text style={styles.dropdownChevron}>▼</Text>
+                </View>
+
+                {/* Edit Work Type Dropdown */}
+                <Text style={styles.fieldLabel}>Type of Work:</Text>
+                <View style={styles.dropdownBox}>
+                  <select
+                    value={editWorkType}
+                    onChange={(e: any) => setEditWorkType(e.target.value)}
+                    style={dropdownSelectStyle}
+                  >
+                    {WORK_TYPES.map((wt) => (
+                      <option key={wt} value={wt}>
+                        {wt}
+                      </option>
+                    ))}
+                  </select>
+                  <Text style={styles.dropdownChevron}>▼</Text>
+                </View>
+
+                {/* Edit Doctor Name */}
+                <Text style={styles.fieldLabel}>PLANNED KOL DRS (Name):</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editDoctor}
+                  onChangeText={setEditDoctor}
+                  placeholder="Doctor name or leave empty"
+                />
+
+                {/* Edit Planned Activity */}
+                <Text style={styles.fieldLabel}>PLANNED ACTIVITY (Specify):</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 48 }]}
+                  value={editActivity}
+                  onChangeText={setEditActivity}
+                  placeholder="Activity details or leave empty"
+                  multiline
+                />
+
+                {/* Action Buttons */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                  <TouchableOpacity
+                    style={[styles.calCloseBtn, { flex: 1, alignItems: 'center' }]}
+                    onPress={() => setIsEditModalOpen(false)}
+                  >
+                    <Text style={styles.calCloseBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.submitPlanBtn, { flex: 2, marginTop: 0, paddingVertical: 10 }]}
+                    onPress={handleSaveEditedPlan}
+                    disabled={isSavingEdit}
+                  >
+                    {isSavingEdit ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.submitPlanBtnText}>Save Changes ✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </ScrollView>
   );
 };
@@ -826,6 +1249,32 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#1A3C6E', padding: 16 },
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
   headerSub: { fontSize: 11, color: '#CBD5E1', marginTop: 2 },
+  statusNoticeBox: {
+    padding: 12,
+    marginHorizontal: 12,
+    marginTop: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  statusNoticeBoxSuccess: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
+  },
+  statusNoticeBoxError: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+  },
+  statusNoticeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statusNoticeTextSuccess: {
+    color: '#15803D',
+  },
+  statusNoticeTextError: {
+    color: '#B91C1C',
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -895,14 +1344,37 @@ const styles = StyleSheet.create({
     color: '#64748B',
     pointerEvents: 'none' as any,
   },
-  addNextBtn: {
+  punchDirectBtn: {
     backgroundColor: '#0F8B5A',
-    paddingVertical: 11,
-    borderRadius: 6,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 14,
+    justifyContent: 'center',
+    shadowColor: '#0F8B5A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  addNextBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  punchDirectBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13.5,
+  },
+  addBatchBtn: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    borderColor: '#1A3C6E',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBatchBtnText: {
+    color: '#1A3C6E',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   emptyBox: { padding: 24, alignItems: 'center' },
   emptyText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
   entryRow: {
@@ -938,12 +1410,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  statusBadgeText: { fontSize: 10.5, fontWeight: '800' },
+  statusBadgeText: { fontSize: 10, fontWeight: '800' },
   subItemRow: {
     flexDirection: 'row',
-    paddingVertical: 6,
+    alignItems: 'center',
+    paddingVertical: 7,
     borderBottomWidth: 1,
     borderBottomColor: '#EDF2F7',
+  },
+  editVisitBtn: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  editVisitBtnText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0284C7',
   },
   // Calendar Modal Styles
   modalOverlay: {
