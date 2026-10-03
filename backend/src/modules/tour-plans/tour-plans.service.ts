@@ -231,11 +231,12 @@ export class TourPlansService {
     let flattenedRows: any[] = [];
 
     for (const plan of this.db.monthlyTourPlans) {
-      if (filter.mr_id && plan.mr_id !== filter.mr_id) continue;
-      if (filter.month && plan.month !== filter.month) continue;
+      if (filter.mr_id && filter.mr_id !== 'ALL' && plan.mr_id !== filter.mr_id) continue;
+      if (filter.month && filter.month !== 'ALL' && plan.month !== filter.month) continue;
+      if (filter.status && filter.status !== 'ALL' && plan.status !== filter.status) continue;
 
       for (const entry of plan.entries) {
-        if (filter.hq_id && entry.hq_id !== filter.hq_id) continue;
+        if (filter.hq_id && filter.hq_id !== 'ALL' && entry.hq_id !== filter.hq_id) continue;
         if (filter.date && entry.date !== filter.date) continue;
         if (
           filter.planned_area &&
@@ -245,31 +246,55 @@ export class TourPlansService {
         }
         if (
           filter.work_type &&
+          filter.work_type !== 'ALL' &&
           entry.work_type.toLowerCase() !== filter.work_type.toLowerCase()
         ) {
           continue;
         }
 
+        if (filter.search && filter.search.trim()) {
+          const q = filter.search.toLowerCase().trim();
+          const match =
+            (plan.mr_name && plan.mr_name.toLowerCase().includes(q)) ||
+            (entry.hq_name && entry.hq_name.toLowerCase().includes(q)) ||
+            (entry.planned_area && entry.planned_area.toLowerCase().includes(q)) ||
+            (entry.planned_kol_drs && entry.planned_kol_drs.toLowerCase().includes(q)) ||
+            (entry.planned_activity && entry.planned_activity.toLowerCase().includes(q)) ||
+            (entry.date && entry.date.includes(q));
+          if (!match) continue;
+        }
+
         flattenedRows.push({
+          id: entry.id,
           tp_id: plan.id,
           entry_id: entry.id,
           mr_id: plan.mr_id,
           mr_name: plan.mr_name,
           month: plan.month,
+          status: plan.status,
           plan_status: plan.status,
           date: entry.date,
           hq_id: entry.hq_id,
           hq_name: entry.hq_name,
           planned_area: entry.planned_area,
           work_type: entry.work_type,
-          planned_kol_drs: entry.planned_kol_drs,
-          planned_activity: entry.planned_activity,
+          planned_kol_drs: entry.planned_kol_drs || 'General Field Coverage',
+          planned_activity: entry.planned_activity || 'Doctor & Chemist Detailing',
+          remarks: plan.remarks || '',
+          created_at: plan.submitted_at,
           submitted_at: plan.submitted_at,
+          approved_at: plan.approved_at,
+          approved_by: plan.approved_by,
         });
       }
     }
 
-    return flattenedRows.sort((a, b) => a.date.localeCompare(b.date));
+    return flattenedRows.sort((a, b) => {
+      // Sort newest submissions and upcoming dates first
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      return dateB.localeCompare(dateA);
+    });
   }
 
   async updateTpStatus(id: string, dto: UpdateTpStatusDto, adminId: string): Promise<MonthlyTourPlan> {

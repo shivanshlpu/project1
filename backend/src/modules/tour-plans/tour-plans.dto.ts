@@ -90,4 +90,12 @@ export class FilterMonthlyTpDto {
   @IsString()
   @IsOptional()
   work_type?: string;
+
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsString()
+  @IsOptional()
+  search?: string;
 }

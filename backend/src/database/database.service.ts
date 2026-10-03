@@ -753,12 +753,12 @@ export class DatabaseService implements OnModuleInit {
       mr_id: mr.id,
       mr_name: mr.name,
       month: '2026-09',
-      status: 'SUBMITTED',
-      submitted_at: new Date().toISOString(),
+      status: 'APPROVED',
+      submitted_at: new Date(Date.now() - 30 * 86400000).toISOString(),
       entries: [
         {
           id: 'tp-item-1',
-          date: '2026-09-02',
+          date: '02-09-2026',
           hq_id: hqShahdol.id,
           hq_name: 'Shahdol',
           planned_area: 'Shahdol',
@@ -768,7 +768,7 @@ export class DatabaseService implements OnModuleInit {
         },
         {
           id: 'tp-item-2',
-          date: '2026-09-04',
+          date: '04-09-2026',
           hq_id: hqShahdol.id,
           hq_name: 'Shahdol',
           planned_area: 'Burhar',
@@ -778,13 +778,44 @@ export class DatabaseService implements OnModuleInit {
         },
         {
           id: 'tp-item-3',
-          date: '2026-09-08',
+          date: '08-09-2026',
           hq_id: hqShahdol.id,
           hq_name: 'Shahdol',
           planned_area: 'Kotma',
           work_type: 'Follow-up',
           planned_kol_drs: 'Dr. Anita Desai',
           planned_activity: 'DermaSoothe sample trials evaluation',
+        },
+      ],
+    });
+
+    this.monthlyTourPlans.push({
+      id: 'mtp-02',
+      mr_id: mr.id,
+      mr_name: mr.name,
+      month: '2026-10',
+      status: 'SUBMITTED',
+      submitted_at: new Date().toISOString(),
+      entries: [
+        {
+          id: 'tp-item-4',
+          date: '04-10-2026',
+          hq_id: hqShahdol.id,
+          hq_name: 'Shahdol',
+          planned_area: 'Gohparu',
+          work_type: 'Doctor Visit',
+          planned_kol_drs: 'Dr. Alok Nath',
+          planned_activity: 'Doctor Detailing & Product Sample Handover',
+        },
+        {
+          id: 'tp-item-5',
+          date: '05-10-2026',
+          hq_id: hqShahdol.id,
+          hq_name: 'Shahdol',
+          planned_area: 'Burhar',
+          work_type: 'Doctor Visit',
+          planned_kol_drs: 'Dr. Sandeep Gupta',
+          planned_activity: 'Chemist Order Booking & Detailing',
         },
       ],
     });

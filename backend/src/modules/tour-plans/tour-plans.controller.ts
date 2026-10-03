@@ -79,6 +79,12 @@ export class TourPlansController {
     return this.tourPlansService.getAdminMonthlyTp(filter);
   }
 
+  @Get('admin-list')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async getAdminMonthlyTpAlias(@Query() filter: FilterMonthlyTpDto) {
+    return this.tourPlansService.getAdminMonthlyTp(filter);
+  }
+
   @Patch(':id/status')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async updateTpStatus(
