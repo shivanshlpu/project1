@@ -201,6 +201,8 @@ export interface Attendance {
   early_minutes?: number;
   working_hours?: number;
   device_integrity_status?: string;
+  is_mocked?: boolean;
+  user_name?: string;
   hq_id?: string;
   hq_name?: string;
   created_at?: string;

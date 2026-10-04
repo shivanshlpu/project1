@@ -21,6 +21,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { resilientFetch, getAuthHeaders, RENDER_BACKEND_URL } from '../utils/apiHelper';
 
 interface AttendanceRecord {
   id: string;
@@ -99,21 +100,11 @@ export const AdminAttendanceView: React.FC = () => {
     photoPurged?: boolean;
   } | null>(null);
 
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-  };
-
   // Load MR list on mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${apiUrl}/users`, {
+        const res = await resilientFetch('/users', {
           headers: getAuthHeaders(),
         });
         if (res.ok) {
@@ -125,12 +116,12 @@ export const AdminAttendanceView: React.FC = () => {
       } catch {}
     };
     fetchUsers();
-  }, [apiUrl]);
+  }, []);
 
   // Load Settings on mount (§22)
   const fetchSettings = async () => {
     try {
-      const res = await fetch(`${apiUrl}/attendance/settings`, {
+      const res = await resilientFetch('/attendance/settings', {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -142,23 +133,38 @@ export const AdminAttendanceView: React.FC = () => {
 
   useEffect(() => {
     fetchSettings();
-  }, [apiUrl]);
+  }, []);
 
   // Load Attendance Records (§26)
   const fetchAttendance = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterMr !== 'ALL') params.append('mr_id', filterMr);
-      if (filterDateFrom) params.append('date_from', filterDateFrom);
-      if (filterDateTo) params.append('date_to', filterDateTo);
+      if (filterMr !== 'ALL') {
+        params.append('user_id', filterMr);
+        params.append('mr_id', filterMr);
+      }
+      if (filterDateFrom) {
+        params.append('startDate', filterDateFrom);
+        params.append('date_from', filterDateFrom);
+      }
+      if (filterDateTo) {
+        params.append('endDate', filterDateTo);
+        params.append('date_to', filterDateTo);
+      }
       if (filterStatus !== 'ALL') params.append('status', filterStatus);
       if (filterLateOnly) params.append('is_late', 'true');
       if (filterEarlyOnly) params.append('is_early', 'true');
-      if (filterMissingPunchOutOnly) params.append('is_missing_punchout', 'true');
-      if (filterSuspiciousOnly) params.append('is_suspicious', 'true');
+      if (filterMissingPunchOutOnly) {
+        params.append('missing_punchout', 'true');
+        params.append('is_missing_punchout', 'true');
+      }
+      if (filterSuspiciousOnly) {
+        params.append('suspicious', 'true');
+        params.append('is_suspicious', 'true');
+      }
 
-      const res = await fetch(`${apiUrl}/attendance?${params.toString()}`, {
+      const res = await resilientFetch(`/attendance?${params.toString()}`, {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -189,7 +195,7 @@ export const AdminAttendanceView: React.FC = () => {
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
-      const res = await fetch(`${apiUrl}/attendance/settings`, {
+      const res = await resilientFetch('/attendance/settings', {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -214,7 +220,7 @@ export const AdminAttendanceView: React.FC = () => {
   const handleManualPurge = async () => {
     setIsPurging(true);
     try {
-      const res = await fetch(`${apiUrl}/attendance/purge-expired-photos`, {
+      const res = await resilientFetch('/attendance/purge-expired-photos', {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -233,11 +239,15 @@ export const AdminAttendanceView: React.FC = () => {
   };
 
   // Metrics summary
+  const todayStr = new Date().toISOString().split('T')[0];
   const totalLogs = records.length;
+  const activeOnFieldCount = records.filter(
+    (r) => r.check_in_at && !r.check_out_at && r.date === todayStr
+  ).length;
   const lateCount = records.filter((r) => r.late_minutes && r.late_minutes > 0).length;
   const earlyCount = records.filter((r) => r.early_minutes && r.early_minutes > 0).length;
   const missingPunchOutCount = records.filter(
-    (r) => r.check_in_at && !r.check_out_at && r.date !== new Date().toISOString().split('T')[0]
+    (r) => r.check_in_at && !r.check_out_at && r.date !== todayStr
   ).length;
   const suspiciousCount = records.filter((r) => r.is_mocked).length;
 
@@ -284,8 +294,46 @@ export const AdminAttendanceView: React.FC = () => {
         </div>
       </div>
 
+      {/* Real-time Status & Sync Reassurance Banner */}
+      <div
+        style={{
+          background: '#F0FDF4',
+          border: '1px solid #BBF7D0',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          boxShadow: 'var(--shadow-xs)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <CheckCircle size={18} color="#16A34A" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 600 }}>
+            <strong>Instant Check-In Tracking:</strong> Attendance records &amp; work-attire selfie photos appear immediately when employees punch in. Shifts remain active until punch-out at the end of the day.
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#DCFCE7', padding: '4px 10px', borderRadius: 20 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E' }}></span>
+          <span style={{ fontSize: 11, color: '#15803D', fontWeight: 700 }}>
+            Live Render Cloud Sync
+          </span>
+        </div>
+      </div>
+
       {/* KPI Highlight Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <div style={{ background: '#FFFFFF', padding: '14px 18px', borderRadius: 8, border: '1px solid #BBF7D0', boxShadow: 'var(--shadow-xs)' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#15803D', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }}></span>
+            Active On Field
+          </span>
+          <p style={{ fontSize: 22, fontWeight: 800, color: '#15803D', marginTop: 2 }}>{activeOnFieldCount}</p>
+        </div>
+
         <div style={{ background: '#FFFFFF', padding: '14px 18px', borderRadius: 8, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
             Total Shift Logs
@@ -395,6 +443,7 @@ export const AdminAttendanceView: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">🟢 ACTIVE ON FIELD (In Progress)</option>
               <option value="PRESENT">PRESENT</option>
               <option value="LATE">LATE</option>
               <option value="MISSING_PUNCH_OUT">MISSING PUNCH OUT</option>
@@ -506,6 +555,17 @@ export const AdminAttendanceView: React.FC = () => {
                 {records.map((rec, idx) => {
                   const todayStr = new Date().toISOString().split('T')[0];
                   const isMissingPunchOut = rec.check_in_at && !rec.check_out_at && rec.date !== todayStr;
+                  const isActiveShift = !!(rec.check_in_at && !rec.check_out_at && rec.date === todayStr);
+
+                  // Calculate live duration for active shift
+                  let liveDurationStr = '';
+                  if (isActiveShift && rec.check_in_at) {
+                    const diffMs = Math.max(0, Date.now() - new Date(rec.check_in_at).getTime());
+                    const hrs = Math.floor(diffMs / 3600000);
+                    const mins = Math.floor((diffMs % 3600000) / 60000);
+                    liveDurationStr = `${hrs}h ${mins}m (Live)`;
+                  }
+
                   const inTimeStr = rec.check_in_at
                     ? new Date(rec.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : '—';
@@ -513,7 +573,7 @@ export const AdminAttendanceView: React.FC = () => {
                     ? new Date(rec.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : isMissingPunchOut
                     ? 'MISSING PUNCH-OUT'
-                    : 'Active Shift';
+                    : 'Active Shift (In Progress)';
 
                   return (
                     <tr
@@ -524,6 +584,8 @@ export const AdminAttendanceView: React.FC = () => {
                           ? '#FEF2F2'
                           : rec.is_mocked
                           ? '#FFFBEB'
+                          : isActiveShift
+                          ? '#F0FDF4'
                           : idx % 2 === 0
                           ? '#FFFFFF'
                           : '#FAFCFA',
@@ -549,11 +611,34 @@ export const AdminAttendanceView: React.FC = () => {
                         style={{
                           padding: '11px 14px',
                           fontWeight: 700,
-                          color: isMissingPunchOut ? '#DC2626' : rec.check_out_at ? '#1E40AF' : '#D97706',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {outTimeStr}
+                        {isActiveShift ? (
+                          <span
+                            style={{
+                              background: '#DCFCE7',
+                              color: '#15803D',
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                            }}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }}></span>
+                            Active Shift (On Duty)
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              color: isMissingPunchOut ? '#DC2626' : rec.check_out_at ? '#1E40AF' : '#D97706',
+                            }}
+                          >
+                            {outTimeStr}
+                          </span>
+                        )}
                       </td>
 
                       {/* Late / Early Deviation (§24) */}
@@ -581,7 +666,9 @@ export const AdminAttendanceView: React.FC = () => {
 
                       {/* Working Hours */}
                       <td style={{ padding: '11px 14px', fontWeight: 600, color: '#334155' }}>
-                        {rec.total_working_hours !== undefined
+                        {isActiveShift && liveDurationStr ? (
+                          <span style={{ color: '#15803D', fontWeight: 700 }}>{liveDurationStr}</span>
+                        ) : rec.total_working_hours !== undefined
                           ? `${rec.total_working_hours} hrs`
                           : rec.working_hours !== undefined
                           ? `${rec.working_hours} hrs`
@@ -700,23 +787,50 @@ export const AdminAttendanceView: React.FC = () => {
                       <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
                         <span
                           style={{
-                            padding: '3px 8px',
-                            borderRadius: 10,
+                            padding: '4px 10px',
+                            borderRadius: 12,
                             fontSize: 11,
                             fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
                             background: isMissingPunchOut
                               ? '#FEE2E2'
-                              : rec.check_out_at
+                              : isActiveShift
                               ? '#DCFCE7'
+                              : rec.check_out_at
+                              ? '#EFF6FF'
                               : '#FEF3C7',
                             color: isMissingPunchOut
                               ? '#991B1B'
+                              : isActiveShift
+                              ? '#15803D'
                               : rec.check_out_at
-                              ? '#166534'
+                              ? '#1D4ED8'
                               : '#92400E',
+                            border: `1px solid ${
+                              isMissingPunchOut
+                                ? '#FECACA'
+                                : isActiveShift
+                                ? '#86EFAC'
+                                : rec.check_out_at
+                                ? '#BFDBFE'
+                                : '#FDE68A'
+                            }`,
                           }}
                         >
-                          {isMissingPunchOut ? 'MISSING PUNCH-OUT' : rec.status}
+                          {isMissingPunchOut ? (
+                            'MISSING PUNCH-OUT'
+                          ) : isActiveShift ? (
+                            <>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }}></span>
+                              PUNCHED IN (ON FIELD)
+                            </>
+                          ) : rec.check_out_at ? (
+                            '✅ COMPLETED'
+                          ) : (
+                            rec.status
+                          )}
                         </span>
                       </td>
                     </tr>

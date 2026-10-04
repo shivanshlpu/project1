@@ -86,11 +86,23 @@ export class AttendanceFilterDto {
 
   @IsString()
   @IsOptional()
+  mr_id?: string;
+
+  @IsString()
+  @IsOptional()
   startDate?: string;
 
   @IsString()
   @IsOptional()
+  date_from?: string;
+
+  @IsString()
+  @IsOptional()
   endDate?: string;
+
+  @IsString()
+  @IsOptional()
+  date_to?: string;
 
   @IsString()
   @IsOptional()
@@ -114,7 +126,15 @@ export class AttendanceFilterDto {
 
   @IsString()
   @IsOptional()
+  is_missing_punchout?: string; // 'true' | 'false'
+
+  @IsString()
+  @IsOptional()
   suspicious?: string; // 'true' | 'false'
+
+  @IsString()
+  @IsOptional()
+  is_suspicious?: string; // 'true' | 'false'
 }
 
 export class UpdateAttendanceSettingsDto {

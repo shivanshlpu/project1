@@ -151,7 +151,7 @@ export const CameraService = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: options?.allowsEditing ?? true,
         aspect: options?.aspect ?? [4, 4],
-        quality: options?.quality ?? 0.5, // Compressed quality to protect 512MB storage
+        quality: options?.quality ?? 0.3, // Optimized compressed quality (30-50KB) to guarantee smooth upload and protect 512MB storage
         base64: true,
       });
 

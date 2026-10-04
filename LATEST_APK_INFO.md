@@ -1,20 +1,20 @@
-# Latest AHTRI FFA Mobile APK Build (Version 1.0.7 - Tour Plans, Photo Proof & Store Inventory)
+# Latest AHTRI FFA Mobile APK Build (Version 1.0.8 - Tour Plan Crash Fix & Live Attendance)
 
-- **Build ID**: `f24fecc0-5791-426c-aa02-52563c853711`
-- **Version**: `v1.0.7` (Version Code `8`)
+- **Build ID**: `a37144ef-5c13-428a-804d-beb8677071aa`
+- **Version**: `v1.0.8` (Version Code `9`)
 - **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
-- **Git Commit**: `b59d8a1e1b536e0f94a35e1dc82c0cc3dcd1a278`
-- **Build Completed At**: `2026-10-04T07:07:13.518Z`
-- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/qjiumUyXuJ_PqEhkJBDUdoz-Pkr0_dAZryeh6inPToE.apk)
+- **Git Commit**: `cd88713631ee8dbabe9185ef71c6a5950fc20dc5`
+- **Build Completed At**: `2026-10-04T08:13:24.157Z`
+- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/ACFkH7Zp9qZ482leiKcO6_e1aPydRW99-tuJQx8Rtbw.apk)
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
 - **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 
 ---
 
-### What's New in Version 1.0.7:
-1. **Monthly Tour Plan (TP)**: Multi-date tour plan submission with objective detailing, review list, dynamic sub-area dropdowns, and 24-hour edit enforcement.
-2. **Attendance Photo Proof & Storage Guidelines**: Compressed selfie capture with work attire check, geo-tagging, and dedicated employee Attendance Policy modal.
-3. **Multi-HQ Stocker Hierarchy & Live Stock Balance**: Live stock balance lookup with sub-area filtering and shortage tracking.
+### What's New in Version 1.0.8:
+1. **Monthly Tour Plan (TP) Hermes Native Fix**: Resolved React Native Android runtime crash by replacing web `<select>`/`<option>` tags with pure native touchable dropdown modals.
+2. **Instant Attendance Check-In**: Selfie verification and GPS check-in appear immediately on the Admin Panel without requiring check-out. Active shifts display real-time live elapsed duration.
+3. **Optimized Photo Capture**: High-definition, quota-safe compressed camera selfie capture to guarantee instant uploads and cloud quota safety.
 4. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
 5. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
 6. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
