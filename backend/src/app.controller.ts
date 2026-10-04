@@ -22,25 +22,25 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.6',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '7', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.10',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '11', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://expo.dev/artifacts/eas/qjiumUyXuJ_PqEhkJBDUdoz-Pkr0_dAZryeh6inPToE.apk',
+    'https://expo.dev/artifacts/eas/x0LhBgiQjEiGZVsFZ7tKS-H4E0aT-0ebbm3ce1Ekjrg.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Monthly Tour Plan (TP) Multi-Date Submission & Schedule Review',
-    'Live Camera Photo Proof with Work Attire Check for Attendance & Doctor Visits',
-    'Multi-HQ Stocker Hierarchy & Real-Time Stock Balance Verification',
-    'Negative Stock & Backorder Tolerance for Out-of-Stock Orders',
-    'Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims',
+    'Enterprise Multi-User Isolation: Strict per-employee attendance, task history, and session segregation',
+    'Universal Medicine Catalog & Multi-HQ Stockist Inventory Coverage',
+    'Clean Top Bar: Minimal status dot indicator with pulse glow & redesigned high-visibility Logout button',
+    'Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window',
+    'Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal',
+    'Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync',
     'Order Pending Workflow for Flexible Post-Detailing Order Entry',
-    'Anti-Mock Fake Location Protection & Hardware Integrity Verification',
   ],
 };
 
