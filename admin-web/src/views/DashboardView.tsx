@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Language, translations } from '../utils/i18n';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface DashboardViewProps {
   lang?: Language;
@@ -75,13 +76,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const [resolvedApprovalsCount, setResolvedApprovalsCount] = useState(1);
 
   // Helper to determine active API URL
-  const getApiUrl = () => {
-    return (
-      (import.meta as any).env?.VITE_API_URL ||
-      localStorage.getItem('ahtri_backend_url') ||
-      'https://ahtri-backend.onrender.com'
-    );
-  };
+  const getApiUrl = () => getApiBaseUrl();
+
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
 
   // Fetch live real data from backend
   const fetchDashboardRealData = async () => {
@@ -177,10 +176,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
 
       const mappedActivities = targetUsers.map((u: any) => {
         const attMatch = todayAtt.find(
-          (a: any) => a.user_id === u.id || (a.user_name && a.user_name.includes(u.name.split(' ')[0]))
+          (a: any) => a.user_id === u.id || (a.user_name && a.user_name.toLowerCase().includes(u.name.toLowerCase().split(' ')[0]))
         );
         const userTasks = taskList.filter(
-          (t: any) => t.assigned_mr_id === u.id || (t.assigned_mr_name && t.assigned_mr_name.includes(u.name.split(' ')[0]))
+          (t: any) => t.assigned_mr_id === u.id || (t.assigned_mr_name && t.assigned_mr_name.toLowerCase().includes(u.name.toLowerCase().split(' ')[0]))
         );
         const completedTasks = userTasks.filter((t: any) => t.status === 'COMPLETED');
 
@@ -194,6 +193,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         let isMarked = false;
         let dist: number | null = null;
         let compliance = 'Pending';
+        let lastLoc = 'Shift Not Started';
 
         if (attMatch) {
           isMarked = true;
@@ -208,8 +208,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
 
         const targetCount = userTasks.length > 0 ? userTasks.length : 6;
         const completedCount = completedTasks.length;
-        const lastLoc = completedTasks[0]?.location_name || userTasks[0]?.title || 'Dr. Rajesh Sharma Clinic Detailing';
-        const dcr = completedCount > 0 ? 'SUBMITTED' : (isMarked ? 'DRAFT' : 'NOT STARTED');
+
+        if (completedCount > 0) {
+          lastLoc = completedTasks[0]?.location_name || completedTasks[0]?.title || 'Clinic Detailing Call';
+          dist = completedTasks[0]?.distance_meters || dist || 12;
+          compliance = dist <= 50 ? '100%' : 'Outside Boundary';
+        } else if (isMarked) {
+          lastLoc = userTasks[0]?.title ? `Assigned: ${userTasks[0].title}` : 'Awaiting First Detailing Call';
+        } else {
+          lastLoc = 'Shift Not Started';
+          dist = null;
+        }
+
+        const dcr = completedCount > 0
+          ? 'SUBMITTED'
+          : isMarked
+          ? (attMatch && attMatch.check_out_at ? 'COMPLETED' : 'DRAFT')
+          : 'NOT STARTED';
 
         return {
           id: u.id,
@@ -228,6 +243,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       });
 
       setMrTeamActivities(mappedActivities);
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
       console.warn('Live dashboard fetch exception:', err);
     }
@@ -422,6 +438,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
           </div>
 
           <div className="panel-controls-group">
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#166534',
+                background: '#DCFCE7',
+                border: '1px solid #86EFAC',
+                padding: '3px 8px',
+                borderRadius: '12px',
+              }}
+              title="Real-time polling active from database server"
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#16A34A',
+                  display: 'inline-block',
+                  boxShadow: '0 0 6px #16A34A',
+                }}
+              />
+              <span>Live Synced ({lastSyncTime})</span>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Filter size={12} color="#64748B" />
               <select

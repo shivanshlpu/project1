@@ -77,6 +77,7 @@ export interface MRMemberItem {
   role: 'MR';
   status: 'ACTIVE' | 'INACTIVE';
   territory?: string;
+  password?: string;
   device_id?: string;
   device_model?: string;
   device_bound_at?: string;

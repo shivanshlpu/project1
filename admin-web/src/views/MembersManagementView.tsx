@@ -34,6 +34,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface LeaveQuotaData {
   mr_id: string;
@@ -93,6 +94,47 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // MR Passwords state
+  const [mrPasswords, setMrPasswords] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_mr_passwords');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      'usr-mgr-01': 'manager123',
+      'usr-mr-01': 'Password@123',
+      'usr-mr-02': 'Password@123',
+      'usr-mr-03': 'Password@123',
+      'usr-mr-04': 'Password@123',
+    };
+  });
+  const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
+  const [tempPassword, setTempPassword] = useState('');
+
+  // Generate random password
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+  };
+
+  // Save updated MR password
+  const handleSavePassword = (userId: string) => {
+    if (!tempPassword.trim()) {
+      showToast('Password cannot be empty');
+      return;
+    }
+    const updated = { ...mrPasswords, [userId]: tempPassword.trim() };
+    setMrPasswords(updated);
+    localStorage.setItem('ahtri_mr_passwords', JSON.stringify(updated));
+    setEditingPasswordId(null);
+    setTempPassword('');
+    showToast('✓ Password updated & saved successfully.');
+  };
 
   // Direct Leave Grant Modal State
   const [isGrantLeaveModalOpen, setIsGrantLeaveModalOpen] = useState(false);
@@ -392,7 +434,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   // Fetch Users, Tasks, and Locations
   useEffect(() => {
     const fetchData = async () => {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -572,11 +614,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   // Copy Credentials
   const handleCopyCredentials = (member: MRMemberItem) => {
-    const text = `AHTRI MR Mobile Login Credentials:\nName: ${member.name}\nLogin ID / Email: ${member.email}\nRegistered Phone: ${member.phone}\nPassword: Password@123\nNote: For bank-grade security, the app will lock to your phone on first login.`;
+    const pwd = mrPasswords[member.id] || member.password || 'Password@123';
+    const text = `AHTRI Field Representative Login Credentials:\nName: ${member.name}\nEmail / Login ID: ${member.email}\nAssigned Phone: ${member.phone}\nPassword: ${pwd}\nNote: Device locks to your phone hardware on first login.`;
     navigator.clipboard.writeText(text);
     setCopiedId(member.id);
-    setTimeout(() => setCopiedId(null), 2000);
-    showToast(`Credentials copied for ${member.name}`);
+    setTimeout(() => setCopiedId(null), 2500);
+    showToast(`✓ Credentials copied for ${member.name}`);
   };
 
   // Filtered tasks for current selected MR
@@ -985,8 +1028,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
             whiteSpace: 'nowrap',
           }}
         >
-          <Lock size={14} />
-          <span>Device Security ({members.length})</span>
+          <Key size={14} />
+          <span>Login Credentials &amp; Device Security ({members.length})</span>
         </button>
       </div>
 
@@ -1268,16 +1311,32 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         </div>
       )}
 
-      {/* TAB 4: DEVICE HARDWARE SECURITY */}
+      {/* TAB 4: LOGIN CREDENTIALS & DEVICE HARDWARE SECURITY */}
       {activeTab === 'security' && (
         <div style={{ background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Key size={16} color="#0F8B5A" />
+                <span>Field Representative Login Credentials &amp; Device Locks</span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                View or change passwords, copy login credentials to send via WhatsApp, and reset phone hardware binding.
+              </div>
+            </div>
+            <span style={{ fontSize: '11px', background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+              {members.length} Active Accounts
+            </span>
+          </div>
+
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#475569' }}>
-                  <th style={{ padding: '10px 14px' }}>MR Name</th>
-                  <th style={{ padding: '10px 14px' }}>Assigned Phone</th>
-                  <th style={{ padding: '10px 14px' }}>Login Email</th>
+                  <th style={{ padding: '10px 14px' }}>Medical Representative</th>
+                  <th style={{ padding: '10px 14px' }}>Login Email / ID</th>
+                  <th style={{ padding: '10px 14px' }}>Registered Phone</th>
+                  <th style={{ padding: '10px 14px' }}>Current Assigned Password</th>
                   <th style={{ padding: '10px 14px' }}>Phone Binding</th>
                   <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -1285,11 +1344,67 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
               <tbody>
                 {members.map((m) => {
                   const isBound = Boolean(m.device_id);
+                  const currentPwd = mrPasswords[m.id] || m.password || 'Password@123';
+                  const isEditingThis = editingPasswordId === m.id;
+
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0F172A' }}>{m.name}</td>
-                      <td style={{ padding: '10px 14px', color: '#334155' }}>{m.phone}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0F172A' }}>
+                        <div>{m.name}</div>
+                        <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>
+                          {m.territory || 'Assigned Territory'}
+                        </div>
+                      </td>
                       <td style={{ padding: '10px 14px', color: '#334155' }}>{m.email}</td>
+                      <td style={{ padding: '10px 14px', color: '#334155' }}>{m.phone}</td>
+                      <td style={{ padding: '10px 14px' }}>
+                        {isEditingThis ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                            <input
+                              type="text"
+                              value={tempPassword}
+                              onChange={(e) => setTempPassword(e.target.value)}
+                              placeholder="New password"
+                              style={{
+                                width: '110px',
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                border: '1.5px solid #2563EB',
+                                fontSize: '11.5px',
+                                fontFamily: 'monospace',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setTempPassword(generateRandomPassword())}
+                              title="Generate random password"
+                              style={{ padding: '4px 6px', fontSize: '10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, color: '#1D4ED8' }}
+                            >
+                              Gen
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSavePassword(m.id)}
+                              style={{ padding: '4px 8px', fontSize: '11px', background: '#0F8B5A', color: '#FFFFFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPasswordId(null)}
+                              style={{ padding: '4px 6px', fontSize: '11px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <code style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600, color: '#1E293B' }}>
+                              {currentPwd}
+                            </code>
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: '10px 14px' }}>
                         {isBound ? (
                           <span style={{ color: '#166534', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1304,19 +1419,66 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                         )}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPasswordId(m.id);
+                              setTempPassword(currentPwd);
+                            }}
+                            style={{
+                              padding: '5px 9px',
+                              background: '#EFF6FF',
+                              border: '1px solid #BFDBFE',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              color: '#1D4ED8',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Key size={11} />
+                            <span>Change</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleCopyCredentials(m)}
-                            style={{ padding: '5px 10px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                            style={{
+                              padding: '5px 10px',
+                              background: copiedId === m.id ? '#DCFCE7' : '#F1F5F9',
+                              border: copiedId === m.id ? '1px solid #86EFAC' : '1px solid #CBD5E1',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              color: copiedId === m.id ? '#166534' : '#334155',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
                           >
-                            Copy Credentials
+                            {copiedId === m.id ? <Check size={11} color="#166534" /> : <Copy size={11} />}
+                            <span>{copiedId === m.id ? 'Copied!' : 'Copy'}</span>
                           </button>
+
                           {isBound && (
                             <button
                               type="button"
                               onClick={() => handleResetDevice(m.id, m.name)}
-                              style={{ padding: '5px 10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                              style={{
+                                padding: '5px 9px',
+                                background: '#FEF2F2',
+                                color: '#DC2626',
+                                border: '1px solid #FECACA',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
                             >
                               Reset Lock
                             </button>

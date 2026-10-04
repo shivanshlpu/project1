@@ -34,6 +34,7 @@ import {
   Pause,
   Terminal,
   Info,
+  Users,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
@@ -43,6 +44,7 @@ interface SettingsViewProps {
   lang?: Language;
   managerName: string;
   onUpdateManagerName: (name: string) => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export type BranchTagType = 'HEADQUARTERS' | 'SUB_CITY_BRANCH' | 'REGIONAL_HUB' | 'ZONAL_DEPOT';
@@ -64,6 +66,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   lang = 'en',
   managerName,
   onUpdateManagerName,
+  onNavigateTab,
 }) => {
   const t = translations[lang];
 
@@ -1097,107 +1100,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </form>
           </div>
 
-          {/* ALL OTHER PASSWORDS (MR FIELD MEMBERS) */}
-          <div className="enterprise-panel" style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* TEAM CREDENTIALS BANNER (DIRECTS TO EMPLOYEE HUB) */}
+          <div className="enterprise-panel" style={{ padding: '20px 24px', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Users size={20} color="#1D4ED8" />
+                </div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Key size={16} color="#0F8B5A" />
-                    {t.mrPasswordsTitle}
-                  </h2>
+                  <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: '800', color: '#0F172A' }}>
+                    {lang === 'hi' ? 'फ़ील्ड टीम पासवर्ड और डिवाइस प्रबंधन' : 'Field Team Password & Device Security'}
+                  </h3>
                   <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#64748B' }}>
-                    {t.mrPasswordsDesc}
+                    {lang === 'hi'
+                      ? 'कर्मचारियों के लॉगिन पासवर्ड, क्रेडेंशियल शेयरिंग और फोन लॉक अब सीधे "Employee Hub" में उपलब्ध हैं।'
+                      : 'Team members\' login passwords, credentials copying, and hardware phone lock resets are managed directly in the Employee Hub.'}
                   </p>
                 </div>
               </div>
-            </div>
-
-            <div className="enterprise-table-wrapper">
-              <table className="enterprise-table">
-                <thead>
-                  <tr>
-                    <th>Medical Representative</th>
-                    <th>Login ID (Email)</th>
-                    <th>Registered Phone</th>
-                    <th>Current Assigned Password</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mrList.map((mr) => (
-                    <tr key={mr.id}>
-                      <td style={{ fontWeight: '600', color: '#0F172A' }}>
-                        <div>{mr.name}</div>
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>{mr.territory}</div>
-                      </td>
-                      <td style={{ color: '#334155' }}>{mr.email}</td>
-                      <td style={{ color: '#334155' }}>{mr.phone}</td>
-                      <td>
-                        {editingMrPasswordId === mr.id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <input
-                              type="text"
-                              value={tempMrPassword}
-                              onChange={(e) => setTempMrPassword(e.target.value)}
-                              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '12px', width: '130px', fontFamily: 'monospace' }}
-                            />
-                            <button
-                              onClick={() => setTempMrPassword(generateRandomPassword())}
-                              title="Generate Random"
-                              style={{ padding: '4px 6px', fontSize: '11px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                              Gen
-                            </button>
-                            <button
-                              onClick={() => handleSaveMrPassword(mr.id)}
-                              className="btn-enterprise success sm"
-                              style={{ padding: '4px 8px' }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingMrPasswordId(null)}
-                              className="btn-enterprise secondary sm"
-                              style={{ padding: '4px 8px' }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', color: '#1E293B' }}>
-                              {mr.password}
-                            </code>
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-                          <button
-                            className="btn-enterprise secondary sm"
-                            onClick={() => {
-                              setEditingMrPasswordId(mr.id);
-                              setTempMrPassword(mr.password);
-                            }}
-                          >
-                            <Key size={12} />
-                            <span>{t.changeMrPassword}</span>
-                          </button>
-                          <button
-                            className="btn-enterprise secondary sm"
-                            onClick={() => handleCopyMrCredentials(mr)}
-                            title="Copy credentials to clipboard"
-                          >
-                            {copiedId === mr.id ? <Check size={12} color="#0F8B5A" /> : <Copy size={12} />}
-                            <span>{copiedId === mr.id ? 'Copied' : t.copyCredentials}</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('members')}
+                  className="btn-enterprise primary sm"
+                  style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <ExternalLink size={13} />
+                  <span>{lang === 'hi' ? 'Employee Hub खोलें' : 'Open Employee Hub'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

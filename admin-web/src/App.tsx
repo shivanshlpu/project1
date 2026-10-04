@@ -350,6 +350,7 @@ export const App: React.FC = () => {
               lang={lang}
               managerName={managerName}
               onUpdateManagerName={handleUpdateManagerName}
+              onNavigateTab={(tab) => setManagerTab(tab as any)}
             />
           )}
         </main>

@@ -215,6 +215,8 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         ? `data:image/jpeg;base64,${selfiePhoto.base64}`
         : selfiePhoto.uri;
 
+      const photoKey = `photo_att_in_${Date.now()}`;
+
       // 3. Post to Backend with Photo & Geo-Location
       let lateMsg = '';
       let isSyncedWithServer = false;
@@ -233,7 +235,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             is_mocked: isMocked,
             check_in_photo: photoPayload,
             location_name: `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
-            photo_key: `photo_att_in_${Date.now()}`,
+            photo_key: photoKey,
           }),
         });
 
@@ -247,7 +249,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             setLateEntryNotice('On-Time Entry');
           }
         } else {
-          // If server returned 413 (Payload Too Large) or photo error, retry with location data
+          // If server returned 413 (Payload Too Large) or photo error, retry with location and photo reference
           if (res.status === 413 || res.status === 400) {
             try {
               const retryRes = await fetch(`${baseUrl}/attendance/check-in`, {
@@ -261,7 +263,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                   gps_accuracy_m: accuracy,
                   is_mocked: isMocked,
                   location_name: `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
-                  photo_key: `photo_att_in_${Date.now()}`,
+                  photo_key: photoKey,
                 }),
               });
               if (retryRes.ok) {
