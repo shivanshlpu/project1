@@ -77,6 +77,18 @@ export class AttendanceService implements OnModuleInit {
     };
   }
 
+  /**
+   * Reset / Clear all attendance records completely
+   */
+  clearAllAttendance(): { clearedCount: number; message: string } {
+    const count = this.db.attendance.length;
+    this.db.attendance = [];
+    return {
+      clearedCount: count,
+      message: `All ${count} attendance records have been completely removed from the database.`,
+    };
+  }
+
   // === 1. SETTINGS (§22) ===
   async getSettings(): Promise<AttendanceSettings> {
     return this.db.attendanceSettings;

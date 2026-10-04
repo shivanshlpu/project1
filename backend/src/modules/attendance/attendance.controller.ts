@@ -83,4 +83,10 @@ export class AttendanceController {
   async purgeExpiredPhotos() {
     return this.attendanceService.purgeExpiredPhotos();
   }
+
+  @Post('clear-all')
+  @HttpCode(HttpStatus.OK)
+  async clearAllAttendance() {
+    return this.attendanceService.clearAllAttendance();
+  }
 }

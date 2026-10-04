@@ -239,6 +239,29 @@ export const AdminAttendanceView: React.FC = () => {
     }
   };
 
+  // Clear all attendance records from database and UI
+  const handleClearAllAttendance = async () => {
+    if (!window.confirm('Are you sure you want to remove ALL attendance records from the database? This cannot be undone.')) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await resilientFetch('/attendance/clear-all', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setRecords([]);
+      } else {
+        setRecords([]);
+      }
+    } catch {
+      setRecords([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Metrics summary
   const todayStr = new Date().toISOString().split('T')[0];
   const totalLogs = records.length;
@@ -282,6 +305,16 @@ export const AdminAttendanceView: React.FC = () => {
           >
             <Sliders size={14} />
             <span>Time Settings</span>
+          </button>
+
+          <button
+            className="btn-enterprise secondary"
+            onClick={handleClearAllAttendance}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap', color: '#DC2626', borderColor: '#FCA5A5' }}
+            title="Clear all attendance records from database"
+          >
+            <Trash2 size={14} color="#DC2626" />
+            <span>Clear All Data</span>
           </button>
 
           <button
@@ -716,25 +749,20 @@ export const AdminAttendanceView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Live Work-Attire Photo Proof & 24h Purge Status */}
+                      {/* Live Work-Attire Photo Proof */}
                       <td style={{ padding: '11px 14px', minWidth: 160 }}>
-                        {rec.check_in_photo || rec.photo_key || rec.punch_in_photo_key || (rec.check_in_at && rec.date === todayStr) ? (
+                        {rec.check_in_photo && (rec.check_in_photo.startsWith('data:') || rec.check_in_photo.startsWith('http')) ? (
                           <div>
                             <button
                               onClick={() => {
-                                const isPooja = rec.user_id === 'usr-mr-03' || rec.user_name?.toLowerCase().includes('pooja');
-                                const realPhoto = (rec.check_in_photo && (rec.check_in_photo.startsWith('data:') || rec.check_in_photo.startsWith('http') || rec.check_in_photo.startsWith('/')))
-                                  ? rec.check_in_photo
-                                  : isPooja
-                                  ? '/assets/pooja_verma_attendance.jpg'
-                                  : (rec.check_in_photo || rec.photo_key || rec.punch_in_photo_key || '');
-
                                 setPreviewPhoto({
-                                  url: realPhoto,
+                                  url: rec.check_in_photo!,
                                   userName: rec.user_name && rec.user_name !== 'Unknown'
                                     ? rec.user_name
-                                    : isPooja
+                                    : rec.user_id === 'usr-mr-03'
                                     ? 'Pooja Verma'
+                                    : rec.user_id === 'usr-mr-02'
+                                    ? 'Vikram Malhotra'
                                     : rec.user_id === 'usr-admin-01'
                                     ? 'System Admin (Headquarters)'
                                     : 'Rahul Sharma (Field MR)',
@@ -748,22 +776,22 @@ export const AdminAttendanceView: React.FC = () => {
                                 });
                               }}
                               style={{
-                                background: '#EFF6FF',
-                                border: '1px solid #BFDBFE',
+                                background: '#ECFDF5',
+                                border: '1px solid #A7F3D0',
                                 padding: '4px 10px',
                                 borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                color: '#1D4ED8',
+                                color: '#047857',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 5,
                               }}
-                              title="Click to verify employee full dress and visible ID card"
+                              title="Click to view verified employee photo uploaded from mobile app"
                             >
                               <Camera size={13} />
-                              <span>View ID &amp; Dress Photo</span>
+                              <span>View Uploaded Photo</span>
                             </button>
                             <span
                               style={{
@@ -774,7 +802,7 @@ export const AdminAttendanceView: React.FC = () => {
                                 marginTop: 3,
                               }}
                             >
-                              ✓ Active (&lt; 24h Proof)
+                              ✓ Live Mobile Upload
                             </span>
                           </div>
                         ) : rec.photo_purged || (!rec.check_in_photo && rec.date < todayStr) ? (
@@ -801,7 +829,7 @@ export const AdminAttendanceView: React.FC = () => {
                             </span>
                           </div>
                         ) : (
-                          <span style={{ fontSize: 11, color: '#94A3B8' }}>No Photo Taken</span>
+                          <span style={{ fontSize: 11, color: '#94A3B8' }}>No Photo Uploaded</span>
                         )}
                       </td>
 

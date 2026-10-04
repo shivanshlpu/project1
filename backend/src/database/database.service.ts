@@ -500,62 +500,8 @@ export class DatabaseService implements OnModuleInit {
       },
     );
 
-    // 9. Seed Attendance for Field MRs (Today with Active Photo Proof, Yesterday with Auto-Purged Photo)
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-
-    const sampleDressIdPhotoSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 420" width="360" height="420"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%230f172a"/><stop offset="100%" stop-color="%231e293b"/></linearGradient><linearGradient id="shirt" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="%23f8fafc"/><stop offset="100%" stop-color="%23cbd5e1"/></linearGradient><linearGradient id="tie" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%232563eb"/><stop offset="100%" stop-color="%231d4ed8"/></linearGradient></defs><rect width="360" height="420" rx="16" fill="url(%23bg)"/><circle cx="180" cy="115" r="55" fill="%23fbcfe8"/><path d="M150 100 Q180 80 210 100 Q180 70 150 100 Z" fill="%231e293b"/><path d="M100 280 C100 200, 260 200, 260 280 L280 420 L80 420 Z" fill="url(%23shirt)"/><polygon points="172,170 188,170 194,270 180,285 166,270" fill="url(%23tie)"/><rect x="135" y="240" width="90" height="130" rx="8" fill="%23ffffff" stroke="%232563eb" stroke-width="3"/><rect x="145" y="248" width="70" height="40" rx="4" fill="%23e2e8f0"/><text x="180" y="272" font-size="12" text-anchor="middle" fill="%23475569" font-family="Arial,sans-serif" font-weight="bold">MR ID</text><rect x="150" y="295" width="60" height="4" fill="%230f172a"/><text x="180" y="315" font-size="10" text-anchor="middle" fill="%231e293b" font-family="Arial,sans-serif" font-weight="bold">RAHUL SHARMA</text><text x="180" y="330" font-size="8" text-anchor="middle" fill="%232563eb" font-family="Arial,sans-serif">OFFICIAL BADGE</text><rect x="165" y="210" width="30" height="30" fill="none" stroke="%233b82f6" stroke-width="2" stroke-dasharray="3,3"/><rect x="16" y="16" width="328" height="48" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(59,130,246,0.5)"/><text x="28" y="36" fill="%2310b981" font-size="12" font-family="Arial,sans-serif" font-weight="bold">✓ FULL DRESS %26 ID CARD VERIFIED</text><text x="28" y="52" fill="%2394a3b8" font-size="10" font-family="Arial,sans-serif">Live GPS: 28.5245° N, 77.2066° E (±8m)</text></svg>`;
-
-    this.attendance.push(
-      {
-        id: 'att-01',
-        user_id: mr.id,
-        date: todayStr,
-        check_in_at: `${todayStr}T09:15:22.000Z`,
-        check_in_lat: 28.5245,
-        check_in_lng: 77.2066,
-        check_in_location_name: 'Headquarter Area - Shahdol Main Market (28.5245° N, 77.2066° E)',
-        check_in_photo: sampleDressIdPhotoSvg,
-        photo_captured_at: `${todayStr}T09:15:22.000Z`,
-        photo_purged: false,
-        distance_meters: 8.4,
-        is_verified_location: true,
-        status: 'PRESENT',
-        late_minutes: 0,
-        early_minutes: 0,
-        working_hours: 0,
-        punch_in_photo_source: 'CAMERA',
-        device_integrity_status: 'VERIFIED',
-        hq_id: 'hq-shahdol',
-        hq_name: 'Shahdol',
-        created_at: `${todayStr}T09:15:22.000Z`,
-      },
-      {
-        id: 'att-02',
-        user_id: mr2.id,
-        date: yesterdayStr,
-        check_in_at: `${yesterdayStr}T09:28:10.000Z`,
-        check_out_at: `${yesterdayStr}T18:15:00.000Z`,
-        check_in_lat: 28.521,
-        check_in_lng: 77.204,
-        check_in_location_name: 'District Medical Complex, Ambikapur (28.5210° N, 77.2040° E)',
-        check_in_photo: null, // Purged automatically after 24 hours to save 512MB quota
-        photo_captured_at: `${yesterdayStr}T09:28:10.000Z`,
-        photo_purged: true,
-        distance_meters: 12.0,
-        is_verified_location: true,
-        status: 'PRESENT',
-        late_minutes: 0,
-        early_minutes: 0,
-        working_hours: 8.78,
-        punch_in_photo_source: 'CAMERA',
-        device_integrity_status: 'VERIFIED',
-        hq_id: 'hq-ambikapur',
-        hq_name: 'Ambikapur',
-        created_at: `${yesterdayStr}T09:28:10.000Z`,
-      },
-    );
+    // 9. Attendance starts completely empty - only real employee mobile punches are recorded
+    this.attendance = [];
 
     // 10. Seed Headquarters (§6 & §10)
     const hqShahdol: Headquarter = {
