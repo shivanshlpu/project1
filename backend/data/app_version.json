@@ -1,22 +1,22 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.9",
-  "latestVersionCode": 10,
+  "latestVersion": "1.0.10",
+  "latestVersionCode": 11,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/afTbM2D-JwTdHdDAyAGPGbBUWBIrkaoGXSv_ss3yqow.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/x0LhBgiQjEiGZVsFZ7tKS-H4E0aT-0ebbm3ce1Ekjrg.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-04",
-  "publishedAt": "2026-10-04T08:40:00.000Z",
+  "publishedAt": "2026-10-04T12:15:00.000Z",
   "publishedBy": "EAS Production Build",
   "releaseNotes": [
+    "Enterprise Multi-User Isolation: Strict per-employee attendance, task history, and session segregation",
+    "Universal Medicine Catalog & Multi-HQ Stockist Inventory Coverage",
+    "Clean Top Bar: Minimal status dot indicator with pulse glow & redesigned high-visibility Logout button",
     "Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window",
     "Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal",
-    "Multi-HQ Stocker Hierarchy & Live Stock Balance Lookup",
     "Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync",
-    "Compact Realistic 3D Map Markers & Dedicated Custom Location Marking",
-    "Order Pending Workflow for Flexible Post-Detailing Order Entry",
-    "Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims"
+    "Order Pending Workflow for Flexible Post-Detailing Order Entry"
   ]
 }
