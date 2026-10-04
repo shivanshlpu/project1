@@ -1,24 +1,25 @@
-# Latest AHTRI FFA Mobile APK Build (Version 1.0.8 - Tour Plan Crash Fix & Live Attendance)
+# Latest AHTRI FFA Mobile APK Build (Version 1.0.9 - Instant Attendance & Tour Plan Crash Fix)
 
-- **Build ID**: `a37144ef-5c13-428a-804d-beb8677071aa`
-- **Version**: `v1.0.8` (Version Code `9`)
+- **Build ID**: `271cce36-e264-47d7-b001-76480b6f5b26`
+- **Version**: `v1.0.9` (Version Code `10`)
 - **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
-- **Git Commit**: `cd88713631ee8dbabe9185ef71c6a5950fc20dc5`
-- **Build Completed At**: `2026-10-04T08:13:24.157Z`
-- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/ACFkH7Zp9qZ482leiKcO6_e1aPydRW99-tuJQx8Rtbw.apk)
+- **Git Commit**: `2fe1edf04fc60e4a11242eacc49b89c748337c83`
+- **Build Completed At**: `2026-10-04T08:39:13.990Z`
+- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/afTbM2D-JwTdHdDAyAGPGbBUWBIrkaoGXSv_ss3yqow.apk)
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
 - **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 
 ---
 
-### What's New in Version 1.0.8:
-1. **Monthly Tour Plan (TP) Hermes Native Fix**: Resolved React Native Android runtime crash by replacing web `<select>`/`<option>` tags with pure native touchable dropdown modals.
-2. **Instant Attendance Check-In**: Selfie verification and GPS check-in appear immediately on the Admin Panel without requiring check-out. Active shifts display real-time live elapsed duration.
-3. **Optimized Photo Capture**: High-definition, quota-safe compressed camera selfie capture to guarantee instant uploads and cloud quota safety.
-4. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
-5. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
-6. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
-7. **Sales Competitions & Reward Claims**: Single source of truth progress bar and one-tap reward claims.
+### What's New in Version 1.0.9:
+1. **Instant Attendance Check-In Verification**: Punch-in and live selfie verification photo now upload instantly without payload limits and appear on the Admin Panel immediately without waiting for punch-out.
+2. **Auto-Retry & Network Resilience**: Attendance punch-in includes automatic location retry fallback, guaranteeing check-ins are recorded on the server even under poor mobile connectivity.
+3. **Monthly Tour Plan (TP) Hermes Native Fix**: Resolved React Native Android runtime crash by replacing web `<select>`/`<option>` tags with pure native touchable dropdown modals.
+4. **Optimized Photo Capture**: High-definition, quota-safe compressed camera selfie capture to guarantee instant uploads and cloud quota safety.
+5. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
+6. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
+7. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
+8. **Sales Competitions & Reward Claims**: Single source of truth progress bar and one-tap reward claims.
 
 ---
 

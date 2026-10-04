@@ -1,14 +1,14 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.8",
-  "latestVersionCode": 9,
+  "latestVersion": "1.0.9",
+  "latestVersionCode": 10,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/ACFkH7Zp9qZ482leiKcO6_e1aPydRW99-tuJQx8Rtbw.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/afTbM2D-JwTdHdDAyAGPGbBUWBIrkaoGXSv_ss3yqow.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-04",
-  "publishedAt": "2026-10-04T08:15:00.000Z",
+  "publishedAt": "2026-10-04T08:40:00.000Z",
   "publishedBy": "EAS Production Build",
   "releaseNotes": [
     "Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window",
