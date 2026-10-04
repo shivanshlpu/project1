@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = 'd57c2ae4-28f0-40c8-b6c5-2b7c2422d75a';
+const BUILD_ID = 'f24fecc0-5791-426c-aa02-52563c853711';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -73,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.5.1',
-        latestVersionCode: 6,
+        latestVersion: '1.0.7',
+        latestVersionCode: 8,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -83,11 +83,13 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'WhatsApp-Style Push & Heads-Up Notifications for assigned MR tasks & leave decisions',
-          'Completed Tasks History Page with Date-Wise Filter Chips & Executive Work Summary',
-          'Official AHTRI BIOTECH Branding & High-Resolution App Logo (Launcher, Splash, Header)',
-          'Automated In-App Update Notifications with one-tap APK installation flow',
-          'Live GPS Geofencing, Leaflet mapping, and real-time reverse geocoding',
+          'Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window',
+          'Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal',
+          'Multi-HQ Stocker Hierarchy & Live Stock Balance Lookup',
+          'Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync',
+          'Compact Realistic 3D Map Markers & Dedicated Custom Location Marking',
+          'Order Pending Workflow for Flexible Post-Detailing Order Entry',
+          'Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims',
         ],
       };
 
@@ -111,12 +113,12 @@ async function checkBuild() {
       }
 
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.5.1 - History Page & Notifications)
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.7 - Tour Plans, Photo Proof & Store Inventory)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.5.1\` (Version Code \`6\`)
-- **Branding**: Official AHTRI BIOTECH App Logo (App Icon, Splash Screen, Login Screen, App Header)
-- **Git Commit**: \`${buildData.gitCommitHash || '206108bcef00'}\`
+- **Version**: \`v1.0.7\` (Version Code \`8\`)
+- **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
+- **Git Commit**: \`${buildData.gitCommitHash || 'b59d8a1e1b53'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
@@ -124,10 +126,23 @@ async function checkBuild() {
 
 ---
 
+### What's New in Version 1.0.7:
+1. **Monthly Tour Plan (TP)**: Multi-date tour plan submission with objective detailing, review list, dynamic sub-area dropdowns, and 24-hour edit enforcement.
+2. **Attendance Photo Proof & Storage Guidelines**: Compressed selfie capture with work attire check, geo-tagging, and dedicated employee Attendance Policy modal.
+3. **Multi-HQ Stocker Hierarchy & Live Stock Balance**: Live stock balance lookup with sub-area filtering and shortage tracking.
+4. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
+5. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
+6. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
+7. **Sales Competitions & Reward Claims**: Single source of truth progress bar and one-tap reward claims.
+
+---
+
 ### Instructions for Employees:
-1. Tap on the direct APK download link or visit [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk) on any Android phone.
+1. Open this link on your Android smartphone:
+   **[https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)**
+   *(or use the Direct Expo Download Link above)*
 2. The download will start immediately.
-3. Open the downloaded file to install/update the AHTRI FFA app with the new official logo and all latest features!
+3. Open the downloaded file to install/update the AHTRI FFA app with all the latest features!
 `;
       fs.writeFileSync(OUTPUT_INFO_FILE, infoMd, 'utf-8');
       console.log(`[AutoAPK] Written release info to ${OUTPUT_INFO_FILE}`);

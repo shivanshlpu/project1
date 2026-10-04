@@ -228,7 +228,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     latestVersion: '1.0.7',
     latestVersionCode: 8,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/qjiumUyXuJ_PqEhkJBDUdoz-Pkr0_dAZryeh6inPToE.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
