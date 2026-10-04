@@ -210,10 +210,23 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
-      // 2. Prepare compressed photo payload
-      const photoPayload = selfiePhoto.base64
-        ? `data:image/jpeg;base64,${selfiePhoto.base64}`
-        : selfiePhoto.uri;
+      // 2. Prepare compressed photo payload (guaranteed base64 data URL for cross-platform DB viewing)
+      let photoPayload = selfiePhoto.base64
+        ? (selfiePhoto.base64.startsWith('data:') ? selfiePhoto.base64 : `data:image/jpeg;base64,${selfiePhoto.base64}`)
+        : null;
+
+      if (!photoPayload && selfiePhoto.uri) {
+        try {
+          const fileRes = await fetch(selfiePhoto.uri);
+          const blob = await fileRes.blob();
+          photoPayload = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(blob);
+          });
+        } catch {}
+      }
 
       const photoKey = `photo_att_in_${Date.now()}`;
 

@@ -160,11 +160,32 @@ export const CameraService = {
       }
 
       const asset = result.assets[0];
+      let base64Data = asset.base64;
+
+      // If Android cropper omitted base64, convert uri to base64 data reliably
+      if (!base64Data && asset.uri) {
+        try {
+          const fileRes = await fetch(asset.uri);
+          const blob = await fileRes.blob();
+          base64Data = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const resStr = (reader.result as string) || '';
+              resolve(resStr.includes(',') ? resStr.split(',')[1] : resStr);
+            };
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(blob);
+          });
+        } catch (convErr) {
+          console.warn('Base64 conversion notice:', convErr);
+        }
+      }
+
       return {
         uri: asset.uri,
         width: asset.width,
         height: asset.height,
-        base64: asset.base64,
+        base64: base64Data || undefined,
       };
     } catch (error) {
       console.warn('Error during camera capture:', error);

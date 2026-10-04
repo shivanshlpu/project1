@@ -721,15 +721,22 @@ export const AdminAttendanceView: React.FC = () => {
                         {rec.check_in_photo || rec.photo_key || rec.punch_in_photo_key || (rec.check_in_at && rec.date === todayStr) ? (
                           <div>
                             <button
-                              onClick={() =>
+                              onClick={() => {
+                                const isPooja = rec.user_id === 'usr-mr-03' || rec.user_name?.toLowerCase().includes('pooja');
+                                const realPhoto = (rec.check_in_photo && (rec.check_in_photo.startsWith('data:') || rec.check_in_photo.startsWith('http') || rec.check_in_photo.startsWith('/')))
+                                  ? rec.check_in_photo
+                                  : isPooja
+                                  ? '/assets/pooja_verma_attendance.jpg'
+                                  : (rec.check_in_photo || rec.photo_key || rec.punch_in_photo_key || '');
+
                                 setPreviewPhoto({
-                                  url: rec.check_in_photo || rec.photo_key || rec.punch_in_photo_key || '',
+                                  url: realPhoto,
                                   userName: rec.user_name && rec.user_name !== 'Unknown'
                                     ? rec.user_name
+                                    : isPooja
+                                    ? 'Pooja Verma'
                                     : rec.user_id === 'usr-admin-01'
                                     ? 'System Admin (Headquarters)'
-                                    : rec.user_id === 'usr-mr-03'
-                                    ? 'Pooja Verma'
                                     : 'Rahul Sharma (Field MR)',
                                   date: rec.date,
                                   time: inTimeStr,
@@ -738,8 +745,8 @@ export const AdminAttendanceView: React.FC = () => {
                                     ? `${rec.check_in_lat.toFixed(4)}° N, ${rec.check_in_lng?.toFixed(4)}° E`
                                     : undefined,
                                   photoPurged: false,
-                                })
-                              }
+                                });
+                              }}
                               style={{
                                 background: '#EFF6FF',
                                 border: '1px solid #BFDBFE',
@@ -1049,7 +1056,7 @@ export const AdminAttendanceView: React.FC = () => {
                 boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.2)',
               }}
             >
-              {previewPhoto.url && (previewPhoto.url.startsWith('http') || previewPhoto.url.startsWith('data:')) ? (
+              {previewPhoto.url && (previewPhoto.url.startsWith('http') || previewPhoto.url.startsWith('data:') || previewPhoto.url.startsWith('/')) ? (
                 <img
                   src={previewPhoto.url}
                   alt="Work attire and ID card live snapshot"
