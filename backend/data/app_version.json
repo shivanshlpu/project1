@@ -1,22 +1,22 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.6",
-  "latestVersionCode": 7,
+  "latestVersion": "1.0.7",
+  "latestVersionCode": 8,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/qjiumUyXuJ_PqEhkJBDUdoz-Pkr0_dAZryeh6inPToE.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-09-30",
-  "publishedAt": "2026-09-30T09:00:00.000Z",
-  "publishedBy": "System Admin",
+  "releaseDate": "2026-10-04",
+  "publishedAt": "2026-10-04T07:07:13.516Z",
+  "publishedBy": "System Auto-Build",
   "releaseNotes": [
-    "Monthly Tour Plan (TP) Multi-Date Submission & Schedule Review",
-    "Live Camera Photo Proof with Work Attire Check for Attendance & Doctor Visits",
-    "Multi-HQ Stocker Hierarchy & Real-Time Stock Balance Verification",
-    "Negative Stock & Backorder Tolerance for Out-of-Stock Orders",
-    "Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims",
+    "Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window",
+    "Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal",
+    "Multi-HQ Stocker Hierarchy & Live Stock Balance Lookup",
+    "Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync",
+    "Compact Realistic 3D Map Markers & Dedicated Custom Location Marking",
     "Order Pending Workflow for Flexible Post-Detailing Order Entry",
-    "Anti-Mock Fake Location Protection & Hardware Integrity Verification"
+    "Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims"
   ]
 }

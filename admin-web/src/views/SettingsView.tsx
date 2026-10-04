@@ -225,8 +225,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.6',
-    latestVersionCode: 7,
+    latestVersion: '1.0.7',
+    latestVersionCode: 8,
     minimumVersion: '1.0.0',
     downloadUrl: 'https://expo.dev/artifacts/eas/t_nPRF_KovU4jIIP5nDcrdNTbOCVOitswVtzU3uvRAw.apk',
     forceUpdate: false,
@@ -236,7 +236,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Monthly Tour Plan (TP) Multi-Date Submission & Schedule Review\nLive Camera Photo Proof with Work Attire Check for Attendance & Doctor Visits\nMulti-HQ Stocker Hierarchy & Real-Time Stock Balance Verification\nNegative Stock & Backorder Tolerance for Out-of-Stock Orders\nSingle Source of Truth Sales Competitions, Progress Tracking & Reward Claims\nOrder Pending Workflow for Flexible Post-Detailing Order Entry\nAnti-Mock Fake Location Protection & Hardware Integrity Verification'
+    'Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window\nCompressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal\nMulti-HQ Stocker Hierarchy & Live Stock Balance Lookup\nLive Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync\nCompact Realistic 3D Map Markers & Dedicated Custom Location Marking\nOrder Pending Workflow for Flexible Post-Detailing Order Entry\nSingle Source of Truth Sales Competitions, Progress Tracking & Reward Claims'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
