@@ -36,15 +36,15 @@ export interface DownloadProgressPayload {
 
 export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void;
 
-// Current version and versionCode installed on this device (read dynamically from manifest or fallback to 1.0.7 / 8)
+// Current version and versionCode installed on this device (read dynamically from manifest or fallback to 1.0.8 / 9)
 export const CURRENT_APP_VERSION =
   Constants.expoConfig?.version ||
   (Constants as any).manifest2?.extra?.expoClient?.version ||
-  '1.0.7';
+  '1.0.8';
 
 export const CURRENT_APP_VERSION_CODE =
   Constants.expoConfig?.android?.versionCode ||
-  8;
+  9;
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',

@@ -155,6 +155,21 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [editActivity, setEditActivity] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
+  // Native Select/Picker Modal State
+  const [pickerModal, setPickerModal] = useState<{
+    visible: boolean;
+    title: string;
+    options: Array<{ label: string; value: string; sublabel?: string }>;
+    selectedValue: string;
+    onSelect: (value: string) => void;
+  }>({
+    visible: false,
+    title: '',
+    options: [],
+    selectedValue: '',
+    onSelect: () => {},
+  });
+
   // Helper to extract YYYY-MM
   const getMonthKeyFromDate = (dateStr: string): string => {
     try {
@@ -722,20 +737,29 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
             {/* HQ Selector Dropdown */}
             <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
-            <View style={styles.dropdownBox}>
-              <select
-                value={selectedHqId}
-                onChange={(e: any) => handleHqChange(e.target.value)}
-                style={dropdownSelectStyle}
-              >
-                {hqs.map((hq) => (
-                  <option key={hq.id} value={hq.id}>
-                    {hq.name} {hq.state ? `(${hq.state})` : ''}
-                  </option>
-                ))}
-              </select>
+            <TouchableOpacity
+              style={styles.dropdownBox}
+              activeOpacity={0.7}
+              onPress={() =>
+                setPickerModal({
+                  visible: true,
+                  title: 'Select Headquarters (HQ)',
+                  options: hqs.map((hq) => ({
+                    label: hq.name,
+                    value: hq.id,
+                    sublabel: hq.state ? `(${hq.state})` : undefined,
+                  })),
+                  selectedValue: selectedHqId,
+                  onSelect: (val) => handleHqChange(val),
+                })
+              }
+            >
+              <Text style={styles.dropdownText} numberOfLines={1}>
+                {hqs.find((h) => h.id === selectedHqId)?.name || 'Select HQ'}
+                {hqs.find((h) => h.id === selectedHqId)?.state ? ` (${hqs.find((h) => h.id === selectedHqId)?.state})` : ''}
+              </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Planned Area Dropdown (Filtered Strictly for selected HQ) */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
@@ -746,37 +770,51 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 Filtered for {activeHqName} ({availableAreas.length})
               </Text>
             </View>
-            <View style={styles.dropdownBox}>
-              <select
-                value={selectedArea}
-                onChange={(e: any) => setSelectedArea(e.target.value)}
-                style={dropdownSelectStyle}
-              >
-                {availableAreas.map((area) => (
-                  <option key={area} value={area}>
-                    {area}
-                  </option>
-                ))}
-              </select>
+            <TouchableOpacity
+              style={styles.dropdownBox}
+              activeOpacity={0.7}
+              onPress={() =>
+                setPickerModal({
+                  visible: true,
+                  title: `Select Planned Area (${activeHqName})`,
+                  options: availableAreas.map((area) => ({
+                    label: area,
+                    value: area,
+                  })),
+                  selectedValue: selectedArea,
+                  onSelect: (val) => setSelectedArea(val),
+                })
+              }
+            >
+              <Text style={styles.dropdownText} numberOfLines={1}>
+                {selectedArea || 'Select Area'}
+              </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Type of Work Dropdown */}
             <Text style={styles.fieldLabel}>Type of Work:</Text>
-            <View style={styles.dropdownBox}>
-              <select
-                value={selectedWorkType}
-                onChange={(e: any) => setSelectedWorkType(e.target.value)}
-                style={dropdownSelectStyle}
-              >
-                {WORK_TYPES.map((wt) => (
-                  <option key={wt} value={wt}>
-                    {wt}
-                  </option>
-                ))}
-              </select>
+            <TouchableOpacity
+              style={styles.dropdownBox}
+              activeOpacity={0.7}
+              onPress={() =>
+                setPickerModal({
+                  visible: true,
+                  title: 'Select Type of Work',
+                  options: WORK_TYPES.map((wt) => ({
+                    label: wt,
+                    value: wt,
+                  })),
+                  selectedValue: selectedWorkType,
+                  onSelect: (val) => setSelectedWorkType(val),
+                })
+              }
+            >
+              <Text style={styles.dropdownText} numberOfLines={1}>
+                {selectedWorkType || 'Select Work Type'}
+              </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Planned KOL DRS (Optional) */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 4 }}>
@@ -918,14 +956,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 <View key={plan.id} style={styles.submittedCard}>
                   {/* Plan Top Header */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                    <div>
+                    <View>
                       <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#0F172A' }}>
                         Month: {plan.month}
                       </Text>
                       <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
                         Submitted: {formatDateDDMMYYYY(plan.submitted_at)}
                       </Text>
-                    </div>
+                    </View>
 
                     <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
                       {/* 24-Hour Edit Window Badge */}
@@ -1126,59 +1164,81 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
                 {/* Edit HQ Dropdown */}
                 <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
-                <View style={styles.dropdownBox}>
-                  <select
-                    value={editHqId}
-                    onChange={(e: any) => {
-                      const newHq = e.target.value;
-                      setEditHqId(newHq);
-                      const areasForHq = getStoredAreasForHq(newHq);
-                      setEditArea(areasForHq[0] || 'Main Area');
-                    }}
-                    style={dropdownSelectStyle}
-                  >
-                    {hqs.map((hq) => (
-                      <option key={hq.id} value={hq.id}>
-                        {hq.name} {hq.state ? `(${hq.state})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                <TouchableOpacity
+                  style={styles.dropdownBox}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    setPickerModal({
+                      visible: true,
+                      title: 'Edit Headquarters (HQ)',
+                      options: hqs.map((hq) => ({
+                        label: hq.name,
+                        value: hq.id,
+                        sublabel: hq.state ? `(${hq.state})` : undefined,
+                      })),
+                      selectedValue: editHqId,
+                      onSelect: (newHq) => {
+                        setEditHqId(newHq);
+                        const areasForHq = getStoredAreasForHq(newHq);
+                        setEditArea(areasForHq[0] || 'Main Area');
+                      },
+                    })
+                  }
+                >
+                  <Text style={styles.dropdownText} numberOfLines={1}>
+                    {hqs.find((h) => h.id === editHqId)?.name || 'Select HQ'}
+                    {hqs.find((h) => h.id === editHqId)?.state ? ` (${hqs.find((h) => h.id === editHqId)?.state})` : ''}
+                  </Text>
                   <Text style={styles.dropdownChevron}>▼</Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Edit Planned Area Dropdown Filtered for editHq */}
                 <Text style={styles.fieldLabel}>Planned Area / Sub-Territory:</Text>
-                <View style={styles.dropdownBox}>
-                  <select
-                    value={editArea}
-                    onChange={(e: any) => setEditArea(e.target.value)}
-                    style={dropdownSelectStyle}
-                  >
-                    {getStoredAreasForHq(editHqId).map((area) => (
-                      <option key={area} value={area}>
-                        {area}
-                      </option>
-                    ))}
-                  </select>
+                <TouchableOpacity
+                  style={styles.dropdownBox}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    setPickerModal({
+                      visible: true,
+                      title: 'Edit Planned Area',
+                      options: getStoredAreasForHq(editHqId).map((area) => ({
+                        label: area,
+                        value: area,
+                      })),
+                      selectedValue: editArea,
+                      onSelect: (val) => setEditArea(val),
+                    })
+                  }
+                >
+                  <Text style={styles.dropdownText} numberOfLines={1}>
+                    {editArea || 'Select Area'}
+                  </Text>
                   <Text style={styles.dropdownChevron}>▼</Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Edit Work Type Dropdown */}
                 <Text style={styles.fieldLabel}>Type of Work:</Text>
-                <View style={styles.dropdownBox}>
-                  <select
-                    value={editWorkType}
-                    onChange={(e: any) => setEditWorkType(e.target.value)}
-                    style={dropdownSelectStyle}
-                  >
-                    {WORK_TYPES.map((wt) => (
-                      <option key={wt} value={wt}>
-                        {wt}
-                      </option>
-                    ))}
-                  </select>
+                <TouchableOpacity
+                  style={styles.dropdownBox}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    setPickerModal({
+                      visible: true,
+                      title: 'Edit Type of Work',
+                      options: WORK_TYPES.map((wt) => ({
+                        label: wt,
+                        value: wt,
+                      })),
+                      selectedValue: editWorkType,
+                      onSelect: (val) => setEditWorkType(val),
+                    })
+                  }
+                >
+                  <Text style={styles.dropdownText} numberOfLines={1}>
+                    {editWorkType || 'Select Work Type'}
+                  </Text>
                   <Text style={styles.dropdownChevron}>▼</Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Edit Doctor Name */}
                 <Text style={styles.fieldLabel}>PLANNED KOL DRS (Name):</Text>
@@ -1225,23 +1285,67 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           </View>
         </Modal>
       )}
+
+      {/* Reusable Native Dropdown Selection Modal */}
+      <Modal
+        visible={pickerModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setPickerModal((prev) => ({ ...prev, visible: false }))}
+        >
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>{pickerModal.title}</Text>
+              <TouchableOpacity
+                onPress={() => setPickerModal((prev) => ({ ...prev, visible: false }))}
+                style={styles.pickerCloseBtn}
+              >
+                <Text style={styles.pickerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator>
+              {pickerModal.options.map((opt) => {
+                const isSelected = opt.value === pickerModal.selectedValue;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+                    onPress={() => {
+                      pickerModal.onSelect(opt.value);
+                      setPickerModal((prev) => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.pickerItemLabel,
+                          isSelected && styles.pickerItemLabelSelected,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                      {opt.sublabel ? (
+                        <Text style={styles.pickerItemSublabel}>{opt.sublabel}</Text>
+                      ) : null}
+                    </View>
+                    {isSelected ? (
+                      <Text style={styles.pickerItemCheck}>✓</Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
-};
-
-const dropdownSelectStyle: any = {
-  width: '100%',
-  padding: '9px 12px',
-  borderRadius: 6,
-  border: 'none',
-  background: 'transparent',
-  fontSize: 12.5,
-  fontWeight: '600',
-  color: '#0F172A',
-  outline: 'none',
-  cursor: 'pointer',
-  appearance: 'none',
-  WebkitAppearance: 'none',
 };
 
 const styles = StyleSheet.create({
@@ -1336,13 +1440,96 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     position: 'relative',
     justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  dropdownText: {
+    fontSize: 12.5,
+    color: '#0F172A',
+    fontWeight: '600',
+    paddingRight: 20,
   },
   dropdownChevron: {
     position: 'absolute',
     right: 12,
     fontSize: 10,
     color: '#64748B',
-    pointerEvents: 'none' as any,
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    width: '100%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+  },
+  pickerTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+  },
+  pickerCloseBtn: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  pickerCloseText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  pickerItemLabel: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  pickerItemLabelSelected: {
+    color: '#1A3C6E',
+    fontWeight: '800',
+  },
+  pickerItemSublabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  pickerItemCheck: {
+    fontSize: 15,
+    color: '#1A3C6E',
+    fontWeight: '900',
+    marginLeft: 12,
   },
   punchDirectBtn: {
     backgroundColor: '#0F8B5A',
