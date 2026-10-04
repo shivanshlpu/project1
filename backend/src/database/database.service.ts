@@ -283,7 +283,65 @@ export class DatabaseService implements OnModuleInit {
       created_at: new Date().toISOString(),
     };
 
-    this.doctors.push(doc1, doc2);
+    const doc3: Doctor = {
+      id: 'doc-03',
+      name: 'Dr. Anita Desai',
+      qualification: 'MBBS, MD (Dermatology)',
+      specialization: 'Dermatologist',
+      class: 'A',
+      potential_score: 91,
+      phone: '9877766554',
+      clinic: 'Skin Care Centre',
+      hospital: 'Max Healthcare Centre',
+      address: 'Hauz Khas Market, New Delhi',
+      latitude: 28.5494,
+      longitude: 77.2001,
+      area_id: areaId,
+      assigned_mr_id: mr3.id,
+      assigned_mr_name: mr3.name,
+      created_by: manager.id,
+      created_at: new Date().toISOString(),
+    };
+
+    const doc4: Doctor = {
+      id: 'doc-04',
+      name: 'Dr. Sameer Kapoor',
+      qualification: 'MBBS',
+      specialization: 'General Physician',
+      class: 'C',
+      potential_score: 64,
+      phone: '9899911122',
+      clinic: 'Kapoor Health Clinic',
+      address: 'Main Market, Malviya Nagar, New Delhi',
+      latitude: 28.5300,
+      longitude: 77.2150,
+      area_id: areaId,
+      assigned_mr_id: mr3.id,
+      assigned_mr_name: mr3.name,
+      created_by: manager.id,
+      created_at: new Date().toISOString(),
+    };
+
+    const doc5: Doctor = {
+      id: 'doc-05',
+      name: 'Dr. Anil Verma',
+      qualification: 'MBBS, MD',
+      specialization: 'Internal Medicine',
+      class: 'B',
+      potential_score: 78,
+      phone: '9827110022',
+      clinic: 'Verma Polyclinic',
+      address: 'Hospital Road, Ambikapur',
+      latitude: 28.5210,
+      longitude: 77.2040,
+      area_id: areaId,
+      assigned_mr_id: mr2.id,
+      assigned_mr_name: mr2.name,
+      created_by: manager.id,
+      created_at: new Date().toISOString(),
+    };
+
+    this.doctors.push(doc1, doc2, doc3, doc4, doc5);
 
     // 5. Seed Tasks for today
     const nowD = new Date();
@@ -320,10 +378,61 @@ export class DatabaseService implements OnModuleInit {
       created_at: new Date().toISOString(),
     };
 
-    this.tasks.push(task1, task2);
+    const task3: Task = {
+      id: 'task-03',
+      title: 'Dr. Anita Desai Follow-up Call',
+      description: 'Detail DermaSoothe Cream and secure order.',
+      assigned_mr_id: mr3.id,
+      created_by: manager.id,
+      date: todayStr,
+      time: '14:30:00',
+      latitude: doc3.latitude,
+      longitude: doc3.longitude,
+      geofence_radius_m: 40,
+      priority: 'MEDIUM',
+      status: 'ASSIGNED',
+      created_at: new Date().toISOString(),
+    };
+
+    const task4: Task = {
+      id: 'task-04',
+      title: 'Dr. Sameer Kapoor Regular Visit',
+      description: 'Present Glucotrol-M clinical trials and check stockist supplies.',
+      assigned_mr_id: mr3.id,
+      created_by: manager.id,
+      date: todayStr,
+      time: '16:00:00',
+      latitude: doc4.latitude,
+      longitude: doc4.longitude,
+      geofence_radius_m: 50,
+      priority: 'LOW',
+      status: 'ASSIGNED',
+      created_at: new Date().toISOString(),
+    };
+
+    const task5: Task = {
+      id: 'task-05',
+      title: 'Dr. Anil Verma Polyclinic Detailing',
+      description: 'Present CardioFix-AM product line.',
+      assigned_mr_id: mr2.id,
+      created_by: manager.id,
+      date: todayStr,
+      time: '11:00:00',
+      latitude: doc5.latitude,
+      longitude: doc5.longitude,
+      geofence_radius_m: 30,
+      priority: 'HIGH',
+      status: 'ASSIGNED',
+      created_at: new Date().toISOString(),
+    };
+
+    this.tasks.push(task1, task2, task3, task4, task5);
     this.taskAssignments.push(
       { id: 'ta-01', task_id: task1.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
       { id: 'ta-02', task_id: task2.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
+      { id: 'ta-03', task_id: task3.id, mr_id: mr3.id, assigned_at: new Date().toISOString() },
+      { id: 'ta-04', task_id: task4.id, mr_id: mr3.id, assigned_at: new Date().toISOString() },
+      { id: 'ta-05', task_id: task5.id, mr_id: mr2.id, assigned_at: new Date().toISOString() },
     );
 
     // 6. Seed Initial Leave Request and Approval (Rahul Sharma)
@@ -481,12 +590,21 @@ export class DatabaseService implements OnModuleInit {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
+    const hqDelhi: Headquarter = {
+      id: 'hq-delhi',
+      name: 'Delhi NCR',
+      code: 'HQ-DEL',
+      state: 'Delhi',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
 
     this.headquarters.push(
       hqShahdol,
       hqAmbikapur,
       hqBilaspur,
       hqKotma,
+      hqDelhi,
     );
 
     // 11. Seed HQ Areas (Mapped strictly per HQ)
@@ -537,6 +655,13 @@ export class DatabaseService implements OnModuleInit {
       { id: 'area-bhr-02', hq_id: hqShahdol.id, name: 'Dhanpuri' },
       { id: 'area-bhr-03', hq_id: hqShahdol.id, name: 'Amlai' },
       { id: 'area-bhr-04', hq_id: hqShahdol.id, name: 'Bakaho' },
+
+      // Delhi District Sub-Areas
+      { id: 'area-del-01', hq_id: hqDelhi.id, name: 'Saket' },
+      { id: 'area-del-02', hq_id: hqDelhi.id, name: 'Hauz Khas' },
+      { id: 'area-del-03', hq_id: hqDelhi.id, name: 'Green Park' },
+      { id: 'area-del-04', hq_id: hqDelhi.id, name: 'South Extension' },
+      { id: 'area-del-05', hq_id: hqDelhi.id, name: 'Malviya Nagar' },
     ];
     for (const a of areas) {
       this.hqAreas.push({
@@ -626,7 +751,29 @@ export class DatabaseService implements OnModuleInit {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
+    const stocker8: Stocker = {
+      id: 'stk-del-01',
+      hq_id: hqDelhi.id,
+      name: 'MedPlus Saket Central Depot',
+      sub_area: 'Saket',
+      contact_person: 'Amitav Ghosh',
+      phone: '9811100221',
+      address: 'Community Centre, Saket, New Delhi',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    const stocker9: Stocker = {
+      id: 'stk-del-02',
+      hq_id: hqDelhi.id,
+      name: 'Apollo Pharmacy Hauz Khas Hub',
+      sub_area: 'Hauz Khas',
+      contact_person: 'Vikas Mehra',
+      phone: '9811144332',
+      address: 'Aurobindo Marg, Hauz Khas, New Delhi',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7, stocker8, stocker9);
 
     // 13. Seed Medicines Master (§11)
     const med1: Medicine = {
@@ -676,63 +823,23 @@ export class DatabaseService implements OnModuleInit {
     };
     this.medicines.push(med1, med2, med3, med4, med5);
 
-    // 14. Seed Stocker Inventory (§12 & §13)
-    this.stockerInventory.push(
-      {
-        id: 'inv-shd-01-m1',
-        hq_id: hqShahdol.id,
-        stocker_id: stocker1.id,
-        medicine_id: med1.id,
-        quantity: 50, // Available
-        low_stock_threshold: 15,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'inv-shd-01-m2',
-        hq_id: hqShahdol.id,
-        stocker_id: stocker1.id,
-        medicine_id: med2.id,
-        quantity: 10, // Low stock
-        low_stock_threshold: 15,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'inv-shd-01-m3',
-        hq_id: hqShahdol.id,
-        stocker_id: stocker1.id,
-        medicine_id: med3.id,
-        quantity: 0, // Out of stock (demonstrates shortage / negative stock per §17)
-        low_stock_threshold: 10,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'inv-shd-01-m4',
-        hq_id: hqShahdol.id,
-        stocker_id: stocker1.id,
-        medicine_id: med4.id,
-        quantity: 85,
-        low_stock_threshold: 20,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'inv-shd-02-m1',
-        hq_id: hqShahdol.id,
-        stocker_id: stocker2.id,
-        medicine_id: med1.id,
-        quantity: 30,
-        low_stock_threshold: 10,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'inv-bsp-01-m1',
-        hq_id: hqBilaspur.id,
-        stocker_id: stocker3.id,
-        medicine_id: med1.id,
-        quantity: 120,
-        low_stock_threshold: 25,
-        updated_at: new Date().toISOString(),
-      },
-    );
+    // 14. Seed Stocker Inventory (§12 & §13) - Seed every stocker with complete medicines inventory
+    for (const stk of this.stockers) {
+      let mIdx = 1;
+      for (const med of this.medicines) {
+        const qty = mIdx === 3 ? 15 : mIdx === 2 ? 30 : 50 + (mIdx * 10);
+        this.stockerInventory.push({
+          id: `inv-${stk.id}-${med.id}`,
+          hq_id: stk.hq_id,
+          stocker_id: stk.id,
+          medicine_id: med.id,
+          quantity: qty,
+          low_stock_threshold: 15,
+          updated_at: new Date().toISOString(),
+        });
+        mIdx++;
+      }
+    }
 
     // Initial Audit Logs for stock seed
     this.inventoryTransactions.push({

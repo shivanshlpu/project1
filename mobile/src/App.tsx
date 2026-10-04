@@ -66,27 +66,23 @@ interface LoggedInUser {
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<LoggedInUser | null>({
-    id: 'usr-mr-01',
-    name: 'Rahul Sharma',
-    email: 'mr@ahtri.com',
-    phone: '9876543212',
-    role: 'MR',
-    device_id: 'dev-hw-s22-9f8a2c',
-    device_model: 'Samsung Galaxy S22 (SM-S901B)',
-  });
+  const [currentUser, setCurrentUser] = useState<LoggedInUser | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   // Restore persistent login session on boot
   useEffect(() => {
     AsyncStorage.getItem(SESSION_KEY)
-      .then((saved) => {
+      .then(async (saved) => {
         if (saved) {
           try {
             const user = JSON.parse(saved);
             setCurrentUser(user);
+            if (user?.token) {
+              await ApiConfig.setToken(user.token);
+            }
+            await ApiConfig.setUser(user);
           } catch {
-            // Keep default
+            // Keep null
           }
         }
       })
@@ -324,6 +320,10 @@ export default function App() {
   const handleLoginSuccess = async (user: LoggedInUser) => {
     setCurrentUser(user);
     try {
+      if (user.token) {
+        await ApiConfig.setToken(user.token);
+      }
+      await ApiConfig.setUser(user);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(user));
     } catch {
       // Storage fallback
@@ -331,7 +331,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out from this device?', [
+    Alert.alert('Log Out', 'Are you sure you want to log out from this account?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Log Out',
@@ -339,6 +339,7 @@ export default function App() {
         onPress: async () => {
           try {
             await AsyncStorage.removeItem(SESSION_KEY);
+            await ApiConfig.clearSession();
           } catch {
             // Ignore
           }
@@ -358,6 +359,15 @@ export default function App() {
     isMobileScreen && { maxWidth: '100%' as any, borderRadius: 0, shadowOpacity: 0, elevation: 0 },
     isTablet && { maxWidth: 720, borderRadius: 16 },
   ];
+
+  // Show loader while restoring session
+  if (isLoadingSession) {
+    return (
+      <View style={[outerWrapperStyle, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#1A3C6E" />
+      </View>
+    );
+  }
 
   // If not logged in, render Login Screen
   if (!currentUser) {
@@ -399,9 +409,7 @@ export default function App() {
             </View>
 
             {/* Right Header Actions */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-
-
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {/* Install PWA Button in Header */}
               {!isAppInstalled && (installPrompt || isIOSWeb) && (
                 <TouchableOpacity style={styles.headerInstallBtn} onPress={handleInstallClick}>
@@ -409,20 +417,16 @@ export default function App() {
                 </TouchableOpacity>
               )}
 
+              {/* Server Status Dot Indicator (Clean dot, no text) */}
               <ServerStatusPill compact />
 
-              {/* Offline / Online Network Toggle */}
+              {/* Redesigned Crisp Logout Button */}
               <TouchableOpacity
-                style={[styles.networkToggle, isOffline ? styles.offlineToggle : styles.onlineToggle]}
-                onPress={() => setIsOffline(!isOffline)}
+                style={styles.logoutBtn}
+                onPress={handleLogout}
+                activeOpacity={0.75}
+                accessibilityLabel="Log out from account"
               >
-                <Text style={styles.networkToggleText}>
-                  {isOffline ? 'Offline' : 'Online'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Logout Button */}
-              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <Text style={styles.logoutBtnText}>Logout</Text>
               </TouchableOpacity>
             </View>
@@ -467,6 +471,7 @@ export default function App() {
             {/* Tasks Tab */}
             {currentTab === 'tasks' && (
               <TodayTasksScreen
+                key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
               />
@@ -475,6 +480,7 @@ export default function App() {
             {/* Completed Tasks History */}
             {currentTab === 'history' && (
               <TaskHistoryScreen
+                key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
               />
@@ -482,18 +488,21 @@ export default function App() {
 
             {/* Unified Doctors & Locations Tab with Interactive Map */}
             {currentTab === 'doctors' && (
-              <DoctorDirectoryScreen currentUser={currentUser} />
+              <DoctorDirectoryScreen key={currentUser.id} currentUser={currentUser} />
             )}
 
             {/* Doctor Detailing & Immediate Orders */}
-            {currentTab === 'visits' && <DoctorVisitScreen />}
+            {currentTab === 'visits' && <DoctorVisitScreen key={currentUser.id} />}
 
             {/* Attendance Punch In / Out & Leave Management */}
-            {currentTab === 'attendance' && <AttendanceScreen currentUser={currentUser} />}
+            {currentTab === 'attendance' && (
+              <AttendanceScreen key={currentUser.id} currentUser={currentUser} />
+            )}
 
             {/* Device & Profile Info / Enterprise Tools (§5-§7, §14, §30) */}
             {currentTab === 'profile' && moreSubScreen === 'monthly_tp' && (
               <MonthlyTpScreen
+                key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
                 onBack={() => setMoreSubScreen('menu')}
@@ -502,6 +511,7 @@ export default function App() {
 
             {currentTab === 'profile' && moreSubScreen === 'stocklist' && (
               <StocklistScreen
+                key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
                 onBack={() => setMoreSubScreen('menu')}
@@ -510,6 +520,7 @@ export default function App() {
 
             {currentTab === 'profile' && moreSubScreen === 'competition' && (
               <CompetitionScreen
+                key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
                 onBack={() => setMoreSubScreen('menu')}
@@ -749,12 +760,21 @@ const styles = StyleSheet.create({
   offlineToggle: { backgroundColor: '#DC2626' },
   networkToggleText: { color: '#FFFFFF', fontSize: 9.5, fontWeight: '700' },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    paddingHorizontal: 11,
+    paddingVertical: 5.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoutBtnText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
+  logoutBtnText: {
+    color: '#FECACA',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   screenContainer: { flex: 1, backgroundColor: '#F8FAFC' },
   profileContainer: { flex: 1, padding: 14 },
   profileCard: {

@@ -15,12 +15,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       authHeader === 'Bearer' ||
       !authHeader.startsWith('Bearer eyJ')
     ) {
-      if (xUserId === 'usr-mr-01' || (typeof xUserId === 'string' && xUserId.startsWith('usr-mr'))) {
+      if (xUserId) {
         req.user = {
           id: xUserId,
-          email: 'mr@ahtri.com',
+          email: `${xUserId}@ahtri.com`,
           role: 'MR',
-          name: 'Rahul Sharma',
+          name: xUserId,
         };
       } else {
         req.user = {
@@ -39,12 +39,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (err || !user) {
       const req = context.switchToHttp().getRequest();
       const xUserId = req.headers['x-user-id'];
-      if (xUserId === 'usr-mr-01' || (typeof xUserId === 'string' && xUserId.startsWith('usr-mr'))) {
+      if (xUserId) {
         req.user = {
           id: xUserId,
-          email: 'mr@ahtri.com',
+          email: `${xUserId}@ahtri.com`,
           role: 'MR',
-          name: 'Rahul Sharma',
+          name: xUserId,
         };
       } else {
         req.user = {

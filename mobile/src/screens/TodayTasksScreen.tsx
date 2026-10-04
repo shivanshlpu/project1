@@ -42,6 +42,16 @@ export interface MobileTaskItem {
   suspended_reason?: string;
 }
 
+const COMPANY_MEDICINES_CHIPS = [
+  { name: 'CardioFix-50 (Telmisartan 40mg)', short: 'CardioFix-50', price: 180 },
+  { name: 'CardioFix-AM (Telmisartan + Amlodipine)', short: 'CardioFix-AM', price: 220 },
+  { name: 'DermaSoothe Cream 30g', short: 'DermaSoothe', price: 210 },
+  { name: 'Glucotrol-M (Metformin 500mg)', short: 'Glucotrol-M', price: 145 },
+  { name: 'AhtriCef-O 200mg (Cefixime)', short: 'AhtriCef-O', price: 165 },
+  { name: 'PanSafe-DSR Capsules', short: 'PanSafe-DSR', price: 160 },
+  { name: 'Pedix Suspension', short: 'Pedix Susp.', price: 120 },
+];
+
 interface TodayTasksScreenProps {
   currentUserId?: string;
   currentUserName?: string;
@@ -1264,6 +1274,34 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             onChangeText={(v) => handleUpdateModalOrder(ord.id, 'product_name', v)}
                             placeholder="Enter medicine name"
                           />
+
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4, marginBottom: 2 }}>
+                            {COMPANY_MEDICINES_CHIPS.map((med, mIdx) => {
+                              const isSelected = ord.product_name === med.name;
+                              return (
+                                <TouchableOpacity
+                                  key={mIdx}
+                                  onPress={() => {
+                                    handleUpdateModalOrder(ord.id, 'product_name', med.name);
+                                    handleUpdateModalOrder(ord.id, 'unit_price', String(med.price));
+                                  }}
+                                  style={{
+                                    backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 3.5,
+                                    borderRadius: 12,
+                                    marginRight: 6,
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? '#1E40AF' : '#CBD5E1',
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 10, color: isSelected ? '#FFFFFF' : '#1E293B', fontWeight: isSelected ? '700' : '600' }}>
+                                    {med.short} (₹{med.price})
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
 
                           <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                             <View style={{ flex: 1 }}>

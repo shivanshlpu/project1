@@ -71,27 +71,14 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
     return (
       <>
         <TouchableOpacity
-          style={[
-            styles.compactPill,
-            status === 'connected'
-              ? styles.pillBorderGreen
-              : status === 'checking'
-              ? styles.pillBorderYellow
-              : styles.pillBorderRed,
-          ]}
+          style={styles.compactDotOnlyBtn}
           onPress={() => setIsModalOpen(true)}
           activeOpacity={0.7}
+          accessibilityLabel={`Server status: ${status}`}
         >
-          <View style={[styles.dot, { backgroundColor: dotColor }]} />
-          <Text style={styles.compactText} numberOfLines={1}>
-            {status === 'connected'
-              ? 'Server Online'
-              : status === 'checking'
-              ? failedCount > 0
-                ? 'Waking up...'
-                : 'Connecting...'
-              : 'Server Offline'}
-          </Text>
+          <View style={[styles.dotGlowRing, { borderColor: dotColor }]}>
+            <View style={[styles.dotOnly, { backgroundColor: dotColor }]} />
+          </View>
         </TouchableOpacity>
 
         {/* Diagnostic Modal */}
@@ -210,6 +197,25 @@ const styles = StyleSheet.create({
   pillBorderRed: {
     borderColor: '#FECACA',
     backgroundColor: '#FEF2F2',
+  },
+  compactDotOnlyBtn: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotGlowRing: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  dotOnly: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   dot: {
     width: 8,

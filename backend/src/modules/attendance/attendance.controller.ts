@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Query,
+  Headers,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -39,21 +40,34 @@ export class AttendanceController {
 
   @Post('check-in')
   @HttpCode(HttpStatus.OK)
-  async checkIn(@CurrentUser() user: any, @Body() dto: CheckInDto) {
-    const userId = user?.id || 'usr-mr-01';
+  async checkIn(
+    @CurrentUser() user: any,
+    @Headers('x-user-id') headerUserId: string | undefined,
+    @Body() dto: CheckInDto,
+  ) {
+    const userId = user?.id || headerUserId || (dto as any)?.userId || (dto as any)?.employeeId || 'usr-mr-01';
     return this.attendanceService.checkIn(userId, dto);
   }
 
   @Post('check-out')
   @HttpCode(HttpStatus.OK)
-  async checkOut(@CurrentUser() user: any, @Body() dto: CheckOutDto) {
-    const userId = user?.id || 'usr-mr-01';
+  async checkOut(
+    @CurrentUser() user: any,
+    @Headers('x-user-id') headerUserId: string | undefined,
+    @Body() dto: CheckOutDto,
+  ) {
+    const userId = user?.id || headerUserId || (dto as any)?.userId || (dto as any)?.employeeId || 'usr-mr-01';
     return this.attendanceService.checkOut(userId, dto);
   }
 
   @Get('my')
-  async getMyAttendance(@CurrentUser() user: any, @Query('month') month?: string) {
-    const userId = user?.id || 'usr-mr-01';
+  async getMyAttendance(
+    @CurrentUser() user: any,
+    @Query('userId') queryUserId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+    @Query('month') month?: string,
+  ) {
+    const userId = user?.id || queryUserId || headerUserId || 'usr-mr-01';
     return this.attendanceService.getMyAttendance(userId, month);
   }
 

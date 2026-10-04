@@ -51,38 +51,59 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const userId = currentUser?.id || 'usr-mr-01';
   const ATTENDANCE_KEY = `@ahtri_attendance_${userId}_${todayStr}`;
 
-  // Restore today's attendance from local storage and backend sync
+  // Restore today's attendance strictly for active user
   useEffect(() => {
-    // 1. Load locally cached attendance
+    // 1. Immediately reset state to avoid stale bleed from previous user
+    setCheckedIn(false);
+    setCheckedOut(false);
+    setCheckInTime(null);
+    setCheckOutTime(null);
+    setCheckInGps(null);
+    setCheckOutGps(null);
+    setLateEntryNotice(null);
+    setEarlyExitNotice(null);
+    setSelfiePhoto(null);
+    setAttendanceHistory([]);
+
+    // 2. Load locally cached attendance for THIS user
     AsyncStorage.getItem(ATTENDANCE_KEY)
       .then((raw) => {
         if (raw) {
-          const rec = JSON.parse(raw);
-          if (rec.checkedIn) {
-            setCheckedIn(true);
-            setCheckInTime(rec.checkInTime);
-            setCheckInGps(rec.checkInGps);
-          }
-          if (rec.checkedOut) {
-            setCheckedOut(true);
-            setCheckOutTime(rec.checkOutTime);
-            setCheckOutGps(rec.checkOutGps);
+          try {
+            const rec = JSON.parse(raw);
+            if (rec && rec.checkedIn) {
+              setCheckedIn(true);
+              setCheckInTime(rec.checkInTime);
+              setCheckInGps(rec.checkInGps);
+            }
+            if (rec && rec.checkedOut) {
+              setCheckedOut(true);
+              setCheckOutTime(rec.checkOutTime);
+              setCheckOutGps(rec.checkOutGps);
+            }
+          } catch {
+            setCheckedIn(false);
+            setCheckedOut(false);
           }
         }
       })
       .catch(() => {});
 
-    // 2. Fetch live status & history from backend
+    // 3. Fetch live status & history from backend strictly for THIS user ID
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
-        const headers = await ApiConfig.getAuthHeaders();
-        const res = await fetch(`${baseUrl}/attendance/my`, { headers });
+        const headers = await ApiConfig.getAuthHeaders(userId);
+        const res = await fetch(`${baseUrl}/attendance/my?userId=${encodeURIComponent(userId)}`, {
+          headers: { ...headers, 'x-user-id': userId },
+        });
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list)) {
-            setAttendanceHistory(list);
-            const todayRec = list.find((a: any) => a.date === todayStr);
+            // Strictly match user_id
+            const userRecords = list.filter((a: any) => !a.user_id || a.user_id === userId);
+            setAttendanceHistory(userRecords);
+            const todayRec = userRecords.find((a: any) => a.date === todayStr);
             if (todayRec) {
               const inTime = todayRec.check_in_at
                 ? new Date(todayRec.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -107,6 +128,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 if (todayRec.early_minutes && todayRec.early_minutes > 0) {
                   setEarlyExitNotice(`Early Punch Out — ${todayRec.early_minutes} minutes`);
                 }
+              } else {
+                setCheckedOut(false);
+                setCheckOutTime(null);
+                setEarlyExitNotice(null);
               }
 
               AsyncStorage.setItem(
@@ -119,6 +144,17 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                   checkOutTime: outTime,
                 }),
               );
+            } else {
+              // Not punched in today for this user!
+              setCheckedIn(false);
+              setCheckedOut(false);
+              setCheckInTime(null);
+              setCheckOutTime(null);
+              setCheckInGps(null);
+              setCheckOutGps(null);
+              setLateEntryNotice(null);
+              setEarlyExitNotice(null);
+              AsyncStorage.removeItem(ATTENDANCE_KEY).catch(() => {});
             }
           }
         }
@@ -184,11 +220,13 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       let isSyncedWithServer = false;
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
-        const headers = await ApiConfig.getAuthHeaders();
+        const headers = await ApiConfig.getAuthHeaders(userId);
         const res = await fetch(`${baseUrl}/attendance/check-in`, {
           method: 'POST',
-          headers,
+          headers: { ...headers, 'x-user-id': userId },
           body: JSON.stringify({
+            userId,
+            employeeId: userId,
             latitude: lat,
             longitude: lon,
             gps_accuracy_m: accuracy,
@@ -214,8 +252,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             try {
               const retryRes = await fetch(`${baseUrl}/attendance/check-in`, {
                 method: 'POST',
-                headers,
+                headers: { ...headers, 'x-user-id': userId },
                 body: JSON.stringify({
+                  userId,
+                  employeeId: userId,
                   latitude: lat,
                   longitude: lon,
                   gps_accuracy_m: accuracy,
@@ -283,11 +323,13 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       let earlyMsg = '';
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
-        const headers = await ApiConfig.getAuthHeaders();
+        const headers = await ApiConfig.getAuthHeaders(userId);
         const res = await fetch(`${baseUrl}/attendance/check-out`, {
           method: 'POST',
-          headers,
+          headers: { ...headers, 'x-user-id': userId },
           body: JSON.stringify({
+            userId,
+            employeeId: userId,
             latitude: lat,
             longitude: lon,
             gps_accuracy_m: accuracy,

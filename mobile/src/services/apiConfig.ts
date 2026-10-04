@@ -59,12 +59,36 @@ export const ApiConfig = {
     await AsyncStorage.removeItem(STORAGE_KEYS.SERVER_URL);
   },
 
-  async getAuthHeaders(): Promise<Record<string, string>> {
+  async setUser(user: any): Promise<void> {
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  },
+
+  async getUser(): Promise<any | null> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async getAuthHeaders(overrideUserId?: string): Promise<Record<string, string>> {
     const token = await this.getToken();
-    return {
+    let uid = overrideUserId;
+    if (!uid) {
+      const u = await this.getUser();
+      if (u?.id) uid = u.id;
+    }
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (uid) {
+      headers['x-user-id'] = uid;
+    }
+    return headers;
   },
 
   /**

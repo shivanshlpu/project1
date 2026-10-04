@@ -35,12 +35,20 @@ interface InventoryProductItem {
   unit: string;
   price: number;
   quantity: number;
-  status: 'Available' | 'Low Stock' | 'Out of Stock';
-  stocker_name: string;
-  hq_name: string;
+  status: 'Available' | 'Low Stock' | 'Out of Stock' | 'In Stock' | 'Inactive';
+  stocker_name?: string;
+  hq_name?: string;
+  low_stock_threshold?: number;
 }
 
 const DEFAULT_AREAS_BY_HQ: Record<string, string[]> = {
+  'hq-delhi': [
+    'Saket',
+    'Hauz Khas',
+    'Green Park',
+    'South Extension',
+    'Malviya Nagar',
+  ],
   'hq-shahdol': [
     'Shahdol Central',
     'Burhar',
@@ -86,6 +94,64 @@ const DEFAULT_AREAS_BY_HQ: Record<string, string[]> = {
   ],
 };
 
+const MASTER_COMPANY_MEDICINES: InventoryProductItem[] = [
+  {
+    id: 'med-01',
+    medicine_id: 'med-01',
+    medicine_name: 'CardioFix-50 (Telmisartan 40mg)',
+    medicine_code: 'CF-50',
+    unit: 'Box of 10x10',
+    price: 180,
+    quantity: 60,
+    low_stock_threshold: 15,
+    status: 'In Stock',
+  },
+  {
+    id: 'med-02',
+    medicine_id: 'med-02',
+    medicine_name: 'CardioFix-AM (Telmisartan + Amlodipine)',
+    medicine_code: 'CF-AM',
+    unit: 'Box of 10x10',
+    price: 220,
+    quantity: 45,
+    low_stock_threshold: 15,
+    status: 'In Stock',
+  },
+  {
+    id: 'med-03',
+    medicine_id: 'med-03',
+    medicine_name: 'DermaSoothe Cream 30g',
+    medicine_code: 'DS-30',
+    unit: 'Tube',
+    price: 210,
+    quantity: 40,
+    low_stock_threshold: 10,
+    status: 'In Stock',
+  },
+  {
+    id: 'med-04',
+    medicine_id: 'med-04',
+    medicine_name: 'Glucotrol-M (Metformin 500mg)',
+    medicine_code: 'GM-500',
+    unit: 'Box of 10x10',
+    price: 145,
+    quantity: 85,
+    low_stock_threshold: 20,
+    status: 'In Stock',
+  },
+  {
+    id: 'med-05',
+    medicine_id: 'med-05',
+    medicine_name: 'AhtriCef-O 200mg (Cefixime)',
+    medicine_code: 'ACO-200',
+    unit: 'Strip of 10',
+    price: 165,
+    quantity: 55,
+    low_stock_threshold: 15,
+    status: 'In Stock',
+  },
+];
+
 const NON_HQ_NAMES = new Set([
   'jaisinghnagar',
   'burhar',
@@ -106,20 +172,51 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
   onBack,
 }) => {
   const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>([
+    { id: 'hq-delhi', name: 'Delhi NCR' },
     { id: 'hq-shahdol', name: 'Shahdol' },
     { id: 'hq-ambikapur', name: 'Ambikapur' },
     { id: 'hq-bilaspur', name: 'Bilaspur' },
     { id: 'hq-kotma', name: 'Kotma' },
   ]);
 
-  const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
+  const [selectedHqId, setSelectedHqId] = useState<string>('hq-delhi');
   const [selectedSubArea, setSelectedSubArea] = useState<string>('ALL');
-  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-shahdol'] || []);
+  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-delhi'] || []);
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryProductItem[]>([]);
+  const [companyCatalog, setCompanyCatalog] = useState<InventoryProductItem[]>(MASTER_COMPANY_MEDICINES);
+  const [viewMode, setViewMode] = useState<'stockist' | 'catalog'>('stockist');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Fetch Master Company Medicines Catalog
+  useEffect(() => {
+    (async () => {
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders(currentUserId);
+        const res = await fetch(`${baseUrl}/inventory/medicines`, { headers });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            const mapped: InventoryProductItem[] = list.map((m: any) => ({
+              id: m.id,
+              medicine_id: m.id,
+              medicine_name: m.name,
+              medicine_code: m.code || m.product_code || 'MED',
+              unit: m.unit || 'Pack',
+              price: m.base_price || 150,
+              quantity: 50,
+              low_stock_threshold: 10,
+              status: m.status === 'ACTIVE' ? 'In Stock' : 'Inactive',
+            }));
+            setCompanyCatalog(mapped);
+          }
+        }
+      } catch {}
+    })();
+  }, [currentUserId]);
 
   // 1. Fetch HQs (Excluding sub-areas like Jaisinghnagar or Burhar)
   useEffect(() => {
@@ -225,7 +322,15 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     })();
   }, [selectedStockerId]);
 
-  const filteredInventory = inventory.filter((item) => {
+  // If in catalog mode, or if stockist inventory is empty, show master company medicines
+  const sourceInventory =
+    viewMode === 'catalog'
+      ? companyCatalog
+      : inventory.length > 0
+      ? inventory
+      : companyCatalog;
+
+  const filteredInventory = sourceInventory.filter((item) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -245,128 +350,157 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
             <Text style={{ color: '#93C5FD', fontWeight: '700', fontSize: 13 }}>← Back to More Menu</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.headerTitle}>Point-of-Care Stocklist</Text>
+        <Text style={styles.headerTitle}>Point-of-Care Medicines & Stock</Text>
         <Text style={styles.headerSub}>
-          {currentUserName} • Field Inventory Lookup
+          {currentUserName} • Enterprise Catalog & Inventory
         </Text>
-      </View>
 
-      {/* 1. HQ Selector (§10 & §14) */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>1. Select Headquarters (HQ):</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-          {hqs.map((hq) => {
-            const isSelected = selectedHqId === hq.id;
-            return (
-              <TouchableOpacity
-                key={hq.id}
-                style={[styles.chip, isSelected && styles.chipActive]}
-                onPress={() => {
-                  setSelectedHqId(hq.id);
-                  setSelectedSubArea('ALL');
-                }}
-              >
-                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                  {hq.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* 2. Sub-Area / Tehsil / Market Filter */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>2. Select Sub-Area / Market / Tehsil:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        {/* View Mode Switcher */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
           <TouchableOpacity
-            style={[styles.chip, selectedSubArea === 'ALL' && styles.chipActiveTertiary]}
-            onPress={() => setSelectedSubArea('ALL')}
+            style={[styles.modeTab, viewMode === 'stockist' && styles.modeTabActive]}
+            onPress={() => setViewMode('stockist')}
           >
-            <Text style={[styles.chipText, selectedSubArea === 'ALL' && styles.chipTextActive]}>
-              All Areas ({stockers.length})
+            <Text style={[styles.modeTabText, viewMode === 'stockist' && styles.modeTabTextActive]}>
+              📦 By Stockist
             </Text>
           </TouchableOpacity>
-          {availableAreas.map((area) => {
-            const isSelected = selectedSubArea.toLowerCase() === area.toLowerCase();
-            const count = stockers.filter((s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()).length;
-            return (
-              <TouchableOpacity
-                key={area}
-                style={[styles.chip, isSelected && styles.chipActiveTertiary]}
-                onPress={() => setSelectedSubArea(area)}
-              >
-                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                  📍 {area} {count > 0 ? `(${count})` : ''}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.modeTab, viewMode === 'catalog' && styles.modeTabActive]}
+            onPress={() => setViewMode('catalog')}
+          >
+            <Text style={[styles.modeTabText, viewMode === 'catalog' && styles.modeTabTextActive]}>
+              💊 All Medicines ({companyCatalog.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* 3. Stocker Selector under HQ & Sub-Area (§14) */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>
-          3. Select Stocker / Distributor Depot:
-          {selectedSubArea !== 'ALL' ? ` (${selectedSubArea})` : ''}
-        </Text>
-        {filteredStockers.length === 0 ? (
-          <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
-            No stockers registered in {selectedSubArea === 'ALL' ? 'this HQ' : selectedSubArea} yet.
-          </Text>
-        ) : (
+      {/* 1. HQ Selector (§10 & §14) - Optional if in catalog mode */}
+      {viewMode === 'stockist' && (
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>1. Select Headquarters (HQ):</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {filteredStockers.map((stk) => {
-              const isSelected = selectedStockerId === stk.id;
+            {hqs.map((hq) => {
+              const isSelected = selectedHqId === hq.id;
               return (
                 <TouchableOpacity
-                  key={stk.id}
-                  style={[styles.chip, isSelected && styles.chipActiveSecondary]}
-                  onPress={() => setSelectedStockerId(stk.id)}
+                  key={hq.id}
+                  style={[styles.chip, isSelected && styles.chipActive]}
+                  onPress={() => {
+                    setSelectedHqId(hq.id);
+                    setSelectedSubArea('ALL');
+                  }}
                 >
                   <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                    {stk.name}
+                    {hq.name}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
-        )}
+        </View>
+      )}
 
-        {selectedStocker && (
-          <View style={styles.stockerInfoBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
-                📦 {selectedStocker.name}
+      {/* 2. Sub-Area / Tehsil / Market Filter */}
+      {viewMode === 'stockist' && (
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>2. Select Sub-Area / Market / Tehsil:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+            <TouchableOpacity
+              style={[styles.chip, selectedSubArea === 'ALL' && styles.chipActiveTertiary]}
+              onPress={() => setSelectedSubArea('ALL')}
+            >
+              <Text style={[styles.chipText, selectedSubArea === 'ALL' && styles.chipTextActive]}>
+                All Areas ({stockers.length})
               </Text>
-              {selectedStocker.sub_area ? (
-                <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
-                    📍 {selectedStocker.sub_area}
+            </TouchableOpacity>
+            {availableAreas.map((area) => {
+              const isSelected = selectedSubArea.toLowerCase() === area.toLowerCase();
+              const count = stockers.filter((s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()).length;
+              return (
+                <TouchableOpacity
+                  key={area}
+                  style={[styles.chip, isSelected && styles.chipActiveTertiary]}
+                  onPress={() => setSelectedSubArea(area)}
+                >
+                  <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                    📍 {area} {count > 0 ? `(${count})` : ''}
                   </Text>
-                </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 3. Stocker Selector under HQ & Sub-Area (§14) */}
+      {viewMode === 'stockist' && (
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>
+            3. Select Stocker / Distributor Depot:
+            {selectedSubArea !== 'ALL' ? ` (${selectedSubArea})` : ''}
+          </Text>
+          {filteredStockers.length === 0 ? (
+            <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
+              No stockers registered in {selectedSubArea === 'ALL' ? 'this HQ' : selectedSubArea} yet. Showing company catalog below.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+              {filteredStockers.map((stk) => {
+                const isSelected = selectedStockerId === stk.id;
+                return (
+                  <TouchableOpacity
+                    key={stk.id}
+                    style={[styles.chip, isSelected && styles.chipActiveSecondary]}
+                    onPress={() => setSelectedStockerId(stk.id)}
+                  >
+                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                      {stk.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {selectedStocker && (
+            <View style={styles.stockerInfoBox}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
+                  📦 {selectedStocker.name}
+                </Text>
+                {selectedStocker.sub_area ? (
+                  <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
+                      📍 {selectedStocker.sub_area}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {selectedStocker.contact_person ? (
+                <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
+                  Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
+                </Text>
+              ) : null}
+              {selectedStocker.address ? (
+                <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                  {selectedStocker.address}
+                </Text>
               ) : null}
             </View>
-            {selectedStocker.contact_person ? (
-              <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
-                Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
-              </Text>
-            ) : null}
-            {selectedStocker.address ? (
-              <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
-                {selectedStocker.address}
-              </Text>
-            ) : null}
-          </View>
-        )}
-      </View>
+          )}
+        </View>
+      )}
 
       {/* 4. Medicines Inventory Table / Cards (§12, §14, §17) */}
       <View style={styles.card}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <Text style={styles.cardLabel}>
-            4. Available Medicines ({filteredInventory.length})
+            {viewMode === 'catalog'
+              ? `💊 All Company Medicines Catalog (${filteredInventory.length})`
+              : `📦 Available Stockist Medicines (${filteredInventory.length})`}
           </Text>
         </View>
 
@@ -466,6 +600,27 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#1A3C6E', padding: 16 },
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
   headerSub: { fontSize: 11, color: '#CBD5E1', marginTop: 2 },
+  modeTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  modeTabActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  modeTabText: {
+    color: '#E2E8F0',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  modeTabTextActive: {
+    color: '#1A3C6E',
+    fontWeight: '800',
+  },
   card: {
     backgroundColor: '#FFFFFF',
     margin: 12,

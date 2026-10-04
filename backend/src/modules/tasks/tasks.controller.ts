@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Query,
+  Headers,
   UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
@@ -33,8 +34,13 @@ export class TasksController {
   }
 
   @Get('my')
-  async getMyTasks(@CurrentUser() user: any, @Query('date') date?: string) {
-    const userId = user?.id || 'usr-mr-01';
+  async getMyTasks(
+    @CurrentUser() user: any,
+    @Query('userId') queryUserId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+    @Query('date') date?: string,
+  ) {
+    const userId = user?.id || queryUserId || headerUserId || 'usr-mr-01';
     return this.tasksService.getMyTasks(userId, date);
   }
 
