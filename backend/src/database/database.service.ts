@@ -234,6 +234,21 @@ export class DatabaseService implements OnModuleInit {
         console.warn('[DatabaseService] Supabase onModuleInit notice:', err?.message);
       }
     }
+
+    // Employee Zone Data Correction (§1.9)
+    // Normalize any existing employee records storing 'Delhi Zone' or 'zone-north-1' to 'HQ Zone'
+    for (const u of this.users) {
+      if (
+        u.zone_id === 'zone-north-1' ||
+        u.zone_id === 'zone-delhi' ||
+        (u as any).zone === 'Delhi Zone' ||
+        (u as any).zone_name === 'Delhi Zone'
+      ) {
+        u.zone_id = 'zone-hq-1';
+        (u as any).zone = 'HQ Zone';
+        (u as any).zone_name = 'HQ Zone';
+      }
+    }
   }
 
   public async syncTaskToSupabase(task: any) {
@@ -334,8 +349,8 @@ export class DatabaseService implements OnModuleInit {
     ];
 
     // 2. Hierarchy: Zone -> Region -> Area
-    const zoneId = 'zone-north-1';
-    this.zones.push({ id: zoneId, name: 'North Zone' });
+    const zoneId = 'zone-hq-1';
+    this.zones.push({ id: zoneId, name: 'HQ Zone' });
 
     const regionId = 'reg-delhi-1';
     this.regions.push({ id: regionId, zone_id: zoneId, name: 'Delhi NCR' });
@@ -627,8 +642,33 @@ export class DatabaseService implements OnModuleInit {
       created_at: new Date().toISOString(),
     };
 
-    this.tasks.push(task1, task2, task3, task4, task5);
+    const task0: Task = {
+      id: 'task-hist-01',
+      title: 'Dr. Rajesh Sharma Cardiology Call',
+      description: 'CardioFix-50 Detailing and Scheme Presentation',
+      assigned_mr_id: mr.id,
+      created_by: manager.id,
+      date: todayStr,
+      time: '09:30:00',
+      location_name: 'Apex Heart Centre (Saket)',
+      latitude: doc1.latitude,
+      longitude: doc1.longitude,
+      geofence_radius_m: 50,
+      priority: 'HIGH',
+      status: 'COMPLETED',
+      started_at: `${todayStr}T09:30:00.000Z`,
+      completed_at: `${todayStr}T09:58:15.000Z`,
+      duration_seconds: 1695,
+      outcome: 'Presented CardioFix-50 clinical data. Doctor agreed to prescribe for 25 patients this month.',
+      orders: [
+        { product_name: 'CardioFix-50 (Telmisartan 40mg)', quantity: 25, unit_price: 180, total_amount: 4500, distributor: 'MedPlus Saket' }
+      ],
+      created_at: new Date(Date.now() - 3600000).toISOString(),
+    };
+
+    this.tasks.push(task0, task1, task2, task3, task4, task5);
     this.taskAssignments.push(
+      { id: 'ta-00', task_id: task0.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
       { id: 'ta-01', task_id: task1.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
       { id: 'ta-02', task_id: task2.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
       { id: 'ta-03', task_id: task3.id, mr_id: mr3.id, assigned_at: new Date().toISOString() },

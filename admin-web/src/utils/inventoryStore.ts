@@ -122,7 +122,7 @@ export function syncInStockFromInventoryItems(
   }
 }
 
-export async function syncInStockProductsWithBackend(): Promise<InStockProduct[]> {
+export async function syncInStockProductsWithBackend(hqId?: string): Promise<InStockProduct[]> {
   try {
     const apiUrl = getApiUrl();
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -131,8 +131,9 @@ export async function syncInStockProductsWithBackend(): Promise<InStockProduct[]
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    // 1. Fetch medicines
-    const medRes = await fetch(`${apiUrl}/inventory/medicines`, { headers });
+    // 1. Fetch medicines (with optional hqId to prevent cross-HQ visibility per §1.4)
+    const medUrl = hqId ? `${apiUrl}/inventory/medicines?hqId=${encodeURIComponent(hqId)}` : `${apiUrl}/inventory/medicines`;
+    const medRes = await fetch(medUrl, { headers });
     let medicines: any[] = [];
     if (medRes.ok) {
       medicines = await medRes.json();

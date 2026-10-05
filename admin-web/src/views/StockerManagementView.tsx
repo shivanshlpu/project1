@@ -18,6 +18,7 @@ import {
   TrendingDown,
   X,
   Calendar,
+  Printer,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
@@ -237,6 +238,14 @@ export const StockerManagementView: React.FC = () => {
 
   const initialHqs = getMergedHqs();
   const defaultSelectedHq = initialHqs.find((h) => h.isHeadquarters) || initialHqs[0];
+
+  // PDF Generation State (§1.7)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfHqId, setPdfHqId] = useState('ALL');
+  const [pdfStockerId, setPdfStockerId] = useState('ALL');
+  const [pdfCategory, setPdfCategory] = useState('ALL');
+  const [pdfStartDate, setPdfStartDate] = useState('2026-09-01');
+  const [pdfEndDate, setPdfEndDate] = useState('2026-09-30');
 
   const [hqs, setHqs] = useState<Headquarter[]>(initialHqs);
   const [selectedHqId, setSelectedHqId] = useState<string>(defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol');
@@ -1057,7 +1066,17 @@ export const StockerManagementView: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            className="btn-enterprise"
+            onClick={() => setIsPdfModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+            title="Generate and print Stocker Inventory PDF report"
+          >
+            <Printer size={14} />
+            <span>Print / Inventory PDF</span>
+          </button>
+
           <button
             className="btn-enterprise secondary"
             onClick={() => {
@@ -3684,6 +3703,254 @@ export const StockerManagementView: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {/* MODAL: Stocker Inventory PDF Generation Dialog (§1.7) */}
+      {isPdfModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 500,
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Printer size={20} color="#1A3C6E" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                  Generate Inventory PDF Slip
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: 12.5, color: '#64748B' }}>
+              Filter stock valuation and ledger records by Headquarters, stocker partner, category division, and date range (in DD-MM-YYYY format).
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  Filter by HQ
+                </label>
+                <select
+                  value={pdfHqId}
+                  onChange={(e) => setPdfHqId(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+                >
+                  <option value="ALL">All Headquarters</option>
+                  {hqs.map((h) => (
+                    <option key={h.id} value={h.name}>
+                      {h.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  Filter by Stocker
+                </label>
+                <select
+                  value={pdfStockerId}
+                  onChange={(e) => setPdfStockerId(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+                >
+                  <option value="ALL">All Stocker Partners</option>
+                  {stockers.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                Product Division / Category
+              </label>
+              <select
+                value={pdfCategory}
+                onChange={(e) => setPdfCategory(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+              >
+                <option value="ALL">All Divisions / Categories</option>
+                <option value="CARDIO">Cardiology (CardioFix)</option>
+                <option value="RESP">Respiratory / Antibiotics</option>
+                <option value="DERMA">Dermatology</option>
+                <option value="PAED">Paediatrics</option>
+                <option value="GENERAL">General Care</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  From Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfStartDate}
+                  onChange={(e) => setPdfStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  To Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfEndDate}
+                  onChange={(e) => setPdfEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsPdfModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={() => {
+                  const list = inventory.filter((p) => {
+                    const matchHq = pdfHqId === 'ALL' || (p.hq_name && p.hq_name.toLowerCase().includes(pdfHqId.toLowerCase())) || p.hq_name === pdfHqId;
+                    const matchStocker = pdfStockerId === 'ALL' || (p.stocker_name && p.stocker_name.toLowerCase().includes(pdfStockerId.toLowerCase())) || p.stocker_name === pdfStockerId;
+                    const matchCategory = pdfCategory === 'ALL' || (p.medicine_name && p.medicine_name.toUpperCase().includes(pdfCategory.toUpperCase()));
+                    return matchHq && matchStocker && matchCategory;
+                  });
+
+                  const printWin = window.open('', '_blank');
+                  if (!printWin) {
+                    alert('Pop-up blocked. Please allow pop-ups for this site to generate the inventory slip.');
+                    return;
+                  }
+
+                  const startFmt = formatDateDDMMYYYY(pdfStartDate || '2026-09-01');
+                  const endFmt = formatDateDDMMYYYY(pdfEndDate || '2026-09-30');
+                  const generatedOn = formatDateDDMMYYYY(new Date());
+
+                  const totalValuation = list.reduce((acc, curr) => acc + (curr.price || 0) * (curr.quantity || 0), 0);
+                  const totalUnits = list.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+
+                  const rowsHtml = list.map((p, idx) => `
+                    <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+                      <td style="padding: 8px 10px; font-weight: 700; color: #1A3C6E;">${p.medicine_name}</td>
+                      <td style="padding: 8px 10px; font-size: 11px; color: #64748B;">${p.medicine_code || 'AHTRI-MED'}</td>
+                      <td style="padding: 8px 10px; font-weight: 600;">${p.stocker_name || 'Central Depot'}</td>
+                      <td style="padding: 8px 10px;">${p.hq_name || 'HQ Zone'}</td>
+                      <td style="padding: 8px 10px; text-align: right; font-weight: 700; font-size: 12.5px;">${p.quantity.toLocaleString()} ${p.unit || 'units'}</td>
+                      <td style="padding: 8px 10px; text-align: right;">₹${p.price ? p.price.toFixed(2) : '150.00'}</td>
+                      <td style="padding: 8px 10px; text-align: right; font-weight: 700;">₹${((p.price || 150) * p.quantity).toLocaleString()}</td>
+                      <td style="padding: 8px 10px; text-align: center;"><span style="color: ${p.status === 'Available' ? '#166534' : '#DC2626'}; font-weight: 700;">${p.status}</span></td>
+                    </tr>
+                  `).join('');
+
+                  printWin.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <title>HQ Stocker Inventory Audit Slip - ${startFmt} to ${endFmt}</title>
+                      <style>
+                        @page { size: A4 landscape; margin: 12mm; }
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; padding: 12px; font-size: 12px; }
+                        .header { border-bottom: 2px solid #1A3C6E; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+                        .title { font-size: 18px; font-weight: 800; color: #1A3C6E; }
+                        .subtitle { font-size: 12px; color: #64748B; margin-top: 3px; }
+                        .meta-box { background: #F1F5F9; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 11.5px; }
+                        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11.5px; }
+                        th { background: #1A3C6E; color: #FFFFFF; padding: 8px 10px; font-weight: 700; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="header">
+                        <div>
+                          <div class="title">AHTRI BIOTECH — FIELD FORCE AUTOMATION</div>
+                          <div class="subtitle">HQ Stocker Product Valuation &amp; Inventory Ledger Slip</div>
+                        </div>
+                        <div style="text-align: right; font-size: 11px; color: #64748B;">
+                          <div>Audit Period: <strong>${startFmt}</strong> to <strong>${endFmt}</strong></div>
+                          <div>Generated on: ${generatedOn} (IST)</div>
+                        </div>
+                      </div>
+
+                      <div class="meta-box">
+                        <div><strong>Total Distinct SKUs:</strong> ${list.length}</div>
+                        <div><strong>Total Stock Units:</strong> ${totalUnits.toLocaleString()}</div>
+                        <div><strong>Total Inventory Value:</strong> ₹${totalValuation.toLocaleString()}</div>
+                        <div><strong>HQ Scope:</strong> ${pdfHqId === 'ALL' ? 'All HQs' : pdfHqId}</div>
+                        <div><strong>Category Scope:</strong> ${pdfCategory === 'ALL' ? 'All Divisions' : pdfCategory}</div>
+                      </div>
+
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Medicine / Product Name</th>
+                            <th>Product Code</th>
+                            <th>Stocker Distributor</th>
+                            <th>Headquarters (HQ)</th>
+                            <th style="text-align: right;">Available Qty</th>
+                            <th style="text-align: right;">Unit Rate</th>
+                            <th style="text-align: right;">Total Valuation</th>
+                            <th style="text-align: center;">Stock Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${rowsHtml || '<tr><td colspan="8" style="text-align:center; padding: 24px; color: #64748B;">No inventory items matched the selected filters.</td></tr>'}
+                        </tbody>
+                      </table>
+
+                      <div style="margin-top: 24px; display: flex; justify-content: space-between; border-top: 1px solid #CBD5E1; padding-top: 12px; font-size: 10px; color: #64748B;">
+                        <div>AHTRI BIOTECH PVT LTD • Stocker Distribution Depot Certification</div>
+                        <div>Depot Manager &amp; Area Business Manager Signature</div>
+                      </div>
+
+                      <script>
+                        window.onload = function() { window.print(); }
+                      </script>
+                    </body>
+                    </html>
+                  `);
+                  printWin.document.close();
+                  setIsPdfModalOpen(false);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Printer size={15} />
+                <span>Generate &amp; Print Slip</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

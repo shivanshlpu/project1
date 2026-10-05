@@ -527,7 +527,7 @@ export const HqTerritoryManager: React.FC = () => {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={fetchBackendData}
@@ -587,8 +587,8 @@ export const HqTerritoryManager: React.FC = () => {
         )}
       </div>
 
-      {/* Main 2-Column Hierarchy View */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: '20px', alignItems: 'start' }}>
+      {/* Main Responsive Hierarchy View */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px', alignItems: 'start' }}>
         {/* Left Column: Headquarters List */}
         <div className="enterprise-panel" style={{ padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -842,14 +842,15 @@ export const HqTerritoryManager: React.FC = () => {
           )}
 
           {/* Quick Add Area Input Bar */}
-          <form onSubmit={handleAddSingleArea} style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
+          <form onSubmit={handleAddSingleArea} style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
             <input
               type="text"
               value={newAreaName}
               onChange={(e) => setNewAreaName(e.target.value)}
               placeholder={`Enter new village / sub-area name for ${activeHq.name} (e.g. Gohparu)...`}
               style={{
-                flex: 1,
+                flex: '1 1 200px',
+                minWidth: '180px',
                 padding: '10px 14px',
                 borderRadius: '6px',
                 border: '1px solid #CBD5E1',
@@ -863,11 +864,13 @@ export const HqTerritoryManager: React.FC = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '6px',
                 padding: '10px 20px',
                 fontSize: '13px',
                 fontWeight: '700',
                 whiteSpace: 'nowrap',
+                flex: '0 0 auto',
               }}
             >
               <Plus size={16} />
@@ -945,8 +948,8 @@ export const HqTerritoryManager: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
+            <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ minWidth: '520px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569' }}>
                     <th style={{ padding: '10px 14px', fontWeight: '700', width: '38%' }}>Sub-Area / Village Name</th>

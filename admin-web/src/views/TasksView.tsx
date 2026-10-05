@@ -1042,6 +1042,33 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
+  const [isLocatingMe, setIsLocatingMe] = useState(false);
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+    setIsLocatingMe(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocatingMe(false);
+        const { latitude, longitude } = pos.coords;
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView([latitude, longitude], 17);
+        }
+        updateLocationFromMap(latitude, longitude, 'Current GPS Position');
+        showToast('Map centered to your current GPS position.', 'success');
+      },
+      (err) => {
+        setIsLocatingMe(false);
+        console.warn('Geolocation error:', err);
+        showToast('Unable to get current location: ' + (err.message || 'Permission denied'), 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   // Preset or custom selection
   const handleSelectPreset = (presetId: string) => {
     if (presetId === 'custom') {
@@ -1249,6 +1276,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   };
 
   const filteredTasks = tasks.filter((t) => {
+    // Suspended tasks are strictly routed to Approval Hub per requirements
+    if (t.status === 'SUSPENDED') return false;
     const matchesMr = filterMr === 'ALL' || t.assigned_mr_name === filterMr;
     const matchesStatus = filterStatus === 'ALL' || t.status === filterStatus;
     return matchesMr && matchesStatus;
@@ -1351,64 +1380,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Overdue Suspended Tasks Owner Banner */}
-      {tasks.some((t) => t.status === 'SUSPENDED') && (
-        <div
-          style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #F87171',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            boxShadow: '0 2px 6px rgba(220, 38, 38, 0.08)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <AlertTriangle size={18} color="#DC2626" />
-            </div>
-            <div>
-              <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#991B1B' }}>
-                {tasks.filter((t) => t.status === 'SUSPENDED').length} Overdue Task(s) Suspended (&gt;24h Exceeded)
-              </div>
-              <div style={{ fontSize: '11.5px', color: '#B91C1C', marginTop: '2px' }}>
-                1 day has passed without the assigned MR conducting the visit. These tasks are locked out on MR mobile devices. Only you (Owner Shivansh Tiwari) can unsuspend them to reset execution.
-              </div>
-            </div>
-          </div>
-          <button
-            id="review-suspended-btn"
-            type="button"
-            onClick={() => {
-              setIsSuspendedModalOpen(true);
-              setFilterStatus('SUSPENDED');
-              setDashboardView('cards');
-            }}
-            style={{
-              padding: '8px 16px',
-              background: '#DC2626',
-              color: '#FFFFFF',
-              borderRadius: '6px',
-              border: 'none',
-              fontSize: '12px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap' as const,
-              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <ShieldCheck size={15} />
-            <span>Review Suspended ({tasks.filter((t) => t.status === 'SUSPENDED').length})</span>
-          </button>
-        </div>
-      )}
 
       {/* Zone by Zone Map Section */}
       {dashboardView === 'zone_map' && (
@@ -2198,7 +2169,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
             <option value="ASSIGNED">Assigned</option>
             <option value="IN_PROGRESS">In Progress</option>
             <option value="COMPLETED">Completed</option>
-            <option value="SUSPENDED">Suspended (&gt;24h Overdue)</option>
           </select>
         </div>
       </div>
@@ -2275,56 +2245,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 <span>{task.location_name || `${task.latitude.toFixed(4)}, ${task.longitude.toFixed(4)}`} ({task.geofence_radius_m}m geofence)</span>
               </div>
             </div>
-
-            {/* SUSPENDED WARNING & OWNER UNSUSPEND ACTION */}
-            {task.status === 'SUSPENDED' && (
-              <div
-                style={{
-                  background: '#FEF2F2',
-                  border: '1.5px solid #FCA5A5',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991B1B', fontWeight: '800', fontSize: '12px' }}>
-                  <AlertTriangle size={14} color="#DC2626" />
-                  <span>TASK SUSPENDED (1 Day Passed Without Visit)</span>
-                </div>
-                <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '3px', lineHeight: '15px' }}>
-                  The MR did not visit on scheduled date ({formatDateDDMMYYYY(task.date)}). This task is locked out on their phone.
-                </div>
-                {task.suspended_at && (
-                  <div style={{ fontSize: '10px', color: '#991B1B', marginTop: '2px', opacity: 0.85 }}>
-                    Suspended on: {formatDateTimeDDMMYYYY(task.suspended_at)}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleUnsuspendTask(task.id, task.title, task.assigned_mr_name)}
-                  disabled={unsuspendingId === task.id}
-                  style={{
-                    marginTop: '8px',
-                    width: '100%',
-                    padding: '8px 12px',
-                    background: '#DC2626',
-                    color: '#FFFFFF',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: '700',
-                    fontSize: '11.5px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.25)',
-                  }}
-                >
-                  <ShieldCheck size={14} />
-                  <span>{unsuspendingId === task.id ? 'Unsuspending...' : 'Unsuspend Task (Owner Action)'}</span>
-                </button>
-              </div>
-            )}
 
             {/* SECRET ON-SITE DURATION */}
             {task.status === 'COMPLETED' && task.duration_seconds !== undefined && (
@@ -2647,6 +2567,31 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       title="Toggle whether map dragging captures your touch or lets you scroll the modal"
                     >
                       <span>{isModalMapInteracting ? '🔓 Pan On' : '🔒 Pan Map'}</span>
+                    </button>
+
+                    {/* Locate Me / Center Map Control */}
+                    <button
+                      type="button"
+                      onClick={handleLocateMe}
+                      disabled={isLocatingMe}
+                      style={{
+                        background: '#FFFFFF',
+                        color: '#0052cc',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: isLocatingMe ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      }}
+                      title="Center map on current GPS location and update marker"
+                    >
+                      <Crosshair size={12} />
+                      <span>{isLocatingMe ? 'Locating...' : 'Locate Me'}</span>
                     </button>
 
                     {/* Satellite / Street View Toggle */}
@@ -3284,278 +3229,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </button>
                   </div>
                 </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* OWNER REVIEW SUSPENDED TASKS MODAL */}
-      {isSuspendedModalOpen && (
-        <div
-          className="modal-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1300,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsSuspendedModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '820px',
-              maxHeight: '90vh',
-              background: '#FFFFFF',
-              borderRadius: '12px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              border: '1px solid #E2E8F0',
-            }}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                padding: '18px 24px',
-                borderBottom: '1px solid #FEE2E2',
-                background: '#FEF2F2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: '#FEE2E2',
-                    border: '1px solid #FCA5A5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#DC2626',
-                    flexShrink: 0,
-                  }}
-                >
-                  <AlertTriangle size={22} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#991B1B' }}>
-                    Owner Audit: Overdue Suspended Tasks
-                  </h3>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#B91C1C' }}>
-                    Tasks where 24+ hours passed without an MR visit. Locked out on mobile until you unsuspend.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSuspendedModalOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  color: '#991B1B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body / Task List */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {tasks.filter((t) => t.status === 'SUSPENDED').length === 0 ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '40px 20px',
-                    background: '#F0FDF4',
-                    border: '1px solid #BBF7D0',
-                    borderRadius: '8px',
-                    color: '#166534',
-                  }}
-                >
-                  <CheckCircle2 size={36} color="#16A34A" style={{ margin: '0 auto 10px auto' }} />
-                  <div style={{ fontWeight: '700', fontSize: '15px' }}>All Suspended Tasks Resolved</div>
-                  <div style={{ fontSize: '12px', color: '#15803D', marginTop: '4px' }}>
-                    There are no suspended tasks remaining. All MR devices are unlocked and ready for execution.
-                  </div>
-                </div>
-              ) : (
-                tasks
-                  .filter((t) => t.status === 'SUSPENDED')
-                  .map((task) => (
-                    <div
-                      key={task.id}
-                      style={{
-                        border: '1px solid #FCA5A5',
-                        borderRadius: '8px',
-                        background: '#FFF5F5',
-                        padding: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>
-                            {task.title}
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '6px', fontSize: '12px', color: '#475569' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <User size={13} color="#64748B" />
-                              Assigned: <strong>{task.assigned_mr_name}</strong>
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <MapPin size={13} color="#0F8B5A" />
-                              {task.location_name || `${task.latitude.toFixed(4)}, ${task.longitude.toFixed(4)}`}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Calendar size={13} color="#64748B" />
-                              Scheduled Date: <strong>{formatDateDDMMYYYY(task.date)}</strong>
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            background: '#FEE2E2',
-                            color: '#991B1B',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            border: '1px solid #FCA5A5',
-                            flexShrink: 0,
-                          }}
-                        >
-                          SUSPENDED
-                        </span>
-                      </div>
-
-                      <div
-                        style={{
-                          background: '#FFFFFF',
-                          border: '1px solid #FECACA',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          fontSize: '11.5px',
-                          color: '#7F1D1D',
-                          lineHeight: '16px',
-                        }}
-                      >
-                        <strong>Suspension Reason:</strong> Scheduled visit was not conducted within 24 hours of scheduled date. The MR is locked out from beginning this visit until you unsuspend.
-                        {task.suspended_at && (
-                          <div style={{ fontSize: '11px', color: '#991B1B', marginTop: '4px', opacity: 0.85 }}>
-                            Suspended on: {formatDateTimeDDMMYYYY(task.suspended_at)}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleUnsuspendTask(task.id, task.title, task.assigned_mr_name)}
-                          disabled={unsuspendingId === task.id || isBulkUnsuspending}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#DC2626',
-                            color: '#FFFFFF',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontWeight: '700',
-                            fontSize: '12px',
-                            cursor: unsuspendingId === task.id ? 'wait' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
-                          }}
-                        >
-                          <ShieldCheck size={14} />
-                          <span>
-                            {unsuspendingId === task.id
-                              ? 'Unsuspending...'
-                              : `Unsuspend & Unlock ${task.assigned_mr_name.split(' ')[0]}`}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div
-              style={{
-                padding: '14px 24px',
-                borderTop: '1px solid #E2E8F0',
-                background: '#F8FAFC',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ fontSize: '12px', color: '#64748B' }}>
-                Unsuspending resets the task date to today ({formatDateDDMMYYYY(getTodayDateString())}) and restores status to ASSIGNED.
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSuspendedModalOpen(false)}
-                  style={{
-                    padding: '8px 14px',
-                    background: '#FFFFFF',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: '600',
-                    color: '#475569',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Close
-                </button>
-                {tasks.some((t) => t.status === 'SUSPENDED') && (
-                  <button
-                    type="button"
-                    onClick={handleUnsuspendAllTasks}
-                    disabled={isBulkUnsuspending || Boolean(unsuspendingId)}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#1A3C6E',
-                      color: '#FFFFFF',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontSize: '12.5px',
-                      fontWeight: '700',
-                      cursor: isBulkUnsuspending ? 'wait' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <ShieldCheck size={14} />
-                    <span>{isBulkUnsuspending ? 'Unsuspending All...' : 'Unsuspend All Tasks'}</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>

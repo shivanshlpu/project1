@@ -244,8 +244,22 @@ export class InventoryService {
   }
 
   // === 4. MEDICINES MASTER ===
-  async getMedicines(includeInactive = false): Promise<any[]> {
-    const list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
+  async getMedicines(includeInactive = false, hqId?: string): Promise<any[]> {
+    let list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
+
+    // Strict HQ-Stockist Relationship (§1.4)
+    // Only medicines available in the selected HQ's stocker(s) are visible
+    if (hqId && hqId !== 'ALL') {
+      const hqStockers = this.db.stockers.filter((s) => s.hq_id === hqId);
+      const stockerIds = new Set(hqStockers.map((s) => s.id));
+      const validMedicineIds = new Set(
+        this.db.stockerInventory
+          .filter((inv) => stockerIds.has(inv.stocker_id) && inv.quantity > 0)
+          .map((inv) => inv.medicine_id),
+      );
+      list = list.filter((m) => validMedicineIds.has(m.id));
+    }
+
     return list.map((m) => ({
       ...m,
       product_code: m.code,

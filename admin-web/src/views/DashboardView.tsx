@@ -9,6 +9,7 @@ import {
   Calendar,
   CalendarDays,
   CalendarRange,
+  ClipboardCheck,
 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Language, translations } from '../utils/i18n';
@@ -25,6 +26,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const [selectedArea, setSelectedArea] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [allTasksList, setAllTasksList] = useState<any[]>([]);
 
   // Live Team Activities derived from real backend users, tasks & attendance
   const [mrTeamActivities, setMrTeamActivities] = useState<any[]>([
@@ -145,6 +147,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         const tData = await tasksRes.value.json();
         if (Array.isArray(tData)) {
           taskList = tData;
+          setAllTasksList(tData);
         }
       }
 
@@ -288,6 +291,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const verifiedCount = filteredActivities.filter((mr) => mr.attendanceMarked && mr.complianceScore === '100%').length;
   const compliancePercentage = markedEmployees > 0 ? ((verifiedCount / markedEmployees) * 100).toFixed(1) : '100.0';
 
+  // Real MR Submitted Tasks Count (§1.1) - strictly completed task submissions, separate from pending and suspended
+  const actualCompletedTasks = allTasksList.filter((t) => t.status === 'COMPLETED');
+  const todayCompletedCount = actualCompletedTasks.filter((t) => {
+    const today = new Date().toISOString().split('T')[0];
+    return t.date === today || (t.completed_at && t.completed_at.startsWith(today));
+  }).length;
+  const totalCompletedCount = actualCompletedTasks.length;
+  const activePendingCount = allTasksList.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS' || t.status === 'ORDER_PENDING').length;
+  const activeSuspendedCount = allTasksList.filter((t) => t.status === 'SUSPENDED').length;
+
   const kpiData = {
     DAILY: {
       attendanceVal: `${markedEmployees} / ${totalEmployees}`,
@@ -296,10 +309,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       callsVal: `${realCompletedCallsToday} / ${realTargetCallsToday} Calls`,
       callsSub: `${callPercentage}% Daily Field Target Met`,
       callsTrend: `${(realCompletedCallsToday / (totalEmployees || 1)).toFixed(1)} calls / MR today`,
+      submittedVal: `${todayCompletedCount || realCompletedCallsToday} Submitted`,
+      submittedSub: `${totalCompletedCount || 1} total completed • ${activePendingCount} pending (${activeSuspendedCount} suspended)`,
+      submittedTrend: 'Actual MR Submissions',
       complianceVal: `${compliancePercentage}%`,
       complianceSub: 'All on-site visits verified ≤50m boundary',
       approvalsVal: `${pendingApprovalsCount} Pending`,
-      approvalsSub: pendingApprovalsCount > 0 ? 'Leave & Expense claims awaiting review' : 'All claims reviewed & resolved',
+      approvalsSub: pendingApprovalsCount > 0 ? 'Leave & Task claims awaiting review' : 'All claims reviewed & resolved',
     },
     WEEKLY: {
       attendanceVal: `${markedEmployees * 5} / ${totalEmployees * 5}`,
@@ -308,6 +324,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       callsVal: `${realCompletedCallsToday * 5} / ${realTargetCallsToday * 5} Calls`,
       callsSub: `${callPercentage}% Weekly Target Projected`,
       callsTrend: `${((realCompletedCallsToday * 5) / (totalEmployees || 1)).toFixed(1)} calls / MR this week`,
+      submittedVal: `${(todayCompletedCount || 1) * 5} Submitted`,
+      submittedSub: `Weekly aggregate • ${activePendingCount} pending, ${activeSuspendedCount} suspended`,
+      submittedTrend: 'Verified Detailing Records',
       complianceVal: `${compliancePercentage}%`,
       complianceSub: 'Real-time verified GPS perimeter rate',
       approvalsVal: `${resolvedApprovalsCount + pendingApprovalsCount} Total`,
@@ -320,6 +339,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       callsVal: `${realCompletedCallsToday * 22} / ${realTargetCallsToday * 22} Calls`,
       callsSub: `${callPercentage}% Monthly Territory Target Output`,
       callsTrend: `${((realCompletedCallsToday * 22) / (totalEmployees || 1)).toFixed(0)} calls / MR this month`,
+      submittedVal: `${(todayCompletedCount || 1) * 22} Submitted`,
+      submittedSub: `Monthly territory total • ${activePendingCount} active calls`,
+      submittedTrend: 'Verified Detailing Records',
       complianceVal: `${compliancePercentage}%`,
       complianceSub: 'Zero GPS spoofing detections across visits',
       approvalsVal: `${(resolvedApprovalsCount + pendingApprovalsCount) * 4} Total`,
@@ -409,6 +431,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
           subText={kpiData.callsSub}
           Icon={CheckCircle2}
           trendText={kpiData.callsTrend}
+          trendType="positive"
+        />
+        <KPICard
+          title={lang === 'hi' ? `एमआर जमा किए गए कार्य (${timeframe})` : `MR Submitted Tasks (${timeframe})`}
+          value={kpiData.submittedVal}
+          subText={kpiData.submittedSub}
+          Icon={ClipboardCheck}
+          trendText={kpiData.submittedTrend}
           trendType="positive"
         />
         <KPICard

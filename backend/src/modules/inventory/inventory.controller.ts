@@ -122,8 +122,11 @@ export class InventoryController {
 
   // === MEDICINES MASTER ===
   @Get('medicines')
-  async getMedicines(@Query('all') all?: string) {
-    return this.inventoryService.getMedicines(all === 'true');
+  async getMedicines(
+    @Query('all') all?: string,
+    @Query('hq_id') hqId?: string,
+  ) {
+    return this.inventoryService.getMedicines(all === 'true', hqId);
   }
 
   @Post('medicines')

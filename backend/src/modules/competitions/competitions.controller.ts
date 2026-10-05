@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -70,5 +71,11 @@ export class CompetitionsController {
     @Body() dto: UpdateCompetitionDto,
   ) {
     return this.competitionsService.updateCompetition(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteCompetition(@Param('id') id: string) {
+    return this.competitionsService.deleteCompetition(id);
   }
 }

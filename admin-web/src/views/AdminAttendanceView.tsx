@@ -19,6 +19,7 @@ import {
   Trash2,
   Info,
   HardDrive,
+  Printer,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { resilientFetch, getAuthHeaders, RENDER_BACKEND_URL } from '../utils/apiHelper';
@@ -78,6 +79,109 @@ export const AdminAttendanceView: React.FC = () => {
   const [filterEarlyOnly, setFilterEarlyOnly] = useState<boolean>(false);
   const [filterMissingPunchOutOnly, setFilterMissingPunchOutOnly] = useState<boolean>(false);
   const [filterSuspiciousOnly, setFilterSuspiciousOnly] = useState<boolean>(false);
+
+  // Attendance PDF Report State (§1.6)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
+  const [pdfStartDate, setPdfStartDate] = useState<string>('2026-09-01');
+  const [pdfEndDate, setPdfEndDate] = useState<string>('2026-09-30');
+  const [pdfSelectedMr, setPdfSelectedMr] = useState<string>('ALL');
+
+  const handleGenerateAttendancePdf = () => {
+    const list = records.filter((r) => {
+      const rDate = r.date ? r.date.split('T')[0] : '';
+      const inDateRange = (!pdfStartDate || rDate >= pdfStartDate) && (!pdfEndDate || rDate <= pdfEndDate);
+      const inMr = pdfSelectedMr === 'ALL' || r.user_id === pdfSelectedMr || r.user_name === pdfSelectedMr;
+      return inDateRange && inMr;
+    });
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to generate the PDF report.');
+      return;
+    }
+
+    const startFmt = formatDateDDMMYYYY(pdfStartDate || '2026-09-01');
+    const endFmt = formatDateDDMMYYYY(pdfEndDate || '2026-09-30');
+    const generatedOn = formatDateDDMMYYYY(new Date());
+
+    const rowsHtml = list.map((r, idx) => `
+      <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+        <td style="padding: 8px 10px; font-weight: 600;">${formatDateDDMMYYYY(r.date)}</td>
+        <td style="padding: 8px 10px; font-weight: 700; color: #1A3C6E;">${r.user_name || 'Rahul Sharma'}</td>
+        <td style="padding: 8px 10px;">${r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+        <td style="padding: 8px 10px;">${r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Active'}</td>
+        <td style="padding: 8px 10px; font-size: 11px; color: #475569;">${r.check_in_location_name || 'Geofenced Location'}</td>
+        <td style="padding: 8px 10px; font-weight: 600;">${r.working_hours ? `${r.working_hours.toFixed(1)} hrs` : r.total_working_hours ? `${r.total_working_hours.toFixed(1)} hrs` : 'In Shift'}</td>
+        <td style="padding: 8px 10px;"><span style="color: ${r.status === 'ON_TIME' || r.status === 'COMPLETED' ? '#166534' : r.status === 'LATE' ? '#D97706' : '#2563EB'}; font-weight: 700;">${r.status || 'VERIFIED'}</span></td>
+      </tr>
+    `).join('');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Field Attendance & Punch Log Report - ${startFmt} to ${endFmt}</title>
+        <style>
+          @page { size: A4 landscape; margin: 12mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; padding: 12px; font-size: 12px; }
+          .header { border-bottom: 2px solid #1A3C6E; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+          .title { font-size: 18px; font-weight: 800; color: #1A3C6E; }
+          .subtitle { font-size: 12px; color: #64748B; margin-top: 3px; }
+          .meta-box { background: #F1F5F9; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 11.5px; }
+          table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11.5px; }
+          th { background: #1A3C6E; color: #FFFFFF; padding: 8px 10px; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">AHTRI BIOTECH — FIELD FORCE AUTOMATION</div>
+            <div class="subtitle">Official Field Staff Attendance & GPS Verification Audit Log</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #64748B;">
+            <div>Report Date Range: <strong>${startFmt}</strong> to <strong>${endFmt}</strong></div>
+            <div>Generated on: ${generatedOn} (IST)</div>
+          </div>
+        </div>
+
+        <div class="meta-box">
+          <div><strong>Total Shifts Logged:</strong> ${list.length}</div>
+          <div><strong>Employee Scope:</strong> ${pdfSelectedMr === 'ALL' ? 'All Field Representatives' : pdfSelectedMr}</div>
+          <div><strong>On-Time Verified:</strong> ${list.filter(r => r.status === 'ON_TIME' || r.status === 'COMPLETED').length}</div>
+          <div><strong>Late Check-ins:</strong> ${list.filter(r => r.status === 'LATE').length}</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date (DD-MM-YYYY)</th>
+              <th>Employee Name</th>
+              <th>Check-In (IST)</th>
+              <th>Check-Out (IST)</th>
+              <th>Verified Punch Location</th>
+              <th>Working Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding: 24px; color: #64748B;">No attendance records found for this date range.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 24px; display: flex; justify-content: space-between; border-top: 1px solid #CBD5E1; padding-top: 12px; font-size: 10px; color: #64748B;">
+          <div>AHTRI BIOTECH PVT LTD • Geofence Verified Biometric Attendance Log</div>
+          <div>System Generated Audit Trail</div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+    setIsPdfModalOpen(false);
+  };
 
   // Settings & Policy Modals
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
@@ -296,6 +400,16 @@ export const AdminAttendanceView: React.FC = () => {
             style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
           >
             <span>📋 Attendance Policy</span>
+          </button>
+
+          <button
+            className="btn-enterprise"
+            onClick={() => setIsPdfModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}
+            title="Generate official Attendance PDF report"
+          >
+            <Printer size={14} />
+            <span>Print / PDF Report</span>
           </button>
 
           <button
@@ -1343,6 +1457,115 @@ export const AdminAttendanceView: React.FC = () => {
                 onClick={() => setIsPolicyModalOpen(false)}
               >
                 Close Policy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Attendance PDF Generation Dialog (§1.6) */}
+      {isPdfModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 480,
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Printer size={20} color="#1A3C6E" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                  Generate Attendance PDF Report
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: 12.5, color: '#64748B' }}>
+              Select a date range (in DD-MM-YYYY format) to export verified employee attendance and punch logs.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  From Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfStartDate}
+                  onChange={(e) => setPdfStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  To Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfEndDate}
+                  onChange={(e) => setPdfEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                Filter by Employee / MR
+              </label>
+              <select
+                value={pdfSelectedMr}
+                onChange={(e) => setPdfSelectedMr(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+              >
+                <option value="ALL">All Field Employees</option>
+                {mrs.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsPdfModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleGenerateAttendancePdf}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Printer size={15} />
+                <span>Generate &amp; Print PDF</span>
               </button>
             </div>
           </div>

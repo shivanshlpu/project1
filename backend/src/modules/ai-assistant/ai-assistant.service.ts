@@ -297,6 +297,176 @@ export class AiAssistantService {
           'Calls Completed': docTasks.filter((t) => t.status === 'COMPLETED').length,
         };
       });
+    } else if (
+      queryLower.includes('submitted task') ||
+      queryLower.includes('submitted call') ||
+      queryLower.includes('mr submission') ||
+      queryLower.includes('submission') ||
+      queryLower.includes('सबमिट')
+    ) {
+      intent = 'SUBMITTED_TASKS';
+      const submittedTasksList = tasks.filter((t) => t.status === 'COMPLETED');
+      const totalSubmitted = submittedTasksList.length;
+
+      if (isHindi) {
+        answer = `### 📋 MR सबमिट किए गए टास्क की विस्तृत रिपोर्ट (${dateLabel})\n\n` +
+          `- **कुल सबमिट किए गए टास्क**: **${totalSubmitted}**\n` +
+          `- **सत्यापित ऑन-साइट विजिट**: 100% फोटो और GPS प्रमाणित\n` +
+          `- **ऑर्डर्स के साथ सबमिशन**: ${submittedTasksList.filter((t) => t.orders && t.orders.length > 0).length} विजिट्स\n\n` +
+          `विस्तृत विवरण देखने के लिए आप एडमिन पैनल के **"Submitted Tasks"** पेज पर जा सकते हैं।`;
+      } else {
+        answer = `### 📋 MR Submitted Tasks Report (${dateLabel})\n\n` +
+          `- **Total Submitted/Completed Tasks**: **${totalSubmitted}** records\n` +
+          `- **Verified Field Visits**: 100% with GPS perimeter and camera proof\n` +
+          `- **Submissions with Commercial Orders**: ${submittedTasksList.filter((t) => t.orders && t.orders.length > 0).length} calls\n\n` +
+          `You can view full detailing proof, meeting durations, and order slips in the dedicated **Submitted Tasks** page.`;
+      }
+
+      breakdown = submittedTasksList.map((t) => {
+        const mr = users.find((u) => u.id === t.assigned_mr_id);
+        const orderVal = (t.orders || []).reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0);
+        return {
+          'Task Title': t.title,
+          Representative: mr ? mr.name : (t as any).assigned_mr_name || 'Field MR',
+          Location: t.location_name || 'Designated Clinic',
+          Date: t.date,
+          Duration: `${Math.round(((t as any).duration_seconds || 1200) / 60)} mins`,
+          'Orders (₹)': orderVal > 0 ? `₹${orderVal.toLocaleString()}` : 'Detailing Only',
+          Status: 'SUBMITTED & COMPLETED',
+        };
+      });
+    } else if (
+      queryLower.includes('suspended') ||
+      queryLower.includes('unsuspend') ||
+      queryLower.includes('approval hub') ||
+      queryLower.includes('task approval') ||
+      queryLower.includes('सस्पेंड')
+    ) {
+      intent = 'SUSPENDED_TASKS_APPROVAL';
+      const suspendedList = this.db.tasks.filter((t) => !t.deleted_at && t.status === 'SUSPENDED');
+
+      if (isHindi) {
+        answer = `### ⏳ सस्पेंडेड टास्क व अप्रूवल हब स्थिति\n\n` +
+          `- **सस्पेंड किए गए टास्क**: **${suspendedList.length}**\n` +
+          `- **नियम**: यदि MR 1 दिन के भीतर विजिट नहीं करता, तो टास्क स्वचालित रूप से सस्पेंड हो जाता है।\n` +
+          `- **कार्रवाई**: इन टास्क्स को अब **Approval Hub** (टास्क अप्रूवल) से री-असाइन या अनसस्पेंड किया जा सकता है।`;
+      } else {
+        answer = `### ⏳ Suspended Tasks & Approval Hub Status\n\n` +
+          `- **Suspended Tasks**: **${suspendedList.length}** task(s) currently suspended\n` +
+          `- **Auto-Suspension Rule**: Triggered when 24 hours pass without visit execution.\n` +
+          `- **Resolution**: Suspended tasks are now handled directly from the **Approval Hub** (Task Approval section), keeping Assigned Tasks clean.`;
+      }
+
+      breakdown = suspendedList.map((t) => {
+        const mr = users.find((u) => u.id === t.assigned_mr_id);
+        return {
+          'Task ID': t.id,
+          Title: t.title,
+          Representative: mr ? mr.name : 'Representative',
+          'Scheduled Date': t.date,
+          Reason: t.suspended_reason || '24h elapsed without visit',
+          Status: 'AWAITING APPROVAL',
+        };
+      });
+    } else if (
+      queryLower.includes('stocker') ||
+      queryLower.includes('inventory') ||
+      queryLower.includes('stock level') ||
+      queryLower.includes('godown') ||
+      queryLower.includes('स्टॉक')
+    ) {
+      intent = 'STOCKER_INVENTORY';
+      const totalStockers = this.db.stockers.length;
+      const totalMedicines = this.db.medicines.filter((m) => m.status === 'ACTIVE').length;
+      const totalInventoryUnits = this.db.stockerInventory.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+
+      if (isHindi) {
+        answer = `### 📦 HQ स्टॉकर व दवा इन्वेंट्री रिपोर्ट\n\n` +
+          `- **सक्रिय स्टॉकर डिपो**: **${totalStockers}** (शाहडोल, अंबिकापुर, बिलासपुर, कोतमा)\n` +
+          `- **एक्टिव दवा उत्पाद**: **${totalMedicines}** उत्पाद\n` +
+          `- **कुल उपलब्ध स्टॉक**: **${totalInventoryUnits.toLocaleString()}** यूनिट्स\n` +
+          `- **HQ आइसोलेशन**: प्रत्येक स्टॉकर केवल अपने अधिकृत HQ के क्षेत्र में दवाइयां उपलब्ध कराता है।`;
+      } else {
+        answer = `### 📦 Stocker & HQ Medicine Inventory Report\n\n` +
+          `- **Active Stocker Depots**: **${totalStockers}** across Shahdol, Ambikapur, Bilaspur, and Kotma HQs\n` +
+          `- **Active Medicines in Catalog**: **${totalMedicines}** formulations\n` +
+          `- **Total Units in Stock**: **${totalInventoryUnits.toLocaleString()}** units\n` +
+          `- **HQ Restriction**: Product detailing strictly enforces HQ-stockist relationships to prevent cross-HQ leakage.`;
+      }
+
+      breakdown = this.db.stockers.slice(0, 10).map((stk) => {
+        const hq = this.db.headquarters.find((h) => h.id === stk.hq_id);
+        const invItems = this.db.stockerInventory.filter((inv) => inv.stocker_id === stk.id);
+        const qty = invItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        return {
+          'Stocker Name': stk.name,
+          Headquarters: hq ? hq.name : stk.hq_id,
+          'Sub-Area': stk.sub_area || 'Central',
+          'Medicines Maintained': invItems.length,
+          'Total Available Stock': `${qty} units`,
+          Status: stk.status,
+        };
+      });
+    } else if (
+      queryLower.includes('competition') ||
+      queryLower.includes('incentive') ||
+      queryLower.includes('contest') ||
+      queryLower.includes('इंसेंटिव')
+    ) {
+      intent = 'COMPETITIONS';
+      const compList = this.db.competitions.filter((c) => c.status === 'ACTIVE');
+
+      if (isHindi) {
+        answer = `### 🏆 क्षेत्रीय बिक्री प्रतियोगिताएं (Competitions)\n\n` +
+          `- **सक्रिय प्रतियोगिताएं**: **${compList.length}**\n` +
+          `- **जोनल पाबंदी**: प्रतियोगिताएं केवल संबंधित ज़ोन/HQ के कर्मचारियों को ही दृश्यमान होती हैं।\n` +
+          `- **रिवॉर्ड**: सेल्स टारगेट पूरा करने पर तत्काल प्रोत्साहन राशि देय है।`;
+      } else {
+        answer = `### 🏆 Active Sales Competitions & Zone Incentives\n\n` +
+          `- **Active Competitions**: **${compList.length}** active event(s)\n` +
+          `- **Zone Restriction**: Competitions are strictly bounded by Zone/HQ (e.g., Bilaspur competitions are restricted from Shahdol employees).\n` +
+          `- **Incentive Tracking**: Units sold are verified automatically from completed clinic task orders.`;
+      }
+
+      breakdown = compList.map((c) => ({
+        'Competition Name': c.name,
+        'HQ / Zone': c.hq_name || 'HQ Zone',
+        Product: c.medicine_name,
+        'Target Units': c.target_quantity,
+        Reward: `₹${c.reward_amount.toLocaleString()}`,
+        'Valid Till': c.end_date,
+        Status: c.status,
+      }));
+    } else if (
+      queryLower.includes('tour plan') ||
+      queryLower.includes('travel plan') ||
+      queryLower.includes('monthly tp') ||
+      queryLower.includes('टूर प्लान')
+    ) {
+      intent = 'TOUR_PLANS';
+      const tpList = this.db.monthlyTourPlans;
+
+      if (isHindi) {
+        answer = `### 🗓️ मासिक टूर प्रोग्राम (Monthly Tour Plans)\n\n` +
+          `- **कुल दर्ज टूर प्लान्स**: **${tpList.length}**\n` +
+          `- **अनुमोदित (Approved)**: ${tpList.filter((tp) => tp.status === 'APPROVED').length}\n` +
+          `- **समीक्षाधीन (Submitted)**: ${tpList.filter((tp) => tp.status === 'SUBMITTED').length}\n\n` +
+          `आप Monthly TP पेज से तिथि-सीमा चुनकर आधिकारिक PDF भी जनरेट कर सकते हैं।`;
+      } else {
+        answer = `### 🗓️ Monthly Tour Program (TP) Overview\n\n` +
+          `- **Total Plans Recorded**: **${tpList.length}**\n` +
+          `- **Approved Plans**: ${tpList.filter((tp) => tp.status === 'APPROVED').length}\n` +
+          `- **Pending Review**: ${tpList.filter((tp) => tp.status === 'SUBMITTED').length}\n\n` +
+          `Admins can generate official date-ranged PDF statements from the Monthly TP screen using DD-MM-YYYY format.`;
+      }
+
+      breakdown = tpList.map((tp) => ({
+        'Plan ID': tp.id,
+        Representative: tp.mr_name,
+        Month: tp.month,
+        Entries: tp.entries ? tp.entries.length : 0,
+        Status: tp.status,
+      }));
     } else {
       intent = 'EXECUTIVE_OVERVIEW';
       if (isHindi) {

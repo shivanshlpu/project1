@@ -16,6 +16,8 @@ import {
   Check,
   X,
   FileCheck,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
@@ -92,6 +94,92 @@ export const CompetitionsView: React.FC = () => {
   const [compTargetQty, setCompTargetQty] = useState<string>('100');
   const [compRewardAmount, setCompRewardAmount] = useState<string>('2000');
   const [compDesc, setCompDesc] = useState<string>('Sell 100 units during competition period to claim ₹2,000 cash reward.');
+
+  // Edit Modal state (§27)
+  const [editingComp, setEditingComp] = useState<CompetitionItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editCompName, setEditCompName] = useState<string>('');
+  const [editStartDate, setEditStartDate] = useState<string>('');
+  const [editEndDate, setEditEndDate] = useState<string>('');
+  const [editCompHqId, setEditCompHqId] = useState<string>('');
+  const [editCompMedicineId, setEditCompMedicineId] = useState<string>('');
+  const [editCompTargetQty, setEditCompTargetQty] = useState<string>('100');
+  const [editCompRewardAmount, setEditCompRewardAmount] = useState<string>('2000');
+  const [editCompDesc, setEditCompDesc] = useState<string>('');
+  const [editCompStatus, setEditCompStatus] = useState<'ACTIVE' | 'UPCOMING' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
+
+  const handleOpenEditModal = (comp: CompetitionItem) => {
+    setEditingComp(comp);
+    setEditCompName(comp.name);
+    setEditStartDate(comp.start_date ? comp.start_date.split('T')[0] : '2026-09-01');
+    setEditEndDate(comp.end_date ? comp.end_date.split('T')[0] : '2026-09-30');
+    setEditCompHqId(comp.hq_id || 'hq-shahdol');
+    setEditCompMedicineId(comp.medicine_id || '');
+    setEditCompTargetQty(String(comp.target_quantity || 100));
+    setEditCompRewardAmount(String(comp.reward_amount || 2000));
+    setEditCompDesc(comp.description || '');
+    setEditCompStatus(comp.status || 'ACTIVE');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateCompetition = async () => {
+    if (!editingComp || !editCompName.trim()) {
+      alert('Please enter competition name.');
+      return;
+    }
+    try {
+      const res = await fetch(`${apiUrl}/competitions/${editingComp.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: editCompName.trim(),
+          start_date: editStartDate,
+          end_date: editEndDate,
+          hq_id: editCompHqId,
+          medicine_id: editCompMedicineId,
+          target_quantity: parseInt(editCompTargetQty) || 100,
+          reward_amount: parseFloat(editCompRewardAmount) || 2000,
+          description: editCompDesc.trim(),
+          status: editCompStatus,
+        }),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        setEditingComp(null);
+        fetchCompetitions();
+      } else {
+        alert('Failed to update competition.');
+      }
+    } catch (err) {
+      console.error('Update competition error:', err);
+      alert('Error updating competition.');
+    }
+  };
+
+  const handleDeleteCompetition = async (comp: CompetitionItem) => {
+    if (!window.confirm(`Are you sure you want to delete the competition "${comp.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`${apiUrl}/competitions/${comp.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
+        if (selectedCompId === comp.id) {
+          setSelectedCompId('');
+          setMrProgressList([]);
+        }
+        fetchCompetitions();
+      } else {
+        alert('Failed to delete competition.');
+      }
+    } catch (err) {
+      console.error('Delete competition error:', err);
+      alert('Error deleting competition.');
+    }
+  };
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
@@ -395,10 +483,59 @@ export const CompetitionsView: React.FC = () => {
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: isSelected ? 'var(--color-brand)' : '#64748B' }}>
-                      {isSelected ? '● Currently Selected' : 'Click to inspect MR progress →'}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid #F1F5F9' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditModal(comp);
+                        }}
+                        style={{
+                          background: '#F1F5F9',
+                          border: '1px solid #CBD5E1',
+                          borderRadius: 4,
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          color: '#1E293B',
+                        }}
+                        title="Edit Competition Details"
+                      >
+                        <Edit2 size={12} color="#0052cc" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCompetition(comp);
+                        }}
+                        style={{
+                          background: '#FEF2F2',
+                          border: '1px solid #FCA5A5',
+                          borderRadius: 4,
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          color: '#DC2626',
+                        }}
+                        title="Delete Competition"
+                      >
+                        <Trash2 size={12} color="#DC2626" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+
                     <span
                       style={{
                         background: comp.status === 'ACTIVE' ? '#EFF6FF' : '#F1F5F9',
@@ -874,6 +1011,197 @@ export const CompetitionsView: React.FC = () => {
                 onClick={handleCreateCompetition}
               >
                 Launch Competition
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Edit Competition */}
+      {isEditModalOpen && editingComp && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 480,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 22,
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Edit2 size={18} color="var(--color-brand)" />
+                Edit Incentive Competition
+              </h3>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingComp(null);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                COMPETITION / CAMPAIGN NAME *
+              </label>
+              <input
+                type="text"
+                value={editCompName}
+                onChange={(e) => setEditCompName(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  START DATE
+                </label>
+                <input
+                  type="date"
+                  value={editStartDate}
+                  onChange={(e) => setEditStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  END DATE
+                </label>
+                <input
+                  type="date"
+                  value={editEndDate}
+                  onChange={(e) => setEditEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET HEADQUARTERS (HQ)
+                </label>
+                <select
+                  value={editCompHqId}
+                  onChange={(e) => setEditCompHqId(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
+                >
+                  {hqs.map((hq) => (
+                    <option key={hq.id} value={hq.id}>
+                      {hq.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET MEDICINE
+                </label>
+                <select
+                  value={editCompMedicineId}
+                  onChange={(e) => setEditCompMedicineId(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
+                >
+                  <option value="">-- All Products in HQ --</option>
+                  {medicines.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  TARGET QUANTITY (UNITS)
+                </label>
+                <input
+                  type="number"
+                  value={editCompTargetQty}
+                  onChange={(e) => setEditCompTargetQty(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  REWARD AMOUNT (₹)
+                </label>
+                <input
+                  type="number"
+                  value={editCompRewardAmount}
+                  onChange={(e) => setEditCompRewardAmount(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                CAMPAIGN STATUS
+              </label>
+              <select
+                value={editCompStatus}
+                onChange={(e) => setEditCompStatus(e.target.value as any)}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="UPCOMING">UPCOMING</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                COMPETITION DESCRIPTION / INSTRUCTIONS
+              </label>
+              <textarea
+                value={editCompDesc}
+                onChange={(e) => setEditCompDesc(e.target.value)}
+                rows={2}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                className="btn-enterprise secondary"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingComp(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-enterprise"
+                onClick={handleUpdateCompetition}
+              >
+                Save Changes
               </button>
             </div>
           </div>

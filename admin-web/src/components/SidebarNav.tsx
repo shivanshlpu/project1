@@ -5,6 +5,7 @@ import {
   Map,
   Users,
   CheckSquare,
+  CheckCircle2,
   FileDown,
   Download,
   Plus,
@@ -67,7 +68,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       title: lang === 'hi' ? 'फ़ील्ड संचालन' : 'FIELD OPERATIONS',
       items: [
         { id: 'overview', label: t.tabOverview, Icon: BarChart3 },
-        { id: 'tasks', label: t.tabTasks, Icon: MapPin },
+        { id: 'tasks', label: lang === 'hi' ? 'असाइन किए गए टास्क' : 'Assigned Tasks', Icon: MapPin },
+        { id: 'submitted_tasks', label: lang === 'hi' ? 'सबमिट किए गए कार्य' : 'Submitted Tasks', Icon: CheckCircle2 },
         {
           id: 'locations',
           label: t.tabLocations,

@@ -66,6 +66,14 @@ export class UpdateCompetitionDto {
 
   @IsString()
   @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  medicine_id?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
 
   @IsEnum(['ACTIVE', 'INACTIVE', 'COMPLETED'])

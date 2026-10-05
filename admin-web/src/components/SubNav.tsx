@@ -6,6 +6,7 @@ import {
   Users,
   Stethoscope,
   CheckSquare,
+  CheckCircle2,
   FileDown,
   Download,
   Plus,
@@ -21,6 +22,7 @@ import { Language, translations } from '../utils/i18n';
 export type ManagerTab =
   | 'overview'
   | 'tasks'
+  | 'submitted_tasks'
   | 'locations'
   | 'members'
   | 'attendance'
@@ -53,7 +55,8 @@ export const SubNav: React.FC<SubNavProps> = ({
 
   const tabs = [
     { id: 'overview' as ManagerTab, label: t.tabOverview, Icon: BarChart3 },
-    { id: 'tasks' as ManagerTab, label: t.tabTasks, Icon: MapPin },
+    { id: 'tasks' as ManagerTab, label: lang === 'hi' ? 'असाइन किए गए टास्क' : 'Assigned Tasks', Icon: MapPin },
+    { id: 'submitted_tasks' as ManagerTab, label: lang === 'hi' ? 'सबमिट किए गए टास्क' : 'Submitted Tasks', Icon: CheckCircle2 },
     {
       id: 'locations' as ManagerTab,
       label: t.tabLocations,

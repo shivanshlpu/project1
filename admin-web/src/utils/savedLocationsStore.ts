@@ -228,6 +228,19 @@ export const INITIAL_SAVED_LOCATIONS: DoctorItem[] = [
 
 export const DEFAULT_TERRITORY_ZONES: TerritoryZone[] = [
   {
+    id: 'zone-hq-1',
+    name: 'HQ Zone (Central Operations)',
+    code: 'ZONE-HQ-01',
+    branchType: 'HEADQUARTERS',
+    assignedMr: 'Rahul Sharma',
+    assignedMrId: 'usr-mr-01',
+    latitude: 28.5245,
+    longitude: 77.2066,
+    radiusKm: 6.0,
+    color: '#1A3C6E',
+    description: 'Primary HQ Operations Zone covering medical centers and healthcare networks',
+  },
+  {
     id: 'zone-south-delhi',
     name: 'South Delhi Zone (Saket Hub)',
     code: 'ZONE-DEL-01',

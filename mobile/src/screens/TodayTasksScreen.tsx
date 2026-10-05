@@ -145,7 +145,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const [visitOutcome, setVisitOutcome] = useState(
     'Reviewed CardioFix-50 scheme. Doctor agreed to prescribe for 20 patients.',
   );
-  // Multi-Order State for Task Completion
+  // Multi-Order State for Task Completion (Initialized empty - orders created only when MR explicitly adds them per §2.1)
   const [modalOrders, setModalOrders] = useState<
     Array<{
       id: string;
@@ -154,57 +154,39 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       unit_price: string;
       distributor: string;
     }>
-  >([
-    {
-      id: '1',
-      product_name: 'CardioFix-50 (Telmisartan 40mg)',
-      quantity: '25',
-      unit_price: '180',
-      distributor: 'MedPlus Saket',
-    },
-  ]);
+  >([]);
 
   const handleAddModalOrder = () => {
     const nextIdx = modalOrders.length + 1;
-    const defaultDist = modalOrders[0]?.distributor || 'MedPlus Saket';
-    const suggestions = [
-      { name: 'CardioFix-AM (Telmisartan + Amlodipine)', price: '220' },
-      { name: 'DermaSoothe Cream 30g', price: '210' },
-      { name: 'Glucotrol-M (Metformin 500mg)', price: '145' },
-      { name: 'PanSafe-DSR Capsules', price: '160' },
-    ];
-    const suggestion = suggestions[(nextIdx - 2) % suggestions.length];
-    setModalOrders([
-      ...modalOrders,
+    const defaultDist = modalOrders[0]?.distributor || 'Main Medical Store';
+    setModalOrders((prev) => [
+      ...prev,
       {
         id: `mord-${Date.now()}-${nextIdx}`,
-        product_name: suggestion.name,
-        quantity: '10',
-        unit_price: suggestion.price,
+        product_name: '',
+        quantity: '1',
+        unit_price: '0',
         distributor: defaultDist,
       },
     ]);
   };
 
   const handleRemoveModalOrder = (id: string) => {
-    if (modalOrders.length <= 1) {
-      setModalOrders([
-        {
-          id: `mord-${Date.now()}`,
-          product_name: '',
-          quantity: '0',
-          unit_price: '0',
-          distributor: modalOrders[0]?.distributor || 'MedPlus Saket',
-        },
-      ]);
-      return;
-    }
-    setModalOrders(modalOrders.filter((o) => o.id !== id));
+    setModalOrders((prev) => prev.filter((o) => o.id !== id));
   };
 
   const handleUpdateModalOrder = (id: string, field: string, val: string) => {
-    setModalOrders(
-      modalOrders.map((o) => (o.id === id ? { ...o, [field]: val } : o)),
+    setModalOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, [field]: val } : o))
+    );
+  };
+
+  // Atomic synchronized updater (§2.2) to prevent product name vs price desynchronization
+  const handleSelectMedicineForOrder = (id: string, name: string, price: number) => {
+    setModalOrders((prev) =>
+      prev.map((o) =>
+        o.id === id ? { ...o, product_name: name, unit_price: String(price) } : o
+      )
     );
   };
 
@@ -915,7 +897,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                         {task.status === 'SUSPENDED'
                           ? 'SUSPENDED'
                           : task.status === 'ORDER_PENDING'
-                          ? '● ORDER PENDING'
+                          ? 'Visit Verified • Order Deferred'
                           : task.status}
                       </Text>
                     </View>
@@ -1324,11 +1306,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E40AF' }}>Item #{idx + 1}</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                               <Text style={{ fontSize: 11, fontWeight: '700', color: '#0F172A' }}>₹{sub.toLocaleString()}</Text>
-                              {modalOrders.length > 1 && (
-                                <TouchableOpacity onPress={() => handleRemoveModalOrder(ord.id)}>
-                                  <Text style={{ fontSize: 10, color: '#DC2626', fontWeight: '700' }}>Delete</Text>
-                                </TouchableOpacity>
-                              )}
+                              <TouchableOpacity onPress={() => handleRemoveModalOrder(ord.id)}>
+                                <Text style={{ fontSize: 10, color: '#DC2626', fontWeight: '700' }}>Delete</Text>
+                              </TouchableOpacity>
                             </View>
                           </View>
 
@@ -1346,10 +1326,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                               return (
                                 <TouchableOpacity
                                   key={mIdx}
-                                  onPress={() => {
-                                    handleUpdateModalOrder(ord.id, 'product_name', med.name);
-                                    handleUpdateModalOrder(ord.id, 'unit_price', String(med.price));
-                                  }}
+                                  onPress={() => handleSelectMedicineForOrder(ord.id, med.name, med.price)}
                                   style={{
                                     backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
                                     paddingHorizontal: 8,

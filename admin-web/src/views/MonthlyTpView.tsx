@@ -18,6 +18,8 @@ import {
   TrendingUp,
   AlertCircle,
   Eye,
+  Printer,
+  FileText,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 
@@ -98,6 +100,111 @@ export const MonthlyTpView: React.FC = () => {
   // Pagination for 10,000+ employees
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+
+  // PDF Generation State (§1.6)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfStartDate, setPdfStartDate] = useState('2026-09-01');
+  const [pdfEndDate, setPdfEndDate] = useState('2026-09-30');
+  const [pdfSelectedHq, setPdfSelectedHq] = useState('ALL');
+  const [pdfSelectedMr, setPdfSelectedMr] = useState('ALL');
+
+  const handleGenerateTpPdf = () => {
+    const list = plans.filter((p) => {
+      const pDate = p.date ? p.date.split('T')[0] : '';
+      const inDateRange = (!pdfStartDate || pDate >= pdfStartDate) && (!pdfEndDate || pDate <= pdfEndDate);
+      const inHq = pdfSelectedHq === 'ALL' || p.hq_id === pdfSelectedHq || p.hq_name === pdfSelectedHq;
+      const inMr = pdfSelectedMr === 'ALL' || p.mr_id === pdfSelectedMr || p.mr_name === pdfSelectedMr;
+      return inDateRange && inHq && inMr;
+    });
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to generate the PDF report.');
+      return;
+    }
+
+    const startFmt = formatDateDDMMYYYY(pdfStartDate || '2026-09-01');
+    const endFmt = formatDateDDMMYYYY(pdfEndDate || '2026-09-30');
+    const generatedOn = formatDateDDMMYYYY(new Date());
+
+    const rowsHtml = list.map((p, idx) => `
+      <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+        <td style="padding: 8px 10px; font-weight: 600;">${formatDateDDMMYYYY(p.date)}</td>
+        <td style="padding: 8px 10px; font-weight: 700; color: #1A3C6E;">${p.mr_name || 'N/A'}</td>
+        <td style="padding: 8px 10px;">${p.hq_name || 'N/A'}</td>
+        <td style="padding: 8px 10px; font-weight: 600;">${p.planned_area || 'Central Area'}</td>
+        <td style="padding: 8px 10px;"><span style="background: #EFF6FF; color: #1D4ED8; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">${p.work_type || 'FIELD'}</span></td>
+        <td style="padding: 8px 10px; color: #475569;">${p.planned_kol_drs || p.planned_activity || 'Doctor Detailing'}</td>
+        <td style="padding: 8px 10px;"><span style="color: ${p.status === 'APPROVED' ? '#166534' : '#B45309'}; font-weight: 700;">${p.status || 'SUBMITTED'}</span></td>
+      </tr>
+    `).join('');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Monthly Tour Plan (TP) Report - ${startFmt} to ${endFmt}</title>
+        <style>
+          @page { size: A4 landscape; margin: 12mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; padding: 12px; font-size: 12px; }
+          .header { border-bottom: 2px solid #1A3C6E; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+          .title { font-size: 18px; font-weight: 800; color: #1A3C6E; }
+          .subtitle { font-size: 12px; color: #64748B; margin-top: 3px; }
+          .meta-box { background: #F1F5F9; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 11.5px; }
+          table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11.5px; }
+          th { background: #1A3C6E; color: #FFFFFF; padding: 8px 10px; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">AHTRI BIOTECH — FIELD FORCE AUTOMATION</div>
+            <div class="subtitle">Official Monthly Tour Plan (TP) Schedule Report</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #64748B;">
+            <div>Report Date Range: <strong>${startFmt}</strong> to <strong>${endFmt}</strong></div>
+            <div>Generated on: ${generatedOn} (IST)</div>
+          </div>
+        </div>
+
+        <div class="meta-box">
+          <div><strong>Total Planned Entries:</strong> ${list.length}</div>
+          <div><strong>HQ Scope:</strong> ${pdfSelectedHq === 'ALL' ? 'All Headquarters' : pdfSelectedHq}</div>
+          <div><strong>Representative Scope:</strong> ${pdfSelectedMr === 'ALL' ? 'All Field Personnel' : pdfSelectedMr}</div>
+          <div><strong>Approved Plans:</strong> ${list.filter(p => p.status === 'APPROVED').length}</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date (DD-MM-YYYY)</th>
+              <th>Medical Rep (MR)</th>
+              <th>HQ</th>
+              <th>Planned Territory / Area</th>
+              <th>Work Type</th>
+              <th>Planned KOLs / Activity</th>
+              <th>Approval State</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding: 24px; color: #64748B;">No tour plan records found for this date range.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 24px; display: flex; justify-content: space-between; border-top: 1px solid #CBD5E1; padding-top: 12px; font-size: 10px; color: #64748B;">
+          <div>AHTRI BIOTECH PVT LTD • Confidential Field Tour Schedule</div>
+          <div>Authorized By Area Business Manager</div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+    setIsPdfModalOpen(false);
+  };
 
   // Status Action state
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -342,7 +449,18 @@ export const MonthlyTpView: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-enterprise"
+            onClick={() => setIsPdfModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
+            title="Generate and print executive Tour Plan PDF"
+          >
+            <Printer size={14} />
+            <span>Print / PDF Report</span>
+          </button>
+
           <button
             type="button"
             className="btn-enterprise secondary"
@@ -1098,6 +1216,133 @@ export const MonthlyTpView: React.FC = () => {
           </div>
         )}
       </div>
+      {/* MODAL: Monthly TP PDF Generation Dialog (§1.6) */}
+      {isPdfModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 480,
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Printer size={20} color="#1A3C6E" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                  Generate Tour Plan (TP) PDF
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: 12.5, color: '#64748B' }}>
+              Select a date range (in DD-MM-YYYY format) and territory filter to generate an official printable executive Tour Plan report.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  From Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfStartDate}
+                  onChange={(e) => setPdfStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  To Date (DD-MM-YYYY)
+                </label>
+                <input
+                  type="date"
+                  value={pdfEndDate}
+                  onChange={(e) => setPdfEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                Filter by Headquarters (HQ)
+              </label>
+              <select
+                value={pdfSelectedHq}
+                onChange={(e) => setPdfSelectedHq(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+              >
+                <option value="ALL">All Headquarters</option>
+                {hqs.map((h) => (
+                  <option key={h.id} value={h.name}>
+                    {h.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                Filter by Medical Representative (MR)
+              </label>
+              <select
+                value={pdfSelectedMr}
+                onChange={(e) => setPdfSelectedMr(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
+              >
+                <option value="ALL">All Medical Representatives</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name} {u.hq_name ? `(${u.hq_name})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setIsPdfModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleGenerateTpPdf}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Printer size={15} />
+                <span>Generate &amp; Print PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

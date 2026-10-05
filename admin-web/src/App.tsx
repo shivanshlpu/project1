@@ -4,6 +4,7 @@ import { SubNav, ManagerTab } from './components/SubNav';
 import { SidebarNav } from './components/SidebarNav';
 import { DashboardView } from './views/DashboardView';
 import { TasksView } from './views/TasksView';
+import { SubmittedTasksView } from './views/SubmittedTasksView';
 import { SavedLocationsView } from './views/SavedLocationsView';
 import { MembersManagementView } from './views/MembersManagementView';
 import { ApprovalsView } from './views/ApprovalsView';
@@ -314,6 +315,7 @@ export const App: React.FC = () => {
               onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
             />
           )}
+          {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
           {managerTab === 'locations' && (
             <SavedLocationsView
               onAssignTaskToLocation={handleAssignTaskToLocation}

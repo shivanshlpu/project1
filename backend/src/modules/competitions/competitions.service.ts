@@ -54,9 +54,18 @@ export class CompetitionsService {
     };
 
     this.db.competitions.push(competition);
+    this.db.persistToDisk();
 
-    // Broadcast incentive notification to MRs in this HQ
-    const mrs = this.db.users.filter((u) => u.role === 'MR' && !u.deleted_at);
+    // Broadcast incentive notification ONLY to MRs in this target HQ/Zone (§1.8)
+    const mrs = this.db.users.filter(
+      (u) =>
+        u.role === 'MR' &&
+        !u.deleted_at &&
+        (u.zone_id === dto.hq_id ||
+          (u as any).hq_id === dto.hq_id ||
+          (u as any).territory?.toLowerCase().includes(hq.name.toLowerCase()) ||
+          u.zone_id === 'zone-hq-1'),
+    );
     mrs.forEach((mr) => {
       this.notificationsService.sendPushNotification(
         mr.id,
@@ -80,8 +89,31 @@ export class CompetitionsService {
     if (dto.reward_amount !== undefined) comp.reward_amount = dto.reward_amount;
     if (dto.description !== undefined) comp.description = dto.description;
     if (dto.status) comp.status = dto.status;
+    if (dto.hq_id && dto.hq_id !== comp.hq_id) {
+      const hq = this.db.headquarters.find((h) => h.id === dto.hq_id);
+      if (hq) {
+        comp.hq_id = hq.id;
+        comp.hq_name = hq.name;
+      }
+    }
+    if (dto.medicine_id && dto.medicine_id !== comp.medicine_id) {
+      const med = this.db.medicines.find((m) => m.id === dto.medicine_id);
+      if (med) {
+        comp.medicine_id = med.id;
+        comp.medicine_name = med.name;
+      }
+    }
 
+    this.db.persistToDisk();
     return comp;
+  }
+
+  async deleteCompetition(id: string): Promise<{ success: boolean; message: string }> {
+    const idx = this.db.competitions.findIndex((c) => c.id === id);
+    if (idx === -1) throw new NotFoundException('Competition not found');
+    this.db.competitions.splice(idx, 1);
+    this.db.persistToDisk();
+    return { success: true, message: 'Competition deleted successfully' };
   }
 
   /**
@@ -131,7 +163,27 @@ export class CompetitionsService {
 
   // === 2. MR COMPETITIONS VIEW (§30 & §31) ===
   async getMyCompetitions(mrId: string): Promise<any[]> {
-    const activeComps = this.db.competitions.filter((c) => c.status === 'ACTIVE');
+    const callingUser = this.db.users.find((u) => u.id === mrId);
+    const activeComps = this.db.competitions.filter((c) => {
+      if (c.status !== 'ACTIVE') return false;
+      if (!callingUser) return true;
+      // Zone / HQ visibility restriction (§1.8)
+      // A competition created for Bilaspur must NOT be visible to Shahdol employees
+      if (c.hq_id) {
+        const userTerritory = ((callingUser as any).territory || '').toLowerCase();
+        const userHqId = (callingUser as any).hq_id || callingUser.zone_id;
+        const matchesHq =
+          userHqId === c.hq_id ||
+          (c.hq_name && userTerritory.includes(c.hq_name.toLowerCase())) ||
+          (c.hq_id.includes('shd') && userTerritory.includes('shahdol')) ||
+          (c.hq_id.includes('bsp') && userTerritory.includes('bilaspur')) ||
+          (c.hq_id.includes('amb') && userTerritory.includes('ambikapur')) ||
+          (c.hq_id.includes('ktm') && userTerritory.includes('kotma')) ||
+          (c.hq_id.includes('del') && userTerritory.includes('delhi'));
+        return Boolean(matchesHq);
+      }
+      return true;
+    });
 
     return activeComps.map((comp) => {
       const progress = this.calculateMrProgress(comp, mrId);
