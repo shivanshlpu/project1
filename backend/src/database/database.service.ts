@@ -171,7 +171,10 @@ export class DatabaseService implements OnModuleInit {
   async onModuleInit() {
     await this.seedInitialData();
     // Restore persistent tasks, visits & attendance from disk if available
-    this.loadFromDisk();
+    const restored = this.loadFromDisk();
+    if (!restored) {
+      this.persistToDisk();
+    }
 
     if (this.supabase && this.supabase.isConnected) {
       try {
