@@ -57,12 +57,17 @@ async function main() {
         console.error('5. Run schema in Supabase SQL Editor (supabase/schema.sql)');
         console.error('6. Re-run: npm run db:sync\n');
         process.exit(1);
-      } else if (pingError.message.includes('relation "public.users" does not exist') || pingError.code === '42P01') {
-        console.error('\n❌ ERROR: Database tables do not exist in your Supabase project yet!');
+      } else if (
+        pingError.message.includes('relation "public.users" does not exist') ||
+        pingError.message.includes('Could not find the table') ||
+        pingError.code === '42P01' ||
+        pingError.code === 'PGRST205'
+      ) {
+        console.error('\n❌ ERROR: Database tables do not exist in your new Supabase project yet!');
         console.error('👉 ACTION REQUIRED:');
         console.error('1. Open your Supabase Dashboard: https://supabase.com/dashboard');
         console.error('2. Click on "SQL Editor" in the left sidebar.');
-        console.error('3. Click "New query", paste the contents of "supabase/schema.sql" and click "Run".');
+        console.error('3. Click "New query", paste the entire contents of "supabase/schema.sql" and click "Run".');
         console.error('4. Once completed, re-run this sync script: npm run db:sync\n');
         process.exit(1);
       } else {
