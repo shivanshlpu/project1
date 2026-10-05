@@ -322,6 +322,7 @@ export class DatabaseService implements OnModuleInit {
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync attendance ${att.id}:`, err?.message);
     }
+  }
 
   private async seedInitialData() {
     // 1. Roles
