@@ -73,6 +73,10 @@ export class VerifyLocationDto {
   @IsOptional()
   photo_key?: string;
 
+  @IsString()
+  @IsOptional()
+  visit_photo?: string;
+
   @IsEnum(['CAMERA', 'GALLERY'])
   @IsOptional()
   photo_source?: 'CAMERA' | 'GALLERY';
@@ -114,6 +118,10 @@ export class SkipOrderDto {
   @IsOptional()
   photo_key?: string;
 
+  @IsString()
+  @IsOptional()
+  visit_photo?: string;
+
   @IsEnum(['CAMERA', 'GALLERY'])
   @IsOptional()
   photo_source?: 'CAMERA' | 'GALLERY';
@@ -148,6 +156,14 @@ export class SubmitOrderDto {
   @IsString()
   @IsOptional()
   outcome?: string;
+
+  @IsString()
+  @IsOptional()
+  photo_key?: string;
+
+  @IsString()
+  @IsOptional()
+  visit_photo?: string;
 }
 
 export class UpdateTaskDto {

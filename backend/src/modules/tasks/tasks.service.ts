@@ -249,13 +249,14 @@ export class TasksService {
     }
 
     // Save verification photo if provided (§3)
-    if (dto.photo_key) {
+    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
+    if (photoData || dto.photo_key) {
       const photoRecord: VerificationPhoto = {
         id: `vp-${uuidv4().substring(0, 8)}`,
         user_id: userId,
         task_id: task.id,
         hq_id: dto.hq_id || task.hq_id,
-        photo_key: dto.photo_key,
+        photo_key: dto.photo_key || 'visit_proof',
         photo_source: dto.photo_source || 'CAMERA',
         latitude: dto.latitude,
         longitude: dto.longitude,
@@ -266,6 +267,10 @@ export class TasksService {
       this.db.verificationPhotos.push(photoRecord);
       task.verification_photo_key = dto.photo_key;
       task.verification_photo_source = dto.photo_source || 'CAMERA';
+      if (photoData) {
+        task.visit_photo = photoData;
+        task.visit_photo_captured_at = new Date().toISOString();
+      }
     }
 
     task.status = 'ORDER_PENDING';
@@ -317,6 +322,11 @@ export class TasksService {
 
     if (dto.outcome) {
       task.outcome = dto.outcome;
+    }
+    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
+    if (photoData) {
+      task.visit_photo = photoData;
+      task.visit_photo_captured_at = new Date().toISOString();
     }
     if (dto.hq_id) task.hq_id = dto.hq_id;
     if (dto.stocker_id) task.stocker_id = dto.stocker_id;
@@ -423,13 +433,14 @@ export class TasksService {
     this.db.locationVerifications.push(verificationRecord);
 
     // Save verification photo if provided (§3)
-    if (dto.photo_key) {
+    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
+    if (photoData || dto.photo_key) {
       const photoRecord: VerificationPhoto = {
         id: `vp-${uuidv4().substring(0, 8)}`,
         user_id: userId,
         task_id: task.id,
         hq_id: dto.hq_id || task.hq_id,
-        photo_key: dto.photo_key,
+        photo_key: dto.photo_key || 'visit_proof',
         photo_source: dto.photo_source || 'CAMERA',
         latitude: lat,
         longitude: lng,
@@ -440,6 +451,10 @@ export class TasksService {
       this.db.verificationPhotos.push(photoRecord);
       task.verification_photo_key = dto.photo_key;
       task.verification_photo_source = dto.photo_source || 'CAMERA';
+      if (photoData) {
+        task.visit_photo = photoData;
+        task.visit_photo_captured_at = new Date().toISOString();
+      }
     }
 
     task.status = 'COMPLETED';

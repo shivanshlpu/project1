@@ -96,6 +96,8 @@ export interface Task {
   orders?: TaskOrderItem[]; // Immediate orders captured
   verification_photo_key?: string;
   verification_photo_source?: 'CAMERA' | 'GALLERY';
+  visit_photo?: string | null; // Compressed base64 clinic/detailing proof photo
+  visit_photo_captured_at?: string;
   device_integrity_status?: string;
   suspended_at?: string;
   suspended_reason?: string;

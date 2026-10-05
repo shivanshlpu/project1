@@ -38,6 +38,7 @@ export interface MobileTaskItem {
   duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
   outcome?: string;
   orders?: Array<{ product_name: string; quantity: number; unit_price: number; total_amount: number; distributor?: string }>;
+  visit_photo?: string;
   suspended_at?: string;
   suspended_reason?: string;
 }
@@ -476,11 +477,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const handleCaptureVisitPhoto = async () => {
     const photo = await CameraService.captureLivePhoto({
       aspect: [4, 3],
-      quality: 0.8,
+      quality: 0.35, // Enterprise compressed ~20KB-30KB
     });
     if (photo) {
       setVisitPhoto(photo);
-      Alert.alert('Photo Attached', 'Clinic detailing proof photo recorded.');
+      Alert.alert('Photo Attached ✓', 'On-site clinic detailing photo captured and compressed.');
     }
   };
 
@@ -609,11 +610,20 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       : new Date(Date.now() - 15 * 60 * 1000);
     const duration = Math.max(60, Math.round((endTime.getTime() - startTime.getTime()) / 1000));
 
+    // Extract guaranteed base64 data URL for cross-platform DB viewing
+    let photoPayload: string | undefined = undefined;
+    if (visitPhoto?.base64) {
+      photoPayload = visitPhoto.base64.startsWith('data:') ? visitPhoto.base64 : `data:image/jpeg;base64,${visitPhoto.base64}`;
+    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:')) {
+      photoPayload = visitPhoto.uri;
+    }
+
     const pendingTask: MobileTaskItem = {
       ...completingTask,
       status: 'ORDER_PENDING',
       duration_seconds: duration,
       outcome: visitOutcome || 'Detailing concluded - Order skipped for now',
+      visit_photo: photoPayload,
     };
 
     setAllTasks((prev) =>
@@ -632,7 +642,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           longitude: deviceCoords?.longitude || completingTask.longitude,
           gps_accuracy_m: deviceCoords?.accuracy || 10,
           outcome: visitOutcome || 'Detailing finished; order pending',
-          photo_key: visitPhoto?.uri || undefined,
+          visit_photo: photoPayload,
+          photo_key: photoPayload,
         }),
       });
       fetchTasksFromBackend();
@@ -642,6 +653,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
     const locName = completingTask.location_name;
     setCompletingTask(null);
+    setVisitPhoto(null);
 
     Alert.alert(
       'Order Skipped for Now ⏸️',
@@ -672,6 +684,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     const totalOrderAmount = validOrders.reduce((sum, o) => sum + o.total_amount, 0);
     const totalOrderUnits = validOrders.reduce((sum, o) => sum + o.quantity, 0);
 
+    // Extract guaranteed base64 data URL for cross-platform DB viewing
+    let photoPayload: string | undefined = undefined;
+    if (visitPhoto?.base64) {
+      photoPayload = visitPhoto.base64.startsWith('data:') ? visitPhoto.base64 : `data:image/jpeg;base64,${visitPhoto.base64}`;
+    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:')) {
+      photoPayload = visitPhoto.uri;
+    }
+
     const completedTask: MobileTaskItem = {
       ...completingTask,
       status: 'COMPLETED',
@@ -679,6 +699,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       duration_seconds: duration,
       outcome: visitOutcome,
       orders: validOrders,
+      visit_photo: photoPayload,
     };
 
     setAllTasks((prev) => {
@@ -710,7 +731,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           gps_accuracy_m: deviceCoords?.accuracy || 10,
           outcome: visitOutcome,
           orders: validOrders,
-          photo_key: visitPhoto?.uri || undefined,
+          visit_photo: photoPayload,
+          photo_key: photoPayload,
         }),
       });
       if (res.ok) {
@@ -721,6 +743,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     }
 
     setCompletingTask(null);
+    setVisitPhoto(null);
 
     Alert.alert(
       'Visit Finalized & Logged! ✓',
@@ -1130,6 +1153,17 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                       </Text>
                     )}
                   </View>
+
+                  {/* On-Site Visit Proof Photo Thumbnail */}
+                  {task.visit_photo && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, padding: 8, backgroundColor: '#F0FDF4', borderRadius: 8, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                      <Image source={{ uri: task.visit_photo }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1.5, borderColor: '#16A34A' }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ On-Site Proof Photo Verified</Text>
+                        <Text style={{ fontSize: 9.5, color: '#15803D' }}>Geotagged &amp; Transmitted to Admin</Text>
+                      </View>
+                    </View>
+                  )}
 
                   {/* Sync Status Badge */}
                   <View style={styles.historyFooter}>

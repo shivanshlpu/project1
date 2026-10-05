@@ -121,8 +121,9 @@ export class AttendanceService implements OnModuleInit {
     );
 
     if (existing) {
-      if (dto.check_in_photo) {
-        existing.check_in_photo = dto.check_in_photo;
+      const photoPayload = dto.check_in_photo || (dto.photo_key && dto.photo_key.startsWith('data:') ? dto.photo_key : undefined);
+      if (photoPayload) {
+        existing.check_in_photo = photoPayload;
         existing.photo_captured_at = new Date().toISOString();
         existing.photo_purged = false;
       }
@@ -200,7 +201,7 @@ export class AttendanceService implements OnModuleInit {
       check_in_lat: dto.latitude,
       check_in_lng: dto.longitude,
       check_in_location_name: dto.location_name || `Lat: ${dto.latitude.toFixed(4)}, Lng: ${dto.longitude.toFixed(4)}`,
-      check_in_photo: dto.check_in_photo || null,
+      check_in_photo: dto.check_in_photo || (dto.photo_key && dto.photo_key.startsWith('data:') ? dto.photo_key : null),
       photo_captured_at: now.toISOString(),
       photo_purged: false,
       distance_meters: accuracy,

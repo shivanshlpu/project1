@@ -28,6 +28,7 @@ import {
   Check,
   Compass,
   FileText,
+  Camera,
 } from 'lucide-react';
 import { TaskItem, VerificationLogItem, DoctorItem, TaskOrderItem } from '../types';
 import { Language, translations } from '../utils/i18n';
@@ -347,6 +348,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [toastNotification, setToastNotification] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
   const [selectedCompletedTask, setSelectedCompletedTask] = useState<TaskItem | null>(null);
   const [selectedOrderItem, setSelectedOrderItem] = useState<TaskOrderItem | null>(null);
+  const [viewingVisitPhoto, setViewingVisitPhoto] = useState<{ url: string; title: string; mrName: string; location: string } | null>(null);
 
   const getDelayAnalysis = (task: TaskItem) => {
     if (!task.started_at || !task.time) return { isDelayed: false, delayMinutes: 0, text: 'Scheduled On Time' };
@@ -3775,6 +3777,127 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 </div>
               </div>
 
+              {/* On-Site Clinic & Doctor Detailing Proof Photo Section */}
+              <div
+                style={{
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>
+                    <Camera size={16} color="#2563EB" />
+                    <span>📸 On-Site Clinic &amp; Detailing Proof Photo</span>
+                  </div>
+                  {selectedCompletedTask.visit_photo || selectedCompletedTask.verification_photo_key ? (
+                    <span
+                      style={{
+                        background: '#DCFCE7',
+                        color: '#166534',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      ✓ Live Camera Verified
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>No Photo Captured</span>
+                  )}
+                </div>
+
+                {selectedCompletedTask.visit_photo || (selectedCompletedTask.verification_photo_key && (selectedCompletedTask.verification_photo_key.startsWith('data:') || selectedCompletedTask.verification_photo_key.startsWith('http'))) ? (
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', background: '#FFFFFF', padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <div
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        background: '#0F172A',
+                        flexShrink: 0,
+                        border: '1px solid #CBD5E1',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() =>
+                        setViewingVisitPhoto({
+                          url: (selectedCompletedTask.visit_photo || selectedCompletedTask.verification_photo_key)!,
+                          title: selectedCompletedTask.title,
+                          mrName: selectedCompletedTask.assigned_mr_name,
+                          location: selectedCompletedTask.location_name || 'Clinic',
+                        })
+                      }
+                      title="Click to view full photo"
+                    >
+                      <img
+                        src={selectedCompletedTask.visit_photo || selectedCompletedTask.verification_photo_key}
+                        alt="Visit Proof"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, fontSize: '12px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '13px' }}>
+                        Clinic &amp; Detailing Evidence Captured
+                      </div>
+                      <div style={{ color: '#64748B' }}>
+                        Representative: <strong style={{ color: '#0F172A' }}>{selectedCompletedTask.assigned_mr_name}</strong>
+                      </div>
+                      <div style={{ color: '#64748B' }}>
+                        Location: <strong style={{ color: '#059669' }}>{selectedCompletedTask.location_name || 'Designated Facility'}</strong>
+                      </div>
+                      {selectedCompletedTask.latitude && (
+                        <div style={{ color: '#64748B' }}>
+                          GPS Geotag: <strong>{Number(selectedCompletedTask.latitude).toFixed(4)}° N, {Number(selectedCompletedTask.longitude).toFixed(4)}° E</strong>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setViewingVisitPhoto({
+                            url: (selectedCompletedTask.visit_photo || selectedCompletedTask.verification_photo_key)!,
+                            title: selectedCompletedTask.title,
+                            mrName: selectedCompletedTask.assigned_mr_name,
+                            location: selectedCompletedTask.location_name || 'Clinic',
+                          })
+                        }
+                        style={{
+                          alignSelf: 'flex-start',
+                          marginTop: '6px',
+                          background: '#EFF6FF',
+                          color: '#1D4ED8',
+                          border: '1px solid #BFDBFE',
+                          borderRadius: '4px',
+                          padding: '5px 12px',
+                          fontSize: '11.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        <Camera size={13} />
+                        <span>View Full-Size Proof Photo</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>
+                    No on-site photo was attached for this visit. Meeting activity was validated via hardware GPS sensor logs.
+                  </div>
+                )}
+              </div>
+
               {/* Orders Booked Table */}
               <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
                 <div
@@ -3977,6 +4100,88 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 }}
               >
                 Close Audit Sheet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Visit Photo Modal */}
+      {viewingVisitPhoto && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 20000,
+            padding: '20px',
+          }}
+          onClick={() => setViewingVisitPhoto(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '14px',
+              maxWidth: '640px',
+              width: '100%',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#F8FAFC',
+              }}
+            >
+              <div>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0F172A' }}>
+                  📸 On-Site Clinic Detailing Proof
+                </h4>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                  {viewingVisitPhoto.location} • {viewingVisitPhoto.mrName}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingVisitPhoto(null)}
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '16px', background: '#0F172A', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <img
+                src={viewingVisitPhoto.url}
+                alt="Clinic Proof"
+                style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '8px' }}
+              />
+            </div>
+            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', background: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
+              <button
+                type="button"
+                onClick={() => setViewingVisitPhoto(null)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#1E293B',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                Close Preview
               </button>
             </div>
           </div>

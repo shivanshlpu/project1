@@ -155,7 +155,7 @@ export const CameraService = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: options?.allowsEditing ?? true,
         aspect: options?.aspect ?? [4, 4],
-        quality: options?.quality ?? 0.5,
+        quality: options?.quality ?? 0.3, // Native client-side JPEG compression (~20KB-40KB)
         base64: true,
       });
 
@@ -165,18 +165,25 @@ export const CameraService = {
 
       const asset = result.assets[0];
 
-      // Enterprise compression on device: scale to 360x360 JPEG @ 0.5 (~12KB-18KB)
+      // Enterprise compression on device: scale to standard dimension JPEG @ 0.45 (~15KB-25KB)
       try {
+        const isSquare = (options?.aspect?.[0] || 1) === (options?.aspect?.[1] || 1);
+        const targetWidth = isSquare ? 360 : 540;
+        const targetHeight = isSquare ? 360 : 405;
+
         const manipResult = await ImageManipulator.manipulateAsync(
           asset.uri,
-          [{ resize: { width: 360, height: 360 } }],
-          { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+          [{ resize: { width: targetWidth, height: targetHeight } }],
+          { compress: 0.45, format: ImageManipulator.SaveFormat.JPEG, base64: true }
         );
+        const base64Str = manipResult.base64
+          ? (manipResult.base64.startsWith('data:') ? manipResult.base64 : `data:image/jpeg;base64,${manipResult.base64}`)
+          : null;
         return {
-          uri: manipResult.uri,
+          uri: base64Str || manipResult.uri,
           width: manipResult.width,
           height: manipResult.height,
-          base64: manipResult.base64,
+          base64: base64Str,
         };
       } catch (manipErr) {
         console.warn('ImageManipulator compression fallback:', manipErr);
@@ -203,11 +210,15 @@ export const CameraService = {
         }
       }
 
+      const fullDataUrl = base64Data
+        ? (base64Data.startsWith('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`)
+        : asset.uri;
+
       return {
-        uri: asset.uri,
+        uri: fullDataUrl,
         width: asset.width,
         height: asset.height,
-        base64: base64Data || undefined,
+        base64: fullDataUrl,
       };
     } catch (error) {
       console.warn('Error during camera capture:', error);

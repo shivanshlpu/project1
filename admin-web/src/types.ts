@@ -28,6 +28,8 @@ export interface TaskItem {
   duration_seconds?: number; // Secret meeting duration visible to Owner
   outcome?: string; // Doctor feedback / interest
   orders?: TaskOrderItem[]; // Immediate orders captured
+  visit_photo?: string; // On-site clinic / doctor detailing proof photo (base64 data URL)
+  verification_photo_key?: string;
   suspended_at?: string;
   suspended_reason?: string;
   unsuspended_at?: string;
