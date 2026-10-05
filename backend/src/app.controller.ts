@@ -22,25 +22,24 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.10',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '11', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.12',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '13', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://expo.dev/artifacts/eas/x0LhBgiQjEiGZVsFZ7tKS-H4E0aT-0ebbm3ce1Ekjrg.apk',
+    'https://expo.dev/artifacts/eas/Tw4Sa_0cvtVDQnOsHsh7NnshkzdeyNHkownGM_OY_O0.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Enterprise Multi-User Isolation: Strict per-employee attendance, task history, and session segregation',
-    'Universal Medicine Catalog & Multi-HQ Stockist Inventory Coverage',
-    'Clean Top Bar: Minimal status dot indicator with pulse glow & redesigned high-visibility Logout button',
-    'Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window',
-    'Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal',
-    'Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync',
-    'Order Pending Workflow for Flexible Post-Detailing Order Entry',
+    'Zero Pre-filled Orders: Manual order punching only when requested by MR',
+    'Atomic Product Selection & Price Sync Fix in Visit Detailing',
+    'Deferred Order Entry: "Visit Verified • Order Deferred" badge and workflow',
+    'Immediate Transition to COMPLETED upon deferred order submission',
+    'Comprehensive Task History: Multi-source offline storage and remote sync',
+    'Multi-HQ Stocker-Restricted Inventory & Detailing Visibility',
   ],
 };
 

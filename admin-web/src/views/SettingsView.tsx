@@ -228,8 +228,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.11',
-    latestVersionCode: 12,
+    latestVersion: '1.0.12',
+    latestVersionCode: 13,
     minimumVersion: '1.0.0',
     downloadUrl: 'https://expo.dev/artifacts/eas/Tw4Sa_0cvtVDQnOsHsh7NnshkzdeyNHkownGM_OY_O0.apk',
     forceUpdate: false,
@@ -239,7 +239,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Enterprise Multi-User Isolation: Strict per-employee attendance, task history, and session segregation\nUniversal Medicine Catalog & Multi-HQ Stockist Inventory Coverage\nClean Top Bar: Minimal status dot indicator with pulse glow & redesigned high-visibility Logout button\nMonthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window\nCompressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal\nLive Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync\nOrder Pending Workflow for Flexible Post-Detailing Order Entry'
+    'Zero Pre-filled Orders: Manual order punching only when requested by MR\nAtomic Product Selection & Price Sync Fix in Visit Detailing\nDeferred Order Entry: "Visit Verified • Order Deferred" badge and workflow\nImmediate Transition to COMPLETED upon deferred order submission\nComprehensive Task History: Multi-source offline storage and remote sync\nMulti-HQ Stocker-Restricted Inventory & Detailing Visibility'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
@@ -1286,7 +1286,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={updateData.latestVersion}
                   onChange={(e) => setUpdateData({ ...updateData, latestVersion: e.target.value })}
-                  placeholder="1.0.11"
+                  placeholder="1.0.12"
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -1302,7 +1302,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '3px' }}>
                   {lang === 'hi'
                     ? 'कर्मचारियों के फोन पर पिछला वर्जन होने पर तुरंत अपडेट का विकल्प दिखेगा।'
-                    : 'Set target version (e.g. 1.0.11) so employee phones trigger the update prompt.'}
+                    : 'Set target version (e.g. 1.0.12) so employee phones trigger the update prompt.'}
                 </span>
               </div>
 
@@ -1314,7 +1314,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="number"
                   value={updateData.latestVersionCode}
                   onChange={(e) => setUpdateData({ ...updateData, latestVersionCode: Number(e.target.value) })}
-                  placeholder="12"
+                  placeholder="13"
                   style={{
                     width: '100%',
                     padding: '11px 14px',
