@@ -16,6 +16,7 @@ import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { LeaveScreen } from './LeaveScreen';
+import * as FileSystem from 'expo-file-system';
 
 interface AttendanceScreenProps {
   currentUser?: {
@@ -287,21 +288,26 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
       // 2. Prepare compressed photo payload (guaranteed base64 data URL for cross-platform DB viewing)
-      let photoPayload = selfiePhoto.base64
-        ? (selfiePhoto.base64.startsWith('data:') ? selfiePhoto.base64 : `data:image/jpeg;base64,${selfiePhoto.base64}`)
-        : null;
-
-      if (!photoPayload && selfiePhoto.uri) {
-        try {
-          const fileRes = await fetch(selfiePhoto.uri);
-          const blob = await fileRes.blob();
-          photoPayload = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve((reader.result as string) || '');
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(blob);
-          });
-        } catch {}
+      let photoPayload: string | null = null;
+      if (selfiePhoto.base64 && selfiePhoto.base64.startsWith('data:image')) {
+        photoPayload = selfiePhoto.base64;
+      } else if (selfiePhoto.base64 && !selfiePhoto.base64.startsWith('file:') && !selfiePhoto.base64.startsWith('content:')) {
+        const raw = selfiePhoto.base64.includes(',') ? selfiePhoto.base64.split(',')[1] : selfiePhoto.base64;
+        photoPayload = `data:image/jpeg;base64,${raw}`;
+      } else if (selfiePhoto.uri && selfiePhoto.uri.startsWith('data:image')) {
+        photoPayload = selfiePhoto.uri;
+      } else {
+        const targetUri = selfiePhoto.uri || (selfiePhoto.base64 && selfiePhoto.base64.startsWith('file:') ? selfiePhoto.base64 : null);
+        if (targetUri) {
+          try {
+            const raw = await FileSystem.readAsStringAsync(targetUri, { encoding: FileSystem.EncodingType.Base64 });
+            if (raw && raw.length > 50) {
+              photoPayload = `data:image/jpeg;base64,${raw}`;
+            }
+          } catch (fsErr) {
+            console.warn('FileSystem direct read error in AttendanceScreen:', fsErr);
+          }
+        }
       }
 
       const photoKey = `photo_att_in_${Date.now()}`;

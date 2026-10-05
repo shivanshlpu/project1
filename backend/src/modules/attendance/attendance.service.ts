@@ -83,6 +83,7 @@ export class AttendanceService implements OnModuleInit {
   clearAllAttendance(): { clearedCount: number; message: string } {
     const count = this.db.attendance.length;
     this.db.attendance = [];
+    this.db.persistToDisk();
     return {
       clearedCount: count,
       message: `All ${count} attendance records have been completely removed from the database.`,
@@ -108,6 +109,7 @@ export class AttendanceService implements OnModuleInit {
       this.db.attendanceSettings.allowed_punch_out_window_minutes = dto.allowed_punch_out_window_minutes;
     }
     this.db.attendanceSettings.updated_at = new Date().toISOString();
+    this.db.persistToDisk();
     return this.db.attendanceSettings;
   }
 
@@ -137,6 +139,7 @@ export class AttendanceService implements OnModuleInit {
           existing.check_in_location_name = dto.location_name;
         }
       }
+      this.db.persistToDisk();
       return { message: 'Attendance already recorded for today (photo & location updated)', attendance: existing };
     }
 
@@ -219,6 +222,7 @@ export class AttendanceService implements OnModuleInit {
     };
 
     this.db.attendance.push(record);
+    this.db.persistToDisk();
 
     let lateMsg = '';
     if (lateMinutes > 0) {
@@ -294,6 +298,7 @@ export class AttendanceService implements OnModuleInit {
       earlyMsg = hrs > 0 ? `Early Punch Out — ${hrs} hour ${mins} minutes` : `Early Punch Out — ${earlyMinutes} minutes`;
     }
 
+    this.db.persistToDisk();
     return {
       message: earlyMsg ? `Check-out recorded — ${earlyMsg}` : 'Check-out recorded successfully',
       attendance: record,

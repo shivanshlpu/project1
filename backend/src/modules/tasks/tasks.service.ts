@@ -45,14 +45,19 @@ export class TasksService {
    */
   checkAndSuspendOverdueTasks() {
     const today = getLocalDateString(new Date());
+    let changed = false;
     for (const task of this.db.tasks) {
       if (!task.deleted_at && (task.status === 'ASSIGNED' || task.status === 'IN_PROGRESS' || task.status === 'ORDER_PENDING')) {
         if (task.date < today) {
           task.status = 'SUSPENDED';
           task.suspended_at = task.suspended_at || new Date().toISOString();
           task.suspended_reason = '1 day expired without MR visit completion. Suspended until Owner unsuspends.';
+          changed = true;
         }
       }
+    }
+    if (changed) {
+      this.db.persistToDisk();
     }
   }
 
@@ -93,6 +98,7 @@ export class TasksService {
       mr_id: mr.id,
       assigned_at: new Date().toISOString(),
     });
+    this.db.persistToDisk();
 
     // Send high-priority remote push notification to MR's phone (WhatsApp-style)
     this.notificationsService.sendPushNotification(
@@ -216,6 +222,7 @@ export class TasksService {
     task.status = 'IN_PROGRESS';
     task.started_at = new Date().toISOString();
     task.device_integrity_status = 'VERIFIED';
+    this.db.persistToDisk();
     return {
       message: 'Task started successfully within geofence',
       task,
@@ -302,6 +309,7 @@ export class TasksService {
       );
     });
 
+    this.db.persistToDisk();
     return {
       message: 'Call activity saved with Order Pending. You can enter order details later this evening.',
       task,
@@ -377,6 +385,7 @@ export class TasksService {
       );
     });
 
+    this.db.persistToDisk();
     return {
       message: 'Order recorded and task completed successfully. Inventory updated.',
       task,
@@ -516,6 +525,7 @@ export class TasksService {
       });
     });
 
+    this.db.persistToDisk();
     return {
       message: 'Task completed successfully',
       task,
@@ -558,6 +568,7 @@ export class TasksService {
       });
     }
 
+    this.db.persistToDisk();
     return task;
   }
 
@@ -577,6 +588,7 @@ export class TasksService {
 
     const mr = this.db.users.find((u) => u.id === task.assigned_mr_id);
 
+    this.db.persistToDisk();
     return {
       message: 'Task successfully unsuspended by Owner. Representative can now execute the call.',
       task: {

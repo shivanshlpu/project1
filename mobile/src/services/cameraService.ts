@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
 export interface PhotoResult {
@@ -166,6 +167,11 @@ export const CameraService = {
       const asset = result.assets[0];
 
       // Enterprise compression on device: scale to standard dimension JPEG @ 0.45 (~15KB-25KB)
+      let base64Clean: string | null = null;
+      let finalUri = asset.uri;
+      let width = asset.width || 360;
+      let height = asset.height || 360;
+
       try {
         const isSquare = (options?.aspect?.[0] || 1) === (options?.aspect?.[1] || 1);
         const targetWidth = isSquare ? 360 : 540;
@@ -176,49 +182,64 @@ export const CameraService = {
           [{ resize: { width: targetWidth, height: targetHeight } }],
           { compress: 0.45, format: ImageManipulator.SaveFormat.JPEG, base64: true }
         );
-        const base64Str = manipResult.base64
-          ? (manipResult.base64.startsWith('data:') ? manipResult.base64 : `data:image/jpeg;base64,${manipResult.base64}`)
-          : null;
-        return {
-          uri: base64Str || manipResult.uri,
-          width: manipResult.width,
-          height: manipResult.height,
-          base64: base64Str,
-        };
+        if (manipResult.base64 && manipResult.base64.length > 50) {
+          base64Clean = manipResult.base64;
+        }
+        if (manipResult.uri) {
+          finalUri = manipResult.uri;
+        }
+        if (manipResult.width) width = manipResult.width;
+        if (manipResult.height) height = manipResult.height;
       } catch (manipErr) {
         console.warn('ImageManipulator compression fallback:', manipErr);
       }
 
-      let base64Data = asset.base64;
+      // Check asset.base64 if ImageManipulator didn't provide base64
+      if (!base64Clean && asset.base64 && asset.base64.length > 50) {
+        base64Clean = asset.base64;
+      }
 
-      // Fallback base64 conversion if ImageManipulator unavailable
-      if (!base64Data && asset.uri) {
+      // Bulletproof native FileSystem read (guaranteed to read local file:/// on Android even with cropping)
+      if (!base64Clean && finalUri) {
         try {
-          const fileRes = await fetch(asset.uri);
-          const blob = await fileRes.blob();
-          base64Data = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const resStr = (reader.result as string) || '';
-              resolve(resStr.includes(',') ? resStr.split(',')[1] : resStr);
-            };
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(blob);
+          const fsBase64 = await FileSystem.readAsStringAsync(finalUri, {
+            encoding: FileSystem.EncodingType.Base64,
           });
-        } catch (convErr) {
-          console.warn('Base64 conversion notice:', convErr);
+          if (fsBase64 && fsBase64.length > 50) {
+            base64Clean = fsBase64;
+          }
+        } catch (fsErr) {
+          console.warn('FileSystem readAsStringAsync notice:', fsErr);
+          if (asset.uri && asset.uri !== finalUri) {
+            try {
+              const fsBase64Alt = await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              if (fsBase64Alt && fsBase64Alt.length > 50) {
+                base64Clean = fsBase64Alt;
+              }
+            } catch {}
+          }
         }
       }
 
-      const fullDataUrl = base64Data
-        ? (base64Data.startsWith('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`)
-        : asset.uri;
+      if (base64Clean) {
+        const raw = base64Clean.includes(',') ? base64Clean.split(',')[1] : base64Clean;
+        const fullDataUrl = `data:image/jpeg;base64,${raw}`;
+        return {
+          uri: fullDataUrl,
+          width,
+          height,
+          base64: fullDataUrl,
+        };
+      }
 
+      // Fallback: return file URI but with base64: null so it cannot be mistaken for base64
       return {
-        uri: fullDataUrl,
-        width: asset.width,
-        height: asset.height,
-        base64: fullDataUrl,
+        uri: finalUri,
+        width,
+        height,
+        base64: null,
       };
     } catch (error) {
       console.warn('Error during camera capture:', error);

@@ -18,6 +18,7 @@ import { CameraService, PhotoResult } from '../services/cameraService';
 import { ApiConfig } from '../services/apiConfig';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { NotificationService } from '../services/notificationService';
+import * as FileSystem from 'expo-file-system';
 
 export interface MobileTaskItem {
   id: string;
@@ -612,10 +613,25 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
     // Extract guaranteed base64 data URL for cross-platform DB viewing
     let photoPayload: string | undefined = undefined;
-    if (visitPhoto?.base64) {
-      photoPayload = visitPhoto.base64.startsWith('data:') ? visitPhoto.base64 : `data:image/jpeg;base64,${visitPhoto.base64}`;
-    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:')) {
+    if (visitPhoto?.base64 && visitPhoto.base64.startsWith('data:image')) {
+      photoPayload = visitPhoto.base64;
+    } else if (visitPhoto?.base64 && !visitPhoto.base64.startsWith('file:') && !visitPhoto.base64.startsWith('content:')) {
+      const raw = visitPhoto.base64.includes(',') ? visitPhoto.base64.split(',')[1] : visitPhoto.base64;
+      photoPayload = `data:image/jpeg;base64,${raw}`;
+    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:image')) {
       photoPayload = visitPhoto.uri;
+    } else {
+      const targetUri = visitPhoto?.uri || (visitPhoto?.base64 && visitPhoto.base64.startsWith('file:') ? visitPhoto.base64 : null);
+      if (targetUri) {
+        try {
+          const raw = await FileSystem.readAsStringAsync(targetUri, { encoding: FileSystem.EncodingType.Base64 });
+          if (raw && raw.length > 50) {
+            photoPayload = `data:image/jpeg;base64,${raw}`;
+          }
+        } catch (fsErr) {
+          console.warn('FileSystem direct read error in handleSkipOrder:', fsErr);
+        }
+      }
     }
 
     const pendingTask: MobileTaskItem = {
@@ -686,10 +702,25 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
     // Extract guaranteed base64 data URL for cross-platform DB viewing
     let photoPayload: string | undefined = undefined;
-    if (visitPhoto?.base64) {
-      photoPayload = visitPhoto.base64.startsWith('data:') ? visitPhoto.base64 : `data:image/jpeg;base64,${visitPhoto.base64}`;
-    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:')) {
+    if (visitPhoto?.base64 && visitPhoto.base64.startsWith('data:image')) {
+      photoPayload = visitPhoto.base64;
+    } else if (visitPhoto?.base64 && !visitPhoto.base64.startsWith('file:') && !visitPhoto.base64.startsWith('content:')) {
+      const raw = visitPhoto.base64.includes(',') ? visitPhoto.base64.split(',')[1] : visitPhoto.base64;
+      photoPayload = `data:image/jpeg;base64,${raw}`;
+    } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:image')) {
       photoPayload = visitPhoto.uri;
+    } else {
+      const targetUri = visitPhoto?.uri || (visitPhoto?.base64 && visitPhoto.base64.startsWith('file:') ? visitPhoto.base64 : null);
+      if (targetUri) {
+        try {
+          const raw = await FileSystem.readAsStringAsync(targetUri, { encoding: FileSystem.EncodingType.Base64 });
+          if (raw && raw.length > 50) {
+            photoPayload = `data:image/jpeg;base64,${raw}`;
+          }
+        } catch (fsErr) {
+          console.warn('FileSystem direct read error in handleSubmitCompletion:', fsErr);
+        }
+      }
     }
 
     const completedTask: MobileTaskItem = {

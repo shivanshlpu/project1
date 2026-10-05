@@ -1,5 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   User,
   Role,
@@ -100,8 +102,77 @@ export class DatabaseService implements OnModuleInit {
 
   constructor(public readonly supabase: SupabaseService) {}
 
+  public getStorageFilePath(): string {
+    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      try {
+        fs.mkdirSync(dataDir, { recursive: true });
+      } catch {}
+    }
+    return path.join(dataDir, 'ffa_db_store.json');
+  }
+
+  public persistToDisk() {
+    try {
+      const filePath = this.getStorageFilePath();
+      const payload = {
+        tasks: this.tasks,
+        attendance: this.attendance,
+        attendanceSettings: this.attendanceSettings,
+        doctorVisits: this.doctorVisits,
+        visitDetails: this.visitDetails,
+        dcrList: this.dcrList,
+        dcrItems: this.dcrItems,
+        expenses: this.expenses,
+        leaveRequests: this.leaveRequests,
+        tourPlans: this.tourPlans,
+        monthlyTourPlans: this.monthlyTourPlans,
+        stockerInventory: this.stockerInventory,
+        verificationPhotos: this.verificationPhotos,
+        saved_at: new Date().toISOString(),
+      };
+      fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('[DatabaseService] Failed to persist data to disk:', err);
+    }
+  }
+
+  public loadFromDisk(): boolean {
+    try {
+      const filePath = this.getStorageFilePath();
+      if (!fs.existsSync(filePath)) return false;
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.tasks)) {
+        this.tasks = data.tasks;
+        if (Array.isArray(data.attendance)) this.attendance = data.attendance;
+        if (data.attendanceSettings) this.attendanceSettings = data.attendanceSettings;
+        if (Array.isArray(data.doctorVisits)) this.doctorVisits = data.doctorVisits;
+        if (Array.isArray(data.visitDetails)) this.visitDetails = data.visitDetails;
+        if (Array.isArray(data.dcrList)) this.dcrList = data.dcrList;
+        if (Array.isArray(data.dcrItems)) this.dcrItems = data.dcrItems;
+        if (Array.isArray(data.expenses)) this.expenses = data.expenses;
+        if (Array.isArray(data.leaveRequests)) this.leaveRequests = data.leaveRequests;
+        if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
+        if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
+        if (Array.isArray(data.stockerInventory)) this.stockerInventory = data.stockerInventory;
+        if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
+        console.log(
+          `[DatabaseService] Successfully restored ${this.tasks.length} tasks and ${this.attendance.length} attendance records from persistent disk store.`,
+        );
+        return true;
+      }
+    } catch (err) {
+      console.warn('[DatabaseService] Failed to restore from disk store:', err);
+    }
+    return false;
+  }
+
   async onModuleInit() {
     await this.seedInitialData();
+    // Restore persistent tasks, visits & attendance from disk if available
+    this.loadFromDisk();
+
     if (this.supabase && this.supabase.isConnected) {
       try {
         const adminUser = this.users.find((u) => u.email === 'shivanshti10@gmail.com');

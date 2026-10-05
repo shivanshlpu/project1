@@ -3798,7 +3798,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     <Camera size={16} color="#2563EB" />
                     <span>📸 On-Site Clinic &amp; Detailing Proof Photo</span>
                   </div>
-                  {selectedCompletedTask.visit_photo || selectedCompletedTask.verification_photo_key ? (
+                  {selectedCompletedTask.visit_photo || (selectedCompletedTask.verification_photo_key && (selectedCompletedTask.verification_photo_key.startsWith('data:') || selectedCompletedTask.verification_photo_key.startsWith('http'))) ? (
                     <span
                       style={{
                         background: '#DCFCE7',
@@ -3810,6 +3810,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       }}
                     >
                       ✓ Live Camera Verified
+                    </span>
+                  ) : selectedCompletedTask.verification_photo_key && selectedCompletedTask.verification_photo_key.startsWith('file:') ? (
+                    <span
+                      style={{
+                        background: '#FEF3C7',
+                        color: '#92400E',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      ⚠️ Local Cache Only (Old App Build)
                     </span>
                   ) : (
                     <span style={{ fontSize: '11px', color: '#94A3B8' }}>No Photo Captured</span>
@@ -3889,6 +3902,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
                         <Camera size={13} />
                         <span>View Full-Size Proof Photo</span>
                       </button>
+                    </div>
+                  </div>
+                ) : selectedCompletedTask.verification_photo_key && selectedCompletedTask.verification_photo_key.startsWith('file:') ? (
+                  <div style={{ background: '#FFFBEB', padding: '12px 14px', borderRadius: '8px', border: '1px solid #FDE68A', fontSize: '12px', color: '#92400E' }}>
+                    <div style={{ fontWeight: '700', marginBottom: '4px' }}>⚠️ Photo Stored Only on Local Phone Storage (Old App Build)</div>
+                    <div>
+                      This call was recorded using an older mobile app session where the photo remained only in the phone's temporary local cache (<code style={{ fontSize: '11px', background: '#FEF3C7', padding: '1px 4px', borderRadius: '3px' }}>{selectedCompletedTask.verification_photo_key.slice(0, 55)}...</code>).
+                      With the updated mobile app build, all photos are converted to verified compressed base64 data and transmitted directly to the server database.
                     </div>
                   </div>
                 ) : (
