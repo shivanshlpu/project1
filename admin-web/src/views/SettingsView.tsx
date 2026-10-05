@@ -228,10 +228,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.10',
-    latestVersionCode: 11,
+    latestVersion: '1.0.11',
+    latestVersionCode: 12,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/x0LhBgiQjEiGZVsFZ7tKS-H4E0aT-0ebbm3ce1Ekjrg.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/Tw4Sa_0cvtVDQnOsHsh7NnshkzdeyNHkownGM_OY_O0.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -1832,7 +1832,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={updateData.latestVersion}
                   onChange={(e) => setUpdateData({ ...updateData, latestVersion: e.target.value })}
-                  placeholder="1.0.10"
+                  placeholder="1.0.11"
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -1848,7 +1848,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '3px' }}>
                   {lang === 'hi'
                     ? 'कर्मचारियों के फोन पर पिछला वर्जन होने पर तुरंत अपडेट का विकल्प दिखेगा।'
-                    : 'Set target version (e.g. 1.0.10) so employee phones trigger the update prompt.'}
+                    : 'Set target version (e.g. 1.0.11) so employee phones trigger the update prompt.'}
                 </span>
               </div>
 
@@ -1860,7 +1860,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="number"
                   value={updateData.latestVersionCode}
                   onChange={(e) => setUpdateData({ ...updateData, latestVersionCode: Number(e.target.value) })}
-                  placeholder="11"
+                  placeholder="12"
                   style={{
                     width: '100%',
                     padding: '11px 14px',
