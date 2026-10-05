@@ -178,24 +178,150 @@ export class DatabaseService implements OnModuleInit {
 
     if (this.supabase && this.supabase.isConnected) {
       try {
-        const adminUser = this.users.find((u) => u.email === 'shivanshti10@gmail.com');
-        if (adminUser) {
-          await this.supabase.upsertUser({
-            id: adminUser.id,
-            name: adminUser.name,
-            email: adminUser.email,
-            phone: adminUser.phone,
-            password_hash: adminUser.password_hash,
-            role: adminUser.role,
-            status: adminUser.status,
-            biometric_enabled: adminUser.biometric_enabled,
-          });
+        const client = this.supabase.getClient();
+        if (client) {
+          const adminUser = this.users.find((u) => u.email === 'shivanshti10@gmail.com');
+          if (adminUser) {
+            await this.supabase.upsertUser({
+              id: adminUser.id,
+              name: adminUser.name,
+              email: adminUser.email,
+              phone: adminUser.phone,
+              password_hash: adminUser.password_hash,
+              role: adminUser.role,
+              status: adminUser.status,
+              biometric_enabled: adminUser.biometric_enabled,
+            });
+          }
+
+          // Sync tasks with Supabase
+          const { data: remoteTasks, error: taskErr } = await client.from('tasks').select('*');
+          if (!taskErr && remoteTasks && remoteTasks.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteTasks.length} tasks from Supabase.`);
+            for (const rt of remoteTasks) {
+              const idx = this.tasks.findIndex((t) => t.id === rt.id);
+              if (idx >= 0) {
+                this.tasks[idx] = { ...this.tasks[idx], ...rt };
+              } else {
+                this.tasks.push(rt);
+              }
+            }
+          } else if (this.tasks.length > 0) {
+            for (const task of this.tasks) {
+              await this.syncTaskToSupabase(task);
+            }
+          }
+
+          // Sync attendance with Supabase
+          const { data: remoteAtt, error: attErr } = await client.from('attendance').select('*');
+          if (!attErr && remoteAtt && remoteAtt.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteAtt.length} attendance records from Supabase.`);
+            for (const ra of remoteAtt) {
+              const idx = this.attendance.findIndex((a) => a.id === ra.id);
+              if (idx >= 0) {
+                this.attendance[idx] = { ...this.attendance[idx], ...ra };
+              } else {
+                this.attendance.push(ra);
+              }
+            }
+          } else if (this.attendance.length > 0) {
+            for (const att of this.attendance) {
+              await this.syncAttendanceToSupabase(att);
+            }
+          }
         }
-      } catch {
-        // Resilient fallback
+      } catch (err: any) {
+        console.warn('[DatabaseService] Supabase onModuleInit notice:', err?.message);
       }
     }
   }
+
+  public async syncTaskToSupabase(task: any) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('tasks').upsert({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        assigned_mr_id: task.assigned_mr_id,
+        assigned_mr_name: task.assigned_mr_name,
+        created_by: task.created_by,
+        date: task.date,
+        time: task.time,
+        location_name: task.location_name,
+        address: task.address,
+        latitude: task.latitude,
+        longitude: task.longitude,
+        geofence_radius_m: task.geofence_radius_m || 20,
+        status: task.status || 'ASSIGNED',
+        priority: task.priority || 'MEDIUM',
+        started_at: task.started_at,
+        completed_at: task.completed_at,
+        duration_seconds: task.duration_seconds || 0,
+        outcome: task.outcome,
+        orders: task.orders ? (typeof task.orders === 'string' ? task.orders : JSON.stringify(task.orders)) : null,
+        visit_photo: task.visit_photo || null,
+        visit_photo_captured_at: task.visit_photo_captured_at,
+        verification_photo_key: task.verification_photo_key,
+        verification_photo_source: task.verification_photo_source,
+        device_integrity_status: task.device_integrity_status || 'VERIFIED',
+        suspended_at: task.suspended_at,
+        suspended_reason: task.suspended_reason,
+        unsuspended_at: task.unsuspended_at,
+        unsuspended_by: task.unsuspended_by,
+        hq_id: task.hq_id,
+        hq_name: task.hq_name,
+        stocker_id: task.stocker_id,
+        stocker_name: task.stocker_name,
+        created_at: task.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync task ${task.id}:`, err?.message);
+    }
+  }
+
+  public async syncAttendanceToSupabase(att: any) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('attendance').upsert({
+        id: att.id,
+        user_id: att.user_id,
+        user_name: att.user_name,
+        date: att.date,
+        check_in_at: att.check_in_at,
+        check_in_lat: att.check_in_lat,
+        check_in_lng: att.check_in_lng,
+        check_in_location_name: att.check_in_location_name,
+        check_in_photo: att.check_in_photo,
+        photo_captured_at: att.photo_captured_at,
+        photo_purged: att.photo_purged || false,
+        check_out_at: att.check_out_at,
+        check_out_lat: att.check_out_lat,
+        check_out_lng: att.check_out_lng,
+        check_out_location_name: att.check_out_location_name,
+        distance_meters: att.distance_meters,
+        is_verified_location: att.is_verified_location !== false,
+        status: att.status || 'PRESENT',
+        punch_in_photo_key: att.punch_in_photo_key,
+        punch_in_photo_source: att.punch_in_photo_source || 'CAMERA',
+        punch_out_photo_key: att.punch_out_photo_key,
+        punch_out_photo_source: att.punch_out_photo_source || 'CAMERA',
+        late_minutes: att.late_minutes || 0,
+        early_minutes: att.early_minutes || 0,
+        working_hours: att.working_hours || 0,
+        device_integrity_status: att.device_integrity_status || 'VERIFIED',
+        is_mocked: att.is_mocked || false,
+        hq_id: att.hq_id,
+        hq_name: att.hq_name,
+        created_at: att.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync attendance ${att.id}:`, err?.message);
+    }
 
   private async seedInitialData() {
     // 1. Roles
