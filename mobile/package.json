@@ -1,6 +1,6 @@
 {
   "name": "ahtri-ffa-mobile",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Medical Representative (MR) Mobile Application for AHTRI Field Force Automation",
   "scripts": {
     "start": "expo start",
