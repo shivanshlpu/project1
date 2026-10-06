@@ -50,6 +50,8 @@ export interface User {
   device_id?: string;
   device_model?: string;
   device_bound_at?: string;
+  requires_device_otp_on_login?: boolean;
+  logged_out?: boolean;
   biometric_enabled: boolean;
   created_at: string;
   deleted_at?: string;

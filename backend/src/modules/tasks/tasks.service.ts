@@ -117,7 +117,7 @@ export class TasksService {
   async getMyTasks(mrId: string, date?: string) {
     this.checkAndSuspendOverdueTasks();
     return this.db.tasks
-      .filter((t) => !t.deleted_at && t.assigned_mr_id === mrId)
+      .filter((t) => !t.deleted_at && t.status !== 'CANCELLED' && t.assigned_mr_id === mrId)
       .filter((t) => (date ? t.date === date : true))
       .sort((a, b) => a.time.localeCompare(b.time))
       // Secret meeting duration: Strip duration_seconds from MR payload
@@ -610,7 +610,7 @@ export class TasksService {
   async getAdminTasks(filter: { mr_id?: string; status?: string; startDate?: string; endDate?: string }) {
     this.checkAndSuspendOverdueTasks();
     return this.db.tasks
-      .filter((t) => !t.deleted_at)
+      .filter((t) => !t.deleted_at && t.status !== 'CANCELLED')
       .filter((t) => (filter.mr_id ? t.assigned_mr_id === filter.mr_id : true))
       .filter((t) => (filter.status ? t.status === filter.status : true))
       .filter((t) => (filter.startDate ? t.date >= filter.startDate : true))

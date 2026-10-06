@@ -156,29 +156,6 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
       }
     } catch {}
 
-    // 4. Default Seeded Task fallback if history is still empty
-    if (combinedMap.size === 0) {
-      combinedMap.set('task-hist-01', {
-        id: 'task-hist-01',
-        title: 'Dr. Rajesh Sharma Detailing - CardioFix Launch',
-        date: '2026-09-06',
-        time: '10:30:00',
-        location_name: 'Apex Heart Centre (Saket)',
-        address: 'Ring Road, Saket, South Delhi',
-        status: 'COMPLETED',
-        priority: 'HIGH',
-        started_at: '2026-09-06T10:28:14.000Z',
-        completed_at: '2026-09-06T11:06:38.000Z',
-        duration_seconds: 2304,
-        outcome: 'Doctor reviewed clinical trial data for CardioFix-50. Agreed to prescribe for 25 hypertension patients.',
-        orders: [
-          { product_name: 'CardioFix-50 (Telmisartan)', quantity: 30, total_amount: 5400 },
-          { product_name: 'CardioFix-AM Suspension', quantity: 15, total_amount: 1800 },
-        ],
-        assigned_mr_name: currentUserName || 'Rahul Sharma',
-      });
-    }
-
     const completed = Array.from(combinedMap.values()).sort(
       (a, b) => (b.completed_at || b.date || '').localeCompare(a.completed_at || a.date || '')
     );

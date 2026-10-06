@@ -13,6 +13,7 @@ import {
 import { DeviceBindingService } from '../services/deviceBindingService';
 import { ApiConfig } from '../services/apiConfig';
 import { ServerStatusPill } from '../components/ServerStatusPill';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: {
@@ -47,7 +48,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     // Automatically detect physical device hardware on mount
     DeviceBindingService.getDeviceProfile().then((profile) => {
-      if (profile.isPhysicalPhone || profile.modelName !== 'Device') {
+      if (profile.deviceId) {
         setCurrentDeviceId(profile.deviceId);
         setCurrentDeviceModel(profile.summary);
       }
@@ -143,6 +144,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         }
 
         if (data.access_token) {
+          await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
           // Direct login success on recognized device
           onLoginSuccess({
             id: data.user?.id || 'usr-mr-01',
@@ -171,15 +173,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      // Check device binding in local store
-      if (user.bound_device_id && user.bound_device_id !== currentDeviceId) {
-        // Trigger simulated OTP flow
+      // Check if reauth OTP is required or device mismatch
+      const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
+      if (requiresReauthOtp === 'true' || (user.bound_device_id && user.bound_device_id !== currentDeviceId)) {
+        // Trigger OTP verification flow
         setDeviceAuthRequestId(`req-sim-${Date.now()}`);
         setStep('otp_verify');
         setIsSubmitting(false);
         return;
       }
 
+      await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
       // Bound or new pairing
       user.bound_device_id = currentDeviceId;
       user.bound_device_model = currentDeviceModel;
@@ -223,9 +227,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.access_token) {
+        await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
         Alert.alert(
           'Phone Authorized',
-          'Your new phone has been approved by the Owner and locked to your MR account. You will remain logged in indefinitely.',
+          'Your phone has been approved by the Owner and verified. You will remain logged in until you log out.',
         );
         onLoginSuccess({
           id: data.user?.id || 'usr-mr-01',
@@ -242,6 +247,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       }
     } catch {
       // Offline simulation verify
+      await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
       Alert.alert('Device Authorized (Offline Mode)', 'Device linked successfully.');
       onLoginSuccess({
         id: 'usr-mr-01',

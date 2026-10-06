@@ -337,8 +337,16 @@ export default function App() {
         text: 'Log Out',
         style: 'destructive',
         onPress: async () => {
+          const userIdToLogout = currentUser?.id;
           try {
+            const baseUrl = await ApiConfig.getBaseUrl();
+            await fetch(`${baseUrl}/auth/logout`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: userIdToLogout }),
+            }).catch(() => {});
             await AsyncStorage.removeItem(SESSION_KEY);
+            await AsyncStorage.setItem('@ahtri_requires_reauth_otp', 'true');
             await ApiConfig.clearSession();
           } catch {
             // Ignore

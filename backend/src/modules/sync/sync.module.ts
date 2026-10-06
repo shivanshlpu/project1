@@ -106,7 +106,7 @@ export class SyncService {
     const userAreaId = user?.area_id;
 
     // Filter tasks for this MR
-    let tasks = this.db.tasks.filter((t) => t.assigned_mr_id === userId && !t.deleted_at);
+    let tasks = this.db.tasks.filter((t) => t.assigned_mr_id === userId && !t.deleted_at && t.status !== 'CANCELLED');
     if (since) {
       tasks = tasks.filter((t) => t.created_at >= since);
     }

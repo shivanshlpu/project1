@@ -64,68 +64,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   currentUserName = 'Rahul Sharma',
 }) => {
   // All system tasks across MRs
-  const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([
-    {
-      id: 'task-01',
-      title: 'Dr. Rajesh Sharma Detailing',
-      date: '2026-09-06',
-      time: '10:30 AM',
-      assigned_mr_id: 'usr-mr-01', // Rahul Sharma
-      assigned_mr_name: 'Rahul Sharma',
-      location_name: 'Apex Heart Centre',
-      address: 'Ring Road, Saket, South Delhi',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      geofence_radius_m: 50,
-      priority: 'HIGH',
-      status: 'ASSIGNED',
-    },
-    {
-      id: 'task-02',
-      title: 'Dr. Priya Verma Evening Visit',
-      date: '2026-09-06',
-      time: '05:00 PM',
-      assigned_mr_id: 'usr-mr-01', // Rahul Sharma
-      assigned_mr_name: 'Rahul Sharma',
-      location_name: 'Little Care Clinic',
-      address: 'Green Park Extension, New Delhi',
-      latitude: 28.5585,
-      longitude: 77.2028,
-      geofence_radius_m: 50,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-    },
-    {
-      id: 'task-03',
-      title: 'Max Super Specialty Hospital Detailing',
-      date: '2026-09-06',
-      time: '12:15 PM',
-      assigned_mr_id: 'usr-mr-02', // Vikram Malhotra
-      assigned_mr_name: 'Vikram Malhotra',
-      location_name: 'Max Super Specialty Hospital',
-      address: 'Press Enclave Marg, Saket',
-      latitude: 28.5282,
-      longitude: 77.2124,
-      geofence_radius_m: 60,
-      priority: 'HIGH',
-      status: 'ASSIGNED',
-    },
-    {
-      id: 'task-04',
-      title: 'Dr. Anita Desai Follow-up Call',
-      date: '2026-09-06',
-      time: '02:30 PM',
-      assigned_mr_id: 'usr-mr-03', // Pooja Verma
-      assigned_mr_name: 'Pooja Verma',
-      location_name: 'Skin Care Centre',
-      address: 'Hauz Khas, New Delhi',
-      latitude: 28.5494,
-      longitude: 77.2001,
-      geofence_radius_m: 40,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-    },
-  ]);
+  const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);
 
   // Real Hardware Sensor GPS Tracking
   const [deviceCoords, setDeviceCoords] = useState<{
@@ -251,7 +190,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           // Read local completed tasks so completed status is never overridden
           let locallyCompleted: MobileTaskItem[] = [];
           try {
@@ -259,6 +198,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             if (raw) locallyCompleted = JSON.parse(raw);
           } catch {}
           const localCompMap = new Map(locallyCompleted.map((c) => [c.id, c]));
+
+          // Active valid IDs from backend: any task deleted on backend must not remain in storage or resurrected
+          const serverTaskIds = new Set(data.map((t: any) => t.id));
+          const cleanedLocallyCompleted = locallyCompleted.filter((lc) => serverTaskIds.has(lc.id));
+          if (cleanedLocallyCompleted.length !== locallyCompleted.length) {
+            await AsyncStorage.setItem(
+              `@ahtri_completed_tasks_${currentUserId}`,
+              JSON.stringify(cleanedLocallyCompleted)
+            ).catch(() => {});
+          }
 
           const mapped: MobileTaskItem[] = data.map((t: any) => {
             const locallyComp = localCompMap.get(t.id);
@@ -273,7 +222,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               assigned_mr_id: t.assigned_mr_id,
               assigned_mr_name: t.assigned_mr_name || currentUserName,
               location_name: t.location_name || 'Designated Clinic',
-              address: t.address || t.location_name || 'Delhi Territory',
+              address: t.address || t.location_name || '',
               latitude: t.latitude,
               longitude: t.longitude,
               geofence_radius_m: t.geofence_radius_m || 50,
@@ -286,13 +235,6 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               suspended_at: t.suspended_at,
               suspended_reason: t.suspended_reason,
             };
-          });
-
-          // Also keep any completed items not in backend response
-          locallyCompleted.forEach((lc) => {
-            if (!mapped.some((m) => m.id === lc.id)) {
-              mapped.push(lc);
-            }
           });
 
           // Check for newly assigned tasks and fire WhatsApp-style system notification immediately

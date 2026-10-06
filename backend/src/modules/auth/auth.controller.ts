@@ -67,8 +67,8 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: Partial<RefreshTokenDto>) {
-    return this.authService.logout(dto?.refreshToken);
+  async logout(@Body() dto: Partial<RefreshTokenDto> & { userId?: string }) {
+    return this.authService.logout(dto?.refreshToken, dto?.userId);
   }
 
   @Post('forgot-password')

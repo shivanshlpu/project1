@@ -63,56 +63,84 @@ export class AuthService {
         );
       }
 
-      // 2. Device ID hardware lock
+      // 2. Device ID hardware lock & Owner OTP verification
       const targetDeviceId = dto.device_id;
       if (targetDeviceId) {
-        // If already bound to this specific phone, allow seamless instant login!
-        if (user.device_id && user.device_id === targetDeviceId) {
-          // Device authorized and bound!
-        } else if (!user.device_id) {
-          // Unbound user - pair device immediately on first login
-          user.device_id = targetDeviceId;
-          user.device_model = dto.device_model || 'Mobile Device';
-          user.device_bound_at = new Date().toISOString();
-        } else if (process.env.NODE_ENV === 'test') {
-          throw new ForbiddenException('Device mismatch: Cannot login from unauthorized device');
-        } else {
-          // New device or device mismatch! Generate a 6-digit OTP on the Owner Dashboard
-          const otp = Math.floor(100000 + Math.random() * 900000).toString();
-          const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
-          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        // Check if Owner already approved a pending authorization on the Admin Dashboard
+        const approvedReq = this.db.deviceAuthorizations.find(
+          (r) =>
+            r.user_id === user.id &&
+            r.device_id === targetDeviceId &&
+            r.status === 'APPROVED' &&
+            new Date(r.expires_at) > new Date(Date.now() - 30 * 60 * 1000),
+        );
 
-          // Invalidate any older pending requests for this user
-          this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
-            (r) => !(r.user_id === user.id && r.status === 'PENDING'),
-          );
+        // Security rule: If employee logged out, or requires OTP, or device is not yet authorized:
+        const requiresOtp =
+          user.requires_device_otp_on_login ||
+          user.logged_out ||
+          !user.device_id ||
+          user.device_id !== targetDeviceId;
 
-          const authReq: DeviceAuthorizationRequest = {
-            id: requestId,
-            user_id: user.id,
-            user_name: user.name,
-            user_phone: user.phone,
-            user_email: user.email,
-            device_id: targetDeviceId,
-            device_model: dto.device_model || 'Android Mobile Device',
-            otp,
-            status: 'PENDING',
-            created_at: new Date().toISOString(),
-            expires_at: expiresAt,
-          };
+        if (requiresOtp) {
+          if (approvedReq) {
+            // Owner approved via dashboard 1-Click Approve!
+            user.device_id = targetDeviceId;
+            user.device_model = dto.device_model || approvedReq.device_model;
+            user.device_bound_at = new Date().toISOString();
+            user.requires_device_otp_on_login = false;
+            user.logged_out = false;
+            approvedReq.status = 'CONSUMED' as any;
+            this.db.persistToDisk();
+          } else {
+            // Check if there is an active PENDING request for this user and device
+            let authReq = this.db.deviceAuthorizations.find(
+              (r) =>
+                r.user_id === user.id &&
+                r.device_id === targetDeviceId &&
+                r.status === 'PENDING' &&
+                new Date(r.expires_at) > new Date(),
+            );
 
-          this.db.deviceAuthorizations.unshift(authReq);
+            if (!authReq) {
+              const otp = Math.floor(100000 + Math.random() * 900000).toString();
+              const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
+              const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-          return {
-            requires_device_otp: true,
-            request_id: requestId,
-            device_id: targetDeviceId,
-            device_model: authReq.device_model,
-            user_name: user.name,
-            message:
-              'New device detected. A 6-digit device activation code has been generated on the Owner Dashboard (Shivansh Tiwari). Please ask the Owner for the code to activate this phone.',
-            debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined,
-          };
+              // Invalidate any older pending requests for this user
+              this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+                (r) => !(r.user_id === user.id && r.status === 'PENDING'),
+              );
+
+              authReq = {
+                id: requestId,
+                user_id: user.id,
+                user_name: user.name,
+                user_phone: user.phone,
+                user_email: user.email,
+                device_id: targetDeviceId,
+                device_model: dto.device_model || 'Android Mobile Device',
+                otp,
+                status: 'PENDING',
+                created_at: new Date().toISOString(),
+                expires_at: expiresAt,
+              };
+
+              this.db.deviceAuthorizations.unshift(authReq);
+              this.db.persistToDisk();
+            }
+
+            return {
+              requires_device_otp: true,
+              request_id: authReq.id,
+              device_id: targetDeviceId,
+              device_model: authReq.device_model,
+              user_name: user.name,
+              message:
+                'Security verification required. A 6-digit OTP code has been generated on the Owner Dashboard (Shivansh Tiwari). Please ask the Owner for the code to log in.',
+              debug_otp: process.env.NODE_ENV === 'development' ? authReq.otp : undefined,
+            };
+          }
         }
       }
     }
@@ -160,10 +188,13 @@ export class AuthService {
     user.device_model = dto.deviceModel || req.device_model;
     user.device_bound_at = new Date().toISOString();
     user.last_login_at = new Date().toISOString();
+    user.requires_device_otp_on_login = false;
+    user.logged_out = false;
 
     req.status = 'APPROVED';
     req.approved_at = new Date().toISOString();
     req.approved_by = 'Shivansh Tiwari (Owner)';
+    this.db.persistToDisk();
 
     if (this.db.supabase?.isConnected) {
       await this.db.supabase.upsertUser({
@@ -194,10 +225,13 @@ export class AuthService {
     user.device_id = req.device_id;
     user.device_model = req.device_model;
     user.device_bound_at = new Date().toISOString();
+    user.requires_device_otp_on_login = false;
+    user.logged_out = false;
 
     req.status = 'APPROVED';
     req.approved_at = new Date().toISOString();
     req.approved_by = ownerName;
+    this.db.persistToDisk();
 
     if (this.db.supabase?.isConnected) {
       await this.db.supabase.upsertUser({
@@ -241,6 +275,9 @@ export class AuthService {
     user.device_id = undefined;
     user.device_model = undefined;
     user.device_bound_at = undefined;
+    user.requires_device_otp_on_login = true;
+    user.logged_out = true;
+    this.db.persistToDisk();
 
     if (this.db.supabase?.isConnected) {
       await this.db.supabase.upsertUser({
@@ -323,9 +360,17 @@ export class AuthService {
     return this.generateAuthPayload(user);
   }
 
-  async logout(refreshToken?: string) {
+  async logout(refreshToken?: string, userId?: string) {
     if (refreshToken && this.db.refreshTokens.has(refreshToken)) {
       this.db.refreshTokens.delete(refreshToken);
+    }
+    if (userId) {
+      const user = this.db.users.find((u) => u.id === userId);
+      if (user) {
+        user.logged_out = true;
+        user.requires_device_otp_on_login = true;
+        this.db.persistToDisk();
+      }
     }
     return { message: 'Logged out successfully.' };
   }
