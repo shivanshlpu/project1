@@ -181,6 +181,30 @@ export class UpdateTaskDto {
 
   @IsString()
   @IsOptional()
+  assigned_mr_name?: string;
+
+  @IsString()
+  @IsOptional()
+  location_name?: string;
+
+  @IsNumber()
+  @IsOptional()
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  longitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  geofence_radius_m?: number;
+
+  @IsString()
+  @IsOptional()
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+
+  @IsString()
+  @IsOptional()
   date?: string;
 
   @IsString()

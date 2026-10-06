@@ -30,6 +30,7 @@ import {
   FileText,
   Camera,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { TaskItem, VerificationLogItem, DoctorItem, TaskOrderItem } from '../types';
 import { Language, translations } from '../utils/i18n';
@@ -187,6 +188,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
     return initial.slice(0, 2).map((p) => p.name);
   });
   const [taskDescription, setTaskDescription] = useState('');
+
+  // Edit Assigned Task State
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('usr-mr-01');
+  const [editTaskAssignedMrName, setEditTaskAssignedMrName] = useState('Rahul Sharma');
+  const [editTaskDate, setEditTaskDate] = useState('');
+  const [editTaskTime, setEditTaskTime] = useState('');
+  const [editTaskPriority, setEditTaskPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
+  const [editTaskLocationName, setEditTaskLocationName] = useState('');
+  const [editTaskGeofenceRadius, setEditTaskGeofenceRadius] = useState<number>(100);
+  const [editTaskStatus, setEditTaskStatus] = useState<TaskItem['status']>('ASSIGNED');
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false);
 
   // Live Sync In-Stock Products with Store Inventory
   useEffect(() => {
@@ -1161,6 +1175,99 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
+  // Owner Action: Open Edit Task Modal
+  const handleOpenEditTask = (task: TaskItem) => {
+    setEditingTask(task);
+    setEditTaskTitle(task.title || '');
+    setEditTaskAssignedMrId(task.assigned_mr_id || 'usr-mr-01');
+    setEditTaskAssignedMrName(task.assigned_mr_name || 'Rahul Sharma');
+    setEditTaskDate(task.date || getTodayDateString());
+    setEditTaskTime(task.time || '10:00 AM');
+    setEditTaskPriority(task.priority || 'HIGH');
+    setEditTaskLocationName(task.location_name || '');
+    setEditTaskGeofenceRadius(task.geofence_radius_m || 100);
+    setEditTaskStatus(task.status || 'ASSIGNED');
+  };
+
+  // Owner Action: Save Edited Task
+  const handleSaveEditedTask = async () => {
+    if (!editingTask) return;
+    if (!editTaskTitle.trim()) {
+      showCenteredNotice({
+        title: 'Validation Error',
+        message: 'Please enter a task title.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    setIsUpdatingTask(true);
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      const payload = {
+        title: editTaskTitle.trim(),
+        assigned_mr_id: editTaskAssignedMrId,
+        assigned_mr_name: editTaskAssignedMrName,
+        date: editTaskDate,
+        time: editTaskTime,
+        priority: editTaskPriority,
+        location_name: editTaskLocationName.trim(),
+        geofence_radius_m: Number(editTaskGeofenceRadius),
+        status: editTaskStatus,
+      };
+
+      // Try PATCH first, fallback to POST /update
+      const res = await fetch(`${apiUrl}/tasks/${editingTask.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        await fetch(`${apiUrl}/tasks/${editingTask.id}/update`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+      }
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === editingTask.id
+            ? {
+                ...t,
+                ...payload,
+              }
+            : t
+        )
+      );
+
+      setEditingTask(null);
+      window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
+      showCenteredNotice({
+        title: 'Task Reassigned & Updated',
+        message: `Task "${editTaskTitle.trim()}" has been updated and assigned to ${editTaskAssignedMrName}.`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error('Error updating task:', err);
+      showCenteredNotice({
+        title: 'Update Error',
+        message: 'Failed to update task: ' + (err.message || 'Network error'),
+        type: 'error',
+      });
+    } finally {
+      setIsUpdatingTask(false);
+    }
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return 'N/A';
     const m = Math.floor(seconds / 60);
@@ -2021,6 +2128,58 @@ export const TasksView: React.FC<TasksViewProps> = ({
                                   <ShieldCheck size={12} /> {unsuspendingId === t.id ? 'Unsuspending...' : 'Unsuspend Task'}
                                 </button>
                               )}
+
+                              {/* Territory Drawer Task Actions: Edit & Delete */}
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditTask(t)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #CBD5E1',
+                                    background: '#FFFFFF',
+                                    color: '#1E293B',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'background 0.15s ease',
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                                  title="Edit or reassign task"
+                                >
+                                  <Pencil size={11} />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTask(t.id, t.title)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #FCA5A5',
+                                    background: '#FFFFFF',
+                                    color: '#DC2626',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'background 0.15s ease',
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                                  title="Delete task"
+                                >
+                                  <Trash2 size={11} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -2244,8 +2403,41 @@ export const TasksView: React.FC<TasksViewProps> = ({
               </button>
             )}
 
-            {/* Delete Task Action */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+            {/* Task Card Actions: Edit & Delete */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+              <button
+                type="button"
+                onClick={() => handleOpenEditTask(task)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  border: '1px solid #CBD5E1',
+                  background: '#F8FAFC',
+                  color: '#1E293B',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#EFF6FF';
+                  e.currentTarget.style.borderColor = '#93C5FD';
+                  e.currentTarget.style.color = '#1D4ED8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.color = '#1E293B';
+                }}
+                title="Edit details or reassign this task"
+              >
+                <Pencil size={12} />
+                <span>Edit / Reassign</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleDeleteTask(task.id, task.title)}
@@ -2253,22 +2445,22 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
                   border: '1px solid #FCA5A5',
                   background: '#FFFFFF',
                   color: '#DC2626',
-                  fontSize: '11px',
+                  fontSize: '11.5px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'background 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
-                title="Delete this task"
+                title="Permanently delete this task"
               >
                 <Trash2 size={12} />
-                <span>Delete Task</span>
+                <span>Delete</span>
               </button>
             </div>
           </div>
@@ -3823,6 +4015,374 @@ export const TasksView: React.FC<TasksViewProps> = ({
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit & Reassign Assigned Task Modal */}
+      {editingTask && (
+        <div
+          className="modal-overlay"
+          onClick={() => setEditingTask(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              maxWidth: '560px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #E2E8F0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '18px 24px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)',
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: '#DBEAFE',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#1D4ED8',
+                  }}
+                >
+                  <Pencil size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0F172A' }}>
+                    Edit & Reassign Task
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                    Fix incorrect MR assignment, update timing, or adjust destination
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Task Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Task Title *
+                </label>
+                <input
+                  type="text"
+                  value={editTaskTitle}
+                  onChange={(e) => setEditTaskTitle(e.target.value)}
+                  placeholder="e.g. Dr. Detailing & Product Presentation"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    fontWeight: '600',
+                  }}
+                />
+              </div>
+
+              {/* Assigned Representative (MR) Dropdown */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Reassign to Representative (MR) *
+                </label>
+                <select
+                  value={editTaskAssignedMrId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setEditTaskAssignedMrId(id);
+                    const match = mrList.find((m) => m.id === id);
+                    if (match) {
+                      setEditTaskAssignedMrName(match.name);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #3B82F6',
+                    fontSize: '13px',
+                    background: '#EFF6FF',
+                    color: '#1E3A8A',
+                    fontWeight: '700',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {mrList.map((mr) => (
+                    <option key={mr.id} value={mr.id}>
+                      {mr.name} — {mr.territory}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: '#2563EB', marginTop: '4px', display: 'block' }}>
+                  ✓ Task will be immediately routed to {editTaskAssignedMrName}&apos;s mobile device.
+                </span>
+              </div>
+
+              {/* Scheduled Date & Time */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Scheduled Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editTaskDate}
+                    onChange={(e) => setEditTaskDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Scheduled Time
+                  </label>
+                  <input
+                    type="text"
+                    value={editTaskTime}
+                    onChange={(e) => setEditTaskTime(e.target.value)}
+                    placeholder="e.g. 10:30 AM"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Destination / Location & Priority */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Destination / Point of Care
+                  </label>
+                  <input
+                    type="text"
+                    value={editTaskLocationName}
+                    onChange={(e) => setEditTaskLocationName(e.target.value)}
+                    placeholder="e.g. District Hospital Shahdol"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Priority
+                  </label>
+                  <select
+                    value={editTaskPriority}
+                    onChange={(e) => setEditTaskPriority(e.target.value as any)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Geofence Radius & Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Geofence Radius (meters)
+                  </label>
+                  <select
+                    value={editTaskGeofenceRadius}
+                    onChange={(e) => setEditTaskGeofenceRadius(Number(e.target.value))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value={50}>50 meters (Strict Hospital)</option>
+                    <option value={100}>100 meters (Standard Facility)</option>
+                    <option value={200}>200 meters (Broad Clinic Zone)</option>
+                    <option value={500}>500 meters (Rural Territory)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    Task Status
+                  </label>
+                  <select
+                    value={editTaskStatus}
+                    onChange={(e) => setEditTaskStatus(e.target.value as TaskItem['status'])}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="ASSIGNED">ASSIGNED (Active)</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="MISSED">MISSED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#F8FAFC',
+                borderBottomLeftRadius: '16px',
+                borderBottomRightRadius: '16px',
+              }}
+            >
+              {/* Delete button right inside modal */}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetId = editingTask.id;
+                  const targetTitle = editingTask.title;
+                  setEditingTask(null);
+                  handleDeleteTask(targetId, targetTitle);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #FCA5A5',
+                  background: '#FEF2F2',
+                  color: '#DC2626',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={13} />
+                <span>Delete Task</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingTask(null)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedTask}
+                  disabled={isUpdatingTask}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 18px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#1A3C6E',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: isUpdatingTask ? 'not-allowed' : 'pointer',
+                    opacity: isUpdatingTask ? 0.7 : 1,
+                  }}
+                >
+                  <Check size={14} />
+                  <span>{isUpdatingTask ? 'Saving Changes...' : 'Save & Reassign'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

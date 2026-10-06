@@ -104,6 +104,12 @@ export class TasksController {
     return this.tasksService.updateTask(id, dto);
   }
 
+  @Post(':id/update')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async updateTaskPost(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
+    return this.tasksService.updateTask(id, dto);
+  }
+
   @Post(':id/unsuspend')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async unsuspendTask(

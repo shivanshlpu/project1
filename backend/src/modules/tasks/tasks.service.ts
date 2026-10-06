@@ -557,15 +557,24 @@ export class TasksService {
     if (dto.date) task.date = dto.date;
     if (dto.time) task.time = dto.time;
     if (dto.status) task.status = dto.status;
+    if (dto.location_name) task.location_name = dto.location_name;
+    if (dto.latitude !== undefined) task.latitude = dto.latitude;
+    if (dto.longitude !== undefined) task.longitude = dto.longitude;
+    if (dto.geofence_radius_m !== undefined) task.geofence_radius_m = dto.geofence_radius_m;
+    if (dto.priority) task.priority = dto.priority;
 
     if (dto.assigned_mr_id && dto.assigned_mr_id !== task.assigned_mr_id) {
       task.assigned_mr_id = dto.assigned_mr_id;
+      const mr = this.db.users.find((u) => u.id === dto.assigned_mr_id);
+      task.assigned_mr_name = mr ? mr.name : dto.assigned_mr_name || task.assigned_mr_name;
       this.db.taskAssignments.push({
         id: `ta-${uuidv4().substring(0, 8)}`,
         task_id: task.id,
         mr_id: dto.assigned_mr_id,
         assigned_at: new Date().toISOString(),
       });
+    } else if (dto.assigned_mr_name) {
+      task.assigned_mr_name = dto.assigned_mr_name;
     }
 
     this.db.persistToDisk();

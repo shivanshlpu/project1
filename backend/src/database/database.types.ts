@@ -73,6 +73,7 @@ export interface Task {
   title: string;
   description: string;
   assigned_mr_id: string;
+  assigned_mr_name?: string;
   created_by: string;
   date: string;
   time: string;
