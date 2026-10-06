@@ -198,7 +198,14 @@ export class DatabaseService implements OnModuleInit {
           const { data: remoteTasks, error: taskErr } = await client.from('tasks').select('*');
           if (!taskErr && remoteTasks && remoteTasks.length > 0) {
             console.log(`[DatabaseService] Synced ${remoteTasks.length} tasks from Supabase.`);
+            const DUMMY_IDS = new Set(['task-01', 'task-02', 'task-03', 'task-04', 'task-05']);
             for (const rt of remoteTasks) {
+              if (DUMMY_IDS.has(rt.id)) {
+                try {
+                  await client.from('tasks').delete().eq('id', rt.id);
+                } catch {}
+                continue;
+              }
               const idx = this.tasks.findIndex((t) => t.id === rt.id);
               if (idx >= 0) {
                 this.tasks[idx] = { ...this.tasks[idx], ...rt };
@@ -294,6 +301,46 @@ export class DatabaseService implements OnModuleInit {
       }, { onConflict: 'id' });
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync task ${task.id}:`, err?.message);
+    }
+  }
+
+  public async deleteTaskFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('tasks').delete().eq('id', id);
+      await client.from('task_assignments').delete().eq('task_id', id);
+      await client.from('location_verifications').delete().eq('task_id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete task ${id} from Supabase:`, err?.message);
+    }
+  }
+
+  public async purgeSuspendedTasksFromSupabase(ids: string[]) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      if (ids && ids.length > 0) {
+        await client.from('tasks').delete().in('id', ids);
+      }
+      await client.from('tasks').delete().eq('status', 'SUSPENDED');
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to purge suspended tasks from Supabase:`, err?.message);
+    }
+  }
+
+  public async clearAllTasksFromSupabase() {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('tasks').delete().neq('id', '_____never_____');
+      await client.from('task_assignments').delete().neq('id', '_____never_____');
+      await client.from('location_verifications').delete().neq('id', '_____never_____');
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to clear all tasks from Supabase:`, err?.message);
     }
   }
 

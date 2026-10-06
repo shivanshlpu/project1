@@ -629,6 +629,7 @@ export class TasksService {
     this.db.taskAssignments = this.db.taskAssignments.filter((ta) => ta.task_id !== id);
     this.db.locationVerifications = this.db.locationVerifications.filter((lv) => lv.task_id !== id);
     this.db.persistToDisk();
+    await this.db.deleteTaskFromSupabase(id).catch(() => {});
     return { success: true, message: 'Task deleted successfully' };
   }
 
@@ -638,14 +639,17 @@ export class TasksService {
     this.db.taskAssignments = [];
     this.db.locationVerifications = [];
     this.db.persistToDisk();
+    await this.db.clearAllTasksFromSupabase().catch(() => {});
     return { success: true, count, message: `Successfully cleared all ${count} tasks` };
   }
 
   async purgeSuspendedTasks(): Promise<{ success: boolean; count: number; message: string }> {
+    const suspendedIds = this.db.tasks.filter((t) => t.status === 'SUSPENDED').map((t) => t.id);
     const before = this.db.tasks.length;
     this.db.tasks = this.db.tasks.filter((t) => t.status !== 'SUSPENDED');
     const removed = before - this.db.tasks.length;
     this.db.persistToDisk();
+    await this.db.purgeSuspendedTasksFromSupabase(suspendedIds).catch(() => {});
     return { success: true, count: removed, message: `Purged ${removed} suspended tasks` };
   }
 

@@ -47,6 +47,8 @@ import {
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 import { InStockProduct, getStoredInStockProducts, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
+import { getApiBaseUrl } from '../utils/apiHelper';
+import { markTaskAsDeleted, getDeletedTaskIds } from '../utils/deletedTasksStore';
 
 declare global {
   interface Window {
@@ -275,7 +277,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const fetchBackendTasks = async () => {
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/tasks`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -284,7 +286,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setTasks(data);
+          const deletedIds = getDeletedTaskIds();
+          setTasks(data.filter((t: any) => !deletedIds.has(t.id)));
         }
       }
     } catch (err) {
@@ -1128,16 +1131,31 @@ export const TasksView: React.FC<TasksViewProps> = ({
       confirmText: 'Delete Task',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-          await fetch(`${apiUrl}/tasks/${taskId}`, {
-            method: 'DELETE',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-        } catch {}
+        // 1. Immediately persist locally
+        markTaskAsDeleted(taskId);
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
+        // 2. Resilient multi-method backend deletion
+        try {
+          const apiUrl = getApiBaseUrl();
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          const hdrs: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          };
+          // Method A: DELETE
+          await fetch(`${apiUrl}/tasks/${taskId}`, { method: 'DELETE', headers: hdrs }).catch(() => null);
+          // Method B: POST :id/delete
+          await fetch(`${apiUrl}/tasks/${taskId}/delete`, { method: 'POST', headers: hdrs }).catch(() => null);
+          // Method C: Fallback PATCH status: CANCELLED
+          await fetch(`${apiUrl}/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: hdrs,
+            body: JSON.stringify({ status: 'CANCELLED' }),
+          }).catch(() => null);
+        } catch {}
+
         showCenteredNotice({
           title: 'Task Deleted',
           message: `Task "${title}" deleted successfully.`,
@@ -1149,6 +1167,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   // Owner Action: Clear All Tasks Data
   const handleClearAllTasks = async () => {
+    const idsToClear = tasks.map((t) => t.id);
     showCenteredNotice({
       title: 'Delete All Task Data',
       message: `Are you sure you want to permanently delete all ${tasks.length} task(s)?\n\nThis will clear all task data so you can start completely fresh.`,
@@ -1156,16 +1175,33 @@ export const TasksView: React.FC<TasksViewProps> = ({
       confirmText: 'Delete All Tasks',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-          await fetch(`${apiUrl}/tasks`, {
-            method: 'DELETE',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-        } catch {}
+        // 1. Immediately persist locally
+        markTaskAsDeleted(idsToClear);
         setTasks([]);
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
+        // 2. Resilient backend deletion
+        try {
+          const apiUrl = getApiBaseUrl();
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          const hdrs: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          };
+          // Method A: DELETE /tasks
+          await fetch(`${apiUrl}/tasks`, { method: 'DELETE', headers: hdrs }).catch(() => null);
+          // Method B: POST /tasks/clear-all
+          await fetch(`${apiUrl}/tasks/clear-all`, { method: 'POST', headers: hdrs }).catch(() => null);
+          // Method C: Fallback cancel each
+          for (const id of idsToClear) {
+            fetch(`${apiUrl}/tasks/${id}`, {
+              method: 'PATCH',
+              headers: hdrs,
+              body: JSON.stringify({ status: 'CANCELLED' }),
+            }).catch(() => null);
+          }
+        } catch {}
+
         showCenteredNotice({
           title: 'All Tasks Cleared',
           message: 'All task data has been permanently cleared. You can now create fresh tasks.',

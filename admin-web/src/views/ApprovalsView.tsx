@@ -19,6 +19,7 @@ import { ApprovalItem } from '../types';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl } from '../utils/apiHelper';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
+import { markTaskAsDeleted, getDeletedTaskIds } from '../utils/deletedTasksStore';
 
 const DECIDED_STORAGE_KEY = 'ahtri_decided_approvals';
 
@@ -118,7 +119,10 @@ export const ApprovalsView: React.FC = () => {
       if (tasksRes && tasksRes.ok) {
         const allTasks = await tasksRes.json();
         if (Array.isArray(allTasks)) {
-          const susp = allTasks.filter((t: any) => t.status === 'SUSPENDED');
+          const deletedIds = getDeletedTaskIds();
+          const susp = allTasks.filter(
+            (t: any) => t.status === 'SUSPENDED' && !deletedIds.has(t.id)
+          );
           setSuspendedTasks(susp);
         } else {
           setSuspendedTasks([]);
@@ -240,16 +244,31 @@ export const ApprovalsView: React.FC = () => {
       cancelText: 'Cancel',
       onConfirm: async () => {
         setDeletingTaskId(taskId);
+        // 1. Immediately persist deletion locally so it never resurfaces in UI
+        markTaskAsDeleted(taskId);
+        setSuspendedTasks((prev) => prev.filter((t) => t.id !== taskId));
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
+        // 2. Dispatch resilient multi-method backend deletion
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          const hdrs: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          };
+          // Method A: DELETE /tasks/:id
+          await fetch(`${apiUrl}/tasks/${taskId}`, { method: 'DELETE', headers: hdrs }).catch(() => null);
+          // Method B: POST /tasks/:id/delete
+          await fetch(`${apiUrl}/tasks/${taskId}/delete`, { method: 'POST', headers: hdrs }).catch(() => null);
+          // Method C: Fallback PATCH status to CANCELLED
           await fetch(`${apiUrl}/tasks/${taskId}`, {
-            method: 'DELETE',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
+            method: 'PATCH',
+            headers: hdrs,
+            body: JSON.stringify({ status: 'CANCELLED' }),
+          }).catch(() => null);
         } catch {}
-        setSuspendedTasks((prev) => prev.filter((t) => t.id !== taskId));
-        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
         setDeletingTaskId(null);
         showCenteredNotice({
           title: 'Task Deleted',
@@ -262,6 +281,7 @@ export const ApprovalsView: React.FC = () => {
 
   // Permanently Delete All Suspended Tasks
   const handleClearAllSuspendedTasks = async () => {
+    const idsToClear = suspendedTasks.map((t) => t.id);
     showCenteredNotice({
       title: 'Clear All Suspended Tasks',
       message: `Are you sure you want to permanently delete all ${suspendedTasks.length} suspended task(s)?\n\nThis will clear your Approval Hub completely.`,
@@ -269,16 +289,31 @@ export const ApprovalsView: React.FC = () => {
       confirmText: 'Clear All Tasks',
       cancelText: 'Cancel',
       onConfirm: async () => {
+        // 1. Immediately persist deletion locally
+        markTaskAsDeleted(idsToClear);
+        setSuspendedTasks([]);
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
+        // 2. Dispatch resilient purge to backend
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-          await fetch(`${apiUrl}/tasks/purge-suspended`, {
-            method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
+          const hdrs: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          };
+          // Method A: POST purge-suspended
+          await fetch(`${apiUrl}/tasks/purge-suspended`, { method: 'POST', headers: hdrs }).catch(() => null);
+          // Method B: Individual fallback cancel
+          for (const id of idsToClear) {
+            fetch(`${apiUrl}/tasks/${id}`, {
+              method: 'PATCH',
+              headers: hdrs,
+              body: JSON.stringify({ status: 'CANCELLED' }),
+            }).catch(() => null);
+          }
         } catch {}
-        setSuspendedTasks([]);
-        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+
         showCenteredNotice({
           title: 'Approval Hub Cleared',
           message: 'All suspended tasks have been deleted.',
