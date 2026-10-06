@@ -1,25 +1,20 @@
-# Latest AHTRI FFA Mobile APK Build (Version 1.0.9 - Instant Attendance & Tour Plan Crash Fix)
+# Latest AHTRI FFA Mobile APK Build (Version 1.0.13 - Task Sync & Logout Re-auth OTP Security)
 
-- **Build ID**: `271cce36-e264-47d7-b001-76480b6f5b26`
-- **Version**: `v1.0.9` (Version Code `10`)
+- **Build ID**: `89803a52-339c-41d5-a846-964343c40488`
+- **Version**: `v1.0.13` (Version Code `14`)
 - **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
-- **Git Commit**: `2fe1edf04fc60e4a11242eacc49b89c748337c83`
-- **Build Completed At**: `2026-10-04T08:39:13.990Z`
-- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/afTbM2D-JwTdHdDAyAGPGbBUWBIrkaoGXSv_ss3yqow.apk)
+- **Git Commit**: `b85bfb73675141d89358e5116cba2e1398b5a957`
+- **Build Completed At**: `2026-10-06T17:29:56.056Z`
+- **Direct Expo Download Link**: [Download APK](https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk)
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
 - **Backend API Download Link**: [https://ahtri-backend.onrender.com/api/app/latest-apk](https://ahtri-backend.onrender.com/api/app/latest-apk)
 
 ---
 
-### What's New in Version 1.0.9:
-1. **Instant Attendance Check-In Verification**: Punch-in and live selfie verification photo now upload instantly without payload limits and appear on the Admin Panel immediately without waiting for punch-out.
-2. **Auto-Retry & Network Resilience**: Attendance punch-in includes automatic location retry fallback, guaranteeing check-ins are recorded on the server even under poor mobile connectivity.
-3. **Monthly Tour Plan (TP) Hermes Native Fix**: Resolved React Native Android runtime crash by replacing web `<select>`/`<option>` tags with pure native touchable dropdown modals.
-4. **Optimized Photo Capture**: High-definition, quota-safe compressed camera selfie capture to guarantee instant uploads and cloud quota safety.
-5. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
-6. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
-7. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
-8. **Sales Competitions & Reward Claims**: Single source of truth progress bar and one-tap reward claims.
+### What's New in Version 1.0.13:
+1. **Task Sync & Deleted Task Purge**: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage.
+2. **Logout Re-auth Security**: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard.
+3. **Dynamic Territory HQ**: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers.
 
 ---
 

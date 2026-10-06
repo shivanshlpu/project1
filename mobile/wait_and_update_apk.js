@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = 'f24fecc0-5791-426c-aa02-52563c853711';
+const BUILD_ID = '89803a52-339c-41d5-a846-964343c40488';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -73,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.7',
-        latestVersionCode: 8,
+        latestVersion: '1.0.13',
+        latestVersionCode: 14,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -83,13 +83,10 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'Monthly Tour Plan (TP) Multi-Date Submission, Dynamic Sub-Area Filtering & 24h Edit Window',
-          'Compressed Attendance Photo Capture with Work Attire Check & Dedicated Policy Modal',
-          'Multi-HQ Stocker Hierarchy & Live Stock Balance Lookup',
-          'Live Store In-Stock Medicine Detailing Focus & Real-Time Inventory Sync',
-          'Compact Realistic 3D Map Markers & Dedicated Custom Location Marking',
-          'Order Pending Workflow for Flexible Post-Detailing Order Entry',
-          'Single Source of Truth Sales Competitions, Progress Tracking & Reward Claims',
+          'Purged deleted Admin tasks from mobile app & local cache synchronization',
+          'Strict Owner 6-Digit OTP verification enforcement on login after employee logout',
+          'Dynamic HQ-driven territory coverage and clean map view without clutter',
+          'Instant offline-to-online task status reconciliation',
         ],
       };
 
@@ -112,13 +109,33 @@ async function checkBuild() {
         }
       }
 
+      // 1c. Update admin-web/src/views/SettingsView.tsx
+      const settingsPath = path.join(ROOT_DIR, 'admin-web', 'src', 'views', 'SettingsView.tsx');
+      if (fs.existsSync(settingsPath)) {
+        try {
+          let settingsContent = fs.readFileSync(settingsPath, 'utf-8');
+          settingsContent = settingsContent.replace(
+            /downloadUrl:\s*'https:\/\/expo\.dev\/artifacts\/eas\/[^']+\.apk'/,
+            `downloadUrl: '${downloadUrl}'`
+          );
+          settingsContent = settingsContent.replace(
+            /placeholder="https:\/\/expo\.dev\/artifacts\/eas\/[^"]+\.apk"/,
+            `placeholder="${downloadUrl}"`
+          );
+          fs.writeFileSync(settingsPath, settingsContent, 'utf-8');
+          console.log(`[AutoAPK] Updated admin-web/src/views/SettingsView.tsx with new APK URL.`);
+        } catch (sErr) {
+          console.warn('[AutoAPK] Could not update SettingsView.tsx:', sErr.message);
+        }
+      }
+
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.7 - Tour Plans, Photo Proof & Store Inventory)
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.13 - Task Sync & Logout Re-auth OTP Security)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.7\` (Version Code \`8\`)
+- **Version**: \`v1.0.13\` (Version Code \`14\`)
 - **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
-- **Git Commit**: \`${buildData.gitCommitHash || 'b59d8a1e1b53'}\`
+- **Git Commit**: \`${buildData.gitCommitHash || 'b85bfb736751'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
@@ -126,14 +143,10 @@ async function checkBuild() {
 
 ---
 
-### What's New in Version 1.0.7:
-1. **Monthly Tour Plan (TP)**: Multi-date tour plan submission with objective detailing, review list, dynamic sub-area dropdowns, and 24-hour edit enforcement.
-2. **Attendance Photo Proof & Storage Guidelines**: Compressed selfie capture with work attire check, geo-tagging, and dedicated employee Attendance Policy modal.
-3. **Multi-HQ Stocker Hierarchy & Live Stock Balance**: Live stock balance lookup with sub-area filtering and shortage tracking.
-4. **Live Store In-Stock Medicine Detailing**: Task detailing focus dynamically reflects store stock in real-time.
-5. **Compact Realistic Map Markers**: Scaled down 3D Google Maps pins (24x32px) and dedicated custom location task assignment.
-6. **Order Pending Workflow**: Flexible post-detailing order submission and shortage tolerance.
-7. **Sales Competitions & Reward Claims**: Single source of truth progress bar and one-tap reward claims.
+### What's New in Version 1.0.13:
+1. **Task Sync & Deleted Task Purge**: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage.
+2. **Logout Re-auth Security**: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard.
+3. **Dynamic Territory HQ**: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers.
 
 ---
 
@@ -178,11 +191,11 @@ async function checkBuild() {
       // 5. Git commit & push
       try {
         console.log('[AutoAPK] Committing and pushing updated version to Git repository...');
-        execSync('git add backend/data/app_version.json backend/src/app.controller.ts LATEST_APK_INFO.md admin-web/src/views/SettingsView.tsx', {
+        execSync('git add backend/data/app_version.json backend/src/app.controller.ts LATEST_APK_INFO.md admin-web/src/views/SettingsView.tsx mobile/wait_and_update_apk.js', {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.5.1 (versionCode 6)"', {
+        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.13 (versionCode 14)"', {
           cwd: ROOT_DIR,
           shell: true,
         });
@@ -219,7 +232,7 @@ async function run() {
       console.log('[AutoAPK] Completed successfully.');
       process.exit(0);
     }
-  }, 30000);
+  }, 20000);
 }
 
 run();

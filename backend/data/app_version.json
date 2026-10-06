@@ -1,21 +1,19 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.12",
-  "latestVersionCode": 13,
+  "latestVersion": "1.0.13",
+  "latestVersionCode": 14,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/C1UvnNqmCbUnFNovM8QvtwmMv9dhp19uKOMfrzmgDss.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-05",
-  "publishedAt": "2026-10-05T18:00:00.000Z",
-  "publishedBy": "EAS Preview Build",
+  "releaseDate": "2026-10-06",
+  "publishedAt": "2026-10-06T17:29:56.050Z",
+  "publishedBy": "System Auto-Build",
   "releaseNotes": [
-    "Zero Pre-filled Orders: Manual order punching only when requested by MR",
-    "Atomic Product Selection & Price Sync Fix in Visit Detailing",
-    "Deferred Order Entry: 'Visit Verified • Order Deferred' badge and workflow",
-    "Immediate Transition to COMPLETED upon deferred order submission",
-    "Comprehensive Task History: Multi-source offline storage and remote sync",
-    "Multi-HQ Stocker-Restricted Inventory & Detailing Visibility"
+    "Purged deleted Admin tasks from mobile app & local cache synchronization",
+    "Strict Owner 6-Digit OTP verification enforcement on login after employee logout",
+    "Dynamic HQ-driven territory coverage and clean map view without clutter",
+    "Instant offline-to-online task status reconciliation"
   ]
 }
