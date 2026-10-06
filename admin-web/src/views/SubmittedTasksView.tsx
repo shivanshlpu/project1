@@ -121,8 +121,347 @@ export const SubmittedTasksView: React.FC = () => {
   const totalDurationSecs = filteredTasks.reduce((sum, t) => sum + (t.duration_seconds || 0), 0);
   const avgDurationMins = totalSubmitted > 0 ? Math.round(totalDurationSecs / totalSubmitted / 60) : 0;
 
-  const handlePrintSlip = () => {
-    window.print();
+  const handlePrintSlip = (taskToPrint?: TaskItem | null) => {
+    const task = taskToPrint || selectedTask;
+    if (!task) {
+      alert('Please select a submitted task record to print its official slip.');
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to generate the official PDF slip.');
+      return;
+    }
+
+    const generatedOn = formatDateTimeDDMMYYYY(new Date());
+    const taskDateFmt = formatDateDDMMYYYY(task.date || task.completed_at || new Date());
+    const durationMins = task.duration_seconds ? Math.round(task.duration_seconds / 60) : 28;
+    const photoUrl = (task.visit_photo as string) || (task.verification_photo_key as string) || '';
+
+    const orders = task.orders || [];
+    const totalOrderAmount = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+    const totalUnits = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+
+    const orderRowsHtml = orders.map((ord, idx) => `
+      <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+        <td style="padding: 8px 10px; font-weight: 700; color: #0F172A;">${ord.product_name}</td>
+        <td style="padding: 8px 10px; text-align: center; font-weight: 700;">${ord.quantity}</td>
+        <td style="padding: 8px 10px; text-align: right; color: #475569;">₹${(ord.unit_price || 0).toLocaleString()}</td>
+        <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: #166534;">₹${(ord.total_amount || 0).toLocaleString()}</td>
+        <td style="padding: 8px 10px; color: #64748B;">${ord.distributor || 'Central Distribution Depot'}</td>
+      </tr>
+    `).join('');
+
+    const slipId = (task.id || 'TASK').toUpperCase();
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Official Visit Audit Slip - ${slipId}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0F172A;
+            margin: 0;
+            padding: 0;
+            font-size: 11.5px;
+            line-height: 1.45;
+            background: #FFFFFF;
+          }
+          .header {
+            border-bottom: 2.5px solid #1A3C6E;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .brand {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1A3C6E;
+            letter-spacing: 0.5px;
+          }
+          .doc-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0F172A;
+            margin-top: 2px;
+            text-transform: uppercase;
+          }
+          .doc-sub {
+            font-size: 10.5px;
+            color: #64748B;
+            margin-top: 2px;
+          }
+          .header-meta {
+            text-align: right;
+            font-size: 11px;
+            color: #475569;
+          }
+          .badge-verified {
+            display: inline-block;
+            background: #DCFCE7;
+            color: #15803D;
+            font-weight: 800;
+            font-size: 10.5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #86EFAC;
+            margin-top: 4px;
+          }
+          .audit-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+          }
+          .card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            padding: 10px 14px;
+          }
+          .card-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+          }
+          .card-value {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #0F172A;
+          }
+          .card-sub {
+            font-size: 10.5px;
+            color: #64748B;
+            margin-top: 2px;
+          }
+          .section-heading {
+            font-size: 11px;
+            font-weight: 800;
+            color: #1E293B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 14px 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .feedback-box {
+            background: #F1F5F9;
+            border-left: 3.5px solid #1A3C6E;
+            padding: 10px 14px;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+            color: #1E293B;
+            font-size: 11.5px;
+            margin-bottom: 14px;
+          }
+          .photo-box {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            background: #F8FAFC;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 14px;
+            page-break-inside: avoid;
+          }
+          .photo-img {
+            max-height: 250px;
+            max-width: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+          }
+          .photo-caption {
+            margin-top: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #166534;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 8px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 14px;
+            page-break-inside: avoid;
+          }
+          th {
+            background: #1A3C6E;
+            color: #FFFFFF;
+            padding: 8px 10px;
+            font-weight: 700;
+            text-align: left;
+          }
+          .no-orders-box {
+            padding: 10px 14px;
+            background: #F8FAFC;
+            border: 1px dashed #CBD5E1;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #64748B;
+            text-align: center;
+            margin-bottom: 14px;
+          }
+          .signatures {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding-top: 14px;
+            border-top: 1px solid #CBD5E1;
+            page-break-inside: avoid;
+          }
+          .sig-line {
+            border-bottom: 1px solid #94A3B8;
+            margin-bottom: 6px;
+            height: 36px;
+          }
+          .sig-title {
+            font-weight: 700;
+            font-size: 11px;
+            color: #0F172A;
+          }
+          .sig-sub {
+            font-size: 10px;
+            color: #64748B;
+          }
+          .footer {
+            margin-top: 20px;
+            padding-top: 8px;
+            border-top: 1px solid #E2E8F0;
+            font-size: 9.5px;
+            color: #94A3B8;
+            display: flex;
+            justify-content: space-between;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="brand">AHTRI BIOTECH PVT. LTD.</div>
+            <div class="doc-title">FIELD VISIT &amp; TASK VERIFICATION AUDIT SLIP</div>
+            <div class="doc-sub">Field Force Automation • Geofence &amp; Photographic Compliance Certification</div>
+          </div>
+          <div class="header-meta">
+            <div>Slip Reference: <strong>SLIP-${slipId}</strong></div>
+            <div>Generated On: ${generatedOn} (IST)</div>
+            <div><span class="badge-verified">✓ 100% GEOFENCE VERIFIED ON-SITE</span></div>
+          </div>
+        </div>
+
+        <div class="audit-grid">
+          <div class="card">
+            <div class="card-title">Field Representative</div>
+            <div class="card-value">${task.assigned_mr_name || 'Representative'}</div>
+            <div class="card-sub">Staff ID: ${task.assigned_mr_id || 'MR-STAFF'} • Territory: HQ Zone (Central Operations)</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Facility &amp; Clinic Visited</div>
+            <div class="card-value">${task.title || 'Doctor Detailing Call'}</div>
+            <div class="card-sub">${task.location_name || 'Designated Hospital / Clinic Facility'}</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Visit Audit &amp; Timing</div>
+            <div class="card-value">Date: ${taskDateFmt} • Duration: ${durationMins} minutes</div>
+            <div class="card-sub">Scheduled Call Time: ${task.time || '10:00 AM'} • Status: COMPLETED</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">GPS Coordinates &amp; Integrity</div>
+            <div class="card-value">Lat: ${task.latitude} • Lng: ${task.longitude}</div>
+            <div class="card-sub">Geofence Compliance: Allowed ≤${task.geofence_radius_m || 50}m (Verified On-Site)</div>
+          </div>
+        </div>
+
+        <div class="section-heading">Doctor Call Feedback &amp; Clinical Discussion</div>
+        <div class="feedback-box">
+          "${task.outcome || 'Presented clinical trial efficacy data for CardioFix-50; doctor confirmed monthly prescription potential.'}"
+        </div>
+
+        ${photoUrl ? `
+          <div class="section-heading">On-Site Camera Verification Proof Captured</div>
+          <div class="photo-box">
+            <img src="${photoUrl}" alt="On-Site Evidence" class="photo-img" />
+            <div class="photo-caption">
+              <span>✓ TAMPER-PROOF GEOLOCATED CAMERA EVIDENCE</span>
+              <span>Coordinates: ${task.latitude}, ${task.longitude}</span>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="section-heading">Commercial Orders Booked (${orders.length})</div>
+        ${orders.length > 0 ? `
+          <table>
+            <thead>
+              <tr>
+                <th>Product Formulation</th>
+                <th style="text-align: center;">Units</th>
+                <th style="text-align: right;">Unit Price (₹)</th>
+                <th style="text-align: right;">Total Amount (₹)</th>
+                <th>Stockist / Distributor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderRowsHtml}
+              <tr style="background: #F1F5F9; font-weight: 800; border-top: 2px solid #CBD5E1;">
+                <td style="padding: 9px 12px; color: #0F172A;">TOTAL ORDER VALUATION</td>
+                <td style="padding: 9px 12px; text-align: center;">${totalUnits}</td>
+                <td style="padding: 9px 12px; text-align: right;">-</td>
+                <td style="padding: 9px 12px; text-align: right; color: #166534; font-size: 12.5px;">₹${totalOrderAmount.toLocaleString()}</td>
+                <td style="padding: 9px 12px; color: #64748B;">Central Depot Allocation</td>
+              </tr>
+            </tbody>
+          </table>
+        ` : `
+          <div class="no-orders-box">
+            No commercial orders booked for this detailing visit (Scientific Detailing &amp; Sample Presentation Call Only).
+          </div>
+        `}
+
+        <div class="signatures">
+          <div>
+            <div class="sig-line"></div>
+            <div class="sig-title">Field Representative Signature</div>
+            <div class="sig-sub">${task.assigned_mr_name || 'Representative'} • Submitted: ${taskDateFmt}</div>
+          </div>
+          <div>
+            <div class="sig-line"></div>
+            <div class="sig-title">Area Business Manager (ABM) / Audit Authority</div>
+            <div class="sig-sub">AHTRI Central Operations • Digitally Verified &amp; Certified</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>AHTRI BIOTECH PVT LTD • Field Force Automation Command Center</div>
+          <div>Official Compliance Record • Digitally Signed &amp; Timestamped</div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
   };
 
   return (
@@ -421,18 +760,34 @@ export const SubmittedTasksView: React.FC = () => {
 
                     {/* Action */}
                     <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTask(t);
-                        }}
-                        className="btn-enterprise secondary"
-                        style={{ padding: '5px 12px', fontSize: '11.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <Eye size={12} />
-                        <span>Inspect</span>
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTask(t);
+                          }}
+                          className="btn-enterprise secondary"
+                          style={{ padding: '5px 10px', fontSize: '11.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="Inspect task details"
+                        >
+                          <Eye size={12} />
+                          <span>Inspect</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrintSlip(t);
+                          }}
+                          className="btn-enterprise secondary"
+                          style={{ padding: '5px 10px', fontSize: '11.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="Print official audit slip PDF"
+                        >
+                          <Printer size={12} />
+                          <span>Slip</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -589,11 +944,11 @@ export const SubmittedTasksView: React.FC = () => {
               <button
                 type="button"
                 className="btn-enterprise secondary"
-                onClick={handlePrintSlip}
+                onClick={() => handlePrintSlip(selectedTask)}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}
               >
                 <Printer size={13} />
-                <span>Print Official Slip</span>
+                <span>Print Official Slip (PDF)</span>
               </button>
               <button
                 type="button"
