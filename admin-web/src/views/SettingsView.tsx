@@ -217,8 +217,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.12',
-    latestVersionCode: 13,
+    latestVersion: '1.0.13',
+    latestVersionCode: 14,
     minimumVersion: '1.0.0',
     downloadUrl: 'https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk',
     forceUpdate: false,
@@ -228,7 +228,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Zero Pre-filled Orders: Manual order punching only when requested by MR\nAtomic Product Selection & Price Sync Fix in Visit Detailing\nDeferred Order Entry: "Visit Verified • Order Deferred" badge and workflow\nImmediate Transition to COMPLETED upon deferred order submission\nComprehensive Task History: Multi-source offline storage and remote sync\nMulti-HQ Stocker-Restricted Inventory & Detailing Visibility'
+    'Task Sync & Deleted Task Purge: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage\nLogout Re-auth Security: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard\nDynamic Territory HQ: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);

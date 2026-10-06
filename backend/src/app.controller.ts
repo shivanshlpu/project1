@@ -22,8 +22,8 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.12',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '13', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.13',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '14', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
@@ -34,12 +34,9 @@ const defaultAppVersion: AppVersionData = {
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Zero Pre-filled Orders: Manual order punching only when requested by MR',
-    'Atomic Product Selection & Price Sync Fix in Visit Detailing',
-    'Deferred Order Entry: "Visit Verified • Order Deferred" badge and workflow',
-    'Immediate Transition to COMPLETED upon deferred order submission',
-    'Comprehensive Task History: Multi-source offline storage and remote sync',
-    'Multi-HQ Stocker-Restricted Inventory & Detailing Visibility',
+    'Task Sync & Deleted Task Purge: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage',
+    'Logout Re-auth Security: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard',
+    'Dynamic Territory HQ: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers',
   ],
 };
 
