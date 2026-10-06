@@ -459,20 +459,20 @@ export class DatabaseService implements OnModuleInit {
       mr_user_id: mr.id,
     });
 
-    // 4. Doctors
+    // 4. Doctors / Healthcare Points of Care
     const doc1: Doctor = {
       id: 'doc-01',
-      name: 'Dr. Rajesh Sharma',
-      qualification: 'MD, DM (Cardiology)',
-      specialization: 'Cardiologist',
+      name: 'District Hospital Shahdol',
+      qualification: 'Civil Surgeon, MS',
+      specialization: 'District Healthcare Centre',
       class: 'A',
       potential_score: 95,
       phone: '9811122233',
-      clinic: 'Apex Heart Centre',
-      hospital: 'Max Super Specialty Hospital',
-      address: 'Ring Road, Saket, New Delhi',
-      latitude: 28.5245,
-      longitude: 77.2066,
+      clinic: 'Civil Hospital & Trauma Centre',
+      hospital: 'Shahdol District Hospital',
+      address: 'Hospital Road, Bicharpur, Shahdol, MP',
+      latitude: 23.2953,
+      longitude: 81.3586,
       area_id: areaId,
       assigned_mr_id: mr.id,
       assigned_mr_name: mr.name,
@@ -488,10 +488,10 @@ export class DatabaseService implements OnModuleInit {
       class: 'B',
       potential_score: 82,
       phone: '9811144455',
-      clinic: 'Little Care Clinic',
-      address: 'Green Park Extension, New Delhi',
-      latitude: 28.5585,
-      longitude: 77.2028,
+      clinic: 'Shahdol Child Clinic',
+      address: 'Station Road, Shahdol, MP',
+      latitude: 23.3012,
+      longitude: 81.3620,
       area_id: areaId,
       assigned_mr_id: mr.id,
       assigned_mr_name: mr.name,
@@ -501,17 +501,17 @@ export class DatabaseService implements OnModuleInit {
 
     const doc3: Doctor = {
       id: 'doc-03',
-      name: 'Dr. Anita Desai',
-      qualification: 'MBBS, MD (Dermatology)',
-      specialization: 'Dermatologist',
+      name: 'Ambikapur Civil Hospital',
+      qualification: 'Chief Medical Officer',
+      specialization: 'Multispecialty Public Healthcare',
       class: 'A',
       potential_score: 91,
       phone: '9877766554',
-      clinic: 'Skin Care Centre',
-      hospital: 'Max Healthcare Centre',
-      address: 'Hauz Khas Market, New Delhi',
-      latitude: 28.5494,
-      longitude: 77.2001,
+      clinic: 'Surguja District Hospital',
+      hospital: 'Ambikapur Medical College Hospital',
+      address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
+      latitude: 23.1197,
+      longitude: 83.1979,
       area_id: areaId,
       assigned_mr_id: mr3.id,
       assigned_mr_name: mr3.name,
@@ -521,16 +521,16 @@ export class DatabaseService implements OnModuleInit {
 
     const doc4: Doctor = {
       id: 'doc-04',
-      name: 'Dr. Sameer Kapoor',
-      qualification: 'MBBS',
-      specialization: 'General Physician',
+      name: 'Bilaspur Healthcare Centre',
+      qualification: 'MD (General Medicine)',
+      specialization: 'Super Specialty Hospital',
       class: 'C',
       potential_score: 64,
       phone: '9899911122',
-      clinic: 'Kapoor Health Clinic',
-      address: 'Main Market, Malviya Nagar, New Delhi',
-      latitude: 28.5300,
-      longitude: 77.2150,
+      clinic: 'Apollo Regional Medical Centre',
+      address: 'Vyapar Vihar, Bilaspur, Chhattisgarh',
+      latitude: 22.0797,
+      longitude: 82.1409,
       area_id: areaId,
       assigned_mr_id: mr3.id,
       assigned_mr_name: mr3.name,
@@ -540,16 +540,16 @@ export class DatabaseService implements OnModuleInit {
 
     const doc5: Doctor = {
       id: 'doc-05',
-      name: 'Dr. Anil Verma',
+      name: 'Kotma Primary Health Centre',
       qualification: 'MBBS, MD',
-      specialization: 'Internal Medicine',
+      specialization: 'Primary Healthcare',
       class: 'B',
       potential_score: 78,
       phone: '9827110022',
-      clinic: 'Verma Polyclinic',
-      address: 'Hospital Road, Ambikapur',
-      latitude: 28.5210,
-      longitude: 77.2040,
+      clinic: 'Kotma PHC & Wellness Centre',
+      address: 'Main Road, Kotma, Madhya Pradesh',
+      latitude: 23.2035,
+      longitude: 81.9669,
       area_id: areaId,
       assigned_mr_id: mr2.id,
       assigned_mr_name: mr2.name,
@@ -559,122 +559,9 @@ export class DatabaseService implements OnModuleInit {
 
     this.doctors.push(doc1, doc2, doc3, doc4, doc5);
 
-    // 5. Seed Tasks for today
-    const nowD = new Date();
-    const todayStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
-    const task1: Task = {
-      id: 'task-01',
-      title: 'Dr. Rajesh Sharma Clinic Detailing',
-      description: 'Present CardioFix-50 scheme and distribute product samples.',
-      assigned_mr_id: mr.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '10:30:00',
-      latitude: doc1.latitude,
-      longitude: doc1.longitude,
-      geofence_radius_m: 20,
-      priority: 'HIGH',
-      status: 'ASSIGNED',
-      created_at: new Date().toISOString(),
-    };
-
-    const task2: Task = {
-      id: 'task-02',
-      title: 'Dr. Priya Verma Evening Visit',
-      description: 'Follow-up on pediatric antibiotic suspension samples.',
-      assigned_mr_id: mr.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '17:00:00',
-      latitude: doc2.latitude,
-      longitude: doc2.longitude,
-      geofence_radius_m: 20,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-      created_at: new Date().toISOString(),
-    };
-
-    const task3: Task = {
-      id: 'task-03',
-      title: 'Dr. Anita Desai Follow-up Call',
-      description: 'Detail DermaSoothe Cream and secure order.',
-      assigned_mr_id: mr3.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '14:30:00',
-      latitude: doc3.latitude,
-      longitude: doc3.longitude,
-      geofence_radius_m: 40,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-      created_at: new Date().toISOString(),
-    };
-
-    const task4: Task = {
-      id: 'task-04',
-      title: 'Dr. Sameer Kapoor Regular Visit',
-      description: 'Present Glucotrol-M clinical trials and check stockist supplies.',
-      assigned_mr_id: mr3.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '16:00:00',
-      latitude: doc4.latitude,
-      longitude: doc4.longitude,
-      geofence_radius_m: 50,
-      priority: 'LOW',
-      status: 'ASSIGNED',
-      created_at: new Date().toISOString(),
-    };
-
-    const task5: Task = {
-      id: 'task-05',
-      title: 'Dr. Anil Verma Polyclinic Detailing',
-      description: 'Present CardioFix-AM product line.',
-      assigned_mr_id: mr2.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '11:00:00',
-      latitude: doc5.latitude,
-      longitude: doc5.longitude,
-      geofence_radius_m: 30,
-      priority: 'HIGH',
-      status: 'ASSIGNED',
-      created_at: new Date().toISOString(),
-    };
-
-    const task0: Task = {
-      id: 'task-hist-01',
-      title: 'Dr. Rajesh Sharma Cardiology Call',
-      description: 'CardioFix-50 Detailing and Scheme Presentation',
-      assigned_mr_id: mr.id,
-      created_by: manager.id,
-      date: todayStr,
-      time: '09:30:00',
-      location_name: 'Apex Heart Centre (Saket)',
-      latitude: doc1.latitude,
-      longitude: doc1.longitude,
-      geofence_radius_m: 50,
-      priority: 'HIGH',
-      status: 'COMPLETED',
-      started_at: `${todayStr}T09:30:00.000Z`,
-      completed_at: `${todayStr}T09:58:15.000Z`,
-      duration_seconds: 1695,
-      outcome: 'Presented CardioFix-50 clinical data. Doctor agreed to prescribe for 25 patients this month.',
-      orders: [
-        { product_name: 'CardioFix-50 (Telmisartan 40mg)', quantity: 25, unit_price: 180, total_amount: 4500, distributor: 'MedPlus Saket' }
-      ],
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-    };
-
-    this.tasks.push(task0, task1, task2, task3, task4, task5);
-    this.taskAssignments.push(
-      { id: 'ta-00', task_id: task0.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
-      { id: 'ta-01', task_id: task1.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
-      { id: 'ta-02', task_id: task2.id, mr_id: mr.id, assigned_at: new Date().toISOString() },
-      { id: 'ta-03', task_id: task3.id, mr_id: mr3.id, assigned_at: new Date().toISOString() },
-      { id: 'ta-04', task_id: task4.id, mr_id: mr3.id, assigned_at: new Date().toISOString() },
-      { id: 'ta-05', task_id: task5.id, mr_id: mr2.id, assigned_at: new Date().toISOString() },
-    );
+    // Initial tasks initialized empty (dummy seed tasks removed)
+    this.tasks = [];
+    this.taskAssignments = [];
 
     // 6. Seed Initial Leave Request and Approval (Rahul Sharma)
     const seedLeave: LeaveRequest = {

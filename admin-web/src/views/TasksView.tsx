@@ -80,193 +80,75 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const doctorPresets = [
     {
       id: 'doc-01',
-      name: 'Dr. Rajesh Sharma',
-      clinic: 'Apex Heart Centre',
-      specialty: 'Cardiologist',
-      address: 'Ring Road, Saket, South Delhi',
-      lat: 28.5245,
-      lng: 77.2066,
+      name: 'District Hospital Shahdol',
+      clinic: 'Civil Hospital & Trauma Centre',
+      specialty: 'District Healthcare Centre',
+      address: 'Hospital Road, Bicharpur, Shahdol, MP',
+      lat: 23.2953,
+      lng: 81.3586,
       radius: 50,
       suggestedMr: 'Rahul Sharma',
     },
     {
       id: 'doc-02',
-      name: 'Dr. Priya Verma',
-      clinic: 'Little Care Clinic',
-      specialty: 'Paediatrician',
-      address: 'Green Park Extension, New Delhi',
-      lat: 28.5585,
-      lng: 77.2028,
-      radius: 50,
+      name: 'Shree Ram Pharmacy',
+      clinic: 'Shree Ram Medicos Shahdol',
+      specialty: 'Retail Chemist Partner',
+      address: 'Main Market, Station Road, Shahdol, MP',
+      lat: 23.3012,
+      lng: 81.3620,
+      radius: 40,
       suggestedMr: 'Rahul Sharma',
     },
     {
       id: 'doc-03',
-      name: 'Dr. Anita Desai',
-      clinic: 'Skin Care Centre',
-      specialty: 'Dermatologist',
-      address: 'Hauz Khas Market, New Delhi',
-      lat: 28.5494,
-      lng: 77.2001,
-      radius: 40,
+      name: 'Ambikapur Civil Hospital',
+      clinic: 'Surguja District Hospital',
+      specialty: 'Multispecialty Public Healthcare',
+      address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
+      lat: 23.1197,
+      lng: 83.1979,
+      radius: 50,
       suggestedMr: 'Vikram Malhotra',
     },
     {
       id: 'doc-04',
-      name: 'Dr. Sameer Kapoor',
-      clinic: 'Kapoor Health Clinic',
-      specialty: 'General Physician',
-      address: 'Malviya Nagar Main Road, New Delhi',
-      lat: 28.5300,
-      lng: 77.2150,
-      radius: 50,
+      name: 'Bilaspur Healthcare Centre',
+      clinic: 'Apollo Regional Medical Centre',
+      specialty: 'Super Specialty Hospital',
+      address: 'Vyapar Vihar, Bilaspur, Chhattisgarh',
+      lat: 22.0797,
+      lng: 82.1409,
+      radius: 60,
       suggestedMr: 'Pooja Verma',
     },
     {
       id: 'doc-05',
-      name: 'Max Super Specialty Hospital',
-      clinic: 'Max Hospital Saket',
-      specialty: 'Cardiology & Oncology Hub',
-      address: '1, 2, Press Enclave Marg, Saket, New Delhi',
-      lat: 28.5282,
-      lng: 77.2124,
-      radius: 60,
-      suggestedMr: 'Vikram Malhotra',
-    },
-    {
-      id: 'doc-06',
-      name: 'Apollo Pharmacy Retail Depot',
-      clinic: 'Apollo Pharmacy Green Park',
-      specialty: 'Chemist & Stockist Partner',
-      address: 'Main Market, Green Park, New Delhi',
-      lat: 28.5598,
-      lng: 77.2045,
+      name: 'Kotma Primary Health Centre',
+      clinic: 'Kotma PHC & Wellness Centre',
+      specialty: 'Primary Healthcare',
+      address: 'Main Road, Kotma, Madhya Pradesh',
+      lat: 23.2035,
+      lng: 81.9669,
       radius: 40,
-      suggestedMr: 'Pooja Verma',
+      suggestedMr: 'Amit Kumar',
     },
   ];
 
   // Available Products for Detailing Focus (Only in-stock products with quantity > 0 in store)
   const [inStockProducts, setInStockProducts] = useState<InStockProduct[]>(getStoredInStockProducts);
 
-  // Tasks State
-  const [tasks, setTasks] = useState<TaskItem[]>([
-    {
-      id: 'task-01',
-      title: 'Dr. Rajesh Sharma Detailing - CardioFix Launch',
-      date: '2026-09-06',
-      time: '10:30:00',
-      assigned_mr_name: 'Rahul Sharma',
-      assigned_mr_id: 'usr-mr-01',
-      location_name: 'Apex Heart Centre (Saket)',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      geofence_radius_m: 50,
-      priority: 'HIGH',
-      status: 'COMPLETED',
-      distance_verified: true,
-      started_at: '2026-09-06T10:28:14.000Z',
-      completed_at: '2026-09-06T11:06:38.000Z',
-      duration_seconds: 2304,
-      outcome: 'Doctor reviewed clinical trial data for CardioFix-50. Agreed to prescribe for 25 hypertension patients.',
-      orders: [
-        { product_name: 'CardioFix-50 (Telmisartan)', quantity: 30, unit_price: 180, total_amount: 5400, distributor: 'MedPlus Saket' },
-        { product_name: 'CardioFix-AM Suspension', quantity: 15, unit_price: 120, total_amount: 1800, distributor: 'MedPlus Saket' },
-      ],
-    },
-    {
-      id: 'task-02',
-      title: 'Dr. Priya Verma Evening Detailing Visit',
-      date: '2026-09-06',
-      time: '17:00:00',
-      assigned_mr_name: 'Rahul Sharma',
-      assigned_mr_id: 'usr-mr-01',
-      location_name: 'Little Care Clinic (Green Park)',
-      latitude: 28.5585,
-      longitude: 77.2028,
-      geofence_radius_m: 50,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-      distance_verified: false,
-    },
-    {
-      id: 'task-03',
-      title: 'Apex Cardiology Hospital Detailing',
-      date: '2026-09-06',
-      time: '12:15:00',
-      assigned_mr_name: 'Vikram Malhotra',
-      assigned_mr_id: 'usr-mr-02',
-      location_name: 'Max Super Specialty Hospital',
-      latitude: 28.5282,
-      longitude: 77.2124,
-      geofence_radius_m: 60,
-      priority: 'HIGH',
-      status: 'IN_PROGRESS',
-      distance_verified: true,
-      started_at: '2026-09-06T12:12:00.000Z',
-    },
-    {
-      id: 'task-04',
-      title: 'Dr. Anita Desai Follow-up Call',
-      date: '2026-09-06',
-      time: '14:30:00',
-      assigned_mr_name: 'Pooja Verma',
-      assigned_mr_id: 'usr-mr-03',
-      location_name: 'Skin Care Centre (Hauz Khas)',
-      latitude: 28.5494,
-      longitude: 77.2001,
-      geofence_radius_m: 40,
-      priority: 'MEDIUM',
-      status: 'COMPLETED',
-      distance_verified: true,
-      started_at: '2026-09-06T14:28:00.000Z',
-      completed_at: '2026-09-06T14:52:15.000Z',
-      duration_seconds: 1455,
-      outcome: 'Followed up on dermatologist sample kit. Requested 10 additional sample packs for next week.',
-      orders: [
-        { product_name: 'DermaSoothe Cream', quantity: 20, unit_price: 210, total_amount: 4200, distributor: 'Apollo Hauz Khas' },
-      ],
-    },
-  ]);
+  // Tasks State - Initialized empty without dummy seed data
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
 
-  const [verificationLogs] = useState<VerificationLogItem[]>([
-    {
-      id: 'lv-101',
-      task_title: 'Dr. Rajesh Sharma Clinic Detailing',
-      mr_name: 'Rahul Sharma',
-      type: 'START',
-      distance_m: 8.4,
-      gps_accuracy_m: 12.0,
-      verified: true,
-      timestamp: '2026-09-06 10:28:14',
-    },
-    {
-      id: 'lv-102',
-      task_title: 'Dr. Rajesh Sharma Clinic Detailing',
-      mr_name: 'Rahul Sharma',
-      type: 'COMPLETE',
-      distance_m: 6.8,
-      gps_accuracy_m: 10.5,
-      verified: true,
-      timestamp: '2026-09-06 11:06:38',
-    },
-    {
-      id: 'lv-103',
-      task_title: 'Dr. Priya Verma Evening Visit (Spoof Attempt)',
-      mr_name: 'Rahul Sharma',
-      type: 'START',
-      distance_m: 82.5,
-      gps_accuracy_m: 14.0,
-      verified: false,
-      timestamp: '2026-09-05 16:55:00',
-    },
-  ]);
+  const [verificationLogs] = useState<VerificationLogItem[]>([]);
 
   // Registered Medical Representatives with Territories
   const mrList = [
-    { id: 'usr-mr-01', name: 'Rahul Sharma', territory: 'South Delhi • Saket' },
-    { id: 'usr-mr-02', name: 'Vikram Malhotra', territory: 'Central Delhi • Hauz Khas' },
-    { id: 'usr-mr-03', name: 'Pooja Verma', territory: 'North Delhi • Green Park' },
+    { id: 'usr-mr-01', name: 'Rahul Sharma', territory: 'Shahdol HQ Territory' },
+    { id: 'usr-mr-02', name: 'Vikram Malhotra', territory: 'Ambikapur HQ Territory' },
+    { id: 'usr-mr-03', name: 'Pooja Verma', territory: 'Bilaspur HQ Territory' },
+    { id: 'usr-mr-04', name: 'Amit Kumar', territory: 'Kotma HQ Territory' },
   ];
 
   const [filterMr, setFilterMr] = useState<string>('ALL');
@@ -275,20 +157,20 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   // Form State
   const [locationMode, setLocationMode] = useState<'saved' | 'custom'>('saved');
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('doc-01');
-  const [taskTitle, setTaskTitle] = useState('Dr. Rajesh Sharma Detailing - CardioFix Launch');
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('custom');
+  const [taskTitle, setTaskTitle] = useState('');
   const [callCategory, setCallCategory] = useState<'DETAILING' | 'LAUNCH' | 'POB' | 'SAMPLE' | 'HOSPITAL'>('DETAILING');
   const [assignedMrId, setAssignedMrId] = useState<string>('usr-mr-01');
   const [assignedMr, setAssignedMr] = useState('Rahul Sharma');
-  const [taskLocationName, setTaskLocationName] = useState('Apex Heart Centre (Saket)');
-  const [taskAddress, setTaskAddress] = useState('Press Enclave Marg, Saket, New Delhi');
+  const [taskLocationName, setTaskLocationName] = useState('');
+  const [taskAddress, setTaskAddress] = useState('');
   const getTodayDateString = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const [taskLat, setTaskLat] = useState<number>(28.5245);
-  const [taskLng, setTaskLng] = useState<number>(77.2066);
+  const [taskLat, setTaskLat] = useState<number>(23.2953);
+  const [taskLng, setTaskLng] = useState<number>(81.3586);
   const [taskRadius, setTaskRadius] = useState<number>(50);
   const [taskDate, setTaskDate] = useState<string>(() => {
     const d = new Date();
@@ -302,7 +184,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     const initial = getStoredInStockProducts();
     return initial.slice(0, 2).map((p) => p.name);
   });
-  const [taskDescription, setTaskDescription] = useState('Present clinical trial efficacy data for CardioFix-50; confirm monthly prescription potential.');
+  const [taskDescription, setTaskDescription] = useState('');
 
   // Live Sync In-Stock Products with Store Inventory
   useEffect(() => {
@@ -385,7 +267,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setTasks(data);
         }
       }
@@ -414,7 +296,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   const [zones, setZones] = useState<TerritoryZone[]>(getOperatingZones);
   const [savedLocations, setSavedLocations] = useState<DoctorItem[]>(getStoredSavedLocations);
-  const [modalSelectedZoneId, setModalSelectedZoneId] = useState<string>('zone-south-delhi');
+  const [modalSelectedZoneId, setModalSelectedZoneId] = useState<string>(() => {
+    const op = getOperatingZones();
+    return op[0]?.id || 'zone-hq-shahdol';
+  });
+
+  // Dynamically re-read zones whenever Headquarters or covered regions are updated in Settings
+  useEffect(() => {
+    const handleHqUpdate = () => {
+      setZones(getOperatingZones());
+    };
+    window.addEventListener('ahtri_hq_updated', handleHqUpdate);
+    window.addEventListener('ahtri_areas_updated', handleHqUpdate);
+    return () => {
+      window.removeEventListener('ahtri_hq_updated', handleHqUpdate);
+      window.removeEventListener('ahtri_areas_updated', handleHqUpdate);
+    };
+  }, []);
 
   // Modal Map Leaflet Refs
   const modalSavedLocationsLayerRef = useRef<L.LayerGroup | null>(null);
@@ -470,11 +368,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setSelectedZoneId(zoneId);
     if (!zoneMapInstanceRef.current) return;
     if (zoneId === 'all') {
-      zoneMapInstanceRef.current.flyTo([28.538, 77.206], 12, { duration: 1.0 });
+      zoneMapInstanceRef.current.flyTo([23.2953, 81.3586], 8.5, { duration: 1.0 });
     } else {
       const target = zones.find((z) => z.id === zoneId);
       if (target) {
-        zoneMapInstanceRef.current.flyTo([target.latitude, target.longitude], 13.5, { duration: 1.0 });
+        zoneMapInstanceRef.current.flyTo([target.latitude, target.longitude], 12.5, { duration: 1.0 });
       }
     }
   };
@@ -532,7 +430,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const map = createOptimizedMap(zoneMapContainerRef.current, {
         zoomControl: false,
         dragging: !isMobile,
-      }).setView([28.538, 77.206], 12);
+      }).setView([23.2953, 81.3586], 8.5);
       zoneMapInstanceRef.current = map;
 
       // Position zoom controls in bottom-right to avoid overlapping top controls
@@ -584,39 +482,24 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   }, [selectedZoneId, savedLocations, tasks, zones]);
 
-  // Render Zone Boundaries, Saved Location 3D Pins, and Assigned Tasks
+  // Render HQ Territory Markers & Saved Points of Care (Clean view without dashed circles or TASK badges)
   const renderZoneMapEntities = () => {
     if (!zoneCirclesGroupRef.current || !zoneMarkersGroupRef.current || !zoneMapInstanceRef.current) return;
     zoneCirclesGroupRef.current.clearLayers();
     zoneMarkersGroupRef.current.clearLayers();
 
-    // 1. Draw Zones Circles and Center Labels
+    // 1. Render clean Headquarters Badges for each configured HQ
     zones.forEach((zone) => {
       const isFocused = selectedZoneId === 'all' || selectedZoneId === zone.id;
-      const locsInZone = getLocationsInZone(zone);
-      const tasksInZone = getTasksInZone(zone);
 
-      // Zone Circle Geofence
-      const circle = L.circle([zone.latitude, zone.longitude], {
-        radius: zone.radiusKm * 1000,
-        color: zone.color,
-        fillColor: zone.color,
-        fillOpacity: isFocused ? (selectedZoneId === zone.id ? 0.18 : 0.08) : 0.03,
-        weight: selectedZoneId === zone.id ? 3 : 1.5,
-        dashArray: '6, 8',
-      }).addTo(zoneCirclesGroupRef.current!);
-
-      circle.on('click', () => handleSelectZone(zone.id));
-
-      // Zone Center Badge Marker
+      // Clean HQ Marker Badge - No dashed geofence circles or cluttered pill counters
       const centerIcon = L.divIcon({
-        className: 'zone-center-pill',
-        html: `<div style="background:${zone.color};color:white;padding:3px 10px;border-radius:14px;font-size:11px;font-weight:800;border:2px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.35);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        className: 'hq-marker-badge',
+        html: `<div style="background:${isFocused ? '#1E293B' : '#334155'};color:#FFFFFF;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:800;border:2px solid ${zone.color || '#3B82F6'};box-shadow:0 4px 14px rgba(0,0,0,0.38);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;transform:translate(-50%, -50%);">
+          <span style="font-size:13px;">🏢</span>
           <span>${zone.name}</span>
-          <span style="background:rgba(255,255,255,0.28);padding:1px 6px;border-radius:8px;font-size:10px;">${locsInZone.length} Locations</span>
-          <span style="background:#0F8B5A;color:white;padding:1px 6px;border-radius:8px;font-size:10px;">${tasksInZone.length} Tasks</span>
         </div>`,
-        iconAnchor: [80, 16],
+        iconAnchor: [0, 0],
       });
 
       const centerMarker = L.marker([zone.latitude, zone.longitude], { icon: centerIcon }).addTo(zoneCirclesGroupRef.current!);
@@ -653,36 +536,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
         </div>
       `;
       marker.bindPopup(popupHtml);
-    });
-
-    // 3. Render Active Tasks inside selected/all zones
-    const visibleTasks = selectedZoneId === 'all' ? tasks : activeZone ? getTasksInZone(activeZone) : tasks;
-
-    visibleTasks.forEach((t) => {
-      const isDone = t.status === 'COMPLETED';
-      const isSusp = t.status === 'SUSPENDED';
-      const bg = isDone ? '#166534' : isSusp ? '#DC2626' : '#2563EB';
-
-      const taskMarkerIcon = L.divIcon({
-        html: `<div style="background:${bg};color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.35);font-size:9.5px;font-weight:800;">TASK</div>`,
-        className: 'task-map-marker',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
-        popupAnchor: [0, -15],
-      });
-
-      const tm = L.marker([t.latitude, t.longitude], { icon: taskMarkerIcon }).addTo(zoneMarkersGroupRef.current!);
-      tm.bindPopup(`
-        <div style="font-family:sans-serif;min-width:200px;padding:4px 2px;">
-          <div style="font-weight:800;font-size:13px;color:#0F172A;">${t.title}</div>
-          <div style="font-size:11.5px;color:#475569;margin-top:3px;">Assigned to: <strong>${t.assigned_mr_name}</strong></div>
-          <div style="font-size:11px;color:#64748B;margin-top:2px;">Scheduled: ${formatDateDDMMYYYY(t.date)} at ${t.time}</div>
-          <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;background:${bg};color:white;">${t.status}</span>
-            <span style="font-size:10.5px;color:#64748B;">Priority: ${t.priority}</span>
-          </div>
-        </div>
-      `);
     });
   };
 
@@ -822,11 +675,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([zone.latitude, zone.longitude], 14, { duration: 1.0 });
-      if (modalZoneCircleRef.current) {
-        modalZoneCircleRef.current.setLatLng([zone.latitude, zone.longitude]);
-        modalZoneCircleRef.current.setRadius(zone.radiusKm * 1000);
-        modalZoneCircleRef.current.setStyle({ color: zone.color, fillColor: zone.color });
-      }
     }
 
     // Only auto-pick saved customer preset if currently in 'saved' mode
@@ -873,19 +721,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
       // Group for all saved locations
       modalSavedLocationsLayerRef.current = L.layerGroup().addTo(map);
-
-      // Zone perimeter circle
-      const activeZone = zones.find((z) => z.id === modalSelectedZoneId) || zones[0];
-      if (activeZone) {
-        modalZoneCircleRef.current = L.circle([activeZone.latitude, activeZone.longitude], {
-          radius: activeZone.radiusKm * 1000,
-          color: activeZone.color || '#1A3C6E',
-          fillColor: activeZone.color || '#1A3C6E',
-          fillOpacity: 0.05,
-          weight: 1.5,
-          dashArray: '5, 8',
-        }).addTo(map);
-      }
 
       // Render all saved points of care as 3D pins
       renderModalSavedLocations(map);

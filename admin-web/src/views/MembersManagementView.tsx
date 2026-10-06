@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { getStoredSavedLocations } from '../utils/savedLocationsStore';
 
 interface LeaveQuotaData {
   mr_id: string;
@@ -163,142 +164,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [editPassword, setEditPassword] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-  // Tasks & Locations
-  const [tasks, setTasks] = useState<TaskItem[]>([
-    {
-      id: 'task-01',
-      title: 'Dr. Rajesh Sharma Clinic Detailing',
-      date: '2026-09-06',
-      time: '10:30:00',
-      assigned_mr_name: 'Rahul Sharma',
-      assigned_mr_id: 'usr-mr-01',
-      location_name: 'Apex Heart Centre (Saket)',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      geofence_radius_m: 50,
-      priority: 'HIGH',
-      status: 'COMPLETED',
-      distance_verified: true,
-      started_at: '2026-09-06T10:28:14.000Z',
-      completed_at: '2026-09-06T11:06:38.000Z',
-      duration_seconds: 2280,
-      outcome: 'Presented CardioFix-50 clinical data. Doctor agreed to initiate 5 trial patients and requested samples.',
-      orders: [
-        { product_name: 'CardioFix-50 (Telmisartan)', quantity: 30, unit_price: 180, total_amount: 5400, distributor: 'Apollo Pharmacy Saket' },
-        { product_name: 'CardioFix-AM Suspension', quantity: 15, unit_price: 240, total_amount: 3600, distributor: 'Apollo Pharmacy Saket' },
-      ],
-    },
-    {
-      id: 'task-02',
-      title: 'Dr. Priya Verma Detailing Call',
-      date: '2026-09-06',
-      time: '11:45:00',
-      assigned_mr_name: 'Rahul Sharma',
-      assigned_mr_id: 'usr-mr-01',
-      location_name: 'Verma PolyClinic (Malviya Nagar)',
-      latitude: 28.5355,
-      longitude: 77.2101,
-      geofence_radius_m: 50,
-      priority: 'MEDIUM',
-      status: 'ASSIGNED',
-      distance_verified: false,
-    },
-    {
-      id: 'task-03',
-      title: 'Apex Cardiology Hospital Detailing',
-      date: '2026-09-06',
-      time: '12:15:00',
-      assigned_mr_name: 'Vikram Malhotra',
-      assigned_mr_id: 'usr-mr-02',
-      location_name: 'Max Super Specialty Hospital',
-      latitude: 28.5282,
-      longitude: 77.2124,
-      geofence_radius_m: 60,
-      priority: 'HIGH',
-      status: 'IN_PROGRESS',
-      distance_verified: true,
-      started_at: '2026-09-06T12:12:00.000Z',
-    },
-    {
-      id: 'task-04',
-      title: 'Dr. Anita Desai Follow-up Call',
-      date: '2026-09-06',
-      time: '14:30:00',
-      assigned_mr_name: 'Pooja Verma',
-      assigned_mr_id: 'usr-mr-03',
-      location_name: 'Skin Care Centre (Hauz Khas)',
-      latitude: 28.5494,
-      longitude: 77.2001,
-      geofence_radius_m: 40,
-      priority: 'MEDIUM',
-      status: 'COMPLETED',
-      distance_verified: true,
-      started_at: '2026-09-06T14:28:00.000Z',
-      completed_at: '2026-09-06T14:52:15.000Z',
-      duration_seconds: 1455,
-      outcome: 'Followed up on dermatologist sample kit. Requested 10 additional sample packs for next week.',
-      orders: [
-        { product_name: 'DermaSoothe Cream', quantity: 20, unit_price: 210, total_amount: 4200, distributor: 'Apollo Hauz Khas' },
-      ],
-    },
-  ]);
-
-  const [locations, setLocations] = useState<DoctorItem[]>([
-    {
-      id: 'loc-01',
-      name: 'Dr. Rajesh Sharma',
-      clinic: 'Apex Heart Centre',
-      qualification: 'MD, DM (Cardiology)',
-      specialization: 'Cardiologist',
-      class: 'A',
-      potential_score: 94,
-      area_name: 'Saket',
-      phone: '+91 98111 22334',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      visit_count: 14,
-      category: 'CLINIC',
-      address: 'Press Enclave Marg, Saket, New Delhi',
-      created_by_name: 'Rahul Sharma',
-      created_by_role: 'MR',
-    },
-    {
-      id: 'loc-02',
-      name: 'Dr. Priya Verma',
-      clinic: 'Verma PolyClinic',
-      qualification: 'MBBS, DNB (Internal Med)',
-      specialization: 'General Physician',
-      class: 'B',
-      potential_score: 78,
-      area_name: 'Malviya Nagar',
-      phone: '+91 98222 33445',
-      latitude: 28.5355,
-      longitude: 77.2101,
-      visit_count: 9,
-      category: 'CLINIC',
-      address: 'Block B, Main Market, Malviya Nagar, New Delhi',
-      created_by_name: 'Rahul Sharma',
-      created_by_role: 'MR',
-    },
-    {
-      id: 'loc-03',
-      name: 'Max Super Specialty Hospital',
-      clinic: 'Max Healthcare OPD',
-      qualification: 'NABH Accredited',
-      specialization: 'Multi-Specialty',
-      class: 'A',
-      potential_score: 98,
-      area_name: 'Saket Institutional Area',
-      phone: '+91 11 2651 5050',
-      latitude: 28.5282,
-      longitude: 77.2124,
-      visit_count: 22,
-      category: 'HOSPITAL',
-      address: '1, 2, Press Enclave Road, Mandir Marg, Saket',
-      created_by_name: 'Vikram Malhotra',
-      created_by_role: 'MR',
-    },
-  ]);
+  // Tasks & Locations (Seed Delhi tasks removed, uses authentic stored locations)
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [locations, setLocations] = useState<DoctorItem[]>(getStoredSavedLocations);
 
   // Leave Quota State for Selected Member
   const [leaveQuota, setLeaveQuota] = useState<LeaveQuotaData>({
@@ -450,7 +318,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         const tasksRes = await fetch(`${apiUrl}/tasks`, { headers });
         if (tasksRes.ok) {
           const tData = await tasksRes.json();
-          if (Array.isArray(tData) && tData.length > 0) setTasks(tData);
+          if (Array.isArray(tData)) setTasks(tData);
         }
       } catch {}
 
@@ -458,7 +326,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         const locsRes = await fetch(`${apiUrl}/locations`, { headers });
         if (locsRes.ok) {
           const lData = await locsRes.json();
-          if (Array.isArray(lData) && lData.length > 0) setLocations(lData);
+          if (Array.isArray(lData)) setLocations(lData);
         }
       } catch {}
     };

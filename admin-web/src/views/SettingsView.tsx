@@ -89,10 +89,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Team MR Passwords
   const [mrList, setMrList] = useState([
-    { id: 'mr-01', name: 'Rahul Sharma', email: 'mr@ahtri.com', phone: '9876543212', password: 'Password@123', territory: 'South Delhi' },
-    { id: 'mr-02', name: 'Vikram Malhotra', email: 'vikram@ahtri.com', phone: '9876543213', password: 'Password@123', territory: 'Central Delhi' },
-    { id: 'mr-03', name: 'Pooja Verma', email: 'pooja@ahtri.com', phone: '9876543214', password: 'Password@123', territory: 'North Delhi' },
-    { id: 'mr-04', name: 'Amit Kumar', email: 'amit@ahtri.com', phone: '9876543215', password: 'Password@123', territory: 'East Delhi' },
+    { id: 'mr-01', name: 'Rahul Sharma', email: 'mr@ahtri.com', phone: '9876543212', password: 'Password@123', territory: 'Shahdol HQ' },
+    { id: 'mr-02', name: 'Vikram Malhotra', email: 'vikram@ahtri.com', phone: '9876543213', password: 'Password@123', territory: 'Ambikapur HQ' },
+    { id: 'mr-03', name: 'Pooja Verma', email: 'pooja@ahtri.com', phone: '9876543214', password: 'Password@123', territory: 'Bilaspur HQ' },
+    { id: 'mr-04', name: 'Amit Kumar', email: 'amit@ahtri.com', phone: '9876543215', password: 'Password@123', territory: 'Kotma HQ' },
   ]);
   const [editingMrPasswordId, setEditingMrPasswordId] = useState<string | null>(null);
   const [tempMrPassword, setTempMrPassword] = useState('');
@@ -131,12 +131,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     lng: number;
     radiusKm: number;
   }>({
-    cityName: 'New Delhi',
-    state: 'Delhi',
+    cityName: 'Shahdol',
+    state: 'Madhya Pradesh',
     country: 'India',
-    lat: 28.6139,
-    lng: 77.2090,
-    radiusKm: 30,
+    lat: 23.2953,
+    lng: 81.3586,
+    radiusKm: 25,
   });
 
   const [newCityBranchTag, setNewCityBranchTag] = useState<BranchTagType>('SUB_CITY_BRANCH');
@@ -152,56 +152,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return [
       {
         id: 'city-01',
-        cityName: 'New Delhi',
-        state: 'National Capital Territory',
-        country: 'India',
-        latitude: 28.6139,
-        longitude: 77.2090,
-        radiusKm: 35,
-        isHeadquarters: true,
-        branchType: 'HEADQUARTERS',
-      },
-      {
-        id: 'city-02',
-        cityName: 'Mumbai',
-        state: 'Maharashtra',
-        country: 'India',
-        latitude: 19.0760,
-        longitude: 72.8777,
-        radiusKm: 40,
-        isHeadquarters: false,
-        branchType: 'REGIONAL_HUB',
-      },
-      {
-        id: 'city-03',
-        cityName: 'Jaipur',
-        state: 'Rajasthan',
-        country: 'India',
-        latitude: 26.9124,
-        longitude: 75.7873,
-        radiusKm: 25,
-        isHeadquarters: false,
-        branchType: 'SUB_CITY_BRANCH',
-      },
-      {
-        id: 'city-04',
-        cityName: 'Chandigarh',
-        state: 'Punjab / Haryana',
-        country: 'India',
-        latitude: 30.7333,
-        longitude: 76.7794,
-        radiusKm: 20,
-        isHeadquarters: false,
-        branchType: 'SUB_CITY_BRANCH',
-      },
-      {
-        id: 'city-05',
         cityName: 'Shahdol',
         state: 'Madhya Pradesh',
         country: 'India',
         latitude: 23.2953,
         longitude: 81.3586,
-        radiusKm: 15,
+        radiusKm: 25,
+        isHeadquarters: true,
+        branchType: 'HEADQUARTERS',
+      },
+      {
+        id: 'city-02',
+        cityName: 'Ambikapur',
+        state: 'Chhattisgarh',
+        country: 'India',
+        latitude: 23.1197,
+        longitude: 83.1979,
+        radiusKm: 25,
+        isHeadquarters: false,
+        branchType: 'SUB_CITY_BRANCH',
+      },
+      {
+        id: 'city-03',
+        cityName: 'Bilaspur',
+        state: 'Chhattisgarh',
+        country: 'India',
+        latitude: 22.0797,
+        longitude: 82.1409,
+        radiusKm: 30,
+        isHeadquarters: false,
+        branchType: 'REGIONAL_HUB',
+      },
+      {
+        id: 'city-04',
+        cityName: 'Kotma',
+        state: 'Madhya Pradesh',
+        country: 'India',
+        latitude: 23.2035,
+        longitude: 81.9669,
+        radiusKm: 20,
         isHeadquarters: false,
         branchType: 'SUB_CITY_BRANCH',
       },

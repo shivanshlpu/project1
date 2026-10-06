@@ -78,7 +78,7 @@ export const SalesmanPortalView: React.FC = () => {
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(9.5); // ±9.5m accuracy
   const [callState, setCallState] = useState<'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED'>('ASSIGNED');
   const [assignedCalls, setAssignedCalls] = useState<any[]>([]);
-  const [activeCallId, setActiveCallId] = useState<string>('task-01');
+  const [activeCallId, setActiveCallId] = useState<string>('');
 
   // Fetch Assigned Calls from Backend Server
   const fetchSalesmanCalls = async () => {
@@ -566,20 +566,14 @@ export const SalesmanPortalView: React.FC = () => {
               </div>
 
               {/* Dynamic Calls List */}
-              {(assignedCalls.length > 0
-                ? assignedCalls
-                : [
-                    {
-                      id: 'task-01',
-                      title: 'Dr. Rajesh Sharma Detailing',
-                      date: '2026-09-06',
-                      time: '10:30 AM',
-                      location_name: 'Apex Heart Centre, Saket',
-                      status: callState,
-                    },
-                  ]
-              ).map((call) => (
-                <div
+              {assignedCalls.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1', color: '#64748B' }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No Assigned Calls For Today</div>
+                  <div style={{ fontSize: '12px' }}>Assigned detailing calls will appear here in real-time.</div>
+                </div>
+              ) : (
+                assignedCalls.map((call) => (
+                  <div
                   key={call.id}
                   style={{
                     background: '#ffffff',
@@ -756,7 +750,7 @@ export const SalesmanPortalView: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ))}
+              )))}
             </div>
           )}
 
