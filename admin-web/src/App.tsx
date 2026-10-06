@@ -21,6 +21,7 @@ import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
 import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
 import { Language } from './utils/i18n';
+import { CenteredModalNotice } from './components/CenteredModalNotice';
 import './styles/app.css';
 
 interface AuthUser {
@@ -88,6 +89,9 @@ export const App: React.FC = () => {
   const [isDeviceApprovalsOpen, setIsDeviceApprovalsOpen] = useState(false);
   const [deviceApprovalsCount, setDeviceApprovalsCount] = useState(0);
 
+  // Dynamic Approvals Hub Pending Count (Leaves & Suspended Tasks)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+
   // New MR-Marked Field Locations Notification State
   const [recentNewLocations, setRecentNewLocations] = useState<NewLocationItem[]>([]);
   const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
@@ -102,6 +106,57 @@ export const App: React.FC = () => {
       return new Set<string>();
     }
   });
+
+  // Live poll pending approvals count (strictly dynamic from actual pending leaves and suspended tasks)
+  useEffect(() => {
+    const fetchPendingApprovals = async () => {
+      try {
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        let leavesCount = 0;
+        const apprRes = await fetch(`${apiUrl}/approvals/pending`, { headers }).catch(() => null);
+        if (apprRes && apprRes.ok) {
+          const data = await apprRes.json();
+          if (Array.isArray(data)) {
+            let storedDecisions: Record<string, any> = {};
+            try {
+              const raw = localStorage.getItem('ahtri_decided_approvals');
+              if (raw) storedDecisions = JSON.parse(raw);
+            } catch {}
+            leavesCount = data.filter(
+              (a: any) =>
+                a.entity_type !== 'EXPENSE' &&
+                !storedDecisions[a.id] &&
+                !storedDecisions[a.entity_id]
+            ).length;
+          }
+        }
+
+        let suspendedCount = 0;
+        const tasksRes = await fetch(`${apiUrl}/tasks`, { headers }).catch(() => null);
+        if (tasksRes && tasksRes.ok) {
+          const tData = await tasksRes.json();
+          if (Array.isArray(tData)) {
+            suspendedCount = tData.filter((t: any) => t.status === 'SUSPENDED').length;
+          }
+        }
+
+        setPendingApprovalsCount(leavesCount + suspendedCount);
+      } catch {
+        setPendingApprovalsCount(0);
+      }
+    };
+
+    fetchPendingApprovals();
+    const interval = setInterval(fetchPendingApprovals, 4000);
+    window.addEventListener('ahtri_approvals_updated', fetchPendingApprovals);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ahtri_approvals_updated', fetchPendingApprovals);
+    };
+  }, []);
 
   // Live poll pending device authorizations count
   useEffect(() => {
@@ -270,9 +325,12 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-shell">
+      {/* Universal Centered Modal Alerts & Notices (Replaces all browser native alert popups) */}
+      <CenteredModalNotice />
+
       {/* Enterprise Top Navigation with Sidebar Toggle */}
       <TopNav
-        pendingApprovalsCount={3}
+        pendingApprovalsCount={pendingApprovalsCount}
         pendingDeviceApprovalsCount={deviceApprovalsCount}
         onOpenDeviceApprovals={() => setIsDeviceApprovalsOpen(true)}
         lang={lang}
@@ -296,7 +354,7 @@ export const App: React.FC = () => {
             setManagerTab(tab);
             setIsMobileSidebarOpen(false);
           }}
-          pendingApprovalsCount={3}
+          pendingApprovalsCount={pendingApprovalsCount}
           newLocationsCount={recentNewLocations.length}
           lang={lang}
           onAssignNewCall={handleAssignNewCall}

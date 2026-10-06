@@ -18,10 +18,12 @@ import {
   ChevronRight,
   TrendingUp,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { TaskItem, TaskOrderItem } from '../types';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { showCenteredNotice } from '../components/CenteredModalNotice';
 
 export const SubmittedTasksView: React.FC = () => {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -121,16 +123,52 @@ export const SubmittedTasksView: React.FC = () => {
   const totalDurationSecs = filteredTasks.reduce((sum, t) => sum + (t.duration_seconds || 0), 0);
   const avgDurationMins = totalSubmitted > 0 ? Math.round(totalDurationSecs / totalSubmitted / 60) : 0;
 
+  const handleDeleteTask = (taskId: string, title: string) => {
+    showCenteredNotice({
+      title: 'Delete Submitted Task',
+      message: `Are you sure you want to permanently delete task "${title}"?\n\nThis will remove the submitted visit record and logs.`,
+      type: 'confirm',
+      confirmText: 'Delete Record',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const apiUrl = getApiBaseUrl();
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          await fetch(`${apiUrl}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch {}
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        if (selectedTask?.id === taskId) setSelectedTask(null);
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        showCenteredNotice({
+          title: 'Record Deleted',
+          message: `Task record "${title}" deleted successfully.`,
+          type: 'success',
+        });
+      },
+    });
+  };
+
   const handlePrintSlip = (taskToPrint?: TaskItem | null) => {
     const task = taskToPrint || selectedTask;
     if (!task) {
-      alert('Please select a submitted task record to print its official slip.');
+      showCenteredNotice({
+        title: 'Notice',
+        message: 'Please select a submitted task record to print its official slip.',
+        type: 'info',
+      });
       return;
     }
 
     const printWin = window.open('', '_blank');
     if (!printWin) {
-      alert('Pop-up blocked. Please allow pop-ups for this site to generate the official PDF slip.');
+      showCenteredNotice({
+        title: 'Pop-up Blocked',
+        message: 'Please allow pop-ups for this site to generate the official PDF slip.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -786,6 +824,30 @@ export const SubmittedTasksView: React.FC = () => {
                         >
                           <Printer size={12} />
                           <span>Slip</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTask(t.id, t.title);
+                          }}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #FCA5A5',
+                            background: '#FFFFFF',
+                            color: '#DC2626',
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                          title="Delete this submitted task record"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>

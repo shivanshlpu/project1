@@ -59,13 +59,13 @@ export class CompetitionsController {
   }
 
   @Post()
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async createCompetition(@Body() dto: CreateCompetitionDto) {
     return this.competitionsService.createCompetition(dto);
   }
 
   @Patch(':id')
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async updateCompetition(
     @Param('id') id: string,
     @Body() dto: UpdateCompetitionDto,
@@ -74,7 +74,7 @@ export class CompetitionsController {
   }
 
   @Delete(':id')
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async deleteCompetition(@Param('id') id: string) {
     return this.competitionsService.deleteCompetition(id);
   }

@@ -28,6 +28,7 @@ import {
   calculateDistanceKm,
 } from '../utils/savedLocationsStore';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { showCenteredNotice } from '../components/CenteredModalNotice';
 
 interface SavedLocationsViewProps {
   onAssignTaskToLocation?: (loc: {
@@ -402,27 +403,44 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     setIsPickerOpen(true);
   };
 
-  // Handle deleting a location
-  const handleDeleteLocation = async (id: string, name: string) => {
-    const ok = window.confirm(
-      `Are you sure you want to delete "${name}"?\nThis will permanently remove it from your territory master directory and maps.`,
-    );
-    if (!ok) return;
+  // Handle deleting a location (also cleans up associated tasks)
+  const handleDeleteLocation = (id: string, name: string) => {
+    showCenteredNotice({
+      title: 'Delete Customer Location',
+      message: `Are you sure you want to delete "${name}"?\n\nThis will permanently remove it from your territory directory and also clean up any tasks scheduled at this location.`,
+      type: 'confirm',
+      confirmText: 'Delete Location',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        const next = locations.filter((l) => l.id !== id);
+        setLocations(next);
+        persistSavedLocations(next);
+        if (selectedLocation?.id === id) {
+          setSelectedLocation(null);
+        }
 
-    const next = locations.filter((l) => l.id !== id);
-    setLocations(next);
-    persistSavedLocations(next);
-    if (selectedLocation?.id === id) {
-      setSelectedLocation(null);
-    }
+        try {
+          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-      await fetch(`${apiUrl}/locations/${id}`, { method: 'DELETE' });
-      fetchLocations();
-    } catch (err) {
-      console.warn('Backend delete location warning:', err);
-    }
+          // 1. Delete location
+          await fetch(`${apiUrl}/locations/${id}`, { method: 'DELETE', headers });
+          // 2. Delete any matching tasks at this location so they don't remain as orphans
+          await fetch(`${apiUrl}/tasks?location=${encodeURIComponent(name)}`, { method: 'DELETE', headers });
+          window.dispatchEvent(new Event('ahtri_approvals_updated'));
+          fetchLocations();
+        } catch (err) {
+          console.warn('Backend delete location warning:', err);
+        }
+
+        showCenteredNotice({
+          title: 'Location Deleted',
+          message: `Location "${name}" and its associated tasks have been removed.`,
+          type: 'success',
+        });
+      },
+    });
   };
 
   // Handle saving new or updated location from modal

@@ -13,10 +13,12 @@ import {
   RefreshCw,
   User,
   MapPin,
+  Trash2,
 } from 'lucide-react';
 import { ApprovalItem } from '../types';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { showCenteredNotice } from '../components/CenteredModalNotice';
 
 const DECIDED_STORAGE_KEY = 'ahtri_decided_approvals';
 
@@ -57,39 +59,13 @@ export const ApprovalsView: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unsuspendingId, setUnsuspendingId] = useState<string | null>(null);
 
-  // Leave & DCR Approvals State (Strictly NO Expense)
-  const [approvals, setApprovals] = useState<ApprovalItem[]>(() => {
-    const stored = getStoredDecisions();
-    const initialItems: ApprovalItem[] = [
-      {
-        id: 'appr-01',
-        entity_type: 'LEAVE',
-        entity_id: 'leave-101',
-        requester_name: 'Rahul Sharma',
-        details: 'Casual Leave (2 days): 12-09-2026 to 13-09-2026 (Family occasion)',
-        date: '06-09-2026',
-        status: 'PENDING',
-      },
-      {
-        id: 'appr-03',
-        entity_type: 'DCR_CORRECTION',
-        entity_id: 'dcr-103',
-        requester_name: 'Vikram Malhotra',
-        details: 'DCR Resubmission: Added sample dispensing voucher for Dr. Anita Desai',
-        date: '05-09-2026',
-        status: 'PENDING',
-      },
-    ];
-
-    return initialItems.map((item) => {
-      const dec = stored[item.id] || (item.entity_id ? stored[item.entity_id] : undefined);
-      return dec ? { ...item, status: dec.status } : item;
-    });
-  });
+  // Leave & DCR Approvals State (Strictly dynamic from database)
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
 
   // Suspended Tasks State
   const [suspendedTasks, setSuspendedTasks] = useState<SuspendedTaskItem[]>([]);
   const [resolvedTasks, setResolvedTasks] = useState<{ id: string; title: string; assigned_mr_name: string; resolvedAt: string }[]>([]);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
   const [activeModal, setActiveModal] = useState<{
     id: string;
@@ -123,27 +99,17 @@ export const ApprovalsView: React.FC = () => {
               id: a.id,
               entity_type: a.entity_type,
               entity_id: a.entity_id,
-              requester_name: a.requester_name || 'Rahul Sharma',
+              requester_name: a.requester_name || 'Representative',
               details: a.entity_details?.reason
                 ? `${a.entity_details.reason} (${formatDateDDMMYYYY(a.entity_details.start_date)} to ${formatDateDDMMYYYY(a.entity_details.end_date)})`
                 : a.entity_details?.description || `${a.entity_type} Request`,
-              date: formatDateDDMMYYYY(a.created_at || a.date || '08-09-2026'),
+              date: formatDateDDMMYYYY(a.created_at || a.date || new Date().toISOString()),
               status: dec ? dec.status : a.status,
             };
           });
-
-          setApprovals((prev) => {
-            const map = new Map(mapped.map((m) => [m.id, m]));
-            prev.forEach((p) => {
-              if (p.entity_type !== 'EXPENSE' && !map.has(p.id)) {
-                mapped.push(p);
-              }
-            });
-            return mapped.map((item) => {
-              const dec = storedDecisions[item.id] || (item.entity_id ? storedDecisions[item.entity_id] : undefined);
-              return dec ? { ...item, status: dec.status } : item;
-            });
-          });
+          setApprovals(mapped);
+        } else {
+          setApprovals([]);
         }
       }
 
@@ -154,6 +120,8 @@ export const ApprovalsView: React.FC = () => {
         if (Array.isArray(allTasks)) {
           const susp = allTasks.filter((t: any) => t.status === 'SUSPENDED');
           setSuspendedTasks(susp);
+        } else {
+          setSuspendedTasks([]);
         }
       }
     } catch (err) {
@@ -209,6 +177,7 @@ export const ApprovalsView: React.FC = () => {
 
     setActiveModal(null);
     setComment('');
+    window.dispatchEvent(new Event('ahtri_approvals_updated'));
   };
 
   // Handle Approve & Unsuspend for Suspended Task
@@ -236,15 +205,87 @@ export const ApprovalsView: React.FC = () => {
           },
           ...prev,
         ]);
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        showCenteredNotice({
+          title: 'Task Unsuspended',
+          message: `Task "${taskTitle}" successfully unsuspended. Representative ${mrName} can now execute calls.`,
+          type: 'success',
+        });
       } else {
-        alert('Failed to unsuspend task.');
+        showCenteredNotice({
+          title: 'Notice',
+          message: 'Failed to unsuspend task.',
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error('Error unsuspending task:', err);
-      alert('Network error unsuspending task.');
+      showCenteredNotice({
+        title: 'Connection Error',
+        message: 'Network error unsuspending task.',
+        type: 'error',
+      });
     } finally {
       setUnsuspendingId(null);
     }
+  };
+
+  // Permanently Delete a Suspended Task
+  const handleDeleteSuspendedTask = async (taskId: string, title: string) => {
+    showCenteredNotice({
+      title: 'Delete Task',
+      message: `Are you sure you want to permanently delete task "${title}"?\n\nThis will remove it from the system entirely.`,
+      type: 'confirm',
+      confirmText: 'Delete Task',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setDeletingTaskId(taskId);
+        try {
+          const apiUrl = getApiBaseUrl();
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          await fetch(`${apiUrl}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch {}
+        setSuspendedTasks((prev) => prev.filter((t) => t.id !== taskId));
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        setDeletingTaskId(null);
+        showCenteredNotice({
+          title: 'Task Deleted',
+          message: `Task "${title}" deleted successfully.`,
+          type: 'success',
+        });
+      },
+    });
+  };
+
+  // Permanently Delete All Suspended Tasks
+  const handleClearAllSuspendedTasks = async () => {
+    showCenteredNotice({
+      title: 'Clear All Suspended Tasks',
+      message: `Are you sure you want to permanently delete all ${suspendedTasks.length} suspended task(s)?\n\nThis will clear your Approval Hub completely.`,
+      type: 'confirm',
+      confirmText: 'Clear All Tasks',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const apiUrl = getApiBaseUrl();
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          await fetch(`${apiUrl}/tasks/purge-suspended`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch {}
+        setSuspendedTasks([]);
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        showCenteredNotice({
+          title: 'Approval Hub Cleared',
+          message: 'All suspended tasks have been deleted.',
+          type: 'success',
+        });
+      },
+    });
   };
 
   // Filtered Leave/DCR requests
@@ -348,6 +389,29 @@ export const ApprovalsView: React.FC = () => {
             </button>
           </div>
 
+          {pendingSuspendedCount > 0 && (
+            <button
+              onClick={handleClearAllSuspendedTasks}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                border: '1px solid #FCA5A5',
+                background: '#FEF2F2',
+                color: '#DC2626',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+              title="Permanently remove all suspended tasks from Approval Hub"
+            >
+              <Trash2 size={12} />
+              Clear All Suspended ({pendingSuspendedCount})
+            </button>
+          )}
+
           <span className={`status-pill ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}>
             <span className={`status-dot ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}></span>
             {totalPendingActionCount} Pending Action
@@ -365,7 +429,7 @@ export const ApprovalsView: React.FC = () => {
               <th>Request Details & Reason</th>
               <th style={{ width: '130px' }}>Date</th>
               <th style={{ width: '120px' }}>Status</th>
-              <th style={{ width: '170px' }}>Action</th>
+              <th style={{ width: '220px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -407,24 +471,48 @@ export const ApprovalsView: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <button
-                          className="btn-enterprise success sm"
-                          onClick={() => handleUnsuspendTask(st.id, st.assigned_mr_name, st.title)}
-                          disabled={unsuspendingId === st.id}
-                          style={{
-                            background: '#0F8B5A',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            cursor: unsuspendingId === st.id ? 'wait' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                          title="Reset task date to today and unlock MR on mobile app"
-                        >
-                          <ShieldCheck size={13} />
-                          {unsuspendingId === st.id ? 'Unsuspending...' : 'Approve & Unsuspend'}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            className="btn-enterprise success sm"
+                            onClick={() => handleUnsuspendTask(st.id, st.assigned_mr_name, st.title)}
+                            disabled={unsuspendingId === st.id}
+                            style={{
+                              background: '#0F8B5A',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              cursor: unsuspendingId === st.id ? 'wait' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                            title="Reset task date to today and unlock MR on mobile app"
+                          >
+                            <ShieldCheck size={13} />
+                            {unsuspendingId === st.id ? '...' : 'Approve'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteSuspendedTask(st.id, st.title)}
+                            disabled={deletingTaskId === st.id}
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #FCA5A5',
+                              background: '#FFFFFF',
+                              color: '#DC2626',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                            }}
+                            title="Delete this task permanently"
+                          >
+                            <Trash2 size={12} />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

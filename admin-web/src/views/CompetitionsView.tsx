@@ -20,6 +20,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { showCenteredNotice } from '../components/CenteredModalNotice';
 
 interface CompetitionItem {
   id: string;
@@ -124,61 +125,102 @@ export const CompetitionsView: React.FC = () => {
 
   const handleUpdateCompetition = async () => {
     if (!editingComp || !editCompName.trim()) {
-      alert('Please enter competition name.');
+      showCenteredNotice({
+        title: 'Validation Error',
+        message: 'Please enter competition name.',
+        type: 'warning',
+      });
       return;
     }
     try {
+      const payload: any = {
+        name: editCompName.trim(),
+        start_date: editStartDate,
+        end_date: editEndDate,
+        hq_id: editCompHqId,
+        medicine_id: editCompMedicineId,
+        target_quantity: parseInt(editCompTargetQty) || 100,
+        reward_amount: parseFloat(editCompRewardAmount) || 2000,
+        description: editCompDesc.trim(),
+        status: editCompStatus,
+      };
+
       const res = await fetch(`${apiUrl}/competitions/${editingComp.id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: editCompName.trim(),
-          start_date: editStartDate,
-          end_date: editEndDate,
-          hq_id: editCompHqId,
-          medicine_id: editCompMedicineId,
-          target_quantity: parseInt(editCompTargetQty) || 100,
-          reward_amount: parseFloat(editCompRewardAmount) || 2000,
-          description: editCompDesc.trim(),
-          status: editCompStatus,
-        }),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
         setIsEditModalOpen(false);
         setEditingComp(null);
+        showCenteredNotice({
+          title: 'Competition Updated',
+          message: `Competition "${editCompName.trim()}" has been updated successfully!`,
+          type: 'success',
+        });
         fetchCompetitions();
       } else {
-        alert('Failed to update competition.');
+        const errJson = await res.json().catch(() => null);
+        const errMsg = errJson?.message || 'Failed to update competition.';
+        showCenteredNotice({
+          title: 'Update Competition Failed',
+          message: Array.isArray(errMsg) ? errMsg.join('\n') : String(errMsg),
+          type: 'error',
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Update competition error:', err);
-      alert('Error updating competition.');
+      showCenteredNotice({
+        title: 'Connection Error',
+        message: 'Error updating competition: ' + (err.message || 'Server error'),
+        type: 'error',
+      });
     }
   };
 
-  const handleDeleteCompetition = async (comp: CompetitionItem) => {
-    if (!window.confirm(`Are you sure you want to delete the competition "${comp.name}"? This action cannot be undone.`)) {
-      return;
-    }
-    try {
-      const res = await fetch(`${apiUrl}/competitions/${comp.id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
-        if (selectedCompId === comp.id) {
-          setSelectedCompId('');
-          setMrProgressList([]);
+  const handleDeleteCompetition = (comp: CompetitionItem) => {
+    showCenteredNotice({
+      title: 'Delete Competition',
+      message: `Are you sure you want to delete the competition "${comp.name}"?\n\nThis action cannot be undone.`,
+      type: 'confirm',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${apiUrl}/competitions/${comp.id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          });
+          if (res.ok) {
+            setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
+            if (selectedCompId === comp.id) {
+              setSelectedCompId('');
+              setMrProgressList([]);
+            }
+            fetchCompetitions();
+            showCenteredNotice({
+              title: 'Competition Deleted',
+              message: `Competition "${comp.name}" deleted successfully.`,
+              type: 'success',
+            });
+          } else {
+            showCenteredNotice({
+              title: 'Error',
+              message: 'Failed to delete competition from server.',
+              type: 'error',
+            });
+          }
+        } catch (err: any) {
+          console.error('Delete competition error:', err);
+          showCenteredNotice({
+            title: 'Error',
+            message: 'Error deleting competition: ' + (err.message || 'Network error'),
+            type: 'error',
+          });
         }
-        fetchCompetitions();
-      } else {
-        alert('Failed to delete competition.');
-      }
-    } catch (err) {
-      console.error('Delete competition error:', err);
-      alert('Error deleting competition.');
-    }
+      },
+    });
   };
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -279,7 +321,11 @@ export const CompetitionsView: React.FC = () => {
   // Handler: Create Competition (§27)
   const handleCreateCompetition = async () => {
     if (!compName.trim()) {
-      alert('Please enter competition name.');
+      showCenteredNotice({
+        title: 'Validation Error',
+        message: 'Please enter competition name.',
+        type: 'warning',
+      });
       return;
     }
     try {
@@ -300,9 +346,28 @@ export const CompetitionsView: React.FC = () => {
       if (res.ok) {
         setIsCreateModalOpen(false);
         setCompName('');
+        showCenteredNotice({
+          title: 'Competition Created',
+          message: `Competition "${compName.trim()}" created successfully!`,
+          type: 'success',
+        });
         fetchCompetitions();
+      } else {
+        const errJson = await res.json().catch(() => null);
+        const errMsg = errJson?.message || 'Failed to create competition on server.';
+        showCenteredNotice({
+          title: 'Create Competition Failed',
+          message: Array.isArray(errMsg) ? errMsg.join('\n') : String(errMsg),
+          type: 'error',
+        });
       }
-    } catch {}
+    } catch (err: any) {
+      showCenteredNotice({
+        title: 'Connection Error',
+        message: 'Error creating competition: ' + (err.message || 'Server error'),
+        type: 'error',
+      });
+    }
   };
 
   // Handler: Decide Claim (Approve / Reject / Mark Paid) (§33 & §34)

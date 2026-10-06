@@ -29,6 +29,7 @@ import {
   Compass,
   FileText,
   Camera,
+  Trash2,
 } from 'lucide-react';
 import { TaskItem, VerificationLogItem, DoctorItem, TaskOrderItem } from '../types';
 import { Language, translations } from '../utils/i18n';
@@ -44,6 +45,7 @@ import {
 } from '../utils/savedLocationsStore';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 import { InStockProduct, getStoredInStockProducts, syncInStockProductsWithBackend } from '../utils/inventoryStore';
+import { showCenteredNotice } from '../components/CenteredModalNotice';
 
 declare global {
   interface Window {
@@ -1103,6 +1105,62 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
+  // Owner Action: Delete Individual Task
+  const handleDeleteTask = async (taskId: string, title: string) => {
+    showCenteredNotice({
+      title: 'Delete Task',
+      message: `Are you sure you want to permanently delete task "${title}"?\n\nThis will remove it from the system entirely.`,
+      type: 'confirm',
+      confirmText: 'Delete Task',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          await fetch(`${apiUrl}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch {}
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        showCenteredNotice({
+          title: 'Task Deleted',
+          message: `Task "${title}" deleted successfully.`,
+          type: 'success',
+        });
+      },
+    });
+  };
+
+  // Owner Action: Clear All Tasks Data
+  const handleClearAllTasks = async () => {
+    showCenteredNotice({
+      title: 'Delete All Task Data',
+      message: `Are you sure you want to permanently delete all ${tasks.length} task(s)?\n\nThis will clear all task data so you can start completely fresh.`,
+      type: 'confirm',
+      confirmText: 'Delete All Tasks',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+          await fetch(`${apiUrl}/tasks`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch {}
+        setTasks([]);
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        showCenteredNotice({
+          title: 'All Tasks Cleared',
+          message: 'All task data has been permanently cleared. You can now create fresh tasks.',
+          type: 'success',
+        });
+      },
+    });
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return 'N/A';
     const m = Math.floor(seconds / 60);
@@ -2006,6 +2064,31 @@ export const TasksView: React.FC<TasksViewProps> = ({
             <option value="COMPLETED">Completed</option>
           </select>
         </div>
+
+        {tasks.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearAllTasks}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: '1px solid #FCA5A5',
+              background: '#FEF2F2',
+              color: '#DC2626',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              marginLeft: 'auto',
+            }}
+            title="Permanently delete all task data to start fresh"
+          >
+            <Trash2 size={13} />
+            Delete All Task Data ({tasks.length})
+          </button>
+        )}
       </div>
 
       {/* Task Cards Grid */}
@@ -2160,6 +2243,34 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 <span>View Full Visit & Order Details ({task.orders?.length || 0} orders)</span>
               </button>
             )}
+
+            {/* Delete Task Action */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+              <button
+                type="button"
+                onClick={() => handleDeleteTask(task.id, task.title)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid #FCA5A5',
+                  background: '#FFFFFF',
+                  color: '#DC2626',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                title="Delete this task"
+              >
+                <Trash2 size={12} />
+                <span>Delete Task</span>
+              </button>
+            </div>
           </div>
         ))}
       </div>

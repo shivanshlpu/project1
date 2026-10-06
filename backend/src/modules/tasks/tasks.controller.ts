@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -124,5 +125,38 @@ export class TasksController {
   ) {
     const effectiveMrId = user?.role === 'MR' ? user.id : mrId;
     return this.tasksService.getAdminTasks({ mr_id: effectiveMrId, status, startDate, endDate });
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async deleteTask(@Param('id') id: string) {
+    return this.tasksService.deleteTask(id);
+  }
+
+  @Post(':id/delete')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async deleteTaskPost(@Param('id') id: string) {
+    return this.tasksService.deleteTask(id);
+  }
+
+  @Delete()
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async clearAllTasks(@Query('location') location?: string) {
+    if (location) {
+      return this.tasksService.deleteTasksByLocation(location);
+    }
+    return this.tasksService.clearAllTasks();
+  }
+
+  @Post('clear-all')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async clearAllTasksPost() {
+    return this.tasksService.clearAllTasks();
+  }
+
+  @Post('purge-suspended')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async purgeSuspendedTasks() {
+    return this.tasksService.purgeSuspendedTasks();
   }
 }

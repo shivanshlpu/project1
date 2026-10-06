@@ -39,6 +39,10 @@ export class CreateCompetitionDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsEnum(['ACTIVE', 'INACTIVE', 'COMPLETED', 'UPCOMING', 'CANCELLED'])
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE' | 'COMPLETED' | 'UPCOMING' | 'CANCELLED';
 }
 
 export class UpdateCompetitionDto {
@@ -76,9 +80,9 @@ export class UpdateCompetitionDto {
   @IsOptional()
   description?: string;
 
-  @IsEnum(['ACTIVE', 'INACTIVE', 'COMPLETED'])
+  @IsEnum(['ACTIVE', 'INACTIVE', 'COMPLETED', 'UPCOMING', 'CANCELLED'])
   @IsOptional()
-  status?: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
+  status?: 'ACTIVE' | 'INACTIVE' | 'COMPLETED' | 'UPCOMING' | 'CANCELLED';
 }
 
 export class DecideRewardClaimDto {

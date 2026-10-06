@@ -475,7 +475,7 @@ export interface Competition {
   target_quantity: number;
   reward_amount: number;
   description: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
+  status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED' | 'UPCOMING' | 'CANCELLED';
   created_at: string;
 }
 

@@ -611,4 +611,45 @@ export class TasksService {
         return { ...t, assigned_mr_name: mr ? mr.name : 'Unknown' };
       });
   }
+
+  async deleteTask(id: string): Promise<{ success: boolean; message: string }> {
+    const idx = this.db.tasks.findIndex((t) => t.id === id);
+    if (idx !== -1) {
+      this.db.tasks.splice(idx, 1);
+    }
+    this.db.taskAssignments = this.db.taskAssignments.filter((ta) => ta.task_id !== id);
+    this.db.locationVerifications = this.db.locationVerifications.filter((lv) => lv.task_id !== id);
+    this.db.persistToDisk();
+    return { success: true, message: 'Task deleted successfully' };
+  }
+
+  async clearAllTasks(): Promise<{ success: boolean; count: number; message: string }> {
+    const count = this.db.tasks.length;
+    this.db.tasks = [];
+    this.db.taskAssignments = [];
+    this.db.locationVerifications = [];
+    this.db.persistToDisk();
+    return { success: true, count, message: `Successfully cleared all ${count} tasks` };
+  }
+
+  async purgeSuspendedTasks(): Promise<{ success: boolean; count: number; message: string }> {
+    const before = this.db.tasks.length;
+    this.db.tasks = this.db.tasks.filter((t) => t.status !== 'SUSPENDED');
+    const removed = before - this.db.tasks.length;
+    this.db.persistToDisk();
+    return { success: true, count: removed, message: `Purged ${removed} suspended tasks` };
+  }
+
+  async deleteTasksByLocation(locationQuery: string): Promise<{ success: boolean; count: number }> {
+    const q = locationQuery.toLowerCase().trim();
+    const before = this.db.tasks.length;
+    this.db.tasks = this.db.tasks.filter((t) => {
+      const locName = (t.location_name || '').toLowerCase();
+      const title = (t.title || '').toLowerCase();
+      return !locName.includes(q) && !title.includes(q);
+    });
+    const count = before - this.db.tasks.length;
+    this.db.persistToDisk();
+    return { success: true, count };
+  }
 }
