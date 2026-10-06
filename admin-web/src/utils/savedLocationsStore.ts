@@ -176,7 +176,14 @@ export function getOperatingZones(): TerritoryZone[] {
     const rawAreas = localStorage.getItem('ahtri_hq_subareas');
     const areas = rawAreas ? JSON.parse(rawAreas) : null;
 
-    const effectiveHqs = Array.isArray(hqs) && hqs.length > 0 ? hqs : [
+    const filteredHqs = Array.isArray(hqs)
+      ? hqs.filter((h: any) => {
+          const name = (h.name || '').toLowerCase();
+          return !name.includes('delhi') && !name.includes('mumbai') && !name.includes('jaipur') && !name.includes('chandigarh');
+        })
+      : [];
+
+    const effectiveHqs = filteredHqs.length > 0 ? filteredHqs : [
       { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh', status: 'ACTIVE' },
       { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh', status: 'ACTIVE' },
       { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh', status: 'ACTIVE' },

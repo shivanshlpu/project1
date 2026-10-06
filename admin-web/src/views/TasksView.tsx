@@ -298,7 +298,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
   useEffect(() => {
     fetchBackendTasks();
     const interval = setInterval(fetchBackendTasks, 4000);
-    return () => clearInterval(interval);
+    const handleTasksUpdate = () => fetchBackendTasks();
+    window.addEventListener('ahtri_tasks_updated', handleTasksUpdate);
+    window.addEventListener('ahtri_approvals_updated', handleTasksUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ahtri_tasks_updated', handleTasksUpdate);
+      window.removeEventListener('ahtri_approvals_updated', handleTasksUpdate);
+    };
   }, []);
 
   // -------------------------------------------------------------
@@ -501,29 +508,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   }, [selectedZoneId, savedLocations, tasks, zones]);
 
-  // Render HQ Territory Markers & Saved Points of Care (Clean view without dashed circles or TASK badges)
+  // Render Saved Points of Care (Clean view without dashed circles, TASK badges, or black box markers)
   const renderZoneMapEntities = () => {
     if (!zoneCirclesGroupRef.current || !zoneMarkersGroupRef.current || !zoneMapInstanceRef.current) return;
     zoneCirclesGroupRef.current.clearLayers();
     zoneMarkersGroupRef.current.clearLayers();
-
-    // 1. Render clean Headquarters Badges for each configured HQ
-    zones.forEach((zone) => {
-      const isFocused = selectedZoneId === 'all' || selectedZoneId === zone.id;
-
-      // Clean HQ Marker Badge - No dashed geofence circles or cluttered pill counters
-      const centerIcon = L.divIcon({
-        className: 'hq-marker-badge',
-        html: `<div style="background:${isFocused ? '#1E293B' : '#334155'};color:#FFFFFF;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:800;border:2px solid ${zone.color || '#3B82F6'};box-shadow:0 4px 14px rgba(0,0,0,0.38);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;transform:translate(-50%, -50%);">
-          <span style="font-size:13px;">🏢</span>
-          <span>${zone.name}</span>
-        </div>`,
-        iconAnchor: [0, 0],
-      });
-
-      const centerMarker = L.marker([zone.latitude, zone.longitude], { icon: centerIcon }).addTo(zoneCirclesGroupRef.current!);
-      centerMarker.on('click', () => handleSelectZone(zone.id));
-    });
 
     // 2. Render Saved Locations inside selected/all zones
     const activeZone = zones.find((z) => z.id === selectedZoneId);
@@ -1016,6 +1005,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
         setTasks((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
         setIsCreateModalOpen(false);
         if (onClearPrefilledLocation) onClearPrefilledLocation();
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
         showToast(`Task assigned to ${assignedMr} (${formatDateDDMMYYYY(taskDate)} • ${taskTime} ${selectedTimeZone === 'Asia/Kolkata' ? 'IST' : selectedTimeZone}).`, 'success');
       } else {
         // Graceful fallback on 401 or backend validation error
@@ -1038,6 +1029,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
         setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
         setIsCreateModalOpen(false);
         if (onClearPrefilledLocation) onClearPrefilledLocation();
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
+        window.dispatchEvent(new Event('ahtri_approvals_updated'));
         showToast(`Task assigned to ${assignedMr} (${formatDateDDMMYYYY(taskDate)} • ${taskTime} IST).`, 'success');
       }
     } catch (err) {
@@ -1060,6 +1053,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
       setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
       setIsCreateModalOpen(false);
       if (onClearPrefilledLocation) onClearPrefilledLocation();
+      window.dispatchEvent(new Event('ahtri_tasks_updated'));
+      window.dispatchEvent(new Event('ahtri_approvals_updated'));
       showToast(`Task assigned locally to ${assignedMr}.`, 'info');
     } finally {
       setIsCreatingOnServer(false);

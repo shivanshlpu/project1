@@ -14,6 +14,7 @@ import {
 import { KPICard } from '../components/KPICard';
 import { Language, translations } from '../utils/i18n';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { getDeletedTaskIds } from '../utils/deletedTasksStore';
 
 interface DashboardViewProps {
   lang?: Language;
@@ -28,54 +29,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [allTasksList, setAllTasksList] = useState<any[]>([]);
 
-  // Live Team Activities derived from real backend users, tasks & attendance
-  const [mrTeamActivities, setMrTeamActivities] = useState<any[]>([
-    {
-      id: 'usr-mr-01',
-      name: 'Rahul Sharma (Field MR)',
-      territory: 'South Delhi (Saket)',
-      area: 'South Delhi',
-      attendanceMarked: true,
-      checkInTime: '09:15 AM (On-Time)',
-      visitsCompleted: 1,
-      visitsTarget: 2,
-      lastVerification: 'Dr. Rajesh Sharma Clinic Detailing',
-      distanceMeters: 8.4,
-      dcrStatus: 'SUBMITTED',
-      complianceScore: '100%',
-    },
-    {
-      id: 'usr-mr-02',
-      name: 'Vikram Malhotra',
-      territory: 'South Delhi (Hauz Khas)',
-      area: 'South Delhi',
-      attendanceMarked: false,
-      checkInTime: 'Pending Check-in',
-      visitsCompleted: 0,
-      visitsTarget: 6,
-      lastVerification: 'Skin Care Centre',
-      distanceMeters: null,
-      dcrStatus: 'NOT STARTED',
-      complianceScore: 'Pending',
-    },
-    {
-      id: 'usr-mr-03',
-      name: 'Pooja Verma',
-      territory: 'South Delhi (Green Park)',
-      area: 'South Delhi',
-      attendanceMarked: false,
-      checkInTime: 'Pending Check-in',
-      visitsCompleted: 0,
-      visitsTarget: 6,
-      lastVerification: 'Little Care Clinic',
-      distanceMeters: null,
-      dcrStatus: 'NOT STARTED',
-      complianceScore: 'Pending',
-    },
-  ]);
+  // Live Team Activities derived dynamically from real backend users, tasks & attendance
+  const [mrTeamActivities, setMrTeamActivities] = useState<any[]>([]);
 
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(1);
-  const [resolvedApprovalsCount, setResolvedApprovalsCount] = useState(1);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+  const [resolvedApprovalsCount, setResolvedApprovalsCount] = useState<number>(0);
 
   // Helper to determine active API URL
   const getApiUrl = () => getApiBaseUrl();
@@ -141,20 +99,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         }
       } catch {}
 
-      // Parse Tasks
+      // Parse Tasks - strictly exclude deleted or cancelled tasks
       let taskList: any[] = [];
       if (tasksRes.status === 'fulfilled' && tasksRes.value.ok) {
         const tData = await tasksRes.value.json();
         if (Array.isArray(tData)) {
-          taskList = tData;
-          setAllTasksList(tData);
+          const deletedIds = getDeletedTaskIds();
+          taskList = tData.filter((t: any) => !deletedIds.has(t.id) && t.status !== 'CANCELLED');
+          setAllTasksList(taskList);
         }
       }
 
-      // Parse Approvals & respect local decisions
+      // Parse Approvals & respect local decisions + count suspended tasks
+      const suspendedCount = taskList.filter((t: any) => t.status === 'SUSPENDED').length;
+      let remotePendingCount = 0;
       try {
         const storedDecisions = JSON.parse(localStorage.getItem('ahtri_decided_approvals') || '{}');
-        setResolvedApprovalsCount(Object.keys(storedDecisions).length || 1);
+        setResolvedApprovalsCount(Object.keys(storedDecisions).length || 0);
 
         if (apprRes.status === 'fulfilled' && apprRes.value.ok) {
           const apprData = await apprRes.value.json();
@@ -163,16 +124,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
               const dec = storedDecisions[a.id] || (a.entity_id ? storedDecisions[a.entity_id] : undefined);
               return !dec || dec.status === 'PENDING';
             });
-            setPendingApprovalsCount(unresolved.length);
+            remotePendingCount = unresolved.length;
           }
         }
       } catch {}
+      setPendingApprovalsCount(remotePendingCount + suspendedCount);
 
       // Map real MR team activities from live database records
       const targetUsers = mrUsers.length > 0 ? mrUsers : [
-        { id: 'usr-mr-01', name: 'Rahul Sharma (Field MR)', territory: 'South Delhi (Saket)' },
-        { id: 'usr-mr-02', name: 'Vikram Malhotra', territory: 'South Delhi (Hauz Khas)' },
-        { id: 'usr-mr-03', name: 'Pooja Verma', territory: 'South Delhi (Green Park)' },
+        { id: 'usr-mr-01', name: 'Rahul Sharma (Field MR)', territory: 'Shahdol HQ' },
+        { id: 'usr-mr-02', name: 'Vikram Malhotra', territory: 'Bilaspur HQ' },
+        { id: 'usr-mr-03', name: 'Pooja Verma', territory: 'Ambikapur HQ' },
       ];
 
       const todayAtt = attendanceList.filter((a: any) => a.date === todayStr);
@@ -186,10 +148,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         );
         const completedTasks = userTasks.filter((t: any) => t.status === 'COMPLETED');
 
-        let territoryName = u.territory || 'South Delhi (Saket)';
-        if (!u.territory) {
-          if (u.name.includes('Vikram')) territoryName = 'South Delhi (Hauz Khas)';
-          else if (u.name.includes('Pooja')) territoryName = 'South Delhi (Green Park)';
+        let territoryName = u.territory || (u.hq_name ? `${u.hq_name} HQ` : '');
+        if (!territoryName) {
+          if (u.name.includes('Vikram')) territoryName = 'Bilaspur HQ';
+          else if (u.name.includes('Pooja')) territoryName = 'Ambikapur HQ';
+          else territoryName = 'Shahdol HQ';
         }
 
         let checkInTime = 'Pending Check-in';
@@ -209,18 +172,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
           compliance = attMatch.is_verified_location === false ? 'Outside Boundary' : '100%';
         }
 
-        const targetCount = userTasks.length > 0 ? userTasks.length : 6;
+        const targetCount = userTasks.length;
         const completedCount = completedTasks.length;
 
         if (completedCount > 0) {
           lastLoc = completedTasks[0]?.location_name || completedTasks[0]?.title || 'Clinic Detailing Call';
           dist = completedTasks[0]?.distance_meters || dist || 12;
           compliance = dist <= 50 ? '100%' : 'Outside Boundary';
+        } else if (userTasks.length > 0) {
+          lastLoc = `Assigned: ${userTasks[0].title || userTasks[0].location_name || 'Detailing Call'}`;
+          dist = null;
+          compliance = 'Pending';
         } else if (isMarked) {
-          lastLoc = userTasks[0]?.title ? `Assigned: ${userTasks[0].title}` : 'Awaiting First Detailing Call';
+          lastLoc = 'Awaiting Call Assignment';
+          dist = null;
+          compliance = 'Active';
         } else {
           lastLoc = 'Shift Not Started';
           dist = null;
+          compliance = 'Pending';
         }
 
         const dcr = completedCount > 0
@@ -233,7 +203,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
           id: u.id,
           name: u.name,
           territory: territoryName,
-          area: 'South Delhi',
+          area: territoryName,
           attendanceMarked: isMarked,
           checkInTime,
           visitsCompleted: completedCount,
@@ -254,8 +224,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
 
   useEffect(() => {
     fetchDashboardRealData();
-    const interval = setInterval(fetchDashboardRealData, 8000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchDashboardRealData, 4000);
+
+    const handleSync = () => fetchDashboardRealData();
+    window.addEventListener('ahtri_tasks_updated', handleSync);
+    window.addEventListener('ahtri_approvals_updated', handleSync);
+    window.addEventListener('ahtri_attendance_updated', handleSync);
+    window.addEventListener('ahtri_hq_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ahtri_tasks_updated', handleSync);
+      window.removeEventListener('ahtri_approvals_updated', handleSync);
+      window.removeEventListener('ahtri_attendance_updated', handleSync);
+      window.removeEventListener('ahtri_hq_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   const handleRefresh = () => {
@@ -274,17 +259,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   };
 
   const filteredActivities = mrTeamActivities.filter(
-    (mr) => selectedArea === 'ALL' || mr.area === selectedArea,
+    (mr) => selectedArea === 'ALL' || mr.territory === selectedArea || mr.area === selectedArea,
   );
 
   // Dynamic Real Metrics Based on Selected Timeframe Filter
-  const totalEmployees = filteredActivities.length || 3;
+  const totalEmployees = filteredActivities.length || 0;
   const markedEmployees = filteredActivities.filter((mr) => mr.attendanceMarked).length;
   const attendancePercentage = totalEmployees > 0 ? Math.round((markedEmployees / totalEmployees) * 100) : 0;
 
   // Real Doctor Calls from tasks
   const realCompletedCallsToday = filteredActivities.reduce((sum, mr) => sum + mr.visitsCompleted, 0);
-  const realTargetCallsToday = filteredActivities.reduce((sum, mr) => sum + mr.visitsTarget, 0) || totalEmployees * 6;
+  const realTargetCallsToday = filteredActivities.reduce((sum, mr) => sum + mr.visitsTarget, 0);
   const callPercentage = realTargetCallsToday > 0 ? Math.round((realCompletedCallsToday / realTargetCallsToday) * 100) : 0;
 
   // Real Geofence Compliance
@@ -305,12 +290,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     DAILY: {
       attendanceVal: `${markedEmployees} / ${totalEmployees}`,
       attendanceSub: `${markedEmployees} of ${totalEmployees} Staff Marked Today (${attendancePercentage}%)`,
-      attendanceTrend: markedEmployees === totalEmployees ? 'All scheduled staff present' : `${totalEmployees - markedEmployees} pending check-in`,
-      callsVal: `${realCompletedCallsToday} / ${realTargetCallsToday} Calls`,
-      callsSub: `${callPercentage}% Daily Field Target Met`,
-      callsTrend: `${(realCompletedCallsToday / (totalEmployees || 1)).toFixed(1)} calls / MR today`,
-      submittedVal: `${todayCompletedCount || realCompletedCallsToday} Submitted`,
-      submittedSub: `${totalCompletedCount || 1} total completed • ${activePendingCount} pending (${activeSuspendedCount} suspended)`,
+      attendanceTrend: markedEmployees === totalEmployees && totalEmployees > 0 ? 'All scheduled staff present' : `${totalEmployees - markedEmployees} pending check-in`,
+      callsVal: realTargetCallsToday > 0 ? `${realCompletedCallsToday} / ${realTargetCallsToday} Calls` : '0 / 0 Calls',
+      callsSub: realTargetCallsToday > 0 ? `${callPercentage}% Daily Field Target Met` : 'No calls scheduled for today',
+      callsTrend: realTargetCallsToday > 0 ? `${(realCompletedCallsToday / (totalEmployees || 1)).toFixed(1)} calls / MR today` : '0.0 calls / MR today',
+      submittedVal: `${todayCompletedCount} Submitted`,
+      submittedSub: `${totalCompletedCount} total completed • ${activePendingCount} pending (${activeSuspendedCount} suspended)`,
       submittedTrend: 'Actual MR Submissions',
       complianceVal: `${compliancePercentage}%`,
       complianceSub: 'All on-site visits verified ≤50m boundary',
@@ -321,10 +306,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       attendanceVal: `${markedEmployees * 5} / ${totalEmployees * 5}`,
       attendanceSub: `${attendancePercentage}% Weekly Avg Attendance Rate`,
       attendanceTrend: `${totalEmployees} Field Representatives Active`,
-      callsVal: `${realCompletedCallsToday * 5} / ${realTargetCallsToday * 5} Calls`,
-      callsSub: `${callPercentage}% Weekly Target Projected`,
-      callsTrend: `${((realCompletedCallsToday * 5) / (totalEmployees || 1)).toFixed(1)} calls / MR this week`,
-      submittedVal: `${(todayCompletedCount || 1) * 5} Submitted`,
+      callsVal: realTargetCallsToday > 0 ? `${realCompletedCallsToday * 5} / ${realTargetCallsToday * 5} Calls` : '0 / 0 Calls',
+      callsSub: realTargetCallsToday > 0 ? `${callPercentage}% Weekly Target Projected` : 'No calls scheduled this week',
+      callsTrend: realTargetCallsToday > 0 ? `${((realCompletedCallsToday * 5) / (totalEmployees || 1)).toFixed(1)} calls / MR this week` : '0.0 calls / MR this week',
+      submittedVal: `${todayCompletedCount * 5} Submitted`,
       submittedSub: `Weekly aggregate • ${activePendingCount} pending, ${activeSuspendedCount} suspended`,
       submittedTrend: 'Verified Detailing Records',
       complianceVal: `${compliancePercentage}%`,
@@ -336,10 +321,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       attendanceVal: `${markedEmployees * 22} / ${totalEmployees * 22}`,
       attendanceSub: `${attendancePercentage}% Monthly Avg Attendance Rate`,
       attendanceTrend: 'Territory attendance compliance',
-      callsVal: `${realCompletedCallsToday * 22} / ${realTargetCallsToday * 22} Calls`,
-      callsSub: `${callPercentage}% Monthly Territory Target Output`,
-      callsTrend: `${((realCompletedCallsToday * 22) / (totalEmployees || 1)).toFixed(0)} calls / MR this month`,
-      submittedVal: `${(todayCompletedCount || 1) * 22} Submitted`,
+      callsVal: realTargetCallsToday > 0 ? `${realCompletedCallsToday * 22} / ${realTargetCallsToday * 22} Calls` : '0 / 0 Calls',
+      callsSub: realTargetCallsToday > 0 ? `${callPercentage}% Monthly Territory Target Output` : 'No calls scheduled this month',
+      callsTrend: realTargetCallsToday > 0 ? `${((realCompletedCallsToday * 22) / (totalEmployees || 1)).toFixed(0)} calls / MR this month` : '0 calls / MR this month',
+      submittedVal: `${todayCompletedCount * 22} Submitted`,
       submittedSub: `Monthly territory total • ${activePendingCount} active calls`,
       submittedTrend: 'Verified Detailing Records',
       complianceVal: `${compliancePercentage}%`,
@@ -511,7 +496,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
                 }}
               >
                 <option value="ALL">All Territories</option>
-                <option value="South Delhi">South Delhi</option>
+                {Array.from(new Set(mrTeamActivities.map((m) => m.territory).filter(Boolean))).map((terr) => (
+                  <option key={terr} value={terr}>{terr}</option>
+                ))}
               </select>
             </div>
 
@@ -579,7 +566,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
                         <span style={{ fontSize: '10px', color: '#64748B' }}>(≤50m)</span>
                       </>
                     ) : (
-                      <span style={{ fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }}>Pending Check-in</span>
+                      <span style={{ fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }}>
+                        {mr.attendanceMarked ? 'Awaiting Call' : 'Pending Check-in'}
+                      </span>
                     )}
                   </td>
                   <td>

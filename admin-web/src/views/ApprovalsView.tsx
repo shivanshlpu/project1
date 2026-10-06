@@ -210,6 +210,7 @@ export const ApprovalsView: React.FC = () => {
           ...prev,
         ]);
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
         showCenteredNotice({
           title: 'Task Unsuspended',
           message: `Task "${taskTitle}" successfully unsuspended. Representative ${mrName} can now execute calls.`,
@@ -248,6 +249,7 @@ export const ApprovalsView: React.FC = () => {
         markTaskAsDeleted(taskId);
         setSuspendedTasks((prev) => prev.filter((t) => t.id !== taskId));
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
 
         // 2. Dispatch resilient multi-method backend deletion
         try {
@@ -293,6 +295,7 @@ export const ApprovalsView: React.FC = () => {
         markTaskAsDeleted(idsToClear);
         setSuspendedTasks([]);
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
 
         // 2. Dispatch resilient purge to backend
         try {

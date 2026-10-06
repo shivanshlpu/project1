@@ -242,18 +242,19 @@ export class DatabaseService implements OnModuleInit {
       }
     }
 
-    // Employee Zone Data Correction (§1.9)
-    // Normalize any existing employee records storing 'Delhi Zone' or 'zone-north-1' to 'HQ Zone'
+    // Employee Zone Data Correction
+    // Normalize any legacy employee records to 'Shahdol & Central Division'
     for (const u of this.users) {
       if (
         u.zone_id === 'zone-north-1' ||
         u.zone_id === 'zone-delhi' ||
+        u.zone_id === 'zone-hq-1' ||
         (u as any).zone === 'Delhi Zone' ||
         (u as any).zone_name === 'Delhi Zone'
       ) {
-        u.zone_id = 'zone-hq-1';
-        (u as any).zone = 'HQ Zone';
-        (u as any).zone_name = 'HQ Zone';
+        u.zone_id = 'zone-hq-shahdol';
+        (u as any).zone = 'Shahdol & Central Division';
+        (u as any).zone_name = 'Shahdol & Central Division';
       }
     }
   }
@@ -396,14 +397,14 @@ export class DatabaseService implements OnModuleInit {
     ];
 
     // 2. Hierarchy: Zone -> Region -> Area
-    const zoneId = 'zone-hq-1';
-    this.zones.push({ id: zoneId, name: 'HQ Zone' });
+    const zoneId = 'zone-hq-shahdol';
+    this.zones.push({ id: zoneId, name: 'Shahdol & Central Division' });
 
-    const regionId = 'reg-delhi-1';
-    this.regions.push({ id: regionId, zone_id: zoneId, name: 'Delhi NCR' });
+    const regionId = 'reg-shd-1';
+    this.regions.push({ id: regionId, zone_id: zoneId, name: 'Shahdol Operational Region' });
 
-    const areaId = 'area-sdelhi-1';
-    this.areas.push({ id: areaId, region_id: regionId, name: 'South Delhi' });
+    const areaId = 'area-shd-1';
+    this.areas.push({ id: areaId, region_id: regionId, name: 'Shahdol HQ Territory' });
 
     // 3. Seed Users
     const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
@@ -609,46 +610,12 @@ export class DatabaseService implements OnModuleInit {
     // Initial tasks initialized empty (dummy seed tasks removed)
     this.tasks = [];
     this.taskAssignments = [];
+    this.locationVerifications = [];
 
-    // 6. Seed Initial Leave Request and Approval (Rahul Sharma)
-    const seedLeave: LeaveRequest = {
-      id: 'leave-101',
-      mr_id: mr.id,
-      start_date: '2026-09-12',
-      end_date: '2026-09-13',
-      reason: 'Casual Leave: Family occasion',
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-    };
-    this.leaveRequests.push(seedLeave);
-    this.approvals.push({
-      id: 'appr-01',
-      entity_type: 'LEAVE',
-      entity_id: seedLeave.id,
-      requested_by: mr.id,
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-    });
-
-    // 7. Seed Initial Expense (Rahul Sharma)
-    const seedExpense: Expense = {
-      id: 'exp-102',
-      mr_id: mr.id,
-      category: 'CONVEYANCE',
-      amount: 450,
-      receipt_file_key: 'receipt_capture_01.jpg',
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-    };
-    this.expenses.push(seedExpense);
-    this.approvals.push({
-      id: 'appr-02',
-      entity_type: 'EXPENSE',
-      entity_id: seedExpense.id,
-      requested_by: mr.id,
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-    });
+    // Real approvals and claims initialized empty
+    this.leaveRequests = [];
+    this.expenses = [];
+    this.approvals = [];
 
     // 8. Seed Initial Leave Quotas
     this.leaveQuotas.push(
@@ -711,21 +678,12 @@ export class DatabaseService implements OnModuleInit {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    const hqDelhi: Headquarter = {
-      id: 'hq-delhi',
-      name: 'Delhi NCR',
-      code: 'HQ-DEL',
-      state: 'Delhi',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
 
     this.headquarters.push(
       hqShahdol,
       hqAmbikapur,
       hqBilaspur,
       hqKotma,
-      hqDelhi,
     );
 
     // 11. Seed HQ Areas (Mapped strictly per HQ)
@@ -776,13 +734,6 @@ export class DatabaseService implements OnModuleInit {
       { id: 'area-bhr-02', hq_id: hqShahdol.id, name: 'Dhanpuri' },
       { id: 'area-bhr-03', hq_id: hqShahdol.id, name: 'Amlai' },
       { id: 'area-bhr-04', hq_id: hqShahdol.id, name: 'Bakaho' },
-
-      // Delhi District Sub-Areas
-      { id: 'area-del-01', hq_id: hqDelhi.id, name: 'Saket' },
-      { id: 'area-del-02', hq_id: hqDelhi.id, name: 'Hauz Khas' },
-      { id: 'area-del-03', hq_id: hqDelhi.id, name: 'Green Park' },
-      { id: 'area-del-04', hq_id: hqDelhi.id, name: 'South Extension' },
-      { id: 'area-del-05', hq_id: hqDelhi.id, name: 'Malviya Nagar' },
     ];
     for (const a of areas) {
       this.hqAreas.push({
@@ -872,29 +823,7 @@ export class DatabaseService implements OnModuleInit {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    const stocker8: Stocker = {
-      id: 'stk-del-01',
-      hq_id: hqDelhi.id,
-      name: 'MedPlus Saket Central Depot',
-      sub_area: 'Saket',
-      contact_person: 'Amitav Ghosh',
-      phone: '9811100221',
-      address: 'Community Centre, Saket, New Delhi',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const stocker9: Stocker = {
-      id: 'stk-del-02',
-      hq_id: hqDelhi.id,
-      name: 'Apollo Pharmacy Hauz Khas Hub',
-      sub_area: 'Hauz Khas',
-      contact_person: 'Vikas Mehra',
-      phone: '9811144332',
-      address: 'Aurobindo Marg, Hauz Khas, New Delhi',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7, stocker8, stocker9);
+    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
 
     // 13. Seed Medicines Master (§11)
     const med1: Medicine = {

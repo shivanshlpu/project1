@@ -13,28 +13,8 @@
   "visitDetails": [],
   "dcrList": [],
   "dcrItems": [],
-  "expenses": [
-    {
-      "id": "exp-102",
-      "mr_id": "usr-mr-01",
-      "category": "CONVEYANCE",
-      "amount": 450,
-      "receipt_file_key": "receipt_capture_01.jpg",
-      "status": "PENDING",
-      "created_at": "2026-10-05T10:52:38.265Z"
-    }
-  ],
-  "leaveRequests": [
-    {
-      "id": "leave-101",
-      "mr_id": "usr-mr-01",
-      "start_date": "2026-09-12",
-      "end_date": "2026-09-13",
-      "reason": "Casual Leave: Family occasion",
-      "status": "PENDING",
-      "created_at": "2026-10-05T10:52:38.265Z"
-    }
-  ],
+  "expenses": [],
+  "leaveRequests": [],
   "tourPlans": [],
   "monthlyTourPlans": [
     {
