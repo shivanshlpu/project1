@@ -20,6 +20,12 @@ export class LoginDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @IsOptional()
+  was_logged_out?: boolean;
+
+  @IsOptional()
+  requires_otp?: boolean;
 }
 
 export class ForgotPasswordDto {

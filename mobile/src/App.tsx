@@ -337,13 +337,20 @@ export default function App() {
         text: 'Log Out',
         style: 'destructive',
         onPress: async () => {
-          const userIdToLogout = currentUser?.id;
+          const user = currentUser;
+          const userIdToLogout = user?.id;
+          const userIdentifier = user?.email || user?.phone;
+          const userDeviceId = user?.device_id;
           try {
             const baseUrl = await ApiConfig.getBaseUrl();
             await fetch(`${baseUrl}/auth/logout`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: userIdToLogout }),
+              body: JSON.stringify({
+                userId: userIdToLogout,
+                identifier: userIdentifier,
+                deviceId: userDeviceId,
+              }),
             }).catch(() => {});
             await AsyncStorage.removeItem(SESSION_KEY);
             await AsyncStorage.setItem('@ahtri_requires_reauth_otp', 'true');

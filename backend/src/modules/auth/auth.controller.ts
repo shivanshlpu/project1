@@ -67,8 +67,18 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: Partial<RefreshTokenDto> & { userId?: string }) {
-    return this.authService.logout(dto?.refreshToken, dto?.userId);
+  async logout(
+    @Body() dto: Partial<RefreshTokenDto> & { userId?: string; identifier?: string; deviceId?: string },
+  ) {
+    return this.authService.logout(dto?.refreshToken, dto?.userId, dto?.identifier, dto?.deviceId);
+  }
+
+  @Post('device-otp/request')
+  @HttpCode(HttpStatus.OK)
+  async requestDeviceOtp(
+    @Body() dto: { identifier: string; deviceId?: string; deviceModel?: string },
+  ) {
+    return this.authService.requestDeviceOtpForEmployee(dto.identifier, dto.deviceId, dto.deviceModel);
   }
 
   @Post('forgot-password')

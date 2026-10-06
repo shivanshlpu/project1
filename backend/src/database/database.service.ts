@@ -129,6 +129,15 @@ export class DatabaseService implements OnModuleInit {
         monthlyTourPlans: this.monthlyTourPlans,
         stockerInventory: this.stockerInventory,
         verificationPhotos: this.verificationPhotos,
+        deviceAuthorizations: this.deviceAuthorizations,
+        userDeviceStates: this.users.map((u) => ({
+          id: u.id,
+          device_id: u.device_id,
+          device_model: u.device_model,
+          device_bound_at: u.device_bound_at,
+          logged_out: u.logged_out,
+          requires_device_otp_on_login: u.requires_device_otp_on_login,
+        })),
         saved_at: new Date().toISOString(),
       };
       fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
@@ -157,8 +166,23 @@ export class DatabaseService implements OnModuleInit {
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
         if (Array.isArray(data.stockerInventory)) this.stockerInventory = data.stockerInventory;
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
+        if (Array.isArray(data.deviceAuthorizations)) {
+          this.deviceAuthorizations = data.deviceAuthorizations;
+        }
+        if (Array.isArray(data.userDeviceStates)) {
+          data.userDeviceStates.forEach((state: any) => {
+            const user = this.users.find((u) => u.id === state.id);
+            if (user) {
+              user.device_id = state.device_id;
+              user.device_model = state.device_model;
+              user.device_bound_at = state.device_bound_at;
+              user.logged_out = state.logged_out;
+              user.requires_device_otp_on_login = state.requires_device_otp_on_login;
+            }
+          });
+        }
         console.log(
-          `[DatabaseService] Successfully restored ${this.tasks.length} tasks and ${this.attendance.length} attendance records from persistent disk store.`,
+          `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
         );
         return true;
       }

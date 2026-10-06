@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   UserCheck,
 } from 'lucide-react';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 export interface DeviceAuthItem {
   id: string;
@@ -49,7 +50,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
 
   const fetchAuthorizations = async () => {
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/device-authorizations`);
       if (res.ok) {
         const data = await res.json();
@@ -92,7 +93,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
     setIsLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/device-authorizations/${item.id}/approve`, {
         method: 'POST',
       });
@@ -111,7 +112,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
     setIsLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/device-authorizations/${item.id}/reject`, {
         method: 'POST',
       });

@@ -22,6 +22,7 @@ import { NewLocationToast, NewLocationItem } from './components/NewLocationToast
 import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
 import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
+import { getApiBaseUrl } from './utils/apiHelper';
 import './styles/app.css';
 
 interface AuthUser {
@@ -111,7 +112,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const fetchPendingApprovals = async () => {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = getApiBaseUrl();
         const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -162,7 +163,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/auth/device-authorizations`);
         if (res.ok) {
           const data = await res.json();
@@ -181,7 +182,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const fetchRecentLocations = async () => {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/locations/recent`);
         if (res.ok) {
           const data = await res.json();
@@ -202,7 +203,7 @@ export const App: React.FC = () => {
   const handleAcknowledgeLocation = async (id: string) => {
     setRecentNewLocations((prev) => prev.filter((l) => l.id !== id));
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       await fetch(`${apiUrl}/locations/${id}/acknowledge`, { method: 'POST' });
     } catch {
       // Ignored
@@ -212,7 +213,7 @@ export const App: React.FC = () => {
   const handleAcknowledgeAllLocations = async () => {
     setRecentNewLocations([]);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       await fetch(`${apiUrl}/locations/acknowledge-all`, { method: 'POST' });
     } catch {
       // Ignored
@@ -223,7 +224,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const fetchRecentCompletions = async () => {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/tasks/recent-completions`);
         if (res.ok) {
           const data = await res.json();
@@ -343,6 +344,55 @@ export const App: React.FC = () => {
         onToggleMobileSidebar={handleToggleMobileSidebar}
         isMobileSidebarOpen={isMobileSidebarOpen}
       />
+
+      {/* Prominent Emergency Alert Banner for Employee Device Login / OTP Requests */}
+      {deviceApprovalsCount > 0 && (
+        <div
+          onClick={() => setIsDeviceApprovalsOpen(true)}
+          style={{
+            background: 'linear-gradient(90deg, #EA580C 0%, #C2410C 100%)',
+            color: '#FFFFFF',
+            padding: '10px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(234, 88, 12, 0.4)',
+            zIndex: 999,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '20px' }}>🔐</span>
+            <div>
+              <div style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.2px' }}>
+                SECURITY ACTION REQUIRED: {deviceApprovalsCount} Employee Login OTP Request{deviceApprovalsCount > 1 ? 's' : ''} Pending!
+              </div>
+              <div style={{ fontSize: '12px', opacity: 0.95 }}>
+                An employee has logged out and is requesting re-login authorization. Click to view the 6-Digit OTP code or 1-Click Approve.
+              </div>
+            </div>
+          </div>
+          <button
+            style={{
+              background: '#FFFFFF',
+              color: '#C2410C',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '7px 16px',
+              fontWeight: '800',
+              fontSize: '13px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>Review OTP Now</span>
+            <span>→</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Body Layout with Scrollable Sidebar and Canvas */}
       <div className="app-body-layout">

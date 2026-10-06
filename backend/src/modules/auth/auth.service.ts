@@ -75,8 +75,10 @@ export class AuthService {
             new Date(r.expires_at) > new Date(Date.now() - 30 * 60 * 1000),
         );
 
-        // Security rule: If employee logged out, or requires OTP, or device is not yet authorized:
+        // Security rule: If employee logged out, or requested re-auth OTP, or device is not yet authorized:
         const requiresOtp =
+          dto.was_logged_out === true ||
+          dto.requires_otp === true ||
           user.requires_device_otp_on_login ||
           user.logged_out ||
           !user.device_id ||
@@ -360,19 +362,81 @@ export class AuthService {
     return this.generateAuthPayload(user);
   }
 
-  async logout(refreshToken?: string, userId?: string) {
+  async logout(refreshToken?: string, userId?: string, identifier?: string, deviceId?: string) {
     if (refreshToken && this.db.refreshTokens.has(refreshToken)) {
       this.db.refreshTokens.delete(refreshToken);
     }
-    if (userId) {
-      const user = this.db.users.find((u) => u.id === userId);
-      if (user) {
-        user.logged_out = true;
-        user.requires_device_otp_on_login = true;
-        this.db.persistToDisk();
-      }
+    const cleanId = identifier?.trim().toLowerCase();
+    const user = this.db.users.find(
+      (u) =>
+        (userId && u.id === userId) ||
+        (cleanId && (u.email.toLowerCase() === cleanId || u.phone === cleanId)),
+    );
+    if (user) {
+      user.logged_out = true;
+      user.requires_device_otp_on_login = true;
+      // Invalidate existing hardware binding so re-login strictly requires Owner OTP approval
+      user.device_id = undefined;
+      user.device_bound_at = undefined;
     }
+    // Also remove old pending or approved device authorizations so a fresh OTP is created on login
+    if (user || deviceId) {
+      this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+        (r) => !(r.user_id === user?.id || (deviceId && r.device_id === deviceId)),
+      );
+    }
+    this.db.persistToDisk();
     return { message: 'Logged out successfully.' };
+  }
+
+  async requestDeviceOtpForEmployee(identifier: string, deviceId?: string, deviceModel?: string) {
+    const cleanId = identifier?.trim().toLowerCase();
+    const user = this.db.users.find(
+      (u) =>
+        (u.email.toLowerCase() === cleanId || u.phone === cleanId) &&
+        !u.deleted_at,
+    );
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    const targetDeviceId = deviceId || 'dev-unknown';
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    // Invalidate older pending requests for this user
+    this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+      (r) => !(r.user_id === user.id && r.status === 'PENDING'),
+    );
+
+    const authReq: any = {
+      id: requestId,
+      user_id: user.id,
+      user_name: user.name,
+      user_phone: user.phone,
+      user_email: user.email,
+      device_id: targetDeviceId,
+      device_model: deviceModel || 'Android Mobile Device',
+      otp,
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt,
+    };
+
+    this.db.deviceAuthorizations.unshift(authReq);
+    user.logged_out = true;
+    user.requires_device_otp_on_login = true;
+    this.db.persistToDisk();
+
+    return {
+      success: true,
+      requires_device_otp: true,
+      request_id: requestId,
+      device_id: targetDeviceId,
+      device_model: authReq.device_model,
+      user_name: user.name,
+      message: '6-digit OTP generated on Admin Dashboard (Shivansh Tiwari).',
+    };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {

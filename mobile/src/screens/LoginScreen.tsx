@@ -114,10 +114,36 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleLogin = async () => {
+  // Auto-detect if Owner clicked "1-Click Approve" on Web Dashboard
+  useEffect(() => {
+    if (step !== 'otp_verify' || !deviceAuthRequestId) return;
+    const interval = setInterval(async () => {
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const res = await fetch(`${baseUrl}/auth/device-authorizations`);
+        if (res.ok) {
+          const data = await res.json();
+          const approved = (data.history || []).find(
+            (h: any) => h.id === deviceAuthRequestId && h.status === 'APPROVED'
+          );
+          if (approved) {
+            // Owner approved via web dashboard! Auto-login smoothly!
+            await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
+            handleLogin(true);
+          }
+        }
+      } catch {}
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [step, deviceAuthRequestId]);
+
+  const handleLogin = async (forceBypassReauthCheck = false) => {
     const cleanId = identifier.trim().toLowerCase();
     setIsSubmitting(true);
     setOtpError('');
+
+    const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
+    const mustEnforceOtp = requiresReauthOtp === 'true' && !forceBypassReauthCheck;
 
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -129,15 +155,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           password: password,
           device_id: currentDeviceId,
           device_model: currentDeviceModel,
+          was_logged_out: mustEnforceOtp,
+          requires_otp: mustEnforceOtp,
         }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        if (data.requires_device_otp) {
-          // New device detected! Switch to Owner OTP verification screen
-          setDeviceAuthRequestId(data.request_id);
+        if (data.requires_device_otp || mustEnforceOtp) {
+          // If server returned request_id:
+          let reqId = data.request_id;
+          if (!reqId) {
+            try {
+              const reqRes = await fetch(`${baseUrl}/auth/device-otp/request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identifier: cleanId,
+                  deviceId: currentDeviceId,
+                  deviceModel: currentDeviceModel,
+                }),
+              });
+              const reqData = await reqRes.json();
+              if (reqData.request_id) {
+                reqId = reqData.request_id;
+              }
+            } catch {}
+          }
+          setDeviceAuthRequestId(reqId || `req-${Date.now()}`);
           setStep('otp_verify');
           setIsSubmitting(false);
           return;
@@ -175,7 +221,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
       // Check if reauth OTP is required or device mismatch
       const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
-      if (requiresReauthOtp === 'true' || (user.bound_device_id && user.bound_device_id !== currentDeviceId)) {
+      if ((requiresReauthOtp === 'true' && !forceBypassReauthCheck) || (user.bound_device_id && user.bound_device_id !== currentDeviceId)) {
         // Trigger OTP verification flow
         setDeviceAuthRequestId(`req-sim-${Date.now()}`);
         setStep('otp_verify');
@@ -265,7 +311,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const handleCheckOwnerApprovedDirectly = async () => {
     // If owner clicked "Approve" button on their web dashboard, logging in now will succeed
-    handleLogin();
+    handleLogin(true);
   };
 
   // STEP 2: 6-Digit Owner OTP Challenge Screen
@@ -449,7 +495,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Login Button */}
         <TouchableOpacity
           style={styles.loginBtn}
-          onPress={handleLogin}
+          onPress={() => handleLogin(false)}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
