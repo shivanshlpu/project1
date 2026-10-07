@@ -715,7 +715,7 @@ export const SubmittedTasksView: React.FC = () => {
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ fontWeight: '600', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <User size={13} color="#64748B" />
-                        <span>{t.assigned_mr_name || 'Rahul Sharma'}</span>
+                        <span>{t.assigned_mr_name || 'Field Representative'}</span>
                       </div>
                     </td>
 
@@ -894,7 +894,7 @@ export const SubmittedTasksView: React.FC = () => {
               <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
                 <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase' }}>Representative</span>
                 <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
-                  {selectedTask.assigned_mr_name || 'Rahul Sharma'}
+                  {selectedTask.assigned_mr_name || 'Field Representative'}
                 </div>
               </div>
 

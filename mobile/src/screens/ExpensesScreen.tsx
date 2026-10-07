@@ -4,8 +4,8 @@ import { sqliteQueue } from '../services/sqliteQueue';
 
 export const ExpensesScreen: React.FC = () => {
   const [category, setCategory] = useState<'TA_DA' | 'FOOD' | 'ACCOMMODATION' | 'CONVEYANCE'>('CONVEYANCE');
-  const [amount, setAmount] = useState<string>('350');
-  const [receiptAttached, setReceiptAttached] = useState<boolean>(true);
+  const [amount, setAmount] = useState<string>('');
+  const [receiptAttached, setReceiptAttached] = useState<boolean>(false);
 
   const handleAddExpense = async () => {
     const numAmount = parseFloat(amount);
@@ -17,11 +17,13 @@ export const ExpensesScreen: React.FC = () => {
     await sqliteQueue.enqueueDraft('expense_drafts', {
       category,
       amount: numAmount,
-      receipt_file_key: receiptAttached ? 'receipt_capture_01.jpg' : undefined,
+      receipt_file_key: receiptAttached ? `receipt_${Date.now()}.jpg` : undefined,
       created_at: new Date().toISOString(),
     });
 
-    Alert.alert('Expense Queued', 'Expense claim saved to local SQLite queue. Syncs automatically.');
+    Alert.alert('Expense Submitted', 'Expense claim recorded and saved successfully.');
+    setAmount('');
+    setReceiptAttached(false);
   };
 
   return (

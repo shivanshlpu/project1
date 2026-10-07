@@ -525,7 +525,7 @@ export const SalesmanPortalView: React.FC = () => {
         {/* Offline Banner */}
         {isOffline && (
           <div className="mobile-banner-offline">
-            <span>Operating in local SQLite offline mode</span>
+            <span>Operating in offline mode</span>
             <span style={{ fontSize: '10px', opacity: 0.9 }}>{pendingDrafts} Actions Queued</span>
           </div>
         )}

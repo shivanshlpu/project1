@@ -39,6 +39,7 @@ import {
 import { Language, translations } from '../utils/i18n';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 import { HqTerritoryManager } from '../components/HqTerritoryManager';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface SettingsViewProps {
   lang?: Language;
@@ -87,16 +88,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordNotice, setPasswordNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Team MR Passwords
-  const [mrList, setMrList] = useState([
-    { id: 'mr-01', name: 'Rahul Sharma', email: 'mr@ahtri.com', phone: '9876543212', password: 'Password@123', territory: 'Shahdol HQ' },
-    { id: 'mr-02', name: 'Vikram Malhotra', email: 'vikram@ahtri.com', phone: '9876543213', password: 'Password@123', territory: 'Ambikapur HQ' },
-    { id: 'mr-03', name: 'Pooja Verma', email: 'pooja@ahtri.com', phone: '9876543214', password: 'Password@123', territory: 'Bilaspur HQ' },
-    { id: 'mr-04', name: 'Amit Kumar', email: 'amit@ahtri.com', phone: '9876543215', password: 'Password@123', territory: 'Kotma HQ' },
-  ]);
+  // Team MR Passwords (dynamically loaded from backend)
+  const [mrList, setMrList] = useState<Array<{ id: string; name: string; email: string; phone: string; password?: string; territory?: string }>>([]);
   const [editingMrPasswordId, setEditingMrPasswordId] = useState<string | null>(null);
   const [tempMrPassword, setTempMrPassword] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const apiUrl = getApiBaseUrl();
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const res = await fetch(`${apiUrl}/users?role=MR`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setMrList(data.map((u: any) => ({
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              phone: u.phone,
+              password: u.plain_password || 'Password@123',
+              territory: u.territory || (u.hq_name ? `${u.hq_name} HQ` : 'Shahdol HQ'),
+            })));
+          }
+        }
+      } catch {}
+    };
+    fetchUsers();
+  }, []);
 
   // 3. City Pinpoint & Map State
   const mapContainerRef = useRef<HTMLDivElement>(null);

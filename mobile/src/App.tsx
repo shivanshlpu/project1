@@ -602,7 +602,9 @@ export default function App() {
                   </View>
                   <Text style={styles.profileName}>{currentUser.name}</Text>
                   <Text style={styles.profileRole}>Medical Representative</Text>
-                  <Text style={styles.profileTerritory}>South Delhi Territory • AHTRI BIOTECH</Text>
+                  <Text style={styles.profileTerritory}>
+                    {(currentUser as any).territory || 'Headquarters Territory'} • AHTRI BIOTECH
+                  </Text>
 
                   {/* Device Security Card */}
                   <View style={styles.deviceCard}>

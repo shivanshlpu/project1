@@ -32,19 +32,16 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // Assigned Doctors list to link geotag
-  const [assignedDoctors, setAssignedDoctors] = useState<any[]>([
-    { id: 'doc-01', name: 'Dr. Rajesh Sharma', clinic: 'Apex Heart Centre', specialization: 'Cardiologist', address: 'Ring Road, Saket, South Delhi' },
-    { id: 'doc-02', name: 'Dr. Priya Verma', clinic: 'Little Care Clinic', specialization: 'Paediatrician', address: 'Green Park Extension, New Delhi' },
-  ]);
+  // Assigned Doctors list to link geotag (dynamically fetched from backend)
+  const [assignedDoctors, setAssignedDoctors] = useState<any[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
   // Form Fields
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
-  const [specialization, setSpecialization] = useState('Cardiologist');
+  const [specialization, setSpecialization] = useState('General Physician');
   const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE'>('CLINIC');
-  const [address, setAddress] = useState('Saket Institutional Area, New Delhi');
+  const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
 
   // Fetch assigned doctors from backend
@@ -97,7 +94,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
     }
 
     setIsSaving(true);
-    const mrName = currentUser?.name ? `${currentUser.name} (Field MR)` : 'Rahul Sharma (Field MR)';
+    const mrName = currentUser?.name ? `${currentUser.name} (Field MR)` : 'Field Representative';
     const mrId = currentUser?.id || 'usr-mr-01';
 
     const payload = {
@@ -321,7 +318,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
               ? 'Diagnostic Center Mark'
               : 'Doctor Practice Mark'}
           </Text>
-          <Text style={styles.mapSub}>Google Maps 3D Pinpoint • Fixed On-Site</Text>
+          <Text style={styles.mapSub}>Verified On-Site Location</Text>
         </View>
       </View>
 

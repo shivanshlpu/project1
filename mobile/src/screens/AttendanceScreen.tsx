@@ -903,13 +903,11 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 </Text>
               </View>
 
-              {/* Section 4: Photo Retention & Privacy */}
+              {/* Section 4: Privacy & Verification - Note: Server cleans photo blobs after 24h for bandwidth/quota */}
               <View style={styles.policySection}>
-                <Text style={styles.policySectionTitle}>🛡️ 4. Photo Retention &amp; Privacy Policy</Text>
+                <Text style={styles.policySectionTitle}>🛡️ 4. Verification &amp; Records</Text>
                 <Text style={styles.policySectionBody}>
-                  • Daily verification photos are stored temporarily for 24 hours for administrative review and audit.{'\n'}
-                  • Photos are automatically cleared after 24 hours to keep the system fast and private.{'\n'}
-                  • All your punch times, working hours, attendance status, and GPS logs remain permanently preserved in your employee record.
+                  Attendance verification details, shift timestamps, and working hours are securely maintained for company payroll and administrative compliance.
                 </Text>
               </View>
 

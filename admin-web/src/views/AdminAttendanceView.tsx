@@ -107,7 +107,7 @@ export const AdminAttendanceView: React.FC = () => {
     const rowsHtml = list.map((r, idx) => `
       <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
         <td style="padding: 8px 10px; font-weight: 600;">${formatDateDDMMYYYY(r.date)}</td>
-        <td style="padding: 8px 10px; font-weight: 700; color: #1A3C6E;">${r.user_name || 'Rahul Sharma'}</td>
+        <td style="padding: 8px 10px; font-weight: 700; color: #1A3C6E;">${r.user_name || 'Representative'}</td>
         <td style="padding: 8px 10px;">${r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
         <td style="padding: 8px 10px;">${r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Active'}</td>
         <td style="padding: 8px 10px; font-size: 11px; color: #475569;">${r.check_in_location_name || 'Geofenced Location'}</td>
@@ -467,7 +467,7 @@ export const AdminAttendanceView: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#DCFCE7', padding: '4px 10px', borderRadius: 20 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E' }}></span>
           <span style={{ fontSize: 11, color: '#15803D', fontWeight: 700 }}>
-            Live Render Cloud Sync
+            Real-Time Sync
           </span>
         </div>
       </div>
@@ -748,13 +748,10 @@ export const AdminAttendanceView: React.FC = () => {
                       <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap' }}>
                         {rec.user_name && rec.user_name !== 'Unknown'
                           ? rec.user_name
-                          : rec.user_id === 'usr-admin-01'
-                          ? 'System Admin (Headquarters)'
-                          : rec.user_id === 'usr-mr-03'
-                          ? 'Pooja Verma'
-                          : rec.user_id === 'usr-mr-02'
-                          ? 'Vikram Malhotra'
-                          : 'Rahul Sharma (Field MR)'}
+                          : mrs.find((m) => m.id === rec.user_id)?.name ||
+                            (rec.user_id === 'usr-admin-01'
+                              ? 'System Admin (Headquarters)'
+                              : 'Field Representative')}
                       </td>
 
                       {/* Punch In */}
@@ -873,13 +870,10 @@ export const AdminAttendanceView: React.FC = () => {
                                   url: rec.check_in_photo!,
                                   userName: rec.user_name && rec.user_name !== 'Unknown'
                                     ? rec.user_name
-                                    : rec.user_id === 'usr-mr-03'
-                                    ? 'Pooja Verma'
-                                    : rec.user_id === 'usr-mr-02'
-                                    ? 'Vikram Malhotra'
-                                    : rec.user_id === 'usr-admin-01'
-                                    ? 'System Admin (Headquarters)'
-                                    : 'Rahul Sharma (Field MR)',
+                                    : mrs.find((m) => m.id === rec.user_id)?.name ||
+                                      (rec.user_id === 'usr-admin-01'
+                                        ? 'System Admin (Headquarters)'
+                                        : 'Field Representative'),
                                   date: rec.date,
                                   time: inTimeStr,
                                   locationName: rec.check_in_location_name,
@@ -1322,27 +1316,7 @@ export const AdminAttendanceView: React.FC = () => {
               </div>
             )}
 
-            {/* Photo Retention Policy Note */}
-            <div
-              style={{
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: 6,
-                padding: '9px 12px',
-                marginBottom: 16,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 8,
-              }}
-            >
-              <Info size={16} color="#475569" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.4 }}>
-                <strong style={{ color: '#0F172A' }}>24-Hour Photo Retention Policy:</strong> Verification images are archived after 24 hours for privacy and performance.
-                <span style={{ color: '#0F172A', fontWeight: 600 }}>
-                  {' '}All shift timestamps, hours, status, and GPS coordinates remain permanently preserved.
-                </span>
-              </div>
-            </div>
+            {/* Verification image preview footer */}
 
             {/* Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -1425,10 +1399,10 @@ export const AdminAttendanceView: React.FC = () => {
 
               <div style={{ background: '#F8FAFC', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 3 }}>
-                  📍 3. Live GPS Geofencing &amp; Anti-Mocking
+                  📍 3. Live GPS Field Verification
                 </div>
                 <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.45 }}>
-                  Punch-in and punch-out events automatically verify genuine phone GPS coordinates against assigned headquarters or territories. Mock or simulated locations are blocked.
+                  Punch-in and punch-out events automatically verify presence within designated headquarters or territories.
                 </div>
               </div>
 

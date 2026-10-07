@@ -389,32 +389,19 @@ export class AttendanceService implements OnModuleInit {
           workingHours = parseFloat(Math.max(0, diffMs / 3600000).toFixed(2));
         }
 
-        let resolvedName = user?.name || (a as any).user_name;
-        if (!resolvedName || resolvedName === 'Unknown') {
-          if (a.user_id === 'usr-mr-03') resolvedName = 'Pooja Verma';
-          else if (a.user_id === 'usr-mr-02') resolvedName = 'Vikram Malhotra';
-          else if (a.user_id === 'usr-mr-01') resolvedName = 'Rahul Sharma (Field MR)';
-          else if (a.user_id === 'usr-admin-01') resolvedName = 'System Admin (Headquarters)';
-          else resolvedName = 'Field Representative';
-        }
+        let resolvedName = user?.name || (a as any).user_name || 'Field Representative';
 
         const photoKey = a.punch_in_photo_key || (a as any).photo_key;
         let photoProof = a.check_in_photo;
 
         // Clean up any local device path (file:///...) that cannot be viewed on web
         if (photoProof && photoProof.startsWith('file://')) {
-          if (a.user_id === 'usr-mr-03' || resolvedName.includes('Pooja')) {
-            photoProof = '/assets/pooja_verma_attendance.jpg';
-          }
+          photoProof = null;
         }
 
-        // Keep active 24h photo proof available for today's shifts
+        // Keep active photo proof available if available
         if (!photoProof && !a.photo_purged && a.date === todayStr && a.check_in_at) {
-          if (a.user_id === 'usr-mr-03' || resolvedName.includes('Pooja')) {
-            photoProof = '/assets/pooja_verma_attendance.jpg';
-          } else {
-            photoProof = photoKey || `verified_punch_${a.id}`;
-          }
+          photoProof = photoKey || null;
         }
 
         return {

@@ -45,99 +45,7 @@ interface DoctorDirectoryScreenProps {
 export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
   currentUser = { id: 'usr-mr-01', name: 'Rahul Sharma', role: 'MR' },
 }) => {
-  const [doctors, setDoctors] = useState<Doctor[]>([
-    {
-      id: 'doc-01',
-      name: 'Dr. Rajesh Sharma',
-      qualification: 'MD, DM (Cardiology)',
-      specialization: 'Cardiologist',
-      class: 'A',
-      potential_score: 95,
-      clinic: 'Apex Heart Centre',
-      hospital: 'Max Super Specialty Hospital',
-      address: 'Ring Road, Saket, South Delhi',
-      area_name: 'South Delhi (Saket)',
-      phone: '+91 98111 22233',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      visit_count: 14,
-      assigned_mr_id: 'usr-mr-01',
-      assigned_mr_name: 'Rahul Sharma',
-      category: 'HOSPITAL',
-    },
-    {
-      id: 'doc-02',
-      name: 'Dr. Priya Verma',
-      qualification: 'MBBS, DNB (Paediatrics)',
-      specialization: 'Paediatrician',
-      class: 'B',
-      potential_score: 82,
-      clinic: 'Little Care Clinic',
-      address: 'Green Park Extension, New Delhi',
-      area_name: 'South Delhi (Green Park)',
-      phone: '+91 98111 44455',
-      latitude: 28.5585,
-      longitude: 77.2028,
-      visit_count: 9,
-      assigned_mr_id: 'usr-mr-01',
-      assigned_mr_name: 'Rahul Sharma',
-      category: 'CLINIC',
-    },
-    {
-      id: 'doc-03',
-      name: 'Dr. Anita Desai',
-      qualification: 'MBBS, MD (Dermatology)',
-      specialization: 'Dermatologist',
-      class: 'A',
-      potential_score: 91,
-      clinic: 'Skin Care Centre',
-      address: 'Hauz Khas Market, New Delhi',
-      area_name: 'South Delhi (Hauz Khas)',
-      phone: '+91 98777 66554',
-      latitude: 28.5494,
-      longitude: 77.2001,
-      visit_count: 11,
-      assigned_mr_id: 'usr-mr-03',
-      assigned_mr_name: 'Pooja Verma',
-      category: 'CLINIC',
-    },
-    {
-      id: 'doc-04',
-      name: 'Dr. Sameer Kapoor',
-      qualification: 'MBBS',
-      specialization: 'General Physician',
-      class: 'C',
-      potential_score: 64,
-      clinic: 'Kapoor Health Clinic',
-      address: 'Main Market, Malviya Nagar',
-      area_name: 'South Delhi (Malviya Nagar)',
-      phone: '+91 98999 11122',
-      latitude: 28.53,
-      longitude: 77.215,
-      visit_count: 5,
-      assigned_mr_id: 'usr-mr-03',
-      assigned_mr_name: 'Pooja Verma',
-      category: 'CLINIC',
-    },
-    {
-      id: 'doc-05',
-      name: 'Dr. Anil Verma',
-      qualification: 'MBBS, MD',
-      specialization: 'Internal Medicine',
-      class: 'B',
-      potential_score: 78,
-      clinic: 'Verma Polyclinic',
-      address: 'Hospital Road, Ambikapur',
-      area_name: 'Ambikapur Central',
-      phone: '+91 98271 10022',
-      latitude: 28.521,
-      longitude: 77.204,
-      visit_count: 8,
-      assigned_mr_id: 'usr-mr-02',
-      assigned_mr_name: 'Vikram Malhotra',
-      category: 'CLINIC',
-    },
-  ]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
 
   const [filterMode, setFilterMode] = useState<'assigned' | 'all'>('assigned');
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,7 +64,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       const res = await fetch(`${baseUrl}/doctors`, { headers });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setDoctors(data);
         }
       }

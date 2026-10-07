@@ -88,19 +88,8 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     }
   };
 
-  // Submitted leave requests list
-  const [leaveHistory, setLeaveHistory] = useState<LeaveItem[]>([
-    {
-      id: 'leave-101',
-      mr_id: currentUserId,
-      start_date: '2026-09-12',
-      end_date: '2026-09-13',
-      reason: 'Casual Leave: Family occasion',
-      status: 'PENDING',
-      created_at: '2026-09-06T10:00:00.000Z',
-      days_count: 2,
-    },
-  ]);
+  // Submitted leave requests list (initialized empty - loaded dynamically from server)
+  const [leaveHistory, setLeaveHistory] = useState<LeaveItem[]>([]);
 
   // Calculate day count between start and end date
   const calculateDays = (s: string, e: string): number => {

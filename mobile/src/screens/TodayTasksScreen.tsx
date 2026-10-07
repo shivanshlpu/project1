@@ -33,7 +33,7 @@ export interface MobileTaskItem {
   longitude: number;
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
-  status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' | 'ORDER_PENDING';
+  status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' | 'ORDER_PENDING' | 'CANCELLED';
   started_at?: string;
   completed_at?: string;
   duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
@@ -132,10 +132,19 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   // Top Segmented Tab for Active Calls vs Completed & History
   const [taskTab, setTaskTab] = useState<'AGENDA' | 'HISTORY'>('AGENDA');
 
-  // STRICT FILTERING: Only show tasks assigned to this logged-in member!
-  const myTasks = allTasks.filter((t) => t.assigned_mr_id === currentUserId);
-  const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED');
-  const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED');
+  // Helper to reliably detect cancelled task statuses (case-insensitive and format-agnostic)
+  const isCancelledTask = (status?: string): boolean => {
+    if (!status) return false;
+    const s = String(status).trim().toUpperCase();
+    return s === 'CANCELLED' || s === 'CANCELED' || s === 'CANCEL';
+  };
+
+  // STRICT FILTERING: Only show active tasks assigned to this logged-in member (strictly exclude CANCELLED tasks)
+  const myTasks = allTasks.filter(
+    (t) => t.assigned_mr_id === currentUserId && !isCancelledTask(t.status)
+  );
+  const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED' && !isCancelledTask(t.status));
+  const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED' && !isCancelledTask(t.status));
 
   // Track seen tasks to fire notifications on newly assigned tasks
   const seenTaskIdsRef = React.useRef<Set<string>>(new Set());
@@ -144,16 +153,23 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   // Completed history date filter
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('ALL');
 
-  // Load persistent completed tasks from AsyncStorage on mount
+  // Load persistent completed tasks from AsyncStorage on mount and scrub any cancelled tasks
   useEffect(() => {
     AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`)
       .then((raw) => {
         if (raw) {
           const savedCompleted: MobileTaskItem[] = JSON.parse(raw);
           if (Array.isArray(savedCompleted) && savedCompleted.length > 0) {
+            const nonCancelled = savedCompleted.filter((sc) => !isCancelledTask(sc.status));
+            if (nonCancelled.length !== savedCompleted.length) {
+              AsyncStorage.setItem(
+                `@ahtri_completed_tasks_${currentUserId}`,
+                JSON.stringify(nonCancelled)
+              ).catch(() => {});
+            }
             setAllTasks((prev) => {
-              const map = new Map(prev.map((t) => [t.id, t]));
-              savedCompleted.forEach((sc) => {
+              const map = new Map(prev.filter((t) => !isCancelledTask(t.status)).map((t) => [t.id, t]));
+              nonCancelled.forEach((sc) => {
                 map.set(sc.id, sc);
               });
               return Array.from(map.values());
@@ -199,9 +215,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           } catch {}
           const localCompMap = new Map(locallyCompleted.map((c) => [c.id, c]));
 
-          // Active valid IDs from backend: any task deleted on backend must not remain in storage or resurrected
-          const serverTaskIds = new Set(data.map((t: any) => t.id));
-          const cleanedLocallyCompleted = locallyCompleted.filter((lc) => serverTaskIds.has(lc.id));
+          // Filter out CANCELLED, CANCELED, and deleted tasks so they completely disappear from the employee app
+          const activeBackendTasks = data.filter(
+            (t: any) => !isCancelledTask(t.status) && !t.deleted_at
+          );
+
+          // Active valid IDs from backend: any task cancelled or deleted on backend must not remain in storage
+          const serverTaskIds = new Set(activeBackendTasks.map((t: any) => t.id));
+          const cleanedLocallyCompleted = locallyCompleted.filter(
+            (lc) => serverTaskIds.has(lc.id) && !isCancelledTask(lc.status)
+          );
           if (cleanedLocallyCompleted.length !== locallyCompleted.length) {
             await AsyncStorage.setItem(
               `@ahtri_completed_tasks_${currentUserId}`,
@@ -209,7 +232,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             ).catch(() => {});
           }
 
-          const mapped: MobileTaskItem[] = data.map((t: any) => {
+          const mapped: MobileTaskItem[] = activeBackendTasks.map((t: any) => {
             const locallyComp = localCompMap.get(t.id);
             if (locallyComp) {
               return locallyComp;
@@ -239,8 +262,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
           // Check for newly assigned tasks and fire WhatsApp-style system notification immediately
           let hasNewTask = false;
-          data.forEach((t: any) => {
-            if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED') {
+          activeBackendTasks.forEach((t: any) => {
+            if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED' && !isCancelledTask(t.status)) {
               if (!seenTaskIdsRef.current.has(t.id)) {
                 seenTaskIdsRef.current.add(t.id);
                 hasNewTask = true;
@@ -804,6 +827,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             </View>
           ) : (
             agendaTasks.map((task) => {
+              if (isCancelledTask(task.status)) return null;
               const dist = getTaskDistance(task);
               const isOutOfRange = dist === null || dist > task.geofence_radius_m;
 
@@ -1034,6 +1058,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             </View>
           ) : (
             filteredHistoryTasks.map((task) => {
+              if (isCancelledTask(task.status)) return null;
               const orderTotal = task.orders ? task.orders.reduce((sum, o) => sum + (o.total_amount || 0), 0) : 0;
               const orderUnits = task.orders ? task.orders.reduce((sum, o) => sum + (o.quantity || 0), 0) : 0;
               const visitFormattedDate = formatDateDDMMYYYY(task.date || task.completed_at || '');

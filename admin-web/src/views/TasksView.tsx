@@ -148,13 +148,36 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   const [verificationLogs] = useState<VerificationLogItem[]>([]);
 
-  // Registered Medical Representatives with Territories
-  const mrList = [
-    { id: 'usr-mr-01', name: 'Rahul Sharma', territory: 'Shahdol HQ Territory' },
-    { id: 'usr-mr-02', name: 'Vikram Malhotra', territory: 'Ambikapur HQ Territory' },
-    { id: 'usr-mr-03', name: 'Pooja Verma', territory: 'Bilaspur HQ Territory' },
-    { id: 'usr-mr-04', name: 'Amit Kumar', territory: 'Kotma HQ Territory' },
-  ];
+  // Registered Medical Representatives with Territories (dynamically loaded from backend)
+  const [mrList, setMrList] = useState<Array<{ id: string; name: string; territory: string }>>([]);
+
+  useEffect(() => {
+    const fetchMRs = async () => {
+      try {
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const apiUrl = getApiBaseUrl();
+        const res = await fetch(`${apiUrl}/users?role=MR`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const mapped = data.map((u: any) => ({
+              id: u.id,
+              name: u.name,
+              territory: u.territory || (u.hq_name ? `${u.hq_name} HQ Territory` : 'HQ Territory'),
+            }));
+            setMrList(mapped);
+            if (mapped.length > 0) {
+              setAssignedMrId(mapped[0].id);
+              setAssignedMr(mapped[0].name);
+            }
+          }
+        }
+      } catch {}
+    };
+    fetchMRs();
+  }, []);
 
   const [filterMr, setFilterMr] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -2235,9 +2258,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
             style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', background: '#FFFFFF', flex: '1 1 auto', minWidth: 0 }}
           >
             <option value="ALL">All Representatives</option>
-            <option value="Rahul Sharma">Rahul Sharma</option>
-            <option value="Vikram Malhotra">Vikram Malhotra</option>
-            <option value="Pooja Verma">Pooja Verma</option>
+            {mrList.map((mr) => (
+              <option key={mr.id} value={mr.name}>{mr.name}</option>
+            ))}
           </select>
         </div>
 

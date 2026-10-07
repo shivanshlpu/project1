@@ -53,46 +53,11 @@ interface MembersManagementViewProps {
 export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onNavigateToLocation,
 }) => {
-  const [members, setMembers] = useState<MRMemberItem[]>([
-    {
-      id: 'usr-mr-01',
-      name: 'Rahul Sharma',
-      phone: '9876543212',
-      email: 'mr@ahtri.com',
-      role: 'MR',
-      status: 'ACTIVE',
-      device_id: 'dev-hw-s22-9f8a2c',
-      device_model: 'Samsung Galaxy S22',
-      device_bound_at: '2026-09-06 09:12:00',
-      created_at: '2026-09-01',
-    },
-    {
-      id: 'usr-mr-02',
-      name: 'Vikram Malhotra',
-      phone: '9876543213',
-      email: 'vikram@ahtri.com',
-      role: 'MR',
-      status: 'ACTIVE',
-      device_id: 'dev-hw-oneplus-71b4e0',
-      device_model: 'OnePlus 11 5G',
-      device_bound_at: '2026-09-05 14:30:22',
-      created_at: '2026-09-02',
-    },
-    {
-      id: 'usr-mr-03',
-      name: 'Pooja Verma',
-      phone: '9876543214',
-      email: 'pooja@ahtri.com',
-      role: 'MR',
-      status: 'ACTIVE',
-      device_id: undefined,
-      created_at: '2026-09-06',
-    },
-  ]);
-
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-mr-01');
+  const [members, setMembers] = useState<MRMemberItem[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'performance' | 'locations' | 'leaves' | 'security'>('performance');
   const [searchQuery, setSearchQuery] = useState('');
+  const [memberPage, setMemberPage] = useState<number>(1);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -102,13 +67,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       const saved = localStorage.getItem('ahtri_mr_passwords');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return {
-      'usr-mgr-01': 'manager123',
-      'usr-mr-01': 'Password@123',
-      'usr-mr-02': 'Password@123',
-      'usr-mr-03': 'Password@123',
-      'usr-mr-04': 'Password@123',
-    };
+    return {};
   });
   const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState('');
@@ -184,7 +143,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [isSavingQuota, setIsSavingQuota] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const selectedMember = members.find((m) => m.id === selectedMemberId) || members[0];
+  const selectedMember = members.find((m) => m.id === selectedMemberId) || (members.length > 0 ? members[0] : null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -196,7 +155,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setEditName(member.name);
     setEditPhone(member.phone);
     setEditEmail(member.email);
-    setEditTerritory(member.territory || 'Delhi Territory');
+    setEditTerritory(member.territory || 'Shahdol HQ Territory');
     setEditStatus(member.status);
     setEditPassword('');
     setIsEditModalOpen(true);
@@ -310,7 +269,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         const usersRes = await fetch(`${apiUrl}/users?role=MR`, { headers });
         if (usersRes.ok) {
           const uData = await usersRes.json();
-          if (Array.isArray(uData) && uData.length > 0) setMembers(uData);
+          if (Array.isArray(uData)) {
+            setMembers(uData);
+            if (uData.length > 0) {
+              setSelectedMemberId((prev) => (prev && uData.some((m) => m.id === prev) ? prev : uData[0].id));
+            }
+          }
         }
       } catch {}
 
@@ -335,6 +299,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   // Fetch Leave Quota for selected member
   useEffect(() => {
+    if (!selectedMemberId) return;
     const fetchQuota = async () => {
       try {
         const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -350,19 +315,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           setEarnedInput(data.earned.total);
         }
       } catch {
-        if (selectedMemberId === 'usr-mr-01') {
-          setCasualInput(12);
-          setSickInput(8);
-          setEarnedInput(15);
-        } else if (selectedMemberId === 'usr-mr-02') {
-          setCasualInput(10);
-          setSickInput(6);
-          setEarnedInput(12);
-        } else {
-          setCasualInput(14);
-          setSickInput(8);
-          setEarnedInput(15);
-        }
+        setCasualInput(12);
+        setSickInput(8);
+        setEarnedInput(15);
       }
     };
     fetchQuota();
@@ -491,11 +446,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   };
 
   // Filtered tasks for current selected MR
-  const memberTasks = tasks.filter(
-    (t) =>
-      t.assigned_mr_id === selectedMember.id ||
-      t.assigned_mr_name?.toLowerCase().includes(selectedMember.name.toLowerCase())
-  );
+  const memberTasks = selectedMember
+    ? tasks.filter(
+        (t) =>
+          t.assigned_mr_id === selectedMember.id ||
+          (t.assigned_mr_name && selectedMember.name && t.assigned_mr_name.toLowerCase().includes(selectedMember.name.toLowerCase()))
+      )
+    : [];
 
   const completedTasks = memberTasks.filter((t) => t.status === 'COMPLETED');
   const inProgressTasks = memberTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ASSIGNED');
@@ -516,12 +473,30 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   }, 0);
 
   // Filtered locations marked by current MR
-  const memberLocations = locations.filter(
-    (loc) =>
-      loc.created_by_name?.toLowerCase().includes(selectedMember.name.toLowerCase()) ||
-      loc.assigned_mr_id === selectedMember.id ||
-      (selectedMember.id === 'usr-mr-01' && (loc.created_by_role === 'MR' || !loc.created_by_name))
-  );
+  const memberLocations = selectedMember
+    ? locations.filter(
+        (loc) =>
+          (loc.created_by_name && selectedMember.name && loc.created_by_name.toLowerCase().includes(selectedMember.name.toLowerCase())) ||
+          loc.assigned_mr_id === selectedMember.id
+      )
+    : [];
+
+  // Scalable Employee Filtering & Pagination for 10,000+ Scale
+  const filteredMembers = members.filter((m) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.phone.includes(q) ||
+      (m.email && m.email.toLowerCase().includes(q)) ||
+      (m.territory && m.territory.toLowerCase().includes(q)) ||
+      m.id.toLowerCase().includes(q)
+    );
+  });
+
+  const memberPageSize = 12;
+  const totalMemberPages = Math.max(1, Math.ceil(filteredMembers.length / memberPageSize));
+  const paginatedMembers = filteredMembers.slice((memberPage - 1) * memberPageSize, memberPage * memberPageSize);
 
   return (
     <div style={{ padding: 'clamp(10px, 2.5vw, 20px)', maxWidth: '1200px', margin: '0 auto' }}>
@@ -592,78 +567,225 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         </div>
       </div>
 
-      {/* Segmented Employee Selector Pills */}
-      <div
-        style={{
-          background: '#FFFFFF',
-          borderRadius: '8px',
-          border: '1px solid #E2E8F0',
-          padding: '6px',
-          marginBottom: '16px',
-          display: 'flex',
-          gap: '6px',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {members.map((m) => {
-          const isSelected = m.id === selectedMemberId;
-          const isBound = Boolean(m.device_id);
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setSelectedMemberId(m.id)}
+      {members.length === 0 ? (
+        <div
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '8px',
+            border: '1px solid #E2E8F0',
+            padding: '48px 24px',
+            textAlign: 'center',
+            marginTop: '16px',
+          }}
+        >
+          <User size={40} color="#94A3B8" style={{ margin: '0 auto 12px' }} />
+          <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>
+            No Field Representatives Found
+          </h3>
+          <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748B' }}>
+            Add medical representatives to assign territories, track field detailing, and monitor devices.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsRegisterOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#1A3C6E',
+              color: '#FFFFFF',
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <UserPlus size={14} /> Add Member
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Scalable Employee Selector for 10,000+ Scale */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              padding: '12px 14px',
+              marginBottom: '16px',
+            }}
+          >
+            <div
               style={{
-                flex: '1 1 auto',
-                minWidth: '160px',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: isSelected ? '1.5px solid #1A3C6E' : '1px solid transparent',
-                background: isSelected ? '#EFF6FF' : 'transparent',
-                cursor: 'pointer',
                 display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '8px',
-                textAlign: 'left',
-                transition: 'all 0.15s ease',
+                gap: '10px',
+                flexWrap: 'wrap',
+                marginBottom: '10px',
               }}
             >
               <div
                 style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  background: isSelected ? '#1A3C6E' : '#E2E8F0',
-                  color: isSelected ? '#FFFFFF' : '#334155',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  flexShrink: 0,
+                  gap: '8px',
+                  flex: '1 1 240px',
+                  background: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
                 }}
               >
-                {m.name.charAt(0)}
+                <Search size={14} color="#64748B" />
+                <input
+                  type="text"
+                  placeholder="Search representatives by name, phone, email, territory..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setMemberPage(1);
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '12px',
+                    width: '100%',
+                    padding: '4px 0',
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setMemberPage(1);
+                    }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {m.name}
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#64748B' }}>
-                  {m.phone}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11.5px', color: '#64748B' }}>
+                <span>
+                  Showing {filteredMembers.length > 0 ? (memberPage - 1) * memberPageSize + 1 : 0} -{' '}
+                  {Math.min(memberPage * memberPageSize, filteredMembers.length)} of {filteredMembers.length} (Total {members.length})
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    type="button"
+                    disabled={memberPage <= 1}
+                    onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #CBD5E1',
+                      background: memberPage <= 1 ? '#F1F5F9' : '#FFFFFF',
+                      cursor: memberPage <= 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    disabled={memberPage >= totalMemberPages}
+                    onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #CBD5E1',
+                      background: memberPage >= totalMemberPages ? '#F1F5F9' : '#FFFFFF',
+                      cursor: memberPage >= totalMemberPages ? 'not-allowed' : 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
-              {isBound ? (
-                <span title="Device Bound"><ShieldCheck size={14} color="#0F8B5A" /></span>
-              ) : (
-                <span title="Awaiting Phone"><ShieldAlert size={14} color="#D97706" /></span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+            </div>
+
+            {filteredMembers.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+                No representatives found matching "{searchQuery}".
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+                {paginatedMembers.map((m) => {
+                  const isSelected = m.id === selectedMemberId;
+                  const isBound = Boolean(m.device_id);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedMemberId(m.id)}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: isSelected ? '1.5px solid #1A3C6E' : '1px solid #E2E8F0',
+                        background: isSelected ? '#EFF6FF' : '#FFFFFF',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          background: isSelected ? '#1A3C6E' : '#E2E8F0',
+                          color: isSelected ? '#FFFFFF' : '#334155',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '11px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {m.name.charAt(0)}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#0F172A',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {m.name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#64748B' }}>{m.phone}</div>
+                      </div>
+                      {isBound ? (
+                        <span title="Device Bound"><ShieldCheck size={13} color="#0F8B5A" /></span>
+                      ) : (
+                        <span title="Awaiting Phone"><ShieldAlert size={13} color="#D97706" /></span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selectedMember && (
+            <>
 
       {/* Selected Employee Summary Strip */}
       <div
@@ -1360,6 +1482,10 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
             </table>
           </div>
         </div>
+      )}
+            </>
+          )}
+        </>
       )}
 
       {/* DIRECT LEAVE ASSIGNMENT MODAL */}

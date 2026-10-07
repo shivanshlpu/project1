@@ -27,27 +27,27 @@ const CATALOG_SUGGESTIONS = [
   { name: 'NeuroCalm-B12 Tablets', price: '240' },
 ];
 
-export const DoctorVisitScreen: React.FC = () => {
-  const [samplesCount, setSamplesCount] = useState<number>(5);
-  const [remarks, setRemarks] = useState<string>(
-    'Presented CardioFix-50 clinical brochure. Doctor requested 25 commercial packs via MedPlus Saket.',
-  );
-  const [followUpDate, setFollowUpDate] = useState<string>('15-09-2026');
+interface DoctorVisitScreenProps {
+  doctorName?: string;
+  clinicName?: string;
+  primaryProduct?: string;
+}
 
-  // Multiple Orders State
-  const [orders, setOrders] = useState<OrderItem[]>([
-    {
-      id: 'ord-1',
-      productName: 'CardioFix-50 (Telmisartan 40mg)',
-      quantity: '25',
-      unitPrice: '180',
-      distributor: 'MedPlus Pharmacy Saket',
-    },
-  ]);
+export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
+  doctorName = 'Designated Doctor',
+  clinicName = 'Designated Clinic',
+  primaryProduct = 'General Detailing',
+}) => {
+  const [samplesCount, setSamplesCount] = useState<number>(0);
+  const [remarks, setRemarks] = useState<string>('');
+  const [followUpDate, setFollowUpDate] = useState<string>('');
+
+  // Multiple Orders State (initialized empty)
+  const [orders, setOrders] = useState<OrderItem[]>([]);
 
   const handleAddOrder = () => {
     const nextIndex = orders.length + 1;
-    const defaultDistributor = orders[0]?.distributor || 'MedPlus Pharmacy Saket';
+    const defaultDistributor = orders[0]?.distributor || 'Main Medical Store';
     const suggestion = CATALOG_SUGGESTIONS[orders.length % CATALOG_SUGGESTIONS.length];
 
     setOrders([
@@ -147,12 +147,12 @@ export const DoctorVisitScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Doctor Detailing & Immediate Orders</Text>
-        <Text style={styles.subtitle}>Dr. Rajesh Sharma • Apex Heart Centre</Text>
+        <Text style={styles.subtitle}>{doctorName} • {clinicName}</Text>
 
         {/* Product Focus */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Primary Detailing Product:</Text>
-          <Text style={styles.productBadge}>CardioFix-50 (Telmisartan 40mg + Amlodipine 5mg)</Text>
+          <Text style={styles.productBadge}>{primaryProduct}</Text>
         </View>
 
         {/* Sample Units */}

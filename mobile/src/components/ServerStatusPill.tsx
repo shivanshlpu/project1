@@ -81,49 +81,28 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
           </View>
         </TouchableOpacity>
 
-        {/* Diagnostic Modal */}
+        {/* Connection Status Modal */}
         <Modal visible={isModalOpen} transparent animationType="fade" onRequestClose={() => setIsModalOpen(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Backend Server Connection</Text>
+              <Text style={styles.modalTitle}>Network Connection</Text>
               <Text style={styles.modalSubtitle}>
-                Production server status and telemetry information
+                Live sync status with company server
               </Text>
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Server Endpoint:</Text>
-                <Text style={styles.infoValue}>https://ahtri-backend.onrender.com</Text>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Configuration:</Text>
-                <Text style={[styles.infoValue, { color: '#0F8B5A', fontWeight: '700' }]}>
-                  🔒 Locked (Enterprise Production • Read-Only)
-                </Text>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Connection Status:</Text>
+                <Text style={styles.infoLabel}>Status:</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={[styles.dot, { backgroundColor: dotColor }]} />
                   <Text style={{ fontWeight: '700', color: dotColor }}>
                     {status === 'connected'
-                      ? 'Connected & Healthy (200 OK)'
+                      ? 'Online (Connected)'
                       : status === 'checking'
-                      ? failedCount > 0
-                        ? 'Waking up server (Render cold start)...'
-                        : 'Testing Connection...'
-                      : 'Unreachable (Retry in progress)'}
+                      ? 'Connecting...'
+                      : 'Offline'}
                   </Text>
                 </View>
               </View>
-
-              {latency && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Roundtrip Latency:</Text>
-                  <Text style={styles.infoValue}>{latency} ms</Text>
-                </View>
-              )}
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -134,7 +113,7 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
                   {isPinging ? (
                     <ActivityIndicator size="small" color="#1A3C6E" />
                   ) : (
-                    <Text style={styles.pingBtnText}>⚡ Test Connection Now</Text>
+                    <Text style={styles.pingBtnText}>Refresh Connection</Text>
                   )}
                 </TouchableOpacity>
 
@@ -159,7 +138,7 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
           <View style={[styles.dot, { backgroundColor: dotColor }]} />
           <View>
             <Text style={styles.fullStatusTitle}>{labelText}</Text>
-            <Text style={styles.fullUrlText}>https://ahtri-backend.onrender.com (Locked)</Text>
+            <Text style={styles.fullUrlText}>Company Cloud Server</Text>
           </View>
         </View>
 

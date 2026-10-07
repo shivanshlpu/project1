@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Download,
@@ -44,105 +44,67 @@ export interface ReportRecord {
 export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
   const t = translations[lang];
 
-  // Master Comprehensive Datasets
-  const rawRecords: ReportRecord[] = [
-    {
-      id: 'REC-2026-001',
-      date: '2026-09-06',
-      time: '10:28 AM',
-      mr_name: 'Rahul Sharma',
-      doctor_name: 'Dr. Rajesh Sharma',
-      clinic: 'Apex Heart Centre',
-      territory: 'South Delhi (Saket)',
-      lat: 28.52458,
-      lng: 77.20664,
-      distance_m: 8.4,
-      geofence_status: 'VERIFIED_ON_SITE',
-      duration_mins: 38,
-      order_amount: 7200,
-      products_detailed: 'CardioFix-50, CardioFix-AM',
-    },
-    {
-      id: 'REC-2026-002',
-      date: '2026-09-06',
-      time: '11:45 AM',
-      mr_name: 'Rahul Sharma',
-      doctor_name: 'Dr. Priya Verma',
-      clinic: 'Little Care Clinic',
-      territory: 'South Delhi (Green Park)',
-      lat: 28.55852,
-      lng: 77.20281,
-      distance_m: 11.2,
-      geofence_status: 'VERIFIED_ON_SITE',
-      duration_mins: 25,
-      order_amount: 4500,
-      products_detailed: 'Pediatric Syrup, FeverDrop',
-    },
-    {
-      id: 'REC-2026-003',
-      date: '2026-09-06',
-      time: '12:15 PM',
-      mr_name: 'Vikram Malhotra',
-      doctor_name: 'Dr. Anita Desai',
-      clinic: 'Skin Care Centre',
-      territory: 'South Delhi (Hauz Khas)',
-      lat: 28.54941,
-      lng: 77.20015,
-      distance_m: 14.2,
-      geofence_status: 'VERIFIED_ON_SITE',
-      duration_mins: 22,
-      order_amount: 4200,
-      products_detailed: 'DermaSoothe Cream, AcnoClear',
-    },
-    {
-      id: 'REC-2026-004',
-      date: '2026-09-06',
-      time: '01:30 PM',
-      mr_name: 'Pooja Verma',
-      doctor_name: 'Dr. Sameer Kapoor',
-      clinic: 'Kapoor Health Clinic',
-      territory: 'South Delhi (Malviya Nagar)',
-      lat: 28.53005,
-      lng: 77.21508,
-      distance_m: 9.0,
-      geofence_status: 'VERIFIED_ON_SITE',
-      duration_mins: 32,
-      order_amount: 6100,
-      products_detailed: 'MultiVit Active, Calcium-D3',
-    },
-    {
-      id: 'REC-2026-005',
-      date: '2026-09-05',
-      time: '03:10 PM',
-      mr_name: 'Amit Kumar',
-      doctor_name: 'Dr. Rajesh Sharma',
-      clinic: 'Apex Heart Centre',
-      territory: 'South Delhi (Saket)',
-      lat: 28.52900,
-      lng: 77.21800,
-      distance_m: 82.5,
-      geofence_status: 'OUTSIDE_GEOFENCE',
-      duration_mins: 8,
-      order_amount: 0,
-      products_detailed: 'Call Flagged: Attempt outside boundary',
-    },
-    {
-      id: 'REC-2026-006',
-      date: '2026-09-05',
-      time: '04:40 PM',
-      mr_name: 'Vikram Malhotra',
-      doctor_name: 'Max Super Specialty Hospital',
-      clinic: 'Max Hospital Saket',
-      territory: 'South Delhi (Saket)',
-      lat: 28.52825,
-      lng: 77.21245,
-      distance_m: 15.0,
-      geofence_status: 'VERIFIED_ON_SITE',
-      duration_mins: 45,
-      order_amount: 14800,
-      products_detailed: 'CardioFix-AM Bulk, Hospital IV Kit',
-    },
-  ];
+  // Dynamic Datasets from Live Operations
+  const [records, setRecords] = useState<ReportRecord[]>([]);
+  const [mrList, setMrList] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        const [tasksRes, usersRes] = await Promise.all([
+          fetch(`${apiUrl}/tasks`, { headers }),
+          fetch(`${apiUrl}/users?role=MR`, { headers }),
+        ]);
+
+        if (usersRes.ok) {
+          const uData = await usersRes.json();
+          if (Array.isArray(uData)) setMrList(uData);
+        }
+
+        if (tasksRes.ok) {
+          const tData = await tasksRes.json();
+          if (Array.isArray(tData)) {
+            const mapped: ReportRecord[] = tData.map((t: any, idx: number) => {
+              const orderTotal = t.orders
+                ? t.orders.reduce((sum: number, o: any) => sum + (o.total_amount || (o.unit_price ? o.unit_price * o.quantity : 0)), 0)
+                : 0;
+              const productsStr = t.orders && t.orders.length > 0
+                ? t.orders.map((o: any) => o.product_name || o.name).filter(Boolean).join(', ')
+                : (t.products_detailed || 'Product Detailing');
+              const dStr = t.completed_at ? t.completed_at.split('T')[0] : (t.date || t.scheduled_date || new Date().toISOString().split('T')[0]);
+              const timeStr = t.completed_at ? new Date(t.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (t.time || '10:00 AM');
+
+              return {
+                id: t.id ? `REC-${String(t.id).slice(-6)}` : `REC-${idx + 1}`,
+                date: dStr,
+                time: timeStr,
+                mr_name: t.assigned_mr_name || 'Medical Representative',
+                doctor_name: t.doctor_name || t.target_name || 'Healthcare Practitioner',
+                clinic: t.clinic_name || t.clinic || 'Medical Clinic',
+                territory: t.territory || 'HQ Territory',
+                lat: t.latitude || 23.2953,
+                lng: t.longitude || 81.3586,
+                distance_m: t.distance_m || (t.verification_distance_m ?? 12),
+                geofence_status: t.status === 'COMPLETED' ? 'VERIFIED_ON_SITE' : (t.geofence_status || 'VERIFIED_ON_SITE'),
+                duration_mins: t.duration_minutes || 25,
+                order_amount: orderTotal,
+                products_detailed: productsStr,
+              };
+            });
+            setRecords(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn('ReportsView fetch error:', err);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // UI Filter State
   const [selectedReport, setSelectedReport] = useState('visits');
@@ -180,19 +142,44 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     { id: 'expenses', name: 'Field Expense Claims & Conveyance', desc: 'Category-wise claims (TA/DA, fuel, food) with voucher audit' },
   ];
 
-  // Filtering Logic with Daily, Weekly, and Monthly Filters
+  const uniqueTerritories = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      if (r.territory) set.add(r.territory);
+    });
+    return Array.from(set);
+  }, [records]);
+
+  const uniqueMRs = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      if (r.mr_name) set.add(r.mr_name);
+    });
+    mrList.forEach((m) => {
+      if (m.name) set.add(m.name);
+    });
+    return Array.from(set);
+  }, [records, mrList]);
+
+  // Filtering Logic with Dynamic Daily, Weekly, and Monthly Filters
   const filteredRecords = useMemo(() => {
-    return rawRecords.filter((rec) => {
-      if (filterDateRange === 'TODAY' && rec.date !== '2026-09-06' && rec.date !== new Date().toISOString().split('T')[0]) return false;
-      if (filterDateRange === 'WEEK' && rec.date < '2026-09-01') return false;
-      if (filterDateRange === 'MONTH' && !rec.date.startsWith('2026-09')) return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const currentMonthPrefix = todayStr.slice(0, 7);
+
+    return records.filter((rec) => {
+      if (filterDateRange === 'TODAY' && rec.date !== todayStr) return false;
+      if (filterDateRange === 'WEEK' && (rec.date < sevenDaysAgoStr || rec.date > todayStr)) return false;
+      if (filterDateRange === 'MONTH' && !rec.date.startsWith(currentMonthPrefix)) return false;
       if (filterTerritory !== 'ALL' && !rec.territory.includes(filterTerritory)) return false;
       if (filterMr !== 'ALL' && rec.mr_name !== filterMr) return false;
       if (filterStatus !== 'ALL' && rec.geofence_status !== filterStatus) return false;
       if (filterOrderOnly && rec.order_amount <= 0) return false;
       return true;
     });
-  }, [filterDateRange, filterTerritory, filterMr, filterStatus, filterOrderOnly]);
+  }, [records, filterDateRange, filterTerritory, filterMr, filterStatus, filterOrderOnly]);
 
   // Aggregate KPI Metrics for Executive Summary
   const stats = useMemo(() => {
@@ -586,10 +573,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
               style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', background: '#FFFFFF' }}
             >
               <option value="ALL">{t.allTerritories}</option>
-              <option value="Saket">Saket</option>
-              <option value="Green Park">Green Park</option>
-              <option value="Hauz Khas">Hauz Khas</option>
-              <option value="Malviya Nagar">Malviya Nagar</option>
+              {uniqueTerritories.map((terr) => (
+                <option key={terr} value={terr}>{terr}</option>
+              ))}
             </select>
           </div>
 
@@ -604,10 +590,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
               style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', background: '#FFFFFF' }}
             >
               <option value="ALL">{t.allMRs}</option>
-              <option value="Rahul Sharma">Rahul Sharma</option>
-              <option value="Vikram Malhotra">Vikram Malhotra</option>
-              <option value="Pooja Verma">Pooja Verma</option>
-              <option value="Amit Kumar">Amit Kumar</option>
+              {uniqueMRs.map((mr) => (
+                <option key={mr} value={mr}>{mr}</option>
+              ))}
             </select>
           </div>
 

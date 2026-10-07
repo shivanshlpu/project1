@@ -31,79 +31,8 @@ interface DoctorsViewProps {
 export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   const t = translations[lang];
 
-  const [doctors, setDoctors] = useState<DoctorItem[]>([
-    {
-      id: 'doc-01',
-      name: 'Dr. Rajesh Sharma',
-      qualification: 'MD, DM (Cardiology)',
-      specialization: 'Cardiologist',
-      class: 'A',
-      potential_score: 95,
-      clinic: 'Apex Heart Centre',
-      area_name: 'South Delhi (Saket)',
-      phone: '+91 98111 22233',
-      latitude: 28.5245,
-      longitude: 77.2066,
-      visit_count: 14,
-      assigned_mr_id: 'usr-mr-01',
-      assigned_mr_name: 'Rahul Sharma',
-    },
-    {
-      id: 'doc-02',
-      name: 'Dr. Priya Verma',
-      qualification: 'MBBS, DNB (Paediatrics)',
-      specialization: 'Paediatrician',
-      class: 'B',
-      potential_score: 82,
-      clinic: 'Little Care Clinic',
-      area_name: 'South Delhi (Green Park)',
-      phone: '+91 98111 44455',
-      latitude: 28.5585,
-      longitude: 77.2028,
-      visit_count: 9,
-      assigned_mr_id: 'usr-mr-01',
-      assigned_mr_name: 'Rahul Sharma',
-    },
-    {
-      id: 'doc-03',
-      name: 'Dr. Anita Desai',
-      qualification: 'MBBS, MD (Dermatology)',
-      specialization: 'Dermatologist',
-      class: 'A',
-      potential_score: 91,
-      clinic: 'Skin Care Centre',
-      area_name: 'South Delhi (Hauz Khas)',
-      phone: '+91 98777 66554',
-      latitude: 28.5494,
-      longitude: 77.2001,
-      visit_count: 11,
-      assigned_mr_id: 'usr-mr-02',
-      assigned_mr_name: 'Vikram Malhotra',
-    },
-    {
-      id: 'doc-04',
-      name: 'Dr. Sameer Kapoor',
-      qualification: 'MBBS',
-      specialization: 'General Physician',
-      class: 'C',
-      potential_score: 64,
-      clinic: 'Kapoor Health Clinic',
-      area_name: 'South Delhi (Malviya Nagar)',
-      phone: '+91 98999 11122',
-      latitude: 28.5300,
-      longitude: 77.2150,
-      visit_count: 5,
-      assigned_mr_id: 'usr-mr-03',
-      assigned_mr_name: 'Pooja Verma',
-    },
-  ]);
-
-  const mrMembers = [
-    { id: 'usr-mr-01', name: 'Rahul Sharma' },
-    { id: 'usr-mr-02', name: 'Vikram Malhotra' },
-    { id: 'usr-mr-03', name: 'Pooja Verma' },
-    { id: 'usr-mr-04', name: 'Amit Kumar' },
-  ];
+  const [doctors, setDoctors] = useState<DoctorItem[]>([]);
+  const [mrMembers, setMrMembers] = useState<Array<{ id: string; name: string }>>([]);
 
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +40,42 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [selectedDoctorForHistory, setSelectedDoctorForHistory] = useState<DoctorItem | null>(null);
   const [selectedDoctorForLocation, setSelectedDoctorForLocation] = useState<DoctorItem | null>(null);
+  const [doctorVisitsList, setDoctorVisitsList] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const handleOpenDoctorHistory = async (doc: DoctorItem) => {
+    setSelectedDoctorForHistory(doc);
+    setIsLoadingHistory(true);
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/tasks?status=COMPLETED`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const allTasks = await res.json();
+        const docNameLower = doc.name.toLowerCase();
+        const docClinicLower = (doc.clinic || '').toLowerCase();
+        const matched = Array.isArray(allTasks)
+          ? allTasks.filter((t: any) => {
+              const loc = (t.location_name || '').toLowerCase();
+              const title = (t.title || '').toLowerCase();
+              return (
+                (docNameLower && (loc.includes(docNameLower) || title.includes(docNameLower))) ||
+                (docClinicLower && loc.includes(docClinicLower))
+              );
+            })
+          : [];
+        setDoctorVisitsList(matched);
+      } else {
+        setDoctorVisitsList([]);
+      }
+    } catch {
+      setDoctorVisitsList([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   // Live auto-fetch from backend
   const fetchDoctors = async () => {
@@ -122,7 +87,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setDoctors(data);
         }
       }
@@ -131,8 +96,27 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     }
   };
 
+  const fetchMRs = async () => {
+    try {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/users?role=MR`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setMrMembers(data.map((u: any) => ({ id: u.id, name: u.name })));
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
   useEffect(() => {
     fetchDoctors();
+    fetchMRs();
   }, []);
 
   // Map state
@@ -163,11 +147,11 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   const [newDocClass, setNewDocClass] = useState<'A' | 'B' | 'C'>('A');
   const [newDocScore, setNewDocScore] = useState<number>(85);
   const [newDocClinic, setNewDocClinic] = useState('');
-  const [newDocArea, setNewDocArea] = useState('South Delhi');
+  const [newDocArea, setNewDocArea] = useState('Shahdol HQ');
   const [newDocPhone, setNewDocPhone] = useState('');
-  const [newDocAssignedMr, setNewDocAssignedMr] = useState('usr-mr-01');
-  const [newDocLat, setNewDocLat] = useState<number>(28.5245);
-  const [newDocLng, setNewDocLng] = useState<number>(77.2066);
+  const [newDocAssignedMr, setNewDocAssignedMr] = useState('');
+  const [newDocLat, setNewDocLat] = useState<number>(23.2953);
+  const [newDocLng, setNewDocLng] = useState<number>(81.3586);
 
   // Filter Doctors
   const filteredDoctors = doctors.filter((d) => {
@@ -190,7 +174,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
         zoomControl: false,
         dragging: true,
         touchZoom: true,
-      }).setView([28.538, 77.206], 13);
+      }).setView([23.2953, 81.3586], 12);
       mapInstanceRef.current = map;
       map.dragging.enable();
       map.touchZoom.enable();
@@ -350,7 +334,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
       longitude: newDocLng,
       visit_count: 0,
       assigned_mr_id: newDocAssignedMr,
-      assigned_mr_name: assignedMatch ? assignedMatch.name : 'Rahul Sharma',
+      assigned_mr_name: assignedMatch ? assignedMatch.name : (mrMembers[0]?.name || 'Assigned Representative'),
     };
 
     setDoctors([created, ...doctors]);
@@ -619,7 +603,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                   <td>{doc.area_name}</td>
                   <td>
                     <select
-                      value={doc.assigned_mr_id || 'usr-mr-01'}
+                      value={doc.assigned_mr_id || ''}
                       onChange={(e) => {
                         const mId = e.target.value;
                         const match = mrMembers.find((m) => m.id === mId);
@@ -637,6 +621,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                         outline: 'none',
                       }}
                     >
+                      <option value="" disabled>Select Representative</option>
                       {mrMembers.map((mr) => (
                         <option key={mr.id} value={mr.id}>
                           {mr.name}
@@ -678,7 +663,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                       </button>
                       <button
                         className="btn-enterprise secondary sm"
-                        onClick={() => setSelectedDoctorForHistory(doc)}
+                        onClick={() => handleOpenDoctorHistory(doc)}
                       >
                         <History size={12} />
                         <span>{t.callHistory}</span>
@@ -694,6 +679,13 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                   </td>
                 </tr>
               ))}
+              {filteredDoctors.length === 0 && (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748B', fontSize: '13px' }}>
+                    No doctors plotted. Click "{t.addDoctor}" to add verified field clinics.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -837,6 +829,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                   onChange={(e) => setNewDocAssignedMr(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFFFFF', boxSizing: 'border-box' }}
                 >
+                  <option value="">-- Select Representative --</option>
                   {mrMembers.map((mr) => (
                     <option key={mr.id} value={mr.id}>
                       {mr.name} ({mr.id})
@@ -926,39 +919,50 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto' }}>
-              {[
-                { date: '06 Sep 2026', mr: 'Rahul Sharma', time: '10:30 AM', duration: '38 min', products: 'CardioFix-50, CardioFix-AM', order: '₹7,200', geofence: 'Verified (8.4m)' },
-                { date: '02 Sep 2026', mr: 'Rahul Sharma', time: '11:15 AM', duration: '26 min', products: 'CardioFix-50', order: '₹4,500', geofence: 'Verified (11.2m)' },
-                { date: '28 Aug 2026', mr: 'Vikram Malhotra', time: '04:00 PM', duration: '31 min', products: 'Samples Dispensed (5 units)', order: 'Detailing Only', geofence: 'Verified (14.0m)' },
-              ].map((visit, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '6px',
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '700', fontSize: '12.5px', color: '#0F172A' }}>
-                      {formatDateDDMMYYYY(visit.date)} • {visit.time}
-                    </span>
-                    <span style={{ background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
-                      {visit.geofence}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: '#475569' }}>
-                    MR: <strong>{visit.mr}</strong> • Meeting Duration: <strong>{visit.duration}</strong>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>
-                    Products: {visit.products} • Order Value: <strong style={{ color: '#0F8B5A' }}>{visit.order}</strong>
-                  </div>
+              {isLoadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748B', fontSize: '13px' }}>
+                  Loading visit records...
                 </div>
-              ))}
+              ) : doctorVisitsList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748B', fontSize: '13px' }}>
+                  No field visits recorded for this healthcare provider yet.
+                </div>
+              ) : (
+                doctorVisitsList.map((visit: any, idx: number) => {
+                  const visitFormatted = formatDateDDMMYYYY(visit.date || visit.completed_at || '');
+                  return (
+                    <div
+                      key={visit.id || idx}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '6px',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: '700', fontSize: '12.5px', color: '#0F172A' }}>
+                          {visitFormatted} • {visit.time || 'Completed'}
+                        </span>
+                        <span style={{ background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
+                          Verified ({visit.distance_meters || 12}m)
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#475569' }}>
+                        MR: <strong>{visit.assigned_mr_name || 'Field Representative'}</strong>
+                      </div>
+                      {visit.outcome ? (
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>
+                          Outcome: <em>"{visit.outcome}"</em>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>

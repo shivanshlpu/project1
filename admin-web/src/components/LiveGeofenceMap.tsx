@@ -44,54 +44,62 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     accuracy?: number;
     status?: string;
   } | null>({
-    type: 'mr',
-    name: 'Rahul Sharma (Field MR)',
-    title: 'On-Site at Apex Heart Centre',
-    lat: 28.52458,
-    lng: 77.20664,
-    distance: 8.4,
-    accuracy: 9.5,
+    type: 'doctor',
+    name: 'District Hospital Shahdol',
+    title: 'Civil Hospital & Trauma Centre',
+    lat: 23.2953,
+    lng: 81.3586,
+    distance: 12.0,
+    accuracy: 8.5,
     status: 'VERIFIED_ON_SITE',
   });
 
-  // Master Clinics & Active Field MR Coordinates
+  // Authentic Headquarters & Territory Geofence Coordinates
   const fieldData = {
     clinic: {
-      id: 'doc-1',
-      doctorName: 'Dr. Rajesh Sharma (Cardiologist)',
-      clinicName: 'Apex Heart Centre',
-      address: 'Ring Road, Saket, South Delhi',
-      lat: 28.5245,
-      lng: 77.2066,
+      id: 'loc-01',
+      doctorName: 'District Hospital Shahdol',
+      clinicName: 'Civil Hospital & Trauma Centre',
+      address: 'Hospital Road, Bicharpur, Shahdol, MP',
+      lat: 23.2953,
+      lng: 81.3586,
       radiusM: 50,
     },
     activeMR: {
       id: 'mr-1',
-      name: 'Rahul Sharma (MR)',
-      lat: 28.52458,
-      lng: 77.20664,
-      distanceM: 8.4,
-      accuracyM: 9.5,
+      name: 'Field Representative',
+      lat: 23.2954,
+      lng: 81.3587,
+      distanceM: 12.0,
+      accuracyM: 8.5,
       verified: true,
       lastCheckin: '09:15 AM',
       currentCallStarted: '10:28 AM',
     },
     otherClinics: [
       {
-        id: 'doc-2',
-        name: 'Dr. Priya Verma',
-        clinic: 'Little Care Clinic',
-        lat: 28.5585,
-        lng: 77.2028,
+        id: 'loc-02',
+        name: 'Shree Ram Pharmacy',
+        clinic: 'Shree Ram Medicos Shahdol',
+        lat: 23.3012,
+        lng: 81.3620,
+        radiusM: 40,
+      },
+      {
+        id: 'loc-03',
+        name: 'Ambikapur Civil Hospital',
+        clinic: 'Surguja District Hospital',
+        lat: 23.1197,
+        lng: 83.1979,
         radiusM: 50,
       },
       {
-        id: 'doc-3',
-        name: 'Max Super Specialty Hospital',
-        clinic: 'Max Hospital Saket',
-        lat: 28.5282,
-        lng: 77.2124,
-        radiusM: 60,
+        id: 'loc-04',
+        name: 'Bilaspur Healthcare Centre',
+        clinic: 'Apollo Regional Medical Centre',
+        lat: 22.0797,
+        lng: 82.1409,
+        radiusM: 50,
       },
     ],
   };
@@ -284,31 +292,31 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
           >
             <Crosshair size={18} />
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A' }}>
-                Live Geofence Perimeter & GPS Tracking Engine
-              </span>
-              <span
-                style={{
-                  background: '#DCFCE7',
-                  color: '#166534',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <ShieldCheck size={12} /> {t.geofenceActive}
-              </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A' }}>
+                  Field Team Locations &amp; Geofence
+                </span>
+                <span
+                  style={{
+                    background: '#DCFCE7',
+                    color: '#166534',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <ShieldCheck size={12} /> {t.geofenceActive}
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748B' }}>
+                Verified on-site locations and territory geofence perimeters (&le;50m tolerance)
+              </p>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748B' }}>
-              Real-time on-site verification • Distance: <strong>8.4m from Apex Heart Centre</strong> (Allowed: ≤50m) • Accuracy: ±9.5m
-            </p>
-          </div>
         </div>
 
         {/* Action Controls */}
@@ -404,42 +412,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
         </div>
       </div>
 
-      {/* Geofence Feature Purpose Explanation (Answering User's Question Directly) */}
-      {showExplanation && (
-        <div
-          style={{
-            background: '#EFF6FF',
-            borderBottom: '1px solid #BFDBFE',
-            padding: '10px 18px',
-            fontSize: '12px',
-            color: '#1E40AF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <HelpCircle size={16} color="#2563EB" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <strong>{t.geofenceTitle}:</strong>{' '}
-              {t.geofenceDesc}
-            </div>
-          </div>
-          <button
-            onClick={() => setShowExplanation(false)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#60A5FA',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              marginLeft: '12px',
-            }}
-          >
-            X
-          </button>
-        </div>
-      )}
+
 
       {/* Map Canvas & Live Position Bar */}
       <div style={{ position: 'relative', height: '380px', width: '100%' }}>
