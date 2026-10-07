@@ -1,19 +1,19 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.13",
-  "latestVersionCode": 14,
+  "latestVersion": "1.0.14",
+  "latestVersionCode": 15,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/omgUGKB2T-bajcEOndnTMkYg_1QlcObeMTXw40lwf7I.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-06",
-  "publishedAt": "2026-10-06T17:29:56.050Z",
-  "publishedBy": "System Auto-Build",
+  "releaseDate": "2026-10-07",
+  "publishedAt": "2026-10-07T09:12:00.000Z",
+  "publishedBy": "System Admin",
   "releaseNotes": [
-    "Purged deleted Admin tasks from mobile app & local cache synchronization",
-    "Strict Owner 6-Digit OTP verification enforcement on login after employee logout",
-    "Dynamic HQ-driven territory coverage and clean map view without clutter",
-    "Instant offline-to-online task status reconciliation"
+    "Owner 6-Digit OTP & 1-Click Approval enforcement whenever an employee logs out and re-authenticates",
+    "Real-time task synchronization: deleted tasks on admin portal immediately removed from device",
+    "Dynamic Headquarters territory coverage (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free map view",
+    "Streamlined field reporting and location marking"
   ]
 }

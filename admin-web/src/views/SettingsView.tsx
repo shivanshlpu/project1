@@ -220,7 +220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     latestVersion: '1.0.14',
     latestVersionCode: 15,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk',
+    downloadUrl: 'https://expo.dev/artifacts/eas/omgUGKB2T-bajcEOndnTMkYg_1QlcObeMTXw40lwf7I.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -1326,7 +1326,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="url"
                 value={updateData.downloadUrl}
                 onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
-                placeholder="https://expo.dev/artifacts/eas/Efm2T6TJbJlGxLMMefOo2u4g3Vw2_5nuUtmJeF3XpGc.apk"
+                placeholder="https://expo.dev/artifacts/eas/omgUGKB2T-bajcEOndnTMkYg_1QlcObeMTXw40lwf7I.apk"
                 style={{
                   width: '100%',
                   padding: '11px 14px',
