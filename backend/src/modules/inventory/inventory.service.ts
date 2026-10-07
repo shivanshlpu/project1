@@ -43,17 +43,35 @@ export class InventoryService {
   }
 
   async createHeadquarter(dto: CreateHqDto): Promise<Headquarter> {
-    const existing = this.db.headquarters.find(
-      (h) => h.name.toLowerCase() === dto.name.toLowerCase(),
+    const cleanCode = (dto.code || '').trim().toUpperCase();
+    const existingName = this.db.headquarters.find(
+      (h) => h.name.toLowerCase() === dto.name.trim().toLowerCase(),
     );
-    if (existing) {
+    if (existingName) {
       throw new BadRequestException(`Headquarter "${dto.name}" already exists`);
     }
 
+    const existingCode = this.db.headquarters.find(
+      (h) => h.code.toUpperCase() === cleanCode || (h.hq_code && h.hq_code.toUpperCase() === cleanCode),
+    );
+    if (existingCode) {
+      throw new BadRequestException(`HQ Code "${cleanCode}" is already in use by ${existingCode.name}`);
+    }
+
+    const hqId = (dto as any).hq_id?.trim() || `HQ-${cleanCode}-001`;
+    const existingId = this.db.headquarters.find(
+      (h) => h.id.toUpperCase() === hqId.toUpperCase() || h.hq_id.toUpperCase() === hqId.toUpperCase(),
+    );
+    if (existingId) {
+      throw new BadRequestException(`HQ ID "${hqId}" is already in use`);
+    }
+
     const hq: Headquarter = {
-      id: `hq-${uuidv4().substring(0, 8)}`,
-      name: dto.name,
-      code: dto.code.toUpperCase(),
+      id: hqId,
+      hq_id: hqId,
+      name: dto.name.trim(),
+      code: cleanCode,
+      hq_code: cleanCode,
       state: dto.state || '',
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
@@ -64,19 +82,44 @@ export class InventoryService {
   }
 
   async updateHeadquarter(id: string, dto: UpdateHqDto): Promise<Headquarter> {
-    const hq = this.db.headquarters.find((h) => h.id === id);
+    const hq = this.db.findHeadquarter(id);
     if (!hq) throw new NotFoundException('Headquarter not found');
 
     if (dto.name) {
+      const cleanName = dto.name.trim();
       const existing = this.db.headquarters.find(
-        (h) => h.id !== id && h.name.toLowerCase() === dto.name!.trim().toLowerCase(),
+        (h) => h.id !== hq.id && h.name.toLowerCase() === cleanName.toLowerCase(),
       );
       if (existing) {
-        throw new BadRequestException(`Headquarter "${dto.name}" already exists`);
+        throw new BadRequestException(`Headquarter "${cleanName}" already exists`);
       }
-      hq.name = dto.name.trim();
+      hq.name = cleanName;
     }
-    if (dto.code) hq.code = dto.code.trim().toUpperCase();
+    if (dto.code) {
+      const cleanCode = dto.code.trim().toUpperCase();
+      const existing = this.db.headquarters.find(
+        (h) =>
+          h.id !== hq.id &&
+          (h.code.toUpperCase() === cleanCode || (h.hq_code && h.hq_code.toUpperCase() === cleanCode)),
+      );
+      if (existing) {
+        throw new BadRequestException(`HQ Code "${cleanCode}" is already in use by ${existing.name}`);
+      }
+      hq.code = cleanCode;
+      hq.hq_code = cleanCode;
+    }
+    if ((dto as any).hq_id) {
+      const cleanHqId = (dto as any).hq_id.trim();
+      const existing = this.db.headquarters.find(
+        (h) =>
+          h.id !== hq.id &&
+          (h.id.toUpperCase() === cleanHqId.toUpperCase() || h.hq_id.toUpperCase() === cleanHqId.toUpperCase()),
+      );
+      if (existing) {
+        throw new BadRequestException(`HQ ID "${cleanHqId}" is already in use`);
+      }
+      hq.hq_id = cleanHqId;
+    }
     if (dto.state !== undefined) hq.state = dto.state.trim();
     if (dto.status) hq.status = dto.status;
 
@@ -84,12 +127,13 @@ export class InventoryService {
   }
 
   async deleteHeadquarter(id: string): Promise<{ success: boolean; message: string }> {
-    const index = this.db.headquarters.findIndex((h) => h.id === id);
-    if (index === -1) throw new NotFoundException('Headquarter not found');
+    const hq = this.db.findHeadquarter(id);
+    if (!hq) throw new NotFoundException('Headquarter not found');
 
+    const index = this.db.headquarters.findIndex((h) => h.id === hq.id);
     this.db.headquarters.splice(index, 1);
-    this.db.stockers = this.db.stockers.filter((s) => s.hq_id !== id);
-    this.db.hqAreas = this.db.hqAreas.filter((a) => a.hq_id !== id);
+    this.db.stockers = this.db.stockers.filter((s) => s.hq_id !== hq.id && s.hq_id !== hq.hq_id);
+    this.db.hqAreas = this.db.hqAreas.filter((a) => a.hq_id !== hq.id && a.hq_id !== hq.hq_id);
     return { success: true, message: 'Headquarter deleted successfully' };
   }
 

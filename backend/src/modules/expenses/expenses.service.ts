@@ -9,12 +9,17 @@ export class ExpensesService {
   constructor(private readonly db: DatabaseService) {}
 
   async createExpense(mrId: string, dto: CreateExpenseDto) {
+    const user = this.db.users.find((u) => u.id === mrId);
     const expense: Expense = {
       id: `exp-${uuidv4().substring(0, 8)}`,
       mr_id: mrId,
       category: dto.category,
       amount: Math.round(dto.amount * 100) / 100,
       receipt_file_key: dto.receipt_file_key,
+      hq_id: user?.hq_id,
+      hq_code: user?.hq_code,
+      route_batch_id: (dto as any).route_batch_id,
+      distance_km: (dto as any).distance_km,
       status: 'PENDING',
       created_at: new Date().toISOString(),
     };
@@ -46,16 +51,24 @@ export class ExpensesService {
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   }
 
-  async getAdminExpenses(filter: { mr_id?: string; status?: string; category?: string }) {
+  async getAdminExpenses(filter: { mr_id?: string; status?: string; category?: string; hq_id?: string }) {
     return this.db.expenses
-      .filter((e) => (filter.mr_id ? e.mr_id === filter.mr_id : true))
-      .filter((e) => (filter.status ? e.status === filter.status : true))
-      .filter((e) => (filter.category ? e.category === filter.category : true))
+      .filter((e) => (filter.mr_id && filter.mr_id !== 'ALL' ? e.mr_id === filter.mr_id : true))
+      .filter((e) => (filter.status && filter.status !== 'ALL' ? e.status === filter.status : true))
+      .filter((e) => (filter.category && filter.category !== 'ALL' ? e.category === filter.category : true))
+      .filter((e) => {
+        if (!filter.hq_id || filter.hq_id === 'ALL') return true;
+        const cleanHq = filter.hq_id.toLowerCase();
+        return (e.hq_id && e.hq_id.toLowerCase() === cleanHq) || (e.hq_code && e.hq_code.toLowerCase() === cleanHq);
+      })
       .map((e) => {
         const mr = this.db.users.find((u) => u.id === e.mr_id);
         return {
           ...e,
           mr_name: mr?.name || 'Unknown MR',
+          hq_id: e.hq_id || mr?.hq_id,
+          hq_code: e.hq_code || mr?.hq_code,
+          hq_name: mr?.hq_name,
         };
       })
       .sort((a, b) => b.created_at.localeCompare(a.created_at));

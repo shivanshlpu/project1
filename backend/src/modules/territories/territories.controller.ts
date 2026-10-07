@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -15,10 +16,13 @@ import {
   CreateAreaDto,
   AssignAreaManagerDto,
   AssignAreaMrDto,
+  CreateRouteBatchDto,
+  UpdateRouteBatchDto,
 } from './territories.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
+import { CurrentUser } from '../../common/current-user.decorator';
 
 @Controller('territories')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,5 +72,47 @@ export class TerritoriesController {
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async assignMr(@Param('id') areaId: string, @Body() dto: AssignAreaMrDto) {
     return this.territoriesService.assignAreaMr(areaId, dto);
+  }
+
+  // ==========================================
+  // ROUTE BATCHES
+  // ==========================================
+
+  @Get('route-batches')
+  async getRouteBatches(
+    @CurrentUser() user: any,
+    @Query('hq_id') hqId?: string,
+    @Query('mr_id') mrId?: string,
+  ) {
+    return this.territoriesService.getRouteBatches(user, hqId, mrId);
+  }
+
+  @Get('route-batches/:id')
+  async getRouteBatchById(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.territoriesService.getRouteBatchById(id, user);
+  }
+
+  @Post('route-batches')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async createRouteBatch(@Body() dto: CreateRouteBatchDto) {
+    return this.territoriesService.createRouteBatch(dto);
+  }
+
+  @Patch('route-batches/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async updateRouteBatch(
+    @Param('id') id: string,
+    @Body() dto: UpdateRouteBatchDto,
+  ) {
+    return this.territoriesService.updateRouteBatch(id, dto);
+  }
+
+  @Delete('route-batches/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteRouteBatch(@Param('id') id: string) {
+    return this.territoriesService.deleteRouteBatch(id);
   }
 }

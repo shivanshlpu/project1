@@ -26,7 +26,12 @@ export class AuthService {
     const identifier = dto.identifier.trim().toLowerCase();
     let user = this.db.users.find(
       (u) =>
-        (u.email.toLowerCase() === identifier || u.phone === identifier) &&
+        (u.email.toLowerCase() === identifier ||
+          u.phone === identifier ||
+          u.name.toLowerCase() === identifier ||
+          u.id.toLowerCase() === identifier ||
+          (u.hq_code && u.hq_code.toLowerCase() === identifier) ||
+          (u.hq_id && u.hq_id.toLowerCase() === identifier)) &&
         !u.deleted_at,
     );
 
@@ -460,6 +465,14 @@ export class AuthService {
       email: user.email,
       role: user.role,
       name: user.name,
+      hq: user.hq_name,
+      hq_name: user.hq_name,
+      hq_id: user.hq_id,
+      hq_code: user.hq_code,
+      territory: user.territory,
+      assigned_territory: user.assigned_territory || user.territory,
+      route_batches: user.route_batches || [],
+      assigned_route_batches: user.assigned_route_batches || user.route_batches || [],
       zone_id: user.zone_id,
       region_id: user.region_id,
       area_id: user.area_id,
@@ -484,6 +497,14 @@ export class AuthService {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        hq: user.hq_name,
+        hq_name: user.hq_name,
+        hq_id: user.hq_id,
+        hq_code: user.hq_code,
+        territory: user.territory,
+        assigned_territory: user.assigned_territory || user.territory,
+        route_batches: user.route_batches || [],
+        assigned_route_batches: user.assigned_route_batches || user.route_batches || [],
         zone_id: user.zone_id,
         region_id: user.region_id,
         area_id: user.area_id,

@@ -63,6 +63,11 @@ interface LoggedInUser {
   device_id: string;
   device_model: string;
   token?: string;
+  hq_name?: string;
+  hq_code?: string;
+  hq_id?: string;
+  assigned_territory?: string;
+  assigned_route_batches?: string[];
 }
 
 export default function App() {
@@ -418,7 +423,7 @@ export default function App() {
               <View>
                 <Text style={styles.brandTitle}>AHTRI FFA Mobile</Text>
                 <Text style={styles.brandUser}>
-                  {currentUser.name} • {currentUser.phone}
+                  {currentUser.name} • {currentUser.hq_name || 'Shahdol'} ({currentUser.hq_code || 'SHD'})
                 </Text>
               </View>
             </View>

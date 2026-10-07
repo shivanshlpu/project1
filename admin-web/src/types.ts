@@ -78,7 +78,13 @@ export interface MRMemberItem {
   email: string;
   role: 'MR';
   status: 'ACTIVE' | 'INACTIVE';
+  hq_name?: string;
+  hq_code?: string;
+  hq_id?: string;
   territory?: string;
+  assigned_territory?: string;
+  route_batches?: string[];
+  assigned_route_batches?: string[];
   password?: string;
   device_id?: string;
   device_model?: string;

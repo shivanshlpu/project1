@@ -35,6 +35,29 @@ export class CreateUserDto {
   @IsOptional()
   manager_id?: string;
 
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_code?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_name?: string;
+
+  @IsString()
+  @IsOptional()
+  territory?: string;
+
+  @IsString()
+  @IsOptional()
+  assigned_territory?: string;
+
+  @IsOptional()
+  assigned_route_batches?: string[];
+
   @IsBoolean()
   @IsOptional()
   biometric_enabled?: boolean;
@@ -67,11 +90,33 @@ export class UpdateUserDto {
 
   @IsString()
   @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_code?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_name?: string;
+
+  @IsString()
+  @IsOptional()
   area_id?: string;
 
   @IsString()
   @IsOptional()
   territory?: string;
+
+  @IsString()
+  @IsOptional()
+  assigned_territory?: string;
+
+  @IsOptional()
+  assigned_route_batches?: string[];
+
+  @IsOptional()
+  route_batches?: string[];
 
   @IsBoolean()
   @IsOptional()

@@ -25,13 +25,18 @@ interface LoginScreenProps {
     device_id: string;
     device_model: string;
     token?: string;
+    hq_name?: string;
+    hq_code?: string;
+    hq_id?: string;
+    assigned_territory?: string;
+    assigned_route_batches?: string[];
   }) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const [identifier, setIdentifier] = useState('mr@ahtri.com');
-  const [password, setPassword] = useState('Password@123');
-  const [phone, setPhone] = useState('9876543212');
+  const [identifier, setIdentifier] = useState('SHD');
+  const [password, setPassword] = useState('AmanRathoreSHD');
+  const [phone, setPhone] = useState('9876543213');
 
   // Real Hardware Fingerprint of the running phone
   const [currentDeviceId, setCurrentDeviceId] = useState('dev-hw-s22-9f8a2c');
@@ -55,7 +60,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     });
   }, []);
 
-  // Registered MR accounts in the system (for offline or local fallback)
+  // Registered MR accounts in the system (Kotma, Shahdol, Ambikapur)
   const registeredMRs: Record<
     string,
     {
@@ -65,38 +70,148 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       phone: string;
       password: string;
       role: string;
+      hq_name: string;
+      hq_code: string;
+      hq_id: string;
+      territory: string;
+      assigned_route_batches: string[];
       bound_device_id?: string;
       bound_device_model?: string;
     }
   > = {
-    'mr@ahtri.com': {
+    // 1. Amar Dwivedi (Kotma - KOT - HQ-KOT-001)
+    'kot': {
       id: 'usr-mr-01',
-      name: 'Rahul Sharma',
-      email: 'mr@ahtri.com',
+      name: 'Amar Dwivedi',
+      email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'Password@123',
+      password: 'AmarDwivediKOT',
       role: 'MR',
+      hq_name: 'Kotma',
+      hq_code: 'KOT',
+      hq_id: 'HQ-KOT-001',
+      territory: 'Kotma HQ Territory',
+      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
       bound_device_id: 'dev-hw-s22-9f8a2c',
       bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
     },
-    'vikram@ahtri.com': {
-      id: 'usr-mr-02',
-      name: 'Vikram Malhotra',
-      email: 'vikram@ahtri.com',
-      phone: '9876543213',
-      password: 'Password@123',
+    'amar.dwivedi@ahtri.com': {
+      id: 'usr-mr-01',
+      name: 'Amar Dwivedi',
+      email: 'amar.dwivedi@ahtri.com',
+      phone: '9876543212',
+      password: 'AmarDwivediKOT',
       role: 'MR',
+      hq_name: 'Kotma',
+      hq_code: 'KOT',
+      hq_id: 'HQ-KOT-001',
+      territory: 'Kotma HQ Territory',
+      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
+      bound_device_id: 'dev-hw-s22-9f8a2c',
+      bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
+    },
+    'hq-kot-001': {
+      id: 'usr-mr-01',
+      name: 'Amar Dwivedi',
+      email: 'amar.dwivedi@ahtri.com',
+      phone: '9876543212',
+      password: 'AmarDwivediKOT',
+      role: 'MR',
+      hq_name: 'Kotma',
+      hq_code: 'KOT',
+      hq_id: 'HQ-KOT-001',
+      territory: 'Kotma HQ Territory',
+      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
+      bound_device_id: 'dev-hw-s22-9f8a2c',
+      bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
+    },
+
+    // 2. Aman Rathore (Shahdol - SHD - HQ-SHD-001)
+    'shd': {
+      id: 'usr-mr-02',
+      name: 'Aman Rathore',
+      email: 'aman.rathore@ahtri.com',
+      phone: '9876543213',
+      password: 'AmanRathoreSHD',
+      role: 'MR',
+      hq_name: 'Shahdol',
+      hq_code: 'SHD',
+      hq_id: 'HQ-SHD-001',
+      territory: 'Shahdol HQ Territory',
+      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
       bound_device_id: 'dev-hw-oneplus-71b4e0',
       bound_device_model: 'OnePlus 11 5G (CPH2449)',
     },
-    'pooja@ahtri.com': {
-      id: 'usr-mr-03',
-      name: 'Pooja Verma',
-      email: 'pooja@ahtri.com',
-      phone: '9876543214',
-      password: 'Password@123',
+    'aman.rathore@ahtri.com': {
+      id: 'usr-mr-02',
+      name: 'Aman Rathore',
+      email: 'aman.rathore@ahtri.com',
+      phone: '9876543213',
+      password: 'AmanRathoreSHD',
       role: 'MR',
-      bound_device_id: undefined, // Unbound - pairs with current phone on first login
+      hq_name: 'Shahdol',
+      hq_code: 'SHD',
+      hq_id: 'HQ-SHD-001',
+      territory: 'Shahdol HQ Territory',
+      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
+      bound_device_id: 'dev-hw-oneplus-71b4e0',
+      bound_device_model: 'OnePlus 11 5G (CPH2449)',
+    },
+    'hq-shd-001': {
+      id: 'usr-mr-02',
+      name: 'Aman Rathore',
+      email: 'aman.rathore@ahtri.com',
+      phone: '9876543213',
+      password: 'AmanRathoreSHD',
+      role: 'MR',
+      hq_name: 'Shahdol',
+      hq_code: 'SHD',
+      hq_id: 'HQ-SHD-001',
+      territory: 'Shahdol HQ Territory',
+      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
+      bound_device_id: 'dev-hw-oneplus-71b4e0',
+      bound_device_model: 'OnePlus 11 5G (CPH2449)',
+    },
+
+    // 3. Ashish Soni (Ambikapur - AMB - HQ-AMB-001)
+    'amb': {
+      id: 'usr-mr-03',
+      name: 'Ashish Soni',
+      email: 'ashish.soni@ahtri.com',
+      phone: '9876543214',
+      password: 'AshishSoniAMB',
+      role: 'MR',
+      hq_name: 'Ambikapur',
+      hq_code: 'AMB',
+      hq_id: 'HQ-AMB-001',
+      territory: 'Ambikapur HQ Territory',
+      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
+    },
+    'ashish.soni@ahtri.com': {
+      id: 'usr-mr-03',
+      name: 'Ashish Soni',
+      email: 'ashish.soni@ahtri.com',
+      phone: '9876543214',
+      password: 'AshishSoniAMB',
+      role: 'MR',
+      hq_name: 'Ambikapur',
+      hq_code: 'AMB',
+      hq_id: 'HQ-AMB-001',
+      territory: 'Ambikapur HQ Territory',
+      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
+    },
+    'hq-amb-001': {
+      id: 'usr-mr-03',
+      name: 'Ashish Soni',
+      email: 'ashish.soni@ahtri.com',
+      phone: '9876543214',
+      password: 'AshishSoniAMB',
+      role: 'MR',
+      hq_name: 'Ambikapur',
+      hq_code: 'AMB',
+      hq_id: 'HQ-AMB-001',
+      territory: 'Ambikapur HQ Territory',
+      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
     },
   };
 
@@ -193,14 +308,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
           // Direct login success on recognized device
           onLoginSuccess({
-            id: data.user?.id || 'usr-mr-01',
-            name: data.user?.name || 'Rahul Sharma',
+            id: data.user?.id || 'usr-mr-02',
+            name: data.user?.name || 'Aman Rathore',
             email: data.user?.email || cleanId,
             phone: data.user?.phone || phone,
             role: data.user?.role || 'MR',
             device_id: currentDeviceId,
             device_model: currentDeviceModel,
             token: data.access_token,
+            hq_name: data.user?.hq_name,
+            hq_code: data.user?.hq_code,
+            hq_id: data.user?.hq_id,
+            assigned_territory: data.user?.assigned_territory || data.user?.territory,
+            assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
           });
           setIsSubmitting(false);
           return;
@@ -241,6 +361,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         role: user.role,
         device_id: currentDeviceId,
         device_model: currentDeviceModel,
+        hq_name: user.hq_name,
+        hq_code: user.hq_code,
+        hq_id: user.hq_id,
+        assigned_territory: user.territory,
+        assigned_route_batches: user.assigned_route_batches,
       });
     } finally {
       setIsSubmitting(false);
@@ -279,14 +404,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           'Your phone has been approved by the Owner and verified. You will remain logged in until you log out.',
         );
         onLoginSuccess({
-          id: data.user?.id || 'usr-mr-01',
-          name: data.user?.name || 'Rahul Sharma',
+          id: data.user?.id || 'usr-mr-02',
+          name: data.user?.name || 'Aman Rathore',
           email: data.user?.email || identifier,
           phone: data.user?.phone || phone,
           role: data.user?.role || 'MR',
           device_id: currentDeviceId,
           device_model: currentDeviceModel,
           token: data.access_token,
+          hq_name: data.user?.hq_name,
+          hq_code: data.user?.hq_code,
+          hq_id: data.user?.hq_id,
+          assigned_territory: data.user?.assigned_territory || data.user?.territory,
+          assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
         });
       } else {
         setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Shivansh Tiwari (Owner).');
@@ -295,14 +425,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       // Offline simulation verify
       await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
       Alert.alert('Device Authorized (Offline Mode)', 'Device linked successfully.');
+      const fallbackUser = registeredMRs[identifier.trim().toLowerCase()] || registeredMRs['shd'];
       onLoginSuccess({
-        id: 'usr-mr-01',
-        name: 'Rahul Sharma',
-        email: identifier,
-        phone: phone,
+        id: fallbackUser.id,
+        name: fallbackUser.name,
+        email: fallbackUser.email,
+        phone: fallbackUser.phone,
         role: 'MR',
         device_id: currentDeviceId,
         device_model: currentDeviceModel,
+        hq_name: fallbackUser.hq_name,
+        hq_code: fallbackUser.hq_code,
+        hq_id: fallbackUser.hq_id,
+        assigned_territory: fallbackUser.territory,
+        assigned_route_batches: fallbackUser.assigned_route_batches,
       });
     } finally {
       setIsSubmitting(false);
@@ -430,13 +566,84 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       {/* Login Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Representative Login</Text>
+        <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 12 }}>
+          Sign in using your assigned HQ Code, HQ ID, email, or mobile number.
+        </Text>
+
+        {/* Quick MR Select Chips */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
+            QUICK ACCESS ACCOUNTS:
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            <TouchableOpacity
+              onPress={() => {
+                setIdentifier('SHD');
+                setPassword('AmanRathoreSHD');
+                setPhone('9876543213');
+              }}
+              style={{
+                backgroundColor: identifier.toUpperCase() === 'SHD' ? '#EFF6FF' : '#F1F5F9',
+                borderColor: identifier.toUpperCase() === 'SHD' ? '#3B82F6' : '#CBD5E1',
+                borderWidth: 1,
+                paddingVertical: 5,
+                paddingHorizontal: 8,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'SHD' ? '#1D4ED8' : '#334155' }}>
+                Aman Rathore (SHD)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setIdentifier('KOT');
+                setPassword('AmarDwivediKOT');
+                setPhone('9876543212');
+              }}
+              style={{
+                backgroundColor: identifier.toUpperCase() === 'KOT' ? '#EFF6FF' : '#F1F5F9',
+                borderColor: identifier.toUpperCase() === 'KOT' ? '#3B82F6' : '#CBD5E1',
+                borderWidth: 1,
+                paddingVertical: 5,
+                paddingHorizontal: 8,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'KOT' ? '#1D4ED8' : '#334155' }}>
+                Amar Dwivedi (KOT)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setIdentifier('AMB');
+                setPassword('AshishSoniAMB');
+                setPhone('9876543214');
+              }}
+              style={{
+                backgroundColor: identifier.toUpperCase() === 'AMB' ? '#EFF6FF' : '#F1F5F9',
+                borderColor: identifier.toUpperCase() === 'AMB' ? '#3B82F6' : '#CBD5E1',
+                borderWidth: 1,
+                paddingVertical: 5,
+                paddingHorizontal: 8,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'AMB' ? '#1D4ED8' : '#334155' }}>
+                Ashish Soni (AMB)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Identifier */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Login ID / Email</Text>
+          <Text style={styles.inputLabel}>Login Identifier (HQ Code / HQ ID / Email)</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. mr@ahtri.com"
+            placeholder="e.g. SHD, KOT, AMB, or HQ-SHD-001"
             value={identifier}
             onChangeText={setIdentifier}
             autoCapitalize="none"
@@ -448,7 +655,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <Text style={styles.inputLabel}>Assigned Phone Number</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. 9876543212"
+            placeholder="e.g. 9876543213"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"

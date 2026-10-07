@@ -41,3 +41,60 @@ export class AssignAreaMrDto {
   @IsNotEmpty()
   mr_user_id: string;
 }
+
+export class CreateRouteBatchDto {
+  @IsString()
+  @IsNotEmpty()
+  batch_code: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  hq_id: string;
+
+  @IsString()
+  @IsOptional()
+  hq_code?: string;
+
+  @IsString()
+  @IsOptional()
+  mr_id?: string;
+
+  @IsString()
+  @IsOptional()
+  territory_name?: string;
+
+  @IsOptional()
+  areas?: string[];
+
+  @IsOptional()
+  distance_km?: number;
+
+  @IsOptional()
+  standard_reimbursement_rate?: number;
+}
+
+export class UpdateRouteBatchDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  mr_id?: string;
+
+  @IsOptional()
+  areas?: string[];
+
+  @IsOptional()
+  distance_km?: number;
+
+  @IsOptional()
+  standard_reimbursement_rate?: number;
+
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE';
+}

@@ -37,16 +37,27 @@ export class TourPlansService {
       (tp) => tp.mr_id === userId && tp.month === dto.month,
     );
 
-    const items: MonthlyTpItem[] = dto.entries.map((e) => ({
-      id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
-      date: e.date,
-      hq_id: e.hq_id,
-      hq_name: e.hq_name,
-      planned_area: e.planned_area,
-      work_type: e.work_type,
-      planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
-      planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
-    }));
+    const items: MonthlyTpItem[] = dto.entries.map((e) => {
+      let effectiveHqId = user.hq_id || e.hq_id;
+      let effectiveHqName = user.hq_name || e.hq_name;
+      if (effectiveHqId) {
+        const foundHq = this.db.findHeadquarter(effectiveHqId);
+        if (foundHq) {
+          effectiveHqId = foundHq.hq_id;
+          effectiveHqName = foundHq.name;
+        }
+      }
+      return {
+        id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
+        date: e.date,
+        hq_id: effectiveHqId,
+        hq_name: effectiveHqName,
+        planned_area: e.planned_area,
+        work_type: e.work_type,
+        planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
+        planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
+      };
+    });
 
     if (existing) {
       existing.entries = items;
@@ -97,11 +108,21 @@ export class TourPlansService {
       (tp) => tp.mr_id === userId && tp.month === month,
     );
 
+    let effectiveHqId = user.hq_id || dto.hq_id;
+    let effectiveHqName = user.hq_name || dto.hq_name;
+    if (effectiveHqId) {
+      const foundHq = this.db.findHeadquarter(effectiveHqId);
+      if (foundHq) {
+        effectiveHqId = foundHq.hq_id;
+        effectiveHqName = foundHq.name;
+      }
+    }
+
     const newItem: MonthlyTpItem = {
       id: dto.id || `tp-item-${uuidv4().substring(0, 8)}`,
       date: dto.date,
-      hq_id: dto.hq_id,
-      hq_name: dto.hq_name,
+      hq_id: effectiveHqId,
+      hq_name: effectiveHqName,
       planned_area: dto.planned_area,
       work_type: dto.work_type,
       planned_kol_drs: dto.planned_kol_drs?.trim() || 'General Field Coverage',

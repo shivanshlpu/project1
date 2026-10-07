@@ -41,6 +41,13 @@ export interface User {
   email: string;
   password_hash: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'MR';
+  hq_id?: string;
+  hq_code?: string;
+  hq_name?: string;
+  territory?: string;
+  assigned_territory?: string;
+  route_batches?: string[];
+  assigned_route_batches?: string[];
   zone_id?: string;
   region_id?: string;
   area_id?: string;
@@ -243,6 +250,10 @@ export interface Expense {
   receipt_file_key?: string;
   ocr_extracted_amount?: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  hq_id?: string;
+  hq_code?: string;
+  route_batch_id?: string;
+  distance_km?: number;
   created_at: string;
 }
 
@@ -331,9 +342,29 @@ export interface DeviceAuthorizationRequest {
 
 export interface Headquarter {
   id: string;
+  hq_id: string;
   name: string;
   code: string;
+  hq_code: string;
+  legacy_id?: string;
   state?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+}
+
+export interface RouteBatch {
+  id: string;
+  batch_code: string;
+  name: string;
+  hq_id: string;
+  hq_code: string;
+  hq_name: string;
+  mr_id?: string;
+  mr_name?: string;
+  territory_name?: string;
+  areas: string[];
+  distance_km: number;
+  standard_reimbursement_rate?: number;
   status: 'ACTIVE' | 'INACTIVE';
   created_at: string;
 }

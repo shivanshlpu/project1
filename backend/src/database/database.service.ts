@@ -40,6 +40,7 @@ import {
   Competition,
   RewardClaim,
   MonthlyStockEntry,
+  RouteBatch,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
 
@@ -81,6 +82,7 @@ export class DatabaseService implements OnModuleInit {
 
   // Enhancement collections
   public headquarters: Headquarter[] = [];
+  public routeBatches: RouteBatch[] = [];
   public hqAreas: HqArea[] = [];
   public stockers: Stocker[] = [];
   public medicines: Medicine[] = [];
@@ -266,8 +268,8 @@ export class DatabaseService implements OnModuleInit {
       }
     }
 
-    // Employee Zone Data Correction
-    // Normalize any legacy employee records to 'Shahdol & Central Division'
+    // Employee Zone & HQ Data Normalization
+    // Normalize any legacy employee records to 'Shahdol & Central Division' and stable HQ IDs
     for (const u of this.users) {
       if (
         u.zone_id === 'zone-north-1' ||
@@ -280,7 +282,49 @@ export class DatabaseService implements OnModuleInit {
         (u as any).zone = 'Shahdol & Central Division';
         (u as any).zone_name = 'Shahdol & Central Division';
       }
+      // Populate HQ codes/IDs if missing
+      if (u.hq_id === 'hq-kotma' || (u.hq_name === 'Kotma' && !u.hq_id)) {
+        u.hq_id = 'HQ-KOT-001';
+        u.hq_code = 'KOT';
+        u.hq_name = 'Kotma';
+      } else if (u.hq_id === 'hq-shahdol' || (u.hq_name === 'Shahdol' && !u.hq_id)) {
+        u.hq_id = 'HQ-SHD-001';
+        u.hq_code = 'SHD';
+        u.hq_name = 'Shahdol';
+      } else if (u.hq_id === 'hq-ambikapur' || (u.hq_name === 'Ambikapur' && !u.hq_id)) {
+        u.hq_id = 'HQ-AMB-001';
+        u.hq_code = 'AMB';
+        u.hq_name = 'Ambikapur';
+      }
     }
+
+    // Normalize stored tasks and attendance HQ IDs to stable HQ IDs
+    for (const t of this.tasks) {
+      if (t.hq_id === 'hq-shahdol') t.hq_id = 'HQ-SHD-001';
+      else if (t.hq_id === 'hq-kotma' || t.hq_id === 'HQ-KTM') t.hq_id = 'HQ-KOT-001';
+      else if (t.hq_id === 'hq-ambikapur') t.hq_id = 'HQ-AMB-001';
+      else if (t.hq_id === 'hq-bilaspur') t.hq_id = 'HQ-BSP-001';
+    }
+    for (const a of this.attendance) {
+      if (a.hq_id === 'hq-shahdol') a.hq_id = 'HQ-SHD-001';
+      else if (a.hq_id === 'hq-kotma' || a.hq_id === 'HQ-KTM') a.hq_id = 'HQ-KOT-001';
+      else if (a.hq_id === 'hq-ambikapur') a.hq_id = 'HQ-AMB-001';
+      else if (a.hq_id === 'hq-bilaspur') a.hq_id = 'HQ-BSP-001';
+    }
+  }
+
+  public findHeadquarter(identifier: string): Headquarter | undefined {
+    if (!identifier) return undefined;
+    const clean = identifier.trim().toLowerCase();
+    return this.headquarters.find(
+      (h) =>
+        h.id.toLowerCase() === clean ||
+        h.hq_id.toLowerCase() === clean ||
+        h.code.toLowerCase() === clean ||
+        (h.hq_code && h.hq_code.toLowerCase() === clean) ||
+        (h.legacy_id && h.legacy_id.toLowerCase() === clean) ||
+        h.name.toLowerCase() === clean,
+    );
   }
 
   public async syncTaskToSupabase(task: any) {
@@ -427,12 +471,23 @@ export class DatabaseService implements OnModuleInit {
     const regionId = 'reg-shd-1';
     this.regions.push({ id: regionId, zone_id: zoneId, name: 'Shahdol Operational Region' });
 
-    const areaId = 'area-shd-1';
-    this.areas.push({ id: areaId, region_id: regionId, name: 'Shahdol HQ Territory' });
+    const areaKotmaId = 'area-ktm-1';
+    const areaShahdolId = 'area-shd-1';
+    const areaAmbikapurId = 'area-amb-1';
+    this.areas.push(
+      { id: areaKotmaId, region_id: regionId, name: 'Kotma HQ Territory' },
+      { id: areaShahdolId, region_id: regionId, name: 'Shahdol HQ Territory' },
+      { id: areaAmbikapurId, region_id: regionId, name: 'Ambikapur HQ Territory' },
+    );
 
     // 3. Seed Users
     const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
     const shivanshPasswordHash = await bcrypt.hash('87654321', 10);
+
+    // Generate secure password hashes server-side for initial MR credentials
+    const amarPasswordHash = await bcrypt.hash('AmarDwivediKOT', 10);
+    const amanPasswordHash = await bcrypt.hash('AmanRathoreSHD', 10);
+    const ashishPasswordHash = await bcrypt.hash('AshishSoniAMB', 10);
 
     // Primary Super Admin: Shivansh Tiwari (Requested ID: shivanshti10@gmail.com, Mobile: 9009149694)
     const shivanshAdmin: User = {
@@ -468,68 +523,92 @@ export class DatabaseService implements OnModuleInit {
       role: 'MANAGER',
       zone_id: zoneId,
       region_id: regionId,
-      area_id: areaId,
+      area_id: areaShahdolId,
       status: 'ACTIVE',
       biometric_enabled: false,
       created_at: new Date().toISOString(),
     };
 
-    const mr: User = {
+    // 1. MR: Amar Dwivedi | HQ: Kotma | HQ Code: KOT | HQ ID: HQ-KOT-001 | Default Pwd: AmarDwivediKOT
+    const mr1: User = {
       id: 'usr-mr-01',
-      name: 'Rahul Sharma (Field MR)',
+      name: 'Amar Dwivedi',
       phone: '9876543212',
-      email: 'mr@ahtri.com',
-      password_hash: defaultPasswordHash,
+      email: 'amar@ahtri.com',
+      password_hash: amarPasswordHash,
       role: 'MR',
       zone_id: zoneId,
       region_id: regionId,
-      area_id: areaId,
+      area_id: areaKotmaId,
+      hq_id: 'HQ-KOT-001',
+      hq_code: 'KOT',
+      hq_name: 'Kotma',
+      territory: 'Kotma HQ Territory',
+      assigned_territory: 'Kotma HQ Territory',
+      route_batches: ['RB-KOT-01', 'RB-KOT-02'],
+      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
+    // 2. MR: Aman Rathore | HQ: Shahdol | HQ Code: SHD | HQ ID: HQ-SHD-001 | Default Pwd: AmanRathoreSHD
     const mr2: User = {
       id: 'usr-mr-02',
-      name: 'Vikram Malhotra',
+      name: 'Aman Rathore',
       phone: '9876543213',
-      email: 'vikram@ahtri.com',
-      password_hash: defaultPasswordHash,
+      email: 'aman@ahtri.com',
+      password_hash: amanPasswordHash,
       role: 'MR',
       zone_id: zoneId,
       region_id: regionId,
-      area_id: areaId,
+      area_id: areaShahdolId,
+      hq_id: 'HQ-SHD-001',
+      hq_code: 'SHD',
+      hq_name: 'Shahdol',
+      territory: 'Shahdol HQ Territory',
+      assigned_territory: 'Shahdol HQ Territory',
+      route_batches: ['RB-SHD-01', 'RB-SHD-02'],
+      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
+    // 3. MR: Ashish Soni | HQ: Ambikapur | HQ Code: AMB | HQ ID: HQ-AMB-001 | Default Pwd: AshishSoniAMB
     const mr3: User = {
       id: 'usr-mr-03',
-      name: 'Pooja Verma',
+      name: 'Ashish Soni',
       phone: '9876543214',
-      email: 'pooja@ahtri.com',
-      password_hash: defaultPasswordHash,
+      email: 'ashish@ahtri.com',
+      password_hash: ashishPasswordHash,
       role: 'MR',
       zone_id: zoneId,
       region_id: regionId,
-      area_id: areaId,
+      area_id: areaAmbikapurId,
+      hq_id: 'HQ-AMB-001',
+      hq_code: 'AMB',
+      hq_name: 'Ambikapur',
+      territory: 'Ambikapur HQ Territory',
+      assigned_territory: 'Ambikapur HQ Territory',
+      route_batches: ['RB-AMB-01', 'RB-AMB-02'],
+      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
-    this.users.push(shivanshAdmin, superAdmin, manager, mr, mr2, mr3);
+    this.users.push(shivanshAdmin, superAdmin, manager, mr1, mr2, mr3);
 
-    // Territory link
-    this.territories.push({
-      id: 'terr-01',
-      area_id: areaId,
-      mr_user_id: mr.id,
-    });
+    // Territory links
+    this.territories.push(
+      { id: 'terr-01', area_id: areaKotmaId, mr_user_id: mr1.id },
+      { id: 'terr-02', area_id: areaShahdolId, mr_user_id: mr2.id },
+      { id: 'terr-03', area_id: areaAmbikapurId, mr_user_id: mr3.id },
+    );
 
     // 4. Doctors / Healthcare Points of Care
     const doc1: Doctor = {
@@ -545,9 +624,9 @@ export class DatabaseService implements OnModuleInit {
       address: 'Hospital Road, Bicharpur, Shahdol, MP',
       latitude: 23.2953,
       longitude: 81.3586,
-      area_id: areaId,
-      assigned_mr_id: mr.id,
-      assigned_mr_name: mr.name,
+      area_id: areaShahdolId,
+      assigned_mr_id: mr2.id,
+      assigned_mr_name: mr2.name,
       created_by: manager.id,
       created_at: new Date().toISOString(),
     };
@@ -564,9 +643,9 @@ export class DatabaseService implements OnModuleInit {
       address: 'Station Road, Shahdol, MP',
       latitude: 23.3012,
       longitude: 81.3620,
-      area_id: areaId,
-      assigned_mr_id: mr.id,
-      assigned_mr_name: mr.name,
+      area_id: areaShahdolId,
+      assigned_mr_id: mr2.id,
+      assigned_mr_name: mr2.name,
       created_by: manager.id,
       created_at: new Date().toISOString(),
     };
@@ -584,7 +663,7 @@ export class DatabaseService implements OnModuleInit {
       address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
       latitude: 23.1197,
       longitude: 83.1979,
-      area_id: areaId,
+      area_id: areaAmbikapurId,
       assigned_mr_id: mr3.id,
       assigned_mr_name: mr3.name,
       created_by: manager.id,
@@ -603,7 +682,7 @@ export class DatabaseService implements OnModuleInit {
       address: 'Vyapar Vihar, Bilaspur, Chhattisgarh',
       latitude: 22.0797,
       longitude: 82.1409,
-      area_id: areaId,
+      area_id: areaAmbikapurId,
       assigned_mr_id: mr3.id,
       assigned_mr_name: mr3.name,
       created_by: manager.id,
@@ -622,9 +701,9 @@ export class DatabaseService implements OnModuleInit {
       address: 'Main Road, Kotma, Madhya Pradesh',
       latitude: 23.2035,
       longitude: 81.9669,
-      area_id: areaId,
-      assigned_mr_id: mr2.id,
-      assigned_mr_name: mr2.name,
+      area_id: areaKotmaId,
+      assigned_mr_id: mr1.id,
+      assigned_mr_name: mr1.name,
       created_by: manager.id,
       created_at: new Date().toISOString(),
     };
@@ -644,7 +723,7 @@ export class DatabaseService implements OnModuleInit {
     // 8. Seed Initial Leave Quotas
     this.leaveQuotas.push(
       {
-        mr_id: mr.id,
+        mr_id: mr1.id,
         casual_total: 12,
         sick_total: 10,
         earned_total: 15,
@@ -669,45 +748,64 @@ export class DatabaseService implements OnModuleInit {
     // 9. Attendance starts completely empty - only real employee mobile punches are recorded
     this.attendance = [];
 
-    // 10. Seed Headquarters (§6 & §10)
-    const hqShahdol: Headquarter = {
-      id: 'hq-shahdol',
-      name: 'Shahdol',
-      code: 'HQ-SHD',
-      state: 'Madhya Pradesh',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const hqAmbikapur: Headquarter = {
-      id: 'hq-ambikapur',
-      name: 'Ambikapur',
-      code: 'HQ-AMB',
-      state: 'Chhattisgarh',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const hqBilaspur: Headquarter = {
-      id: 'hq-bilaspur',
-      name: 'Bilaspur',
-      code: 'HQ-BSP',
-      state: 'Chhattisgarh',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
+    // 10. Seed Headquarters Master Data (§6 & §10)
+    // 1. Kotma (HQ ID: HQ-KOT-001, HQ Code: KOT)
     const hqKotma: Headquarter = {
-      id: 'hq-kotma',
+      id: 'HQ-KOT-001',
+      hq_id: 'HQ-KOT-001',
       name: 'Kotma',
-      code: 'HQ-KTM',
+      code: 'KOT',
+      hq_code: 'KOT',
+      legacy_id: 'hq-kotma',
       state: 'Madhya Pradesh',
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
 
+    // 2. Shahdol (HQ ID: HQ-SHD-001, HQ Code: SHD)
+    const hqShahdol: Headquarter = {
+      id: 'HQ-SHD-001',
+      hq_id: 'HQ-SHD-001',
+      name: 'Shahdol',
+      code: 'SHD',
+      hq_code: 'SHD',
+      legacy_id: 'hq-shahdol',
+      state: 'Madhya Pradesh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
+    // 3. Ambikapur (HQ ID: HQ-AMB-001, HQ Code: AMB)
+    const hqAmbikapur: Headquarter = {
+      id: 'HQ-AMB-001',
+      hq_id: 'HQ-AMB-001',
+      name: 'Ambikapur',
+      code: 'AMB',
+      hq_code: 'AMB',
+      legacy_id: 'hq-ambikapur',
+      state: 'Chhattisgarh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
+    // 4. Bilaspur (HQ ID: HQ-BSP-001, HQ Code: BSP)
+    const hqBilaspur: Headquarter = {
+      id: 'HQ-BSP-001',
+      hq_id: 'HQ-BSP-001',
+      name: 'Bilaspur',
+      code: 'BSP',
+      hq_code: 'BSP',
+      legacy_id: 'hq-bilaspur',
+      state: 'Chhattisgarh',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
     this.headquarters.push(
+      hqKotma,
       hqShahdol,
       hqAmbikapur,
       hqBilaspur,
-      hqKotma,
     );
 
     // 11. Seed HQ Areas (Mapped strictly per HQ)
@@ -849,7 +947,107 @@ export class DatabaseService implements OnModuleInit {
     };
     this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
 
-    // 13. Seed Medicines Master (§11)
+    // 13. Seed Route Batches (Mapped strictly per MR & HQ ID)
+    this.routeBatches = [
+      {
+        id: 'rb-kot-01',
+        batch_code: 'RB-KOT-01',
+        name: 'Kotma - Anuppur - Bijuri Circuit',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        areas: ['Kotma Town', 'Anuppur', 'Bijuri'],
+        distance_km: 48,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-02',
+        batch_code: 'RB-KOT-02',
+        name: 'Kotma - Jaithari - Rajendragram Circuit',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        areas: ['Jaithari', 'Rajendragram', 'Bhalumuda'],
+        distance_km: 64,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-shd-01',
+        batch_code: 'RB-SHD-01',
+        name: 'Shahdol - Burhar - Dhanpuri Circuit',
+        hq_id: hqShahdol.hq_id,
+        hq_code: hqShahdol.code,
+        hq_name: hqShahdol.name,
+        mr_id: mr2.id,
+        mr_name: mr2.name,
+        territory_name: 'Shahdol HQ Territory',
+        areas: ['Burhar', 'Dhanpuri', 'Amlai'],
+        distance_km: 42,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-shd-02',
+        batch_code: 'RB-SHD-02',
+        name: 'Shahdol - Gohparu - Beohari Circuit',
+        hq_id: hqShahdol.hq_id,
+        hq_code: hqShahdol.code,
+        hq_name: hqShahdol.name,
+        mr_id: mr2.id,
+        mr_name: mr2.name,
+        territory_name: 'Shahdol HQ Territory',
+        areas: ['Gohparu', 'Beohari', 'Jaisinghnagar'],
+        distance_km: 86,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-amb-01',
+        batch_code: 'RB-AMB-01',
+        name: 'Ambikapur - Sitapur - Lundra Circuit',
+        hq_id: hqAmbikapur.hq_id,
+        hq_code: hqAmbikapur.code,
+        hq_name: hqAmbikapur.name,
+        mr_id: mr3.id,
+        mr_name: mr3.name,
+        territory_name: 'Ambikapur HQ Territory',
+        areas: ['Sitapur', 'Lundra', 'Batoli'],
+        distance_km: 55,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-amb-02',
+        batch_code: 'RB-AMB-02',
+        name: 'Ambikapur - Mainpat - Udaipur Circuit',
+        hq_id: hqAmbikapur.hq_id,
+        hq_code: hqAmbikapur.code,
+        hq_name: hqAmbikapur.name,
+        mr_id: mr3.id,
+        mr_name: mr3.name,
+        territory_name: 'Ambikapur HQ Territory',
+        areas: ['Mainpat', 'Udaipur', 'Lakhanpur', 'Surguja'],
+        distance_km: 74,
+        standard_reimbursement_rate: 10,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    // 14. Seed Medicines Master (§11)
     const med1: Medicine = {
       id: 'med-01',
       name: 'CardioFix-50 (Telmisartan 40mg)',
@@ -995,8 +1193,8 @@ export class DatabaseService implements OnModuleInit {
     // 16. Seed a sample submitted Monthly Tour Plan (§5-8)
     this.monthlyTourPlans.push({
       id: 'mtp-01',
-      mr_id: mr.id,
-      mr_name: mr.name,
+      mr_id: mr2.id,
+      mr_name: mr2.name,
       month: '2026-09',
       status: 'APPROVED',
       submitted_at: new Date(Date.now() - 30 * 86400000).toISOString(),
@@ -1036,8 +1234,8 @@ export class DatabaseService implements OnModuleInit {
 
     this.monthlyTourPlans.push({
       id: 'mtp-02',
-      mr_id: mr.id,
-      mr_name: mr.name,
+      mr_id: mr2.id,
+      mr_name: mr2.name,
       month: '2026-10',
       status: 'SUBMITTED',
       submitted_at: new Date().toISOString(),

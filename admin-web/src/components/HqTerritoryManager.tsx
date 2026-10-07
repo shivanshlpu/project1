@@ -22,6 +22,8 @@ export interface HeadquarterItem {
   code: string;
   state: string;
   status: 'ACTIVE' | 'INACTIVE';
+  hq_id?: string;
+  hq_code?: string;
 }
 
 export interface SubAreaItem {
@@ -32,55 +34,55 @@ export interface SubAreaItem {
 }
 
 export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [
-  { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh', status: 'ACTIVE' },
-  { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh', status: 'ACTIVE' },
-  { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh', status: 'ACTIVE' },
-  { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh', status: 'ACTIVE' },
+  { id: 'HQ-SHD-001', name: 'Shahdol', code: 'SHD', state: 'Madhya Pradesh', status: 'ACTIVE', hq_id: 'HQ-SHD-001', hq_code: 'SHD' },
+  { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT', state: 'Madhya Pradesh', status: 'ACTIVE', hq_id: 'HQ-KOT-001', hq_code: 'KOT' },
+  { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'AMB', state: 'Chhattisgarh', status: 'ACTIVE', hq_id: 'HQ-AMB-001', hq_code: 'AMB' },
+  { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'BSP', state: 'Chhattisgarh', status: 'ACTIVE', hq_id: 'HQ-BSP-001', hq_code: 'BSP' },
 ];
 
 export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   // Shahdol District Sub-Areas & Villages
-  { id: 'area-shd-01', hq_id: 'hq-shahdol', name: 'Burhar', status: 'ACTIVE' },
-  { id: 'area-shd-02', hq_id: 'hq-shahdol', name: 'Gohparu', status: 'ACTIVE' },
-  { id: 'area-shd-03', hq_id: 'hq-shahdol', name: 'Beohari', status: 'ACTIVE' },
-  { id: 'area-shd-04', hq_id: 'hq-shahdol', name: 'Jaisinghnagar', status: 'ACTIVE' },
-  { id: 'area-shd-05', hq_id: 'hq-shahdol', name: 'Sohagpur', status: 'ACTIVE' },
-  { id: 'area-shd-06', hq_id: 'hq-shahdol', name: 'Singhpur', status: 'ACTIVE' },
-  { id: 'area-shd-07', hq_id: 'hq-shahdol', name: 'Shahdol Central', status: 'ACTIVE' },
-  { id: 'area-shd-08', hq_id: 'hq-shahdol', name: 'Amdih', status: 'ACTIVE' },
-  { id: 'area-shd-09', hq_id: 'hq-shahdol', name: 'Janakpur Road', status: 'ACTIVE' },
-  { id: 'area-shd-10', hq_id: 'hq-shahdol', name: 'Dhanpuri', status: 'ACTIVE' },
-  { id: 'area-shd-11', hq_id: 'hq-shahdol', name: 'Amlai', status: 'ACTIVE' },
-  { id: 'area-shd-12', hq_id: 'hq-shahdol', name: 'Bakaho', status: 'ACTIVE' },
+  { id: 'area-shd-01', hq_id: 'HQ-SHD-001', name: 'Burhar', status: 'ACTIVE' },
+  { id: 'area-shd-02', hq_id: 'HQ-SHD-001', name: 'Gohparu', status: 'ACTIVE' },
+  { id: 'area-shd-03', hq_id: 'HQ-SHD-001', name: 'Beohari', status: 'ACTIVE' },
+  { id: 'area-shd-04', hq_id: 'HQ-SHD-001', name: 'Jaisinghnagar', status: 'ACTIVE' },
+  { id: 'area-shd-05', hq_id: 'HQ-SHD-001', name: 'Sohagpur', status: 'ACTIVE' },
+  { id: 'area-shd-06', hq_id: 'HQ-SHD-001', name: 'Singhpur', status: 'ACTIVE' },
+  { id: 'area-shd-07', hq_id: 'HQ-SHD-001', name: 'Shahdol Central', status: 'ACTIVE' },
+  { id: 'area-shd-08', hq_id: 'HQ-SHD-001', name: 'Amdih', status: 'ACTIVE' },
+  { id: 'area-shd-09', hq_id: 'HQ-SHD-001', name: 'Janakpur Road', status: 'ACTIVE' },
+  { id: 'area-shd-10', hq_id: 'HQ-SHD-001', name: 'Dhanpuri', status: 'ACTIVE' },
+  { id: 'area-shd-11', hq_id: 'HQ-SHD-001', name: 'Amlai', status: 'ACTIVE' },
+  { id: 'area-shd-12', hq_id: 'HQ-SHD-001', name: 'Bakaho', status: 'ACTIVE' },
 
   // Ambikapur District Sub-Areas & Villages
-  { id: 'area-amb-01', hq_id: 'hq-ambikapur', name: 'Sitapur', status: 'ACTIVE' },
-  { id: 'area-amb-02', hq_id: 'hq-ambikapur', name: 'Lundra', status: 'ACTIVE' },
-  { id: 'area-amb-03', hq_id: 'hq-ambikapur', name: 'Batoli', status: 'ACTIVE' },
-  { id: 'area-amb-04', hq_id: 'hq-ambikapur', name: 'Mainpat', status: 'ACTIVE' },
-  { id: 'area-amb-05', hq_id: 'hq-ambikapur', name: 'Udaipur', status: 'ACTIVE' },
-  { id: 'area-amb-06', hq_id: 'hq-ambikapur', name: 'Lakhanpur', status: 'ACTIVE' },
-  { id: 'area-amb-07', hq_id: 'hq-ambikapur', name: 'Surguja', status: 'ACTIVE' },
-  { id: 'area-amb-08', hq_id: 'hq-ambikapur', name: 'Ramanujganj', status: 'ACTIVE' },
-  { id: 'area-amb-09', hq_id: 'hq-ambikapur', name: 'Ambikapur Central', status: 'ACTIVE' },
+  { id: 'area-amb-01', hq_id: 'HQ-AMB-001', name: 'Sitapur', status: 'ACTIVE' },
+  { id: 'area-amb-02', hq_id: 'HQ-AMB-001', name: 'Lundra', status: 'ACTIVE' },
+  { id: 'area-amb-03', hq_id: 'HQ-AMB-001', name: 'Batoli', status: 'ACTIVE' },
+  { id: 'area-amb-04', hq_id: 'HQ-AMB-001', name: 'Mainpat', status: 'ACTIVE' },
+  { id: 'area-amb-05', hq_id: 'HQ-AMB-001', name: 'Udaipur', status: 'ACTIVE' },
+  { id: 'area-amb-06', hq_id: 'HQ-AMB-001', name: 'Lakhanpur', status: 'ACTIVE' },
+  { id: 'area-amb-07', hq_id: 'HQ-AMB-001', name: 'Surguja', status: 'ACTIVE' },
+  { id: 'area-amb-08', hq_id: 'HQ-AMB-001', name: 'Ramanujganj', status: 'ACTIVE' },
+  { id: 'area-amb-09', hq_id: 'HQ-AMB-001', name: 'Ambikapur Central', status: 'ACTIVE' },
 
   // Bilaspur District Sub-Areas & Villages
-  { id: 'area-bsp-01', hq_id: 'hq-bilaspur', name: 'Kota', status: 'ACTIVE' },
-  { id: 'area-bsp-02', hq_id: 'hq-bilaspur', name: 'Takhatpur', status: 'ACTIVE' },
-  { id: 'area-bsp-03', hq_id: 'hq-bilaspur', name: 'Masturi', status: 'ACTIVE' },
-  { id: 'area-bsp-04', hq_id: 'hq-bilaspur', name: 'Bilha', status: 'ACTIVE' },
-  { id: 'area-bsp-05', hq_id: 'hq-bilaspur', name: 'Ratanpur', status: 'ACTIVE' },
-  { id: 'area-bsp-06', hq_id: 'hq-bilaspur', name: 'Bodri', status: 'ACTIVE' },
-  { id: 'area-bsp-07', hq_id: 'hq-bilaspur', name: 'Sakri', status: 'ACTIVE' },
-  { id: 'area-bsp-08', hq_id: 'hq-bilaspur', name: 'Bilaspur City', status: 'ACTIVE' },
+  { id: 'area-bsp-01', hq_id: 'HQ-BSP-001', name: 'Kota', status: 'ACTIVE' },
+  { id: 'area-bsp-02', hq_id: 'HQ-BSP-001', name: 'Takhatpur', status: 'ACTIVE' },
+  { id: 'area-bsp-03', hq_id: 'HQ-BSP-001', name: 'Masturi', status: 'ACTIVE' },
+  { id: 'area-bsp-04', hq_id: 'HQ-BSP-001', name: 'Bilha', status: 'ACTIVE' },
+  { id: 'area-bsp-05', hq_id: 'HQ-BSP-001', name: 'Ratanpur', status: 'ACTIVE' },
+  { id: 'area-bsp-06', hq_id: 'HQ-BSP-001', name: 'Bodri', status: 'ACTIVE' },
+  { id: 'area-bsp-07', hq_id: 'HQ-BSP-001', name: 'Sakri', status: 'ACTIVE' },
+  { id: 'area-bsp-08', hq_id: 'HQ-BSP-001', name: 'Bilaspur City', status: 'ACTIVE' },
 
   // Kotma Sub-Areas & Villages
-  { id: 'area-ktm-01', hq_id: 'hq-kotma', name: 'Kotma Town', status: 'ACTIVE' },
-  { id: 'area-ktm-02', hq_id: 'hq-kotma', name: 'Anuppur', status: 'ACTIVE' },
-  { id: 'area-ktm-03', hq_id: 'hq-kotma', name: 'Jaithari', status: 'ACTIVE' },
-  { id: 'area-ktm-04', hq_id: 'hq-kotma', name: 'Bijuri', status: 'ACTIVE' },
-  { id: 'area-ktm-05', hq_id: 'hq-kotma', name: 'Rajendragram', status: 'ACTIVE' },
-  { id: 'area-ktm-06', hq_id: 'hq-kotma', name: 'Bhalumuda', status: 'ACTIVE' },
+  { id: 'area-ktm-01', hq_id: 'HQ-KOT-001', name: 'Kotma Town', status: 'ACTIVE' },
+  { id: 'area-ktm-02', hq_id: 'HQ-KOT-001', name: 'Anuppur', status: 'ACTIVE' },
+  { id: 'area-ktm-03', hq_id: 'HQ-KOT-001', name: 'Jaithari', status: 'ACTIVE' },
+  { id: 'area-ktm-04', hq_id: 'HQ-KOT-001', name: 'Bijuri', status: 'ACTIVE' },
+  { id: 'area-ktm-05', hq_id: 'HQ-KOT-001', name: 'Rajendragram', status: 'ACTIVE' },
+  { id: 'area-ktm-06', hq_id: 'HQ-KOT-001', name: 'Bhalumuda', status: 'ACTIVE' },
 ];
 
 export const HqTerritoryManager: React.FC = () => {
@@ -196,12 +198,16 @@ export const HqTerritoryManager: React.FC = () => {
           DEFAULT_MANAGED_HQS.forEach((h) => map.set(h.id, h));
           hqs.forEach((h) => map.set(h.id, h));
           dataHqs.forEach((h: any) => {
-            map.set(h.id, {
-              id: h.id,
+            const hId = h.hq_id || h.id;
+            const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
+            map.set(hId, {
+              id: hId,
               name: h.name,
-              code: h.code || `HQ-${h.name.substring(0, 3).toUpperCase()}`,
+              code: hCode,
               state: h.state || '',
               status: h.status || 'ACTIVE',
+              hq_id: h.hq_id || hId,
+              hq_code: h.hq_code || hCode,
             });
           });
           const mergedHqs = Array.from(map.values());
@@ -241,23 +247,34 @@ export const HqTerritoryManager: React.FC = () => {
   }, []);
 
   // Selected HQ object
-  const activeHq = hqs.find((h) => h.id === selectedHqId) || hqs[0] || {
-    id: 'hq-shahdol',
+  const activeHq = hqs.find((h) => h.id === selectedHqId || h.hq_id === selectedHqId || h.code === selectedHqId) || hqs[0] || {
+    id: 'HQ-SHD-001',
     name: 'Shahdol',
-    code: 'HQ-SHD',
+    code: 'SHD',
     state: 'Madhya Pradesh',
     status: 'ACTIVE',
+    hq_id: 'HQ-SHD-001',
+    hq_code: 'SHD',
   };
 
   // Filtered HQs for left list
   const filteredHqs = hqs.filter((h) =>
     h.name.toLowerCase().includes(hqSearch.toLowerCase()) ||
     h.state.toLowerCase().includes(hqSearch.toLowerCase()) ||
-    h.code.toLowerCase().includes(hqSearch.toLowerCase())
+    h.code.toLowerCase().includes(hqSearch.toLowerCase()) ||
+    (h.hq_id && h.hq_id.toLowerCase().includes(hqSearch.toLowerCase()))
   );
 
   // Sub-areas belonging to the selected HQ
-  const hqSubAreas = areas.filter((a) => a.hq_id === activeHq.id);
+  const hqSubAreas = areas.filter((a) =>
+    a.hq_id === activeHq.id ||
+    a.hq_id === activeHq.code ||
+    (activeHq.name && a.hq_id.toLowerCase().includes(activeHq.name.toLowerCase())) ||
+    (activeHq.id === 'HQ-SHD-001' && a.hq_id === 'hq-shahdol') ||
+    (activeHq.id === 'HQ-KOT-001' && a.hq_id === 'hq-kotma') ||
+    (activeHq.id === 'HQ-AMB-001' && a.hq_id === 'hq-ambikapur') ||
+    (activeHq.id === 'HQ-BSP-001' && a.hq_id === 'hq-bilaspur')
+  );
 
   // Filtered sub-areas for right list
   const filteredSubAreas = hqSubAreas.filter((a) =>
