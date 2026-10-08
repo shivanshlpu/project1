@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const BUILD_ID = '89803a52-339c-41d5-a846-964343c40488';
+const BUILD_ID = '410a89e3-e20b-40bc-9c33-113ab8946548';
 const ROOT_DIR = path.resolve(__dirname, '..');
 const BACKEND_DATA_DIR = path.join(ROOT_DIR, 'backend', 'data');
 const BACKEND_DATA_FILE = path.join(BACKEND_DATA_DIR, 'app_version.json');
@@ -73,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.13',
-        latestVersionCode: 14,
+        latestVersion: '1.0.15',
+        latestVersionCode: 16,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -83,10 +83,10 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
-          'Purged deleted Admin tasks from mobile app & local cache synchronization',
-          'Strict Owner 6-Digit OTP verification enforcement on login after employee logout',
-          'Dynamic HQ-driven territory coverage and clean map view without clutter',
-          'Instant offline-to-online task status reconciliation',
+          'Separate leave allocation per employee configured directly from Admin Panel',
+          'Instant reflection in Employee ID & dynamic real-time leave quota sync',
+          'Complete Field Orders workflow with HQ-specific assignment & delivery confirmation',
+          'Enhanced device hardware authorization & security',
         ],
       };
 
@@ -102,6 +102,14 @@ async function checkBuild() {
             /process\.env\.APP_APK_URL \|\|\r?\n\s*'[^']*'/,
             `process.env.APP_APK_URL ||\n    '${downloadUrl}'`
           );
+          controllerContent = controllerContent.replace(
+            /latestVersion:\s*process\.env\.LATEST_APP_VERSION \|\|\s*'[^']*'/,
+            `latestVersion: process.env.LATEST_APP_VERSION || '1.0.15'`
+          );
+          controllerContent = controllerContent.replace(
+            /latestVersionCode:\s*parseInt\(process\.env\.LATEST_VERSION_CODE \|\|\s*'[^']*',\s*10\)/,
+            `latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '16', 10)`
+          );
           fs.writeFileSync(controllerPath, controllerContent, 'utf-8');
           console.log(`[AutoAPK] Updated backend/src/app.controller.ts default APK url.`);
         } catch (cErr) {
@@ -114,6 +122,14 @@ async function checkBuild() {
       if (fs.existsSync(settingsPath)) {
         try {
           let settingsContent = fs.readFileSync(settingsPath, 'utf-8');
+          settingsContent = settingsContent.replace(
+            /latestVersion:\s*'[^']+'/,
+            `latestVersion: '1.0.15'`
+          );
+          settingsContent = settingsContent.replace(
+            /latestVersionCode:\s*\d+/,
+            `latestVersionCode: 16`
+          );
           settingsContent = settingsContent.replace(
             /downloadUrl:\s*'https:\/\/expo\.dev\/artifacts\/eas\/[^']+\.apk'/,
             `downloadUrl: '${downloadUrl}'`
@@ -130,12 +146,12 @@ async function checkBuild() {
       }
 
       // 2. Write LATEST_APK_INFO.md in workspace root
-      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.13 - Task Sync & Logout Re-auth OTP Security)
+      const infoMd = `# Latest AHTRI FFA Mobile APK Build (Version 1.0.15 - Leave Quota Sync & Orders Workflow)
 
 - **Build ID**: \`${BUILD_ID}\`
-- **Version**: \`v1.0.13\` (Version Code \`14\`)
+- **Version**: \`v1.0.15\` (Version Code \`16\`)
 - **Branding**: Official AHTRI BIOTECH App Logo & Enterprise Palette
-- **Git Commit**: \`${buildData.gitCommitHash || 'b85bfb736751'}\`
+- **Git Commit**: \`${buildData.gitCommitHash || '06699e1'}\`
 - **Build Completed At**: \`${new Date().toISOString()}\`
 - **Direct Expo Download Link**: [Download APK](${downloadUrl})
 - **Universal Permanent Redirect Link**: [https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)
@@ -143,40 +159,47 @@ async function checkBuild() {
 
 ---
 
-### What's New in Version 1.0.13:
-1. **Task Sync & Deleted Task Purge**: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage.
-2. **Logout Re-auth Security**: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard.
-3. **Dynamic Territory HQ**: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers.
+### What's New in Version 1.0.15:
+1. **Separate Leave Allocation per Employee**: Admin allocates leave allowances (Casual, Sick, Earned) for each employee separately from the admin panel with instant reflection on employee ID.
+2. **Real-time Live Sync**: Whenever admin updates quotas or grants approved leaves, employee mobile app updates automatically in real-time with manual 1-tap Sync button.
+3. **Field Orders & Delivery Workflow**: Orders list with product details, employee delivery confirmation, and HQ-specific acceptance before inventory deduction.
 
 ---
 
 ### Instructions for Employees:
 1. Open this link on your Android smartphone:
    **[https://ahtri-backend.onrender.com/download-apk](https://ahtri-backend.onrender.com/download-apk)**
-   *(or use the Direct Expo Download Link above)*
+   *(or direct link: [${downloadUrl}](${downloadUrl}))*
 2. The download will start immediately.
 3. Open the downloaded file to install/update the AHTRI FFA app with all the latest features!
 `;
       fs.writeFileSync(OUTPUT_INFO_FILE, infoMd, 'utf-8');
       console.log(`[AutoAPK] Written release info to ${OUTPUT_INFO_FILE}`);
 
-      // 3. Ping live Render backend so in-memory state updates immediately
+      // 3. Ping local and live Render backend so OTA state updates immediately
+      const postData = JSON.stringify(versionPayload);
       try {
-        const postData = JSON.stringify(versionPayload);
-        const req = https.request('https://ahtri-backend.onrender.com/api/app/version', {
+        const fetch = globalThis.fetch || require('node-fetch');
+        await fetch('http://localhost:3000/api/app/version', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData),
-          },
-        }, (res) => {
-          console.log(`[AutoAPK] Notified live Render backend (status ${res.statusCode})`);
+          headers: { 'Content-Type': 'application/json' },
+          body: postData,
         });
-        req.on('error', (e) => console.warn('[AutoAPK] Render ping error:', e.message));
-        req.write(postData);
-        req.end();
+        console.log('[AutoAPK] Notified local backend (http://localhost:3000)');
+      } catch (lErr) {
+        console.warn('[AutoAPK] Local notify notice:', lErr.message);
+      }
+
+      try {
+        const fetch = globalThis.fetch || require('node-fetch');
+        await fetch('https://ahtri-backend.onrender.com/api/app/version', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: postData,
+        });
+        console.log('[AutoAPK] Notified live Render backend');
       } catch (pingErr) {
-        console.warn('[AutoAPK] Render notify exception:', pingErr.message);
+        console.warn('[AutoAPK] Render notify notice:', pingErr.message);
       }
 
       // 4. Download APK file locally
@@ -195,11 +218,11 @@ async function checkBuild() {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.13 (versionCode 14)"', {
+        execSync('git commit -m "chore(release): update latest apk download url to version 1.0.15 (versionCode 16)"', {
           cwd: ROOT_DIR,
           shell: true,
         });
-        execSync('git -c http.sslVerify=false push origin main', {
+        execSync('git push origin main', {
           cwd: ROOT_DIR,
           shell: true,
         });

@@ -239,10 +239,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.14',
-    latestVersionCode: 15,
+    latestVersion: '1.0.15',
+    latestVersionCode: 16,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://expo.dev/artifacts/eas/omgUGKB2T-bajcEOndnTMkYg_1QlcObeMTXw40lwf7I.apk',
+    downloadUrl: 'https://ahtri-backend.onrender.com/download-apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -250,7 +250,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Task Sync & Deleted Task Purge: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage\nLogout Re-auth Security: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard\nDynamic Territory HQ: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers'
+    'Individual Leave Allocation: Admin allocates CL, SL, and EL separately per employee with live sync\nReal-time Reflection: Any updates to leave allowances reflect immediately on employee ID and mobile app\nField Orders & Delivery Workflow: View ordered products, track deliveries, and require HQ acceptance before inventory count\nEnhanced Device Binding & Security: 6-Digit Owner OTP re-authentication on employee logout'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
