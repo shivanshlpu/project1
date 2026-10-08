@@ -326,9 +326,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   }, [step, deviceAuthRequestId]);
 
   const handleLogin = async (forceBypassReauthCheck = false) => {
-    const cleanId = identifier.trim().toLowerCase();
+    const rawId = identifier.trim();
+    const cleanId = rawId.toLowerCase();
+    const cleanPhone = phone.trim();
     setIsSubmitting(true);
     setOtpError('');
+
+    // Ensure backwards compatibility with all cloud/live backend versions:
+    // If the input is an HQ code/alias (like 'shd', 'kot', 'amb', 'hq-shd-001'), or if cleanPhone is provided,
+    // resolve to the registered phone number or email which ALL backend versions accept!
+    const knownMr = registeredMRs[cleanId] || (cleanPhone ? Object.values(registeredMRs).find((u: any) => u.phone === cleanPhone) : undefined);
+    const serverIdentifier = cleanPhone || knownMr?.phone || knownMr?.email || rawId;
 
     const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
     const mustEnforceOtp = requiresReauthOtp === 'true' && !forceBypassReauthCheck;
@@ -339,7 +347,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: cleanId,
+          identifier: serverIdentifier,
+          phone: cleanPhone || knownMr?.phone,
           password: password,
           device_id: currentDeviceId,
           device_model: currentDeviceModel,
@@ -651,60 +660,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
             <TouchableOpacity
               onPress={() => {
-                setIdentifier('SHD');
+                setIdentifier('9876543213');
                 setPassword('AmanRathoreSHD');
                 setPhone('9876543213');
               }}
               style={{
-                backgroundColor: identifier.toUpperCase() === 'SHD' ? '#EFF6FF' : '#F1F5F9',
-                borderColor: identifier.toUpperCase() === 'SHD' ? '#3B82F6' : '#CBD5E1',
+                backgroundColor: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#EFF6FF' : '#F1F5F9',
+                borderColor: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#3B82F6' : '#CBD5E1',
                 borderWidth: 1,
                 paddingVertical: 5,
                 paddingHorizontal: 8,
                 borderRadius: 6,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'SHD' ? '#1D4ED8' : '#334155' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#1D4ED8' : '#334155' }}>
                 Aman Rathore (SHD)
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => {
-                setIdentifier('KOT');
+                setIdentifier('9876543212');
                 setPassword('AmarDwivediKOT');
                 setPhone('9876543212');
               }}
               style={{
-                backgroundColor: identifier.toUpperCase() === 'KOT' ? '#EFF6FF' : '#F1F5F9',
-                borderColor: identifier.toUpperCase() === 'KOT' ? '#3B82F6' : '#CBD5E1',
+                backgroundColor: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#EFF6FF' : '#F1F5F9',
+                borderColor: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#3B82F6' : '#CBD5E1',
                 borderWidth: 1,
                 paddingVertical: 5,
                 paddingHorizontal: 8,
                 borderRadius: 6,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'KOT' ? '#1D4ED8' : '#334155' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#1D4ED8' : '#334155' }}>
                 Amar Dwivedi (KOT)
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => {
-                setIdentifier('AMB');
+                setIdentifier('9876543214');
                 setPassword('AshishSoniAMB');
                 setPhone('9876543214');
               }}
               style={{
-                backgroundColor: identifier.toUpperCase() === 'AMB' ? '#EFF6FF' : '#F1F5F9',
-                borderColor: identifier.toUpperCase() === 'AMB' ? '#3B82F6' : '#CBD5E1',
+                backgroundColor: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#EFF6FF' : '#F1F5F9',
+                borderColor: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#3B82F6' : '#CBD5E1',
                 borderWidth: 1,
                 paddingVertical: 5,
                 paddingHorizontal: 8,
                 borderRadius: 6,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: identifier.toUpperCase() === 'AMB' ? '#1D4ED8' : '#334155' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#1D4ED8' : '#334155' }}>
                 Ashish Soni (AMB)
               </Text>
             </TouchableOpacity>
