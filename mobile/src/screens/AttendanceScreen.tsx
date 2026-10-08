@@ -484,7 +484,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
         <LeaveScreen
           currentUserId={currentUser?.id || 'usr-mr-01'}
-          currentUserName={currentUser?.name || 'Rahul Sharma'}
+          currentUserName={currentUser?.name || 'Amar Dwivedi'}
         />
       </View>
     );

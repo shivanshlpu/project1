@@ -302,8 +302,11 @@ CREATE INDEX IF NOT EXISTS idx_doctors_specialty ON public.doctors(specialty);
 INSERT INTO public.users (id, name, email, phone, password_hash, role, status, biometric_enabled, created_at)
 VALUES 
   ('usr-admin-shivansh', 'Shivansh Tiwari', 'shivanshti10@gmail.com', '9009149694', '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
+  ('usr-admin-01', 'System Admin', 'admin@ahtri.com', '9876543210', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
   ('usr-mgr-01', 'Anil Kumar (Area Manager)', 'manager@ahtri.com', '9876543211', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MANAGER', 'ACTIVE', FALSE, NOW()),
-  ('usr-mr-01', 'Rahul Sharma (Field MR)', 'mr@ahtri.com', '9876543212', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW())
+  ('usr-mr-01', 'Amar Dwivedi', 'amar@ahtri.com', '9876543212', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
+  ('usr-mr-02', 'Aman Rathore', 'aman@ahtri.com', '9876543213', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
+  ('usr-mr-03', 'Ashish Soni', 'ashish@ahtri.com', '9876543214', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW())
 ON CONFLICT (email) DO UPDATE 
 SET name = EXCLUDED.name, role = EXCLUDED.role, status = EXCLUDED.status;
 
@@ -315,16 +318,16 @@ ON CONFLICT (id) DO NOTHING;
 -- Headquarters
 INSERT INTO public.headquarters (id, name, state)
 VALUES 
-  ('hq-shahdol', 'Shahdol', 'Madhya Pradesh'),
-  ('hq-anuppur', 'Anuppur', 'Madhya Pradesh'),
-  ('hq-umaria', 'Umaria', 'Madhya Pradesh')
+  ('HQ-SHD-001', 'Shahdol', 'Madhya Pradesh'),
+  ('HQ-KOT-001', 'Kotma', 'Madhya Pradesh'),
+  ('HQ-AMB-001', 'Ambikapur', 'Chhattisgarh')
 ON CONFLICT (id) DO NOTHING;
 
 -- Stockers
 INSERT INTO public.stockers (id, name, hq_id, address, phone)
 VALUES 
-  ('stk-shd-01', 'Central Pharma Stockist - Shahdol', 'hq-shahdol', 'Station Road, Shahdol', '9893012345'),
-  ('stk-anp-01', 'Vindhya Medico Stockists - Anuppur', 'hq-anuppur', 'Main Market, Anuppur', '9893054321')
+  ('stk-shd-01', 'Central Pharma Stockist - Shahdol', 'HQ-SHD-001', 'Station Road, Shahdol', '9893012345'),
+  ('stk-kot-01', 'Kotma Medico Stockists - Kotma', 'HQ-KOT-001', 'Main Market, Kotma', '9893054321')
 ON CONFLICT (id) DO NOTHING;
 
 -- Medicines
@@ -334,14 +337,6 @@ VALUES
   ('med-02', 'DermaSoothe Cream', 'DS-CRM-30', 'Clobetasol + Neomycin', 'Dermatology', '30g Tube', 210.00, 260.00),
   ('med-03', 'Glucotrol-M', 'GLU-M-500', 'Metformin 500mg', 'Diabetic', '10x15 Tablets', 145.00, 185.00),
   ('med-04', 'PanSafe-DSR', 'PAN-DSR-40', 'Pantoprazole 40mg + Domperidone 30mg', 'Gastro', '10x10 Capsules', 160.00, 210.00)
-ON CONFLICT (id) DO NOTHING;
-
--- Sample Doctors
-INSERT INTO public.doctors (id, name, specialty, qualification, clinic_name, phone, latitude, longitude, address, visiting_hours, priority, assigned_mr_id, assigned_mr_name)
-VALUES
-  ('doc-01', 'Dr. Rajesh Sharma', 'Cardiologist', 'MD, DM (Cardio)', 'Sharma Heart Care Centre', '9826011111', 28.5245, 77.2066, 'Opposite District Hospital, Shahdol', '10:00 AM - 02:00 PM', 'CORE', 'usr-mr-01', 'Rahul Sharma (Field MR)'),
-  ('doc-02', 'Dr. Priya Verma', 'Pediatrician', 'MD (Pediatrics)', 'Verma Children Hospital', '9826022222', 28.5355, 77.2100, 'Civil Lines, Shahdol', '11:00 AM - 03:00 PM', 'CORE', 'usr-mr-01', 'Rahul Sharma (Field MR)'),
-  ('doc-03', 'Dr. Sandeep Gupta', 'General Physician', 'MBBS, MD (Medicine)', 'Gupta Medical Clinic', '9826033333', 28.5400, 77.2150, 'Main Market, Burhar', '04:00 PM - 08:00 PM', 'SUPER_CORE', 'usr-mr-01', 'Rahul Sharma (Field MR)')
 ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================

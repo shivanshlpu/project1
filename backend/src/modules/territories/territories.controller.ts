@@ -87,6 +87,16 @@ export class TerritoriesController {
     return this.territoriesService.getRouteBatches(user, hqId, mrId);
   }
 
+  @Get('route-batches/suggest')
+  async suggestRouteBatches(
+    @CurrentUser() user: any,
+    @Query('destination') destination: string,
+    @Query('hq_id') hqId?: string,
+    @Query('mr_id') mrId?: string,
+  ) {
+    return this.territoriesService.suggestRouteBatches(user, destination, hqId, mrId);
+  }
+
   @Get('route-batches/:id')
   async getRouteBatchById(
     @Param('id') id: string,

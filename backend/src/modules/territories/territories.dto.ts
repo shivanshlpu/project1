@@ -68,23 +68,7 @@ export class CreateRouteBatchDto {
   territory_name?: string;
 
   @IsOptional()
-  areas?: string[];
-
-  @IsOptional()
-  distance_km?: number;
-
-  @IsOptional()
-  standard_reimbursement_rate?: number;
-}
-
-export class UpdateRouteBatchDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsString()
-  @IsOptional()
-  mr_id?: string;
+  route_stops?: string[];
 
   @IsOptional()
   areas?: string[];
@@ -97,4 +81,55 @@ export class UpdateRouteBatchDto {
 
   @IsOptional()
   status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export class UpdateRouteBatchDto {
+  @IsString()
+  @IsOptional()
+  batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_code?: string;
+
+  @IsString()
+  @IsOptional()
+  mr_id?: string;
+
+  @IsString()
+  @IsOptional()
+  territory_name?: string;
+
+  @IsOptional()
+  route_stops?: string[];
+
+  @IsOptional()
+  areas?: string[];
+
+  @IsOptional()
+  distance_km?: number;
+
+  @IsOptional()
+  standard_reimbursement_rate?: number;
+
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export class SuggestRouteBatchDto {
+  @IsString()
+  @IsNotEmpty()
+  destination: string;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
 }

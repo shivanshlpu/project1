@@ -38,8 +38,8 @@ interface CompetitionItem {
 }
 
 export const CompetitionScreen: React.FC<CompetitionScreenProps> = ({
-  currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserId = 'usr-mr-02',
+  currentUserName = 'Aman Rathore',
   onBack,
 }) => {
   const [competitions, setCompetitions] = useState<CompetitionItem[]>([]);

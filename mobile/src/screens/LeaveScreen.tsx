@@ -32,7 +32,7 @@ interface LeaveScreenProps {
 
 export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserName = 'Amar Dwivedi',
   onBackToAttendance,
 }) => {
   const [activeTab, setActiveTab] = useState<'apply' | 'history'>('apply');
@@ -54,19 +54,20 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   const [reason, setReason] = useState<string>('Family occasion');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  const [isRefreshingQuota, setIsRefreshingQuota] = useState<boolean>(false);
 
   // Leave balances for this MR dynamically linked to Admin Panel
   const [balances, setBalances] = useState({
-    casual: { total: 12, used: 4, remaining: 8 },
-    sick: { total: 10, used: 4, remaining: 6 },
-    earned: { total: 15, used: 3, remaining: 12 },
+    casual: { total: 0, used: 0, remaining: 0 },
+    sick: { total: 0, used: 0, remaining: 0 },
+    earned: { total: 0, used: 0, remaining: 0 },
   });
 
   // Fetch live leave quota from backend
   const fetchQuota = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
-      const headers = await ApiConfig.getAuthHeaders();
+      const headers = await ApiConfig.getAuthHeaders(currentUserId);
       const res = await fetch(`${baseUrl}/leave/quota?mr_id=${currentUserId}`, {
         headers: {
           ...headers,
@@ -145,6 +146,13 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   useEffect(() => {
     fetchMyLeaves();
     fetchQuota();
+
+    // Auto-refresh leave quota every 4 seconds so admin updates reflect in real-time
+    const intervalId = setInterval(() => {
+      fetchQuota();
+    }, 4000);
+
+    return () => clearInterval(intervalId);
   }, [currentUserId]);
 
   // Quick Preset Date Helpers
@@ -253,17 +261,34 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
       {/* Header Bar */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Leave Management</Text>
             <Text style={styles.headerSub}>
               {currentUserName} • Field Medical Representative
             </Text>
           </View>
-          {onBackToAttendance && (
-            <TouchableOpacity style={styles.backBtn} onPress={onBackToAttendance}>
-              <Text style={styles.backBtnText}>Attendance</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity
+              style={styles.syncBtn}
+              onPress={async () => {
+                setIsRefreshingQuota(true);
+                await Promise.all([fetchQuota(), fetchMyLeaves()]);
+                setTimeout(() => setIsRefreshingQuota(false), 400);
+              }}
+              disabled={isRefreshingQuota}
+            >
+              {isRefreshingQuota ? (
+                <ActivityIndicator size="small" color="#0369A1" />
+              ) : (
+                <Text style={styles.syncBtnText}>🔄 Sync</Text>
+              )}
             </TouchableOpacity>
-          )}
+            {onBackToAttendance && (
+              <TouchableOpacity style={styles.backBtn} onPress={onBackToAttendance}>
+                <Text style={styles.backBtnText}>Attendance</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Leave Balances Strip */}
@@ -945,5 +970,20 @@ const styles = StyleSheet.create({
   historyActionNotice: {
     fontSize: 10.5,
     fontWeight: '700',
+  },
+  syncBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#E0F2FE',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0369A1',
   },
 });

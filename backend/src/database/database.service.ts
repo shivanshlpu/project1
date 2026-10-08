@@ -41,6 +41,7 @@ import {
   RewardClaim,
   MonthlyStockEntry,
   RouteBatch,
+  Order,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
 
@@ -58,6 +59,7 @@ export class DatabaseService implements OnModuleInit {
   public fcmTokens: Map<string, string> = new Map(); // userId -> fcmToken
 
   public tasks: Task[] = [];
+  public orders: Order[] = [];
   public taskAssignments: TaskAssignment[] = [];
   public locationVerifications: LocationVerification[] = [];
 
@@ -96,6 +98,7 @@ export class DatabaseService implements OnModuleInit {
     allowed_punch_in_window_minutes: 30,
     expected_punch_out_time: '18:00:00',
     allowed_punch_out_window_minutes: 30,
+    reimbursement_rate_per_km: 2.5,
     updated_at: new Date().toISOString(),
   };
   public competitions: Competition[] = [];
@@ -119,6 +122,7 @@ export class DatabaseService implements OnModuleInit {
       const filePath = this.getStorageFilePath();
       const payload = {
         tasks: this.tasks,
+        orders: this.orders,
         attendance: this.attendance,
         attendanceSettings: this.attendanceSettings,
         doctorVisits: this.doctorVisits,
@@ -127,11 +131,13 @@ export class DatabaseService implements OnModuleInit {
         dcrItems: this.dcrItems,
         expenses: this.expenses,
         leaveRequests: this.leaveRequests,
+        leaveQuotas: this.leaveQuotas,
         tourPlans: this.tourPlans,
         monthlyTourPlans: this.monthlyTourPlans,
         stockerInventory: this.stockerInventory,
         verificationPhotos: this.verificationPhotos,
         deviceAuthorizations: this.deviceAuthorizations,
+        routeBatches: this.routeBatches,
         userDeviceStates: this.users.map((u) => ({
           id: u.id,
           device_id: u.device_id,
@@ -156,20 +162,41 @@ export class DatabaseService implements OnModuleInit {
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.tasks)) {
         this.tasks = data.tasks;
+        if (Array.isArray(data.orders)) this.orders = data.orders;
         if (Array.isArray(data.attendance)) this.attendance = data.attendance;
-        if (data.attendanceSettings) this.attendanceSettings = data.attendanceSettings;
+        if (data.attendanceSettings) {
+          this.attendanceSettings = {
+            ...this.attendanceSettings,
+            ...data.attendanceSettings,
+            reimbursement_rate_per_km: data.attendanceSettings.reimbursement_rate_per_km ?? 2.5,
+          };
+        }
         if (Array.isArray(data.doctorVisits)) this.doctorVisits = data.doctorVisits;
         if (Array.isArray(data.visitDetails)) this.visitDetails = data.visitDetails;
         if (Array.isArray(data.dcrList)) this.dcrList = data.dcrList;
         if (Array.isArray(data.dcrItems)) this.dcrItems = data.dcrItems;
         if (Array.isArray(data.expenses)) this.expenses = data.expenses;
         if (Array.isArray(data.leaveRequests)) this.leaveRequests = data.leaveRequests;
+        if (Array.isArray(data.leaveQuotas) && data.leaveQuotas.length > 0) {
+          const quotaMap = new Map(this.leaveQuotas.map((q) => [q.mr_id, q]));
+          for (const q of data.leaveQuotas) {
+            quotaMap.set(q.mr_id, q);
+          }
+          this.leaveQuotas = Array.from(quotaMap.values());
+        }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
         if (Array.isArray(data.stockerInventory)) this.stockerInventory = data.stockerInventory;
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;
+        }
+        if (Array.isArray(data.routeBatches) && data.routeBatches.length > 0) {
+          const batchMap = new Map(this.routeBatches.map((b) => [b.id, b]));
+          for (const b of data.routeBatches) {
+            batchMap.set(b.id, b);
+          }
+          this.routeBatches = Array.from(batchMap.values());
         }
         if (Array.isArray(data.userDeviceStates)) {
           data.userDeviceStates.forEach((state: any) => {
@@ -184,7 +211,7 @@ export class DatabaseService implements OnModuleInit {
           });
         }
         console.log(
-          `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
+          `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.leaveQuotas.length} leave quotas, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
         );
         return true;
       }
@@ -262,11 +289,24 @@ export class DatabaseService implements OnModuleInit {
               await this.syncAttendanceToSupabase(att);
             }
           }
+          // Purge legacy dummy clinics & legacy dummy MR IDs from Supabase if present
+          try {
+            await client.from('doctors').delete().in('id', ['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
+            await client.from('tasks').delete().in('assigned_mr_id', ['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
+            await client.from('attendance').delete().in('user_id', ['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
+          } catch {}
         }
       } catch (err: any) {
         console.warn('[DatabaseService] Supabase onModuleInit notice:', err?.message);
       }
     }
+
+    // Purge any legacy dummy records loaded from old disk stores
+    const LEGACY_DUMMY_IDS = new Set(['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
+    const DUMMY_DOC_IDS = new Set(['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
+    this.tasks = this.tasks.filter((t) => !LEGACY_DUMMY_IDS.has(t.assigned_mr_id) && !DUMMY_DOC_IDS.has(t.id));
+    this.attendance = this.attendance.filter((a) => !LEGACY_DUMMY_IDS.has(a.user_id));
+    this.doctors = this.doctors.filter((d) => !DUMMY_DOC_IDS.has(d.id));
 
     // Employee Zone & HQ Data Normalization
     // Normalize any legacy employee records to 'Shahdol & Central Division' and stable HQ IDs
@@ -545,8 +585,8 @@ export class DatabaseService implements OnModuleInit {
       hq_name: 'Kotma',
       territory: 'Kotma HQ Territory',
       assigned_territory: 'Kotma HQ Territory',
-      route_batches: ['RB-KOT-01', 'RB-KOT-02'],
-      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
+      route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5', 'Batch 6', 'Batch 7', 'Batch 8', 'Batch 9'],
+      assigned_route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5', 'Batch 6', 'Batch 7', 'Batch 8', 'Batch 9'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
@@ -569,8 +609,8 @@ export class DatabaseService implements OnModuleInit {
       hq_name: 'Shahdol',
       territory: 'Shahdol HQ Territory',
       assigned_territory: 'Shahdol HQ Territory',
-      route_batches: ['RB-SHD-01', 'RB-SHD-02'],
-      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
+      route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5'],
+      assigned_route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
@@ -593,8 +633,8 @@ export class DatabaseService implements OnModuleInit {
       hq_name: 'Ambikapur',
       territory: 'Ambikapur HQ Territory',
       assigned_territory: 'Ambikapur HQ Territory',
-      route_batches: ['RB-AMB-01', 'RB-AMB-02'],
-      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
+      route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5'],
+      assigned_route_batches: ['Batch 1', 'Batch 2', 'Batch 3', 'Batch 4', 'Batch 5'],
       manager_id: manager.id,
       status: 'ACTIVE',
       biometric_enabled: true,
@@ -610,105 +650,8 @@ export class DatabaseService implements OnModuleInit {
       { id: 'terr-03', area_id: areaAmbikapurId, mr_user_id: mr3.id },
     );
 
-    // 4. Doctors / Healthcare Points of Care
-    const doc1: Doctor = {
-      id: 'doc-01',
-      name: 'District Hospital Shahdol',
-      qualification: 'Civil Surgeon, MS',
-      specialization: 'District Healthcare Centre',
-      class: 'A',
-      potential_score: 95,
-      phone: '9811122233',
-      clinic: 'Civil Hospital & Trauma Centre',
-      hospital: 'Shahdol District Hospital',
-      address: 'Hospital Road, Bicharpur, Shahdol, MP',
-      latitude: 23.2953,
-      longitude: 81.3586,
-      area_id: areaShahdolId,
-      assigned_mr_id: mr2.id,
-      assigned_mr_name: mr2.name,
-      created_by: manager.id,
-      created_at: new Date().toISOString(),
-    };
-
-    const doc2: Doctor = {
-      id: 'doc-02',
-      name: 'Dr. Priya Verma',
-      qualification: 'MBBS, DNB (Paediatrics)',
-      specialization: 'Paediatrician',
-      class: 'B',
-      potential_score: 82,
-      phone: '9811144455',
-      clinic: 'Shahdol Child Clinic',
-      address: 'Station Road, Shahdol, MP',
-      latitude: 23.3012,
-      longitude: 81.3620,
-      area_id: areaShahdolId,
-      assigned_mr_id: mr2.id,
-      assigned_mr_name: mr2.name,
-      created_by: manager.id,
-      created_at: new Date().toISOString(),
-    };
-
-    const doc3: Doctor = {
-      id: 'doc-03',
-      name: 'Ambikapur Civil Hospital',
-      qualification: 'Chief Medical Officer',
-      specialization: 'Multispecialty Public Healthcare',
-      class: 'A',
-      potential_score: 91,
-      phone: '9877766554',
-      clinic: 'Surguja District Hospital',
-      hospital: 'Ambikapur Medical College Hospital',
-      address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
-      latitude: 23.1197,
-      longitude: 83.1979,
-      area_id: areaAmbikapurId,
-      assigned_mr_id: mr3.id,
-      assigned_mr_name: mr3.name,
-      created_by: manager.id,
-      created_at: new Date().toISOString(),
-    };
-
-    const doc4: Doctor = {
-      id: 'doc-04',
-      name: 'Bilaspur Healthcare Centre',
-      qualification: 'MD (General Medicine)',
-      specialization: 'Super Specialty Hospital',
-      class: 'C',
-      potential_score: 64,
-      phone: '9899911122',
-      clinic: 'Apollo Regional Medical Centre',
-      address: 'Vyapar Vihar, Bilaspur, Chhattisgarh',
-      latitude: 22.0797,
-      longitude: 82.1409,
-      area_id: areaAmbikapurId,
-      assigned_mr_id: mr3.id,
-      assigned_mr_name: mr3.name,
-      created_by: manager.id,
-      created_at: new Date().toISOString(),
-    };
-
-    const doc5: Doctor = {
-      id: 'doc-05',
-      name: 'Kotma Primary Health Centre',
-      qualification: 'MBBS, MD',
-      specialization: 'Primary Healthcare',
-      class: 'B',
-      potential_score: 78,
-      phone: '9827110022',
-      clinic: 'Kotma PHC & Wellness Centre',
-      address: 'Main Road, Kotma, Madhya Pradesh',
-      latitude: 23.2035,
-      longitude: 81.9669,
-      area_id: areaKotmaId,
-      assigned_mr_id: mr1.id,
-      assigned_mr_name: mr1.name,
-      created_by: manager.id,
-      created_at: new Date().toISOString(),
-    };
-
-    this.doctors.push(doc1, doc2, doc3, doc4, doc5);
+    // 4. Doctors / Healthcare Points of Care (Dummy seed marks removed - dynamically created only)
+    this.doctors = [];
 
     // Initial tasks initialized empty (dummy seed tasks removed)
     this.tasks = [];
@@ -947,101 +890,333 @@ export class DatabaseService implements OnModuleInit {
     };
     this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
 
-    // 13. Seed Route Batches (Mapped strictly per MR & HQ ID)
+    // 13. Seed Route Batches (19 Configured Master Batches across Kotma, Shahdol & Ambikapur)
     this.routeBatches = [
+      // MR: Amar Dwivedi | HQ: Kotma (9 Batches)
       {
         id: 'rb-kot-01',
-        batch_code: 'RB-KOT-01',
-        name: 'Kotma - Anuppur - Bijuri Circuit',
+        batch_code: 'Batch 1',
+        name: 'Kotma → Marwahi → Dhanikundi',
         hq_id: hqKotma.hq_id,
         hq_code: hqKotma.code,
         hq_name: hqKotma.name,
         mr_id: mr1.id,
         mr_name: mr1.name,
         territory_name: 'Kotma HQ Territory',
-        areas: ['Kotma Town', 'Anuppur', 'Bijuri'],
-        distance_km: 48,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'],
+        areas: ['Kotma', 'Marwahi', 'Dhanikundi'],
+        distance_km: 85,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
         id: 'rb-kot-02',
-        batch_code: 'RB-KOT-02',
-        name: 'Kotma - Jaithari - Rajendragram Circuit',
+        batch_code: 'Batch 2',
+        name: 'Kotma → Kelhari → Janakpur',
         hq_id: hqKotma.hq_id,
         hq_code: hqKotma.code,
         hq_name: hqKotma.name,
         mr_id: mr1.id,
         mr_name: mr1.name,
         territory_name: 'Kotma HQ Territory',
-        areas: ['Jaithari', 'Rajendragram', 'Bhalumuda'],
-        distance_km: 64,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Kotma', 'Kelhari', 'Janakpur'],
+        areas: ['Kotma', 'Kelhari', 'Janakpur'],
+        distance_km: 95,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
+        id: 'rb-kot-03',
+        batch_code: 'Batch 3',
+        name: 'Kotma → Keswahi → Girva → Khamhidol',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'],
+        areas: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'],
+        distance_km: 110,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-04',
+        batch_code: 'Batch 4',
+        name: 'Kotma → Jaithari → Rajendragram',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Jaithari', 'Rajendragram'],
+        areas: ['Kotma', 'Jaithari', 'Rajendragram'],
+        distance_km: 70,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-05',
+        batch_code: 'Batch 5',
+        name: 'Kotma → Anuppur',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Anuppur'],
+        areas: ['Kotma', 'Anuppur'],
+        distance_km: 45,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-06',
+        batch_code: 'Batch 6',
+        name: 'Kotma → Manendragarh',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Manendragarh'],
+        areas: ['Kotma', 'Manendragarh'],
+        distance_km: 65,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-07',
+        batch_code: 'Batch 7',
+        name: 'Kotma → Chirmiri',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Chirmiri'],
+        areas: ['Kotma', 'Chirmiri'],
+        distance_km: 80,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-08',
+        batch_code: 'Batch 8',
+        name: 'Kotma → Baikunthpur',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Baikunthpur'],
+        areas: ['Kotma', 'Baikunthpur'],
+        distance_km: 90,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-kot-09',
+        batch_code: 'Batch 9',
+        name: 'Kotma → Gaurela',
+        hq_id: hqKotma.hq_id,
+        hq_code: hqKotma.code,
+        hq_name: hqKotma.name,
+        mr_id: mr1.id,
+        mr_name: mr1.name,
+        territory_name: 'Kotma HQ Territory',
+        route_stops: ['Kotma', 'Gaurela'],
+        areas: ['Kotma', 'Gaurela'],
+        distance_km: 95,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+
+      // MR: Aman Rathore | HQ: Shahdol (5 Batches)
+      {
         id: 'rb-shd-01',
-        batch_code: 'RB-SHD-01',
-        name: 'Shahdol - Burhar - Dhanpuri Circuit',
+        batch_code: 'Batch 1',
+        name: 'Shahdol → Budhar → Dhanpuri → OPM',
         hq_id: hqShahdol.hq_id,
         hq_code: hqShahdol.code,
         hq_name: hqShahdol.name,
         mr_id: mr2.id,
         mr_name: mr2.name,
         territory_name: 'Shahdol HQ Territory',
-        areas: ['Burhar', 'Dhanpuri', 'Amlai'],
-        distance_km: 42,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'],
+        areas: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'],
+        distance_km: 55,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
         id: 'rb-shd-02',
-        batch_code: 'RB-SHD-02',
-        name: 'Shahdol - Gohparu - Beohari Circuit',
+        batch_code: 'Batch 2',
+        name: 'Shahdol → Pali → Navrozabad',
         hq_id: hqShahdol.hq_id,
         hq_code: hqShahdol.code,
         hq_name: hqShahdol.name,
         mr_id: mr2.id,
         mr_name: mr2.name,
         territory_name: 'Shahdol HQ Territory',
-        areas: ['Gohparu', 'Beohari', 'Jaisinghnagar'],
-        distance_km: 86,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Shahdol', 'Pali', 'Navrozabad'],
+        areas: ['Shahdol', 'Pali', 'Navrozabad'],
+        distance_km: 75,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
+        id: 'rb-shd-03',
+        batch_code: 'Batch 3',
+        name: 'Shahdol → Gohparu → Jaisinghnagar',
+        hq_id: hqShahdol.hq_id,
+        hq_code: hqShahdol.code,
+        hq_name: hqShahdol.name,
+        mr_id: mr2.id,
+        mr_name: mr2.name,
+        territory_name: 'Shahdol HQ Territory',
+        route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'],
+        areas: ['Shahdol', 'Gohparu', 'Jaisinghnagar'],
+        distance_km: 120,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-shd-04',
+        batch_code: 'Batch 4',
+        name: 'Shahdol → Jaitpur',
+        hq_id: hqShahdol.hq_id,
+        hq_code: hqShahdol.code,
+        hq_name: hqShahdol.name,
+        mr_id: mr2.id,
+        mr_name: mr2.name,
+        territory_name: 'Shahdol HQ Territory',
+        route_stops: ['Shahdol', 'Jaitpur'],
+        areas: ['Shahdol', 'Jaitpur'],
+        distance_km: 80,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-shd-05',
+        batch_code: 'Batch 5',
+        name: 'Shahdol → Manpur',
+        hq_id: hqShahdol.hq_id,
+        hq_code: hqShahdol.code,
+        hq_name: hqShahdol.name,
+        mr_id: mr2.id,
+        mr_name: mr2.name,
+        territory_name: 'Shahdol HQ Territory',
+        route_stops: ['Shahdol', 'Manpur'],
+        areas: ['Shahdol', 'Manpur'],
+        distance_km: 110,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+
+      // MR: Ashish Soni | HQ: Ambikapur (5 Batches)
+      {
         id: 'rb-amb-01',
-        batch_code: 'RB-AMB-01',
-        name: 'Ambikapur - Sitapur - Lundra Circuit',
+        batch_code: 'Batch 1',
+        name: 'Ambikapur → Laknapur → Udaypur → Kedma',
         hq_id: hqAmbikapur.hq_id,
         hq_code: hqAmbikapur.code,
         hq_name: hqAmbikapur.name,
         mr_id: mr3.id,
         mr_name: mr3.name,
         territory_name: 'Ambikapur HQ Territory',
-        areas: ['Sitapur', 'Lundra', 'Batoli'],
-        distance_km: 55,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'],
+        areas: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'],
+        distance_km: 90,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
         id: 'rb-amb-02',
-        batch_code: 'RB-AMB-02',
-        name: 'Ambikapur - Mainpat - Udaipur Circuit',
+        batch_code: 'Batch 2',
+        name: 'Ambikapur → Batuli → Sitapur → Patthalgawn',
         hq_id: hqAmbikapur.hq_id,
         hq_code: hqAmbikapur.code,
         hq_name: hqAmbikapur.name,
         mr_id: mr3.id,
         mr_name: mr3.name,
         territory_name: 'Ambikapur HQ Territory',
-        areas: ['Mainpat', 'Udaipur', 'Lakhanpur', 'Surguja'],
-        distance_km: 74,
-        standard_reimbursement_rate: 10,
+        route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'],
+        areas: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'],
+        distance_km: 130,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-amb-03',
+        batch_code: 'Batch 3',
+        name: 'Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar',
+        hq_id: hqAmbikapur.hq_id,
+        hq_code: hqAmbikapur.code,
+        hq_name: hqAmbikapur.name,
+        mr_id: mr3.id,
+        mr_name: mr3.name,
+        territory_name: 'Ambikapur HQ Territory',
+        route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'],
+        areas: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'],
+        distance_km: 115,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-amb-04',
+        batch_code: 'Batch 4',
+        name: 'Ambikapur → Pratapur → Siluta → Vadrafnagar',
+        hq_id: hqAmbikapur.hq_id,
+        hq_code: hqAmbikapur.code,
+        hq_name: hqAmbikapur.name,
+        mr_id: mr3.id,
+        mr_name: mr3.name,
+        territory_name: 'Ambikapur HQ Territory',
+        route_stops: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'],
+        areas: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'],
+        distance_km: 140,
+        standard_reimbursement_rate: 2.5,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rb-amb-05',
+        batch_code: 'Batch 5',
+        name: 'Ambikapur → Latori → Krwan → Datima → Batra → Bhatgawn',
+        hq_id: hqAmbikapur.hq_id,
+        hq_code: hqAmbikapur.code,
+        hq_name: hqAmbikapur.name,
+        mr_id: mr3.id,
+        mr_name: mr3.name,
+        territory_name: 'Ambikapur HQ Territory',
+        route_stops: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'],
+        areas: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'],
+        distance_km: 125,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
@@ -1262,5 +1437,81 @@ export class DatabaseService implements OnModuleInit {
         },
       ],
     });
+
+    // 17. Seed initial orders across HQs with pending delivery & delivery statuses
+    if (this.orders.length === 0) {
+      this.orders.push(
+        {
+          id: 'ord-shd-01',
+          order_number: 'ORD-2026-0001',
+          task_id: 'task-01',
+          mr_id: mr2.id,
+          mr_name: mr2.name,
+          customer_name: 'Dr. Rajesh Sharma (City Hospital)',
+          location_name: 'City Hospital, Shahdol',
+          hq_id: hqShahdol.id,
+          hq_name: hqShahdol.name,
+          stocker_id: stocker1.id,
+          stocker_name: stocker1.name,
+          items: [
+            {
+              product_id: med1.id,
+              product_name: med1.name,
+              quantity: 20,
+              unit_price: 150,
+              total_amount: 3000,
+              distributor: stocker1.name,
+            },
+            {
+              product_id: med2.id,
+              product_name: med2.name,
+              quantity: 15,
+              unit_price: 85,
+              total_amount: 1275,
+              distributor: stocker1.name,
+            },
+          ],
+          total_units: 35,
+          total_amount: 4275,
+          delivery_status: 'PENDING',
+          hq_accepted: false,
+          inventory_deducted: false,
+          created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+          updated_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+        },
+        {
+          id: 'ord-amb-01',
+          order_number: 'ORD-2026-0002',
+          task_id: 'task-02',
+          mr_id: mr3.id,
+          mr_name: mr3.name,
+          customer_name: 'Ambikapur Civil Hospital Medico',
+          location_name: 'Hospital Chowk, Ambikapur',
+          hq_id: hqAmbikapur.id,
+          hq_name: hqAmbikapur.name,
+          stocker_id: stocker6.id,
+          stocker_name: stocker6.name,
+          items: [
+            {
+              product_id: med1.id,
+              product_name: med1.name,
+              quantity: 30,
+              unit_price: 150,
+              total_amount: 4500,
+              distributor: stocker6.name,
+            },
+          ],
+          total_units: 30,
+          total_amount: 4500,
+          delivery_status: 'DELIVERED',
+          delivered_at: new Date(Date.now() - 3600000).toISOString(),
+          delivered_by_user_id: mr3.id,
+          hq_accepted: false,
+          inventory_deducted: false,
+          created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+          updated_at: new Date(Date.now() - 3600000).toISOString(),
+        },
+      );
+    }
   }
 }

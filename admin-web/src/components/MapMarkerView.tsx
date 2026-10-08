@@ -2,6 +2,7 @@ import React from 'react';
 import { Crosshair, MapPin, Building2, ShieldCheck, Radio, Navigation } from 'lucide-react';
 
 interface MapMarkerViewProps {
+  mrName?: string;
   doctorName?: string;
   clinicName?: string;
   doctorLat?: number;
@@ -11,10 +12,11 @@ interface MapMarkerViewProps {
 }
 
 export const MapMarkerView: React.FC<MapMarkerViewProps> = ({
-  doctorName = 'Dr. Rajesh Sharma',
-  clinicName = 'Apex Heart Centre',
-  doctorLat = 28.5245,
-  doctorLng = 77.2066,
+  mrName = 'MR Aman Rathore',
+  doctorName = 'Verified Clinic / Doctor',
+  clinicName = 'HQ Assigned Clinic',
+  doctorLat = 23.2968,
+  doctorLng = 81.3533,
   mrDistanceM = 8.4,
   verified = true,
 }) => {
@@ -61,7 +63,7 @@ export const MapMarkerView: React.FC<MapMarkerViewProps> = ({
           <div className="radar-pin-mr">
             <Navigation size={13} color="#4ade80" />
             <div>
-              <div>MR Rahul Sharma</div>
+              <div>{mrName}</div>
               <div style={{ fontSize: '9.5px', color: '#bbf7d0' }}>
                 {mrDistanceM}m from destination (GPS accuracy: ±10m)
               </div>

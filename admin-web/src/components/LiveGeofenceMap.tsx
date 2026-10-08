@@ -17,6 +17,7 @@ import {
 import { Language, translations } from '../utils/i18n';
 import { create3DMapPinHtml } from '../utils/mapPinGenerator';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { getStoredSavedLocations } from '../utils/savedLocationsStore';
 
 interface LiveGeofenceMapProps {
   lang?: Language;
@@ -43,65 +44,28 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     distance?: number;
     accuracy?: number;
     status?: string;
-  } | null>({
-    type: 'doctor',
-    name: 'District Hospital Shahdol',
-    title: 'Civil Hospital & Trauma Centre',
-    lat: 23.2953,
-    lng: 81.3586,
-    distance: 12.0,
-    accuracy: 8.5,
-    status: 'VERIFIED_ON_SITE',
-  });
+  } | null>(null);
 
-  // Authentic Headquarters & Territory Geofence Coordinates
-  const fieldData = {
-    clinic: {
-      id: 'loc-01',
-      doctorName: 'District Hospital Shahdol',
-      clinicName: 'Civil Hospital & Trauma Centre',
-      address: 'Hospital Road, Bicharpur, Shahdol, MP',
-      lat: 23.2953,
-      lng: 81.3586,
-      radiusM: 50,
-    },
-    activeMR: {
-      id: 'mr-1',
-      name: 'Field Representative',
-      lat: 23.2954,
-      lng: 81.3587,
-      distanceM: 12.0,
-      accuracyM: 8.5,
-      verified: true,
-      lastCheckin: '09:15 AM',
-      currentCallStarted: '10:28 AM',
-    },
-    otherClinics: [
-      {
-        id: 'loc-02',
-        name: 'Shree Ram Pharmacy',
-        clinic: 'Shree Ram Medicos Shahdol',
-        lat: 23.3012,
-        lng: 81.3620,
-        radiusM: 40,
-      },
-      {
-        id: 'loc-03',
-        name: 'Ambikapur Civil Hospital',
-        clinic: 'Surguja District Hospital',
-        lat: 23.1197,
-        lng: 83.1979,
-        radiusM: 50,
-      },
-      {
-        id: 'loc-04',
-        name: 'Bilaspur Healthcare Centre',
-        clinic: 'Apollo Regional Medical Centre',
-        lat: 22.0797,
-        lng: 82.1409,
-        radiusM: 50,
-      },
-    ],
+  // Dynamic Saved Locations from Store (no hardcoded dummy pins)
+  const savedLocations = getStoredSavedLocations();
+  const primaryLoc = savedLocations.length > 0 ? savedLocations[0] : null;
+  const otherClinics = savedLocations.length > 1 ? savedLocations.slice(1) : [];
+
+  const defaultCenter = {
+    lat: primaryLoc ? primaryLoc.latitude : 23.2953,
+    lng: primaryLoc ? primaryLoc.longitude : 81.3586,
+  };
+
+  const activeMR = {
+    id: 'usr-mr-02',
+    name: 'Aman Rathore (Field MR)',
+    lat: defaultCenter.lat + (primaryLoc ? 0.0001 : 0),
+    lng: defaultCenter.lng + (primaryLoc ? 0.0001 : 0),
+    distanceM: primaryLoc ? 8.4 : 0,
+    accuracyM: 6.5,
+    verified: true,
+    lastCheckin: '10:00 AM',
+    currentCallStarted: '10:15 AM',
   };
 
   // Initialize Map
@@ -110,8 +74,8 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
 
     if (!mapInstanceRef.current) {
       const map = createOptimizedMap(mapContainerRef.current, {
-        center: [fieldData.clinic.lat, fieldData.clinic.lng],
-        zoom: 17,
+        center: [defaultCenter.lat, defaultCenter.lng],
+        zoom: 16,
         zoomControl: true,
       });
       mapInstanceRef.current = map;
@@ -146,50 +110,63 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     if (!layersGroupRef.current || !mapInstanceRef.current) return;
     layersGroupRef.current.clearLayers();
 
-    // 1. Plot Main Clinic & Geofence Circle
-    const clinicIcon = L.divIcon({
-      html: create3DMapPinHtml({ category: 'CLINIC', isSelected: selectedPin?.type === 'doctor' }),
-      className: 'saved-location-3d-marker',
-      iconSize: selectedPin?.type === 'doctor' ? [28, 37] : [24, 32],
-      iconAnchor: selectedPin?.type === 'doctor' ? [14, 37] : [12, 32],
-      popupAnchor: [0, selectedPin?.type === 'doctor' ? -35 : -30],
-    });
+    // 1. Plot Main Clinic & Geofence Circle if genuine saved location exists
+    if (primaryLoc) {
+      const clinicIcon = L.divIcon({
+        html: create3DMapPinHtml({ category: primaryLoc.category || 'CLINIC', isSelected: selectedPin?.type === 'doctor' }),
+        className: 'saved-location-3d-marker',
+        iconSize: selectedPin?.type === 'doctor' ? [28, 37] : [24, 32],
+        iconAnchor: selectedPin?.type === 'doctor' ? [14, 37] : [12, 32],
+        popupAnchor: [0, selectedPin?.type === 'doctor' ? -35 : -30],
+      });
 
-    const clinicMarker = L.marker([fieldData.clinic.lat, fieldData.clinic.lng], { icon: clinicIcon });
-    clinicMarker.bindPopup(`
-      <div style="font-family:sans-serif;min-width:180px;">
-        <strong style="color:#0F172A;font-size:13px;">${fieldData.clinic.clinicName}</strong>
-        <p style="margin:3px 0;font-size:11px;color:#475569;">${fieldData.clinic.doctorName}</p>
-        <p style="margin:2px 0;font-size:11px;color:#64748B;">${fieldData.clinic.address}</p>
-        <div style="margin-top:6px;font-size:10px;font-weight:700;color:#0F8B5A;background:#DCFCE7;padding:2px 6px;border-radius:4px;display:inline-block;">
-          Geofence Perimeter: ${fieldData.clinic.radiusM}m
+      const clinicMarker = L.marker([primaryLoc.latitude, primaryLoc.longitude], { icon: clinicIcon });
+      clinicMarker.bindPopup(`
+        <div style="font-family:sans-serif;min-width:180px;">
+          <strong style="color:#0F172A;font-size:13px;">${primaryLoc.clinic || primaryLoc.name}</strong>
+          <p style="margin:3px 0;font-size:11px;color:#475569;">${primaryLoc.name}</p>
+          <p style="margin:2px 0;font-size:11px;color:#64748B;">${primaryLoc.address}</p>
+          <div style="margin-top:6px;font-size:10px;font-weight:700;color:#0F8B5A;background:#DCFCE7;padding:2px 6px;border-radius:4px;display:inline-block;">
+            Geofence Perimeter: ${primaryLoc.geofence_radius_m || 20}m
+          </div>
         </div>
-      </div>
-    `);
+      `);
 
-    clinicMarker.on('click', () => {
-      setSelectedPin({
-        type: 'doctor',
-        name: fieldData.clinic.doctorName,
-        title: fieldData.clinic.clinicName,
-        lat: fieldData.clinic.lat,
-        lng: fieldData.clinic.lng,
+      clinicMarker.on('click', () => {
+        setSelectedPin({
+          type: 'doctor',
+          name: primaryLoc.name,
+          title: primaryLoc.clinic || primaryLoc.name,
+          lat: primaryLoc.latitude,
+          lng: primaryLoc.longitude,
+        });
       });
-    });
-    layersGroupRef.current.addLayer(clinicMarker);
+      layersGroupRef.current.addLayer(clinicMarker);
 
-    // 2. Plot Geofence Circle Boundary
-    if (showGeofenceCircles) {
-      const circle = L.circle([fieldData.clinic.lat, fieldData.clinic.lng], {
-        radius: fieldData.clinic.radiusM,
-        color: '#0F8B5A',
-        fillColor: '#0F8B5A',
-        fillOpacity: 0.18,
-        weight: 2,
-        dashArray: '5, 8',
-      });
-      circle.bindTooltip(`${fieldData.clinic.radiusM}m Authorized Geofence`, { permanent: false });
-      layersGroupRef.current.addLayer(circle);
+      // 2. Plot Geofence Circle Boundary
+      if (showGeofenceCircles) {
+        const radius = primaryLoc.geofence_radius_m || 20;
+        const circle = L.circle([primaryLoc.latitude, primaryLoc.longitude], {
+          radius,
+          color: '#0F8B5A',
+          fillColor: '#0F8B5A',
+          fillOpacity: 0.18,
+          weight: 2,
+          dashArray: '5, 8',
+        });
+        circle.bindTooltip(`${radius}m Authorized Geofence`, { permanent: false });
+        layersGroupRef.current.addLayer(circle);
+      }
+
+      // Distance connection line between MR and Clinic
+      const line = L.polyline(
+        [
+          [primaryLoc.latitude, primaryLoc.longitude],
+          [activeMR.lat, activeMR.lng],
+        ],
+        { color: '#0F8B5A', weight: 2, dashArray: '4, 6' },
+      );
+      layersGroupRef.current.addLayer(line);
     }
 
     // 3. Plot Field MR with live GPS Position & 3D Agent Pin
@@ -201,43 +178,33 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
       popupAnchor: [0, selectedPin?.type === 'mr' ? -35 : -30],
     });
 
-    const mrMarker = L.marker([fieldData.activeMR.lat, fieldData.activeMR.lng], { icon: mrIcon });
+    const mrMarker = L.marker([activeMR.lat, activeMR.lng], { icon: mrIcon });
     mrMarker.bindPopup(`
       <div style="font-family:sans-serif;min-width:180px;">
-        <strong style="color:#0F172A;font-size:13px;">${fieldData.activeMR.name}</strong>
-        <p style="margin:2px 0;font-size:11px;color:#166534;font-weight:700;">On-Site Verified (8.4m from clinic)</p>
-        <p style="margin:2px 0;font-size:11px;color:#64748B;">GPS Accuracy: ±${fieldData.activeMR.accuracyM}m</p>
-        <p style="margin:2px 0;font-size:11px;color:#64748B;">Arrival: ${fieldData.activeMR.currentCallStarted}</p>
+        <strong style="color:#0F172A;font-size:13px;">${activeMR.name}</strong>
+        <p style="margin:2px 0;font-size:11px;color:#166534;font-weight:700;">On-Site Active</p>
+        <p style="margin:2px 0;font-size:11px;color:#64748B;">GPS Accuracy: ±${activeMR.accuracyM}m</p>
+        <p style="margin:2px 0;font-size:11px;color:#64748B;">Status: Live in Field</p>
       </div>
     `);
 
     mrMarker.on('click', () => {
       setSelectedPin({
         type: 'mr',
-        name: fieldData.activeMR.name,
-        title: 'Active Detailing Call',
-        lat: fieldData.activeMR.lat,
-        lng: fieldData.activeMR.lng,
-        distance: fieldData.activeMR.distanceM,
-        accuracy: fieldData.activeMR.accuracyM,
+        name: activeMR.name,
+        title: 'Active Field MR',
+        lat: activeMR.lat,
+        lng: activeMR.lng,
+        distance: activeMR.distanceM,
+        accuracy: activeMR.accuracyM,
         status: 'VERIFIED_ON_SITE',
       });
     });
     layersGroupRef.current.addLayer(mrMarker);
 
-    // 4. Distance connection line between MR and Clinic
-    const line = L.polyline(
-      [
-        [fieldData.clinic.lat, fieldData.clinic.lng],
-        [fieldData.activeMR.lat, fieldData.activeMR.lng],
-      ],
-      { color: '#0F8B5A', weight: 2, dashArray: '4, 6' },
-    );
-    layersGroupRef.current.addLayer(line);
-
-    // 5. Plot Secondary Doctors in vicinity
-    fieldData.otherClinics.forEach((oc) => {
-      const isHospital = oc.name.toLowerCase().includes('hospital');
+    // 4. Plot any other genuine saved locations
+    otherClinics.forEach((oc) => {
+      const isHospital = (oc.category || '').toUpperCase() === 'HOSPITAL' || oc.name.toLowerCase().includes('hospital');
       const otherIcon = L.divIcon({
         html: create3DMapPinHtml({ category: isHospital ? 'HOSPITAL' : 'CLINIC', isSelected: false }),
         className: 'saved-location-3d-marker',
@@ -245,14 +212,14 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
         iconAnchor: [12, 32],
         popupAnchor: [0, -30],
       });
-      const m = L.marker([oc.lat, oc.lng], { icon: otherIcon });
-      m.bindPopup(`<strong>${oc.name}</strong><br/><span style="font-size:11px;color:#64748B;">${oc.clinic}</span>`);
+      const m = L.marker([oc.latitude, oc.longitude], { icon: otherIcon });
+      m.bindPopup(`<strong>${oc.name}</strong><br/><span style="font-size:11px;color:#64748B;">${oc.clinic || oc.address}</span>`);
       layersGroupRef.current?.addLayer(m);
     });
   };
 
   const handleRecenter = () => {
-    mapInstanceRef.current?.setView([fieldData.clinic.lat, fieldData.clinic.lng], 17);
+    mapInstanceRef.current?.setView([defaultCenter.lat, defaultCenter.lng], 16);
   };
 
   const handleRefresh = () => {

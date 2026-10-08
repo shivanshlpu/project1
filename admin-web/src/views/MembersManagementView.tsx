@@ -34,7 +34,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
-import { getApiBaseUrl } from '../utils/apiHelper';
+import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { getStoredSavedLocations } from '../utils/savedLocationsStore';
 
 interface LeaveQuotaData {
@@ -53,8 +53,78 @@ interface MembersManagementViewProps {
 export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onNavigateToLocation,
 }) => {
-  const [members, setMembers] = useState<MRMemberItem[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [members, setMembers] = useState<MRMemberItem[]>([
+    {
+      id: 'usr-admin-shivansh',
+      name: 'Shivansh Tiwari',
+      email: 'shivanshti10@gmail.com',
+      phone: '9009149694',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'usr-admin-01',
+      name: 'System Admin',
+      email: 'admin@ahtri.com',
+      phone: '9876543210',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'usr-mgr-01',
+      name: 'Anil Kumar (Area Manager)',
+      email: 'manager@ahtri.com',
+      phone: '9876543211',
+      role: 'MANAGER',
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'usr-mr-01',
+      name: 'Amar Dwivedi',
+      email: 'amar@ahtri.com',
+      phone: '9876543212',
+      role: 'MR',
+      hq_id: 'HQ-KOT-001',
+      hq_code: 'KOT',
+      hq_name: 'Kotma',
+      assigned_territory: 'Kotma HQ Territory',
+      assigned_route_batches: ['RB-KOT-01', 'RB-KOT-02'],
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'usr-mr-02',
+      name: 'Aman Rathore',
+      email: 'aman@ahtri.com',
+      phone: '9876543213',
+      role: 'MR',
+      hq_id: 'HQ-SHD-001',
+      hq_code: 'SHD',
+      hq_name: 'Shahdol',
+      assigned_territory: 'Shahdol HQ Territory',
+      assigned_route_batches: ['RB-SHD-01', 'RB-SHD-02'],
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'usr-mr-03',
+      name: 'Ashish Soni',
+      email: 'ashish@ahtri.com',
+      phone: '9876543214',
+      role: 'MR',
+      hq_id: 'HQ-AMB-001',
+      hq_code: 'AMB',
+      hq_name: 'Ambikapur',
+      assigned_territory: 'Ambikapur HQ Territory',
+      assigned_route_batches: ['RB-AMB-01', 'RB-AMB-02'],
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    },
+  ]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-admin-shivansh');
   const [activeTab, setActiveTab] = useState<'performance' | 'locations' | 'leaves' | 'security'>('performance');
   const [searchQuery, setSearchQuery] = useState('');
   const [memberPage, setMemberPage] = useState<number>(1);
@@ -191,14 +261,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   const handleDeleteMember = async (member: MRMemberItem) => {
     const ok = window.confirm(
-      `Are you sure you want to delete employee "${member.name}" (${member.id})?\n\nThis will remove their profile, territory assignments, and mobile access immediately. This action cannot be undone.`,
+      `Are you sure you want to permanently delete employee "${member.name}" (${member.id})?\n\nThis will permanently delete their account and all associated tasks, attendance, visit history, and device authorizations from the entire system. This action cannot be undone.`,
     );
     if (!ok) return;
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      await fetch(`${apiUrl}/users/${member.id}`, {
+      await resilientFetch(`/users/${member.id}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -211,7 +280,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     if (selectedMemberId === member.id && updated.length > 0) {
       setSelectedMemberId(updated[0].id);
     }
-    showToast(`✓ Employee ${member.name} deleted successfully.`);
+    showToast(`✓ Employee ${member.name} and all associated records deleted permanently.`);
   };
 
   const handleSaveEditMember = async (e: React.FormEvent) => {
@@ -224,7 +293,6 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
     setIsSubmittingEdit(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
 
       const batchesArray = editRouteBatches
@@ -249,7 +317,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         payload.password = editPassword.trim();
       }
 
-      await fetch(`${apiUrl}/users/${editingMember.id}`, {
+      await resilientFetch(`/users/${editingMember.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -292,25 +360,22 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   // Fetch Users, Tasks, and Locations
   useEffect(() => {
     const fetchData = async () => {
-      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       try {
-        const usersRes = await fetch(`${apiUrl}/users?role=MR`, { headers });
+        const usersRes = await resilientFetch('/users', { headers });
         if (usersRes.ok) {
           const uData = await usersRes.json();
-          if (Array.isArray(uData)) {
+          if (Array.isArray(uData) && uData.length > 0) {
             setMembers(uData);
-            if (uData.length > 0) {
-              setSelectedMemberId((prev) => (prev && uData.some((m) => m.id === prev) ? prev : uData[0].id));
-            }
+            setSelectedMemberId((prev) => (prev && uData.some((m) => m.id === prev) ? prev : uData[0].id));
           }
         }
       } catch {}
 
       try {
-        const tasksRes = await fetch(`${apiUrl}/tasks`, { headers });
+        const tasksRes = await resilientFetch('/tasks', { headers });
         if (tasksRes.ok) {
           const tData = await tasksRes.json();
           if (Array.isArray(tData)) setTasks(tData);
@@ -318,7 +383,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       } catch {}
 
       try {
-        const locsRes = await fetch(`${apiUrl}/locations`, { headers });
+        const locsRes = await resilientFetch('/locations', { headers });
         if (locsRes.ok) {
           const lData = await locsRes.json();
           if (Array.isArray(lData)) setLocations(lData);
@@ -333,9 +398,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     if (!selectedMemberId) return;
     const fetchQuota = async () => {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
         const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-        const res = await fetch(`${apiUrl}/leave/quota?mr_id=${selectedMemberId}`, {
+        const res = await resilientFetch(`/leave/quota?mr_id=${selectedMemberId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -358,9 +422,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const handleSaveQuota = async () => {
     setIsSavingQuota(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/leave/quota/${selectedMemberId}`, {
+      const res = await resilientFetch(`/leave/quota/${selectedMemberId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -401,9 +464,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
     setIsGrantingLeave(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      await fetch(`${apiUrl}/leave`, {
+      await resilientFetch('/leave', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -434,10 +496,19 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         };
       });
 
+      // Fetch authoritative quota calculation from server
+      try {
+        const qRes = await resilientFetch(`/leave/quota?mr_id=${selectedMemberId}`);
+        if (qRes.ok) {
+          const qData: LeaveQuotaData = await qRes.json();
+          setLeaveQuota(qData);
+        }
+      } catch {}
+
       setIsGrantLeaveModalOpen(false);
-      showToast(`✓ Successfully granted ${days} days ${grantCategory} leave to ${selectedMember.name}!`);
+      showToast(`✓ Successfully granted ${days} days ${grantCategory} leave to ${selectedMember?.name || 'employee'}!`);
     } catch (err) {
-      showToast(`✓ Leave recorded for ${selectedMember.name}.`);
+      showToast(`✓ Leave recorded for ${selectedMember?.name || 'employee'}.`);
       setIsGrantLeaveModalOpen(false);
     } finally {
       setIsGrantingLeave(false);
@@ -452,8 +523,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       )
     ) {
       try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-        await fetch(`${apiUrl}/auth/device-binding/reset/${id}`, { method: 'POST' });
+        await resilientFetch(`/auth/device-binding/reset/${id}`, { method: 'POST' });
       } catch {}
       setMembers(
         members.map((m) =>

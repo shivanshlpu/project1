@@ -20,6 +20,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { TourPlansModule } from './modules/tour-plans/tour-plans.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 import { AppController } from './app.controller';
 
@@ -45,6 +46,7 @@ import { AppController } from './app.controller';
     InventoryModule,
     TourPlansModule,
     CompetitionsModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

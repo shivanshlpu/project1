@@ -137,33 +137,33 @@ async function main() {
     },
     {
       id: 'usr-mr-01',
-      name: 'Rahul Sharma (Field MR)',
-      email: 'mr@ahtri.com',
+      name: 'Amar Dwivedi',
+      email: 'amar@ahtri.com',
       phone: '9876543212',
-      password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
+      password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
       biometric_enabled: true,
     },
     {
       id: 'usr-mr-02',
-      name: 'Vikas Patel (Field MR)',
-      email: 'mr2@ahtri.com',
+      name: 'Aman Rathore',
+      email: 'aman@ahtri.com',
       phone: '9876543213',
-      password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
+      password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
-      biometric_enabled: false,
+      biometric_enabled: true,
     },
     {
       id: 'usr-mr-03',
-      name: 'Suresh Raina (Field MR)',
-      email: 'mr3@ahtri.com',
+      name: 'Ashish Soni',
+      email: 'ashish@ahtri.com',
       phone: '9876543214',
-      password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
+      password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
-      biometric_enabled: false,
+      biometric_enabled: true,
     },
   ];
 
@@ -176,13 +176,12 @@ async function main() {
   // 4. Sync Headquarters
   console.log('⏳ Syncing headquarters...');
   const defaultHqs = [
+    { id: 'hq-kotma', name: 'Kotma', state: 'Madhya Pradesh', is_active: true },
     { id: 'hq-shahdol', name: 'Shahdol', state: 'Madhya Pradesh', is_active: true },
+    { id: 'hq-ambikapur', name: 'Ambikapur', state: 'Chhattisgarh', is_active: true },
     { id: 'hq-anuppur', name: 'Anuppur', state: 'Madhya Pradesh', is_active: true },
     { id: 'hq-umaria', name: 'Umaria', state: 'Madhya Pradesh', is_active: true },
-    { id: 'hq-ambikapur', name: 'Ambikapur', state: 'Chhattisgarh', is_active: true },
     { id: 'hq-bilaspur', name: 'Bilaspur', state: 'Chhattisgarh', is_active: true },
-    { id: 'hq-kotma', name: 'Kotma', state: 'Madhya Pradesh', is_active: true },
-    { id: 'hq-delhi', name: 'Delhi NCR', state: 'Delhi', is_active: true },
   ];
   for (const hq of defaultHqs) {
     const { error } = await supabase.from('headquarters').upsert(hq, { onConflict: 'id' });
@@ -217,13 +216,9 @@ async function main() {
     if (!error) results.medicines++;
   }
 
-  // 7. Sync Doctors
+  // 7. Sync Doctors (Dummy seed marks removed; doctors created dynamically)
   console.log('⏳ Syncing doctors...');
-  const defaultDoctors = [
-    { id: 'doc-01', name: 'Dr. Rajesh Sharma', specialty: 'Cardiologist', qualification: 'MD, DM (Cardio)', clinic_name: 'Sharma Heart Care Centre', phone: '9826011111', latitude: 28.5245, longitude: 77.2066, address: 'Opposite District Hospital, Shahdol', visiting_hours: '10:00 AM - 02:00 PM', priority: 'CORE', assigned_mr_id: 'usr-mr-01', assigned_mr_name: 'Rahul Sharma (Field MR)' },
-    { id: 'doc-02', name: 'Dr. Priya Verma', specialty: 'Pediatrician', qualification: 'MD (Pediatrics)', clinic_name: 'Verma Children Hospital', phone: '9826022222', latitude: 28.5355, longitude: 77.2100, address: 'Civil Lines, Shahdol', visiting_hours: '11:00 AM - 03:00 PM', priority: 'CORE', assigned_mr_id: 'usr-mr-01', assigned_mr_name: 'Rahul Sharma (Field MR)' },
-    { id: 'doc-03', name: 'Dr. Sandeep Gupta', specialty: 'General Physician', qualification: 'MBBS, MD (Medicine)', clinic_name: 'Gupta Medical Clinic', phone: '9826033333', latitude: 28.5400, longitude: 77.2150, address: 'Main Market, Burhar', visiting_hours: '04:00 PM - 08:00 PM', priority: 'SUPER_CORE', assigned_mr_id: 'usr-mr-01', assigned_mr_name: 'Rahul Sharma (Field MR)' },
-  ];
+  const defaultDoctors = [];
   for (const doc of defaultDoctors) {
     const { error } = await supabase.from('doctors').upsert(doc, { onConflict: 'id' });
     if (!error) results.doctors++;

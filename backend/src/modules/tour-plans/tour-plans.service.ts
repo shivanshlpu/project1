@@ -14,12 +14,127 @@ import {
 import { MonthlyTourPlan, MonthlyTpItem } from '../../database/database.types';
 import { NotificationsService } from '../notifications/notifications.module';
 
+import { calculateHqCenterToDestinationDistance } from '../territories/distance-calculator.service';
+
 @Injectable()
 export class TourPlansService {
   constructor(
     private readonly db: DatabaseService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  private enrichTpItem(
+    e: MonthlyTpItemDto,
+    user: any,
+    effectiveHqId: string,
+    effectiveHqName: string,
+  ): MonthlyTpItem {
+    const policyRate = this.db.attendanceSettings?.reimbursement_rate_per_km ?? 2.5;
+
+    // 1. Check if route batch is explicitly specified or if we can match one
+    let batch = null;
+    if (e.route_batch_id) {
+      batch = this.db.routeBatches.find(
+        (b) => b.id === e.route_batch_id || b.batch_code === e.route_batch_id,
+      );
+    } else if (e.route_batch_code && e.route_batch_code !== 'DIRECT_AREA') {
+      batch = this.db.routeBatches.find(
+        (b) =>
+          b.batch_code.toLowerCase() === e.route_batch_code?.toLowerCase() &&
+          (b.mr_id === user.id || b.hq_id === effectiveHqId),
+      );
+    }
+
+    // 2. Compute route, stops, distance (Two-way round trip calculation)
+    let routeBatchId = batch?.id || e.route_batch_id;
+    let routeBatchCode = batch?.batch_code || e.route_batch_code;
+    let routeBatchName = batch?.name || e.route_batch_name;
+    let routeStops =
+      e.route_stops && e.route_stops.length > 0
+        ? e.route_stops
+        : batch?.route_stops || batch?.areas || [];
+
+    let routeStr =
+      e.route ||
+      (routeStops.length > 0 ? routeStops.join(' → ') : (batch?.name || ''));
+
+    let oneWayDistanceKm: number | undefined = undefined;
+    let roundTripDistanceKm: number | undefined = undefined;
+    let calculationBasis: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL' = 'ROUND_TRIP_BATCH';
+
+    if (batch) {
+      // PREDEFINED ROUTE BATCH:
+      oneWayDistanceKm = e.one_way_distance_km ?? batch.distance_km;
+      roundTripDistanceKm = oneWayDistanceKm * 2;
+      calculationBasis = 'ROUND_TRIP_BATCH';
+      if (!routeStr) {
+        routeStr = `${batch.name} (Round Trip)`;
+      }
+    } else if (e.planned_area) {
+      // NON-BATCH DESTINATION: Calculate average distance from HQ Center (e.g. Shahdol Center) to location boundary / center
+      const calcResult = calculateHqCenterToDestinationDistance(effectiveHqId, e.planned_area);
+      oneWayDistanceKm = e.one_way_distance_km ?? calcResult.one_way_km;
+      roundTripDistanceKm = oneWayDistanceKm * 2;
+      calculationBasis = 'ROUND_TRIP_CENTER_TO_BOUNDARY';
+      routeBatchCode = 'DIRECT_AREA';
+      routeBatchName = `${calcResult.destination} (Center to Boundary Direct)`;
+      routeStr = `${calcResult.hq_name} Center ⇄ ${calcResult.destination} (Round Trip)`;
+      if (routeStops.length === 0) {
+        routeStops = [calcResult.hq_name, calcResult.destination];
+      }
+    } else if (e.distance_km !== undefined) {
+      oneWayDistanceKm = e.one_way_distance_km ?? Math.round(e.distance_km / 2);
+      roundTripDistanceKm = e.round_trip_distance_km ?? (oneWayDistanceKm * 2);
+      calculationBasis = 'MANUAL';
+    }
+
+    // Billable distance is round trip (two-way travel)
+    const billableDistanceKm = roundTripDistanceKm !== undefined ? roundTripDistanceKm : e.distance_km;
+
+    // 3. Compute reimbursement rate and two-way round trip amount
+    const rate =
+      e.reimbursement_rate !== undefined && e.reimbursement_rate !== null
+        ? e.reimbursement_rate
+        : batch?.standard_reimbursement_rate !== undefined
+        ? batch.standard_reimbursement_rate
+        : billableDistanceKm !== undefined
+        ? policyRate
+        : undefined;
+
+    const amount =
+      e.reimbursement_amount !== undefined && e.reimbursement_amount !== null
+        ? e.reimbursement_amount
+        : billableDistanceKm !== undefined && rate !== undefined
+        ? Math.round(billableDistanceKm * rate * 100) / 100
+        : undefined;
+
+    const reimbursementStatus =
+      e.reimbursement_status || (amount !== undefined ? 'PENDING' : undefined);
+
+    return {
+      id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
+      date: e.date,
+      hq_id: effectiveHqId,
+      hq_name: effectiveHqName,
+      planned_area: e.planned_area,
+      work_type: e.work_type,
+      planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
+      planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
+      route_batch_id: routeBatchId,
+      route_batch_code: routeBatchCode,
+      route_batch_name: routeBatchName,
+      route: routeStr || undefined,
+      route_stops: routeStops.length > 0 ? routeStops : undefined,
+      is_round_trip: true,
+      one_way_distance_km: oneWayDistanceKm,
+      round_trip_distance_km: roundTripDistanceKm,
+      distance_km: billableDistanceKm,
+      reimbursement_rate: rate,
+      reimbursement_amount: amount,
+      reimbursement_status: reimbursementStatus,
+      calculation_basis: calculationBasis,
+    };
+  }
 
   /**
    * Submit complete monthly Tour Plan with multiple date entries together (§7)
@@ -47,16 +162,7 @@ export class TourPlansService {
           effectiveHqName = foundHq.name;
         }
       }
-      return {
-        id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
-        date: e.date,
-        hq_id: effectiveHqId,
-        hq_name: effectiveHqName,
-        planned_area: e.planned_area,
-        work_type: e.work_type,
-        planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
-        planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
-      };
+      return this.enrichTpItem(e, user, effectiveHqId, effectiveHqName);
     });
 
     if (existing) {
@@ -65,6 +171,7 @@ export class TourPlansService {
       existing.submitted_at = new Date().toISOString();
       existing.remarks = dto.remarks || existing.remarks;
 
+      this.db.persistToDisk();
       this.notifyAdminsOfTpSubmission(user.name, dto.month, items.length);
       return existing;
     }
@@ -81,6 +188,7 @@ export class TourPlansService {
     };
 
     this.db.monthlyTourPlans.push(plan);
+    this.db.persistToDisk();
     this.notifyAdminsOfTpSubmission(user.name, dto.month, items.length);
     return plan;
   }
@@ -118,16 +226,7 @@ export class TourPlansService {
       }
     }
 
-    const newItem: MonthlyTpItem = {
-      id: dto.id || `tp-item-${uuidv4().substring(0, 8)}`,
-      date: dto.date,
-      hq_id: effectiveHqId,
-      hq_name: effectiveHqName,
-      planned_area: dto.planned_area,
-      work_type: dto.work_type,
-      planned_kol_drs: dto.planned_kol_drs?.trim() || 'General Field Coverage',
-      planned_activity: dto.planned_activity?.trim() || 'Doctor & Chemist Detailing',
-    };
+    const newItem: MonthlyTpItem = this.enrichTpItem(dto, user, effectiveHqId, effectiveHqName);
 
     if (plan) {
       const existingIdx = plan.entries.findIndex((e) => e.date === dto.date);
@@ -158,6 +257,7 @@ export class TourPlansService {
       this.db.monthlyTourPlans.push(plan);
     }
 
+    this.db.persistToDisk();
     this.notifyAdminsOfTpSubmission(user.name, month, plan.entries.length);
     return plan;
   }
@@ -169,8 +269,8 @@ export class TourPlansService {
     const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
     if (!plan) throw new NotFoundException('Tour Plan not found');
 
+    const user = this.db.users.find((u) => u.id === userId);
     if (plan.mr_id !== userId) {
-      const user = this.db.users.find((u) => u.id === userId);
       const isManager = user && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
       if (!isManager) {
         throw new BadRequestException('You can only edit your own tour plan');
@@ -188,19 +288,22 @@ export class TourPlansService {
     }
 
     if (dto.entries && dto.entries.length > 0) {
-      plan.entries = dto.entries.map((e) => ({
-        id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
-        date: e.date,
-        hq_id: e.hq_id,
-        hq_name: e.hq_name,
-        planned_area: e.planned_area,
-        work_type: e.work_type,
-        planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
-        planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
-      }));
+      plan.entries = dto.entries.map((e) => {
+        let effectiveHqId = user?.hq_id || e.hq_id;
+        let effectiveHqName = user?.hq_name || e.hq_name;
+        if (effectiveHqId) {
+          const foundHq = this.db.findHeadquarter(effectiveHqId);
+          if (foundHq) {
+            effectiveHqId = foundHq.hq_id;
+            effectiveHqName = foundHq.name;
+          }
+        }
+        return this.enrichTpItem(e, user || { id: plan.mr_id }, effectiveHqId, effectiveHqName);
+      });
     }
 
     if (dto.remarks !== undefined) plan.remarks = dto.remarks;
+    this.db.persistToDisk();
     return plan;
   }
 
@@ -221,6 +324,7 @@ export class TourPlansService {
     }
 
     plan.entries = plan.entries.filter((e) => e.id !== entryId);
+    this.db.persistToDisk();
     return plan;
   }
 
@@ -243,6 +347,12 @@ export class TourPlansService {
       .filter((tp) => tp.mr_id === userId)
       .filter((tp) => (month ? tp.month === month : true))
       .sort((a, b) => b.month.localeCompare(a.month));
+  }
+
+  async getTourPlanById(id: string): Promise<MonthlyTourPlan> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === id);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+    return plan;
   }
 
   /**
@@ -281,13 +391,30 @@ export class TourPlansService {
             (entry.planned_area && entry.planned_area.toLowerCase().includes(q)) ||
             (entry.planned_kol_drs && entry.planned_kol_drs.toLowerCase().includes(q)) ||
             (entry.planned_activity && entry.planned_activity.toLowerCase().includes(q)) ||
+            (entry.route_batch_code && entry.route_batch_code.toLowerCase().includes(q)) ||
+            (entry.route && entry.route.toLowerCase().includes(q)) ||
             (entry.date && entry.date.includes(q));
           if (!match) continue;
         }
 
+        const isRoundTrip = entry.is_round_trip !== undefined ? entry.is_round_trip : true;
+        const oneWayKm =
+          entry.one_way_distance_km !== undefined
+            ? entry.one_way_distance_km
+            : entry.distance_km !== undefined
+            ? Math.round((entry.distance_km / 2) * 10) / 10
+            : undefined;
+        const roundTripKm =
+          entry.round_trip_distance_km !== undefined
+            ? entry.round_trip_distance_km
+            : entry.distance_km !== undefined
+            ? entry.distance_km
+            : undefined;
+
         flattenedRows.push({
           id: entry.id,
           tp_id: plan.id,
+          plan_id: plan.id,
           entry_id: entry.id,
           mr_id: plan.mr_id,
           mr_name: plan.mr_name,
@@ -298,9 +425,23 @@ export class TourPlansService {
           hq_id: entry.hq_id,
           hq_name: entry.hq_name,
           planned_area: entry.planned_area,
+          destination: entry.planned_area,
           work_type: entry.work_type,
           planned_kol_drs: entry.planned_kol_drs || 'General Field Coverage',
           planned_activity: entry.planned_activity || 'Doctor & Chemist Detailing',
+          route_batch_id: entry.route_batch_id,
+          route_batch_code: entry.route_batch_code,
+          route_batch_name: entry.route_batch_name,
+          route: entry.route,
+          route_stops: entry.route_stops,
+          is_round_trip: isRoundTrip,
+          one_way_distance_km: oneWayKm,
+          round_trip_distance_km: roundTripKm,
+          distance_km: entry.distance_km,
+          reimbursement_rate: entry.reimbursement_rate,
+          reimbursement_amount: entry.reimbursement_amount,
+          reimbursement_status: entry.reimbursement_status || (entry.reimbursement_amount !== undefined ? 'PENDING' : undefined),
+          calculation_basis: entry.calculation_basis || (entry.route_batch_code === 'DIRECT_AREA' ? 'ROUND_TRIP_CENTER_TO_BOUNDARY' : 'ROUND_TRIP_BATCH'),
           remarks: plan.remarks || '',
           created_at: plan.submitted_at,
           submitted_at: plan.submitted_at,
@@ -327,12 +468,52 @@ export class TourPlansService {
     plan.approved_at = new Date().toISOString();
     if (dto.remarks) plan.remarks = dto.remarks;
 
+    // Also update all pending item reimbursement statuses to match if plan is approved/rejected
+    plan.entries.forEach((entry) => {
+      if (entry.reimbursement_amount !== undefined && (!entry.reimbursement_status || entry.reimbursement_status === 'PENDING')) {
+        entry.reimbursement_status = dto.status;
+      }
+    });
+
+    this.db.persistToDisk();
+
     // Send push notification to MR
     this.notificationsService.sendPushNotification(
       plan.mr_id,
       dto.status === 'APPROVED' ? '✅ Tour Plan Approved' : '❌ Tour Plan Correction Requested',
       `Your Monthly Tour Plan for ${plan.month} has been ${dto.status.toLowerCase()}.${dto.remarks ? ` Note: "${dto.remarks}"` : ''}`,
       { planId: plan.id, month: plan.month, status: plan.status, type: 'TP_STATUS' },
+    );
+
+    return plan;
+  }
+
+  async decideReimbursement(
+    planId: string,
+    entryId: string,
+    status: 'APPROVED' | 'REJECTED',
+    adminId: string,
+    remarks?: string,
+  ): Promise<MonthlyTourPlan> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+
+    const entry = plan.entries.find((e) => e.id === entryId);
+    if (!entry) throw new NotFoundException('Tour Plan entry not found');
+
+    entry.reimbursement_status = status;
+    if (remarks) {
+      plan.remarks = plan.remarks ? `${plan.remarks} | ${remarks}` : remarks;
+    }
+
+    this.db.persistToDisk();
+
+    // Send push notification to MR
+    this.notificationsService.sendPushNotification(
+      plan.mr_id,
+      status === 'APPROVED' ? '💰 Reimbursement Approved' : '❌ Reimbursement Rejected',
+      `Reimbursement for visit on ${entry.date} (${entry.planned_area || entry.route_batch_name || 'Travel'}) has been ${status.toLowerCase()}.${remarks ? ` Note: "${remarks}"` : ''}`,
+      { planId: plan.id, entryId: entry.id, status, type: 'TP_REIMBURSEMENT_STATUS' },
     );
 
     return plan;

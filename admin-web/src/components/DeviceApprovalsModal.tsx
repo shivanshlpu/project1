@@ -12,7 +12,12 @@ import {
   AlertTriangle,
   UserCheck,
 } from 'lucide-react';
-import { getApiBaseUrl } from '../utils/apiHelper';
+import {
+  getApiBaseUrl,
+  fetchDeviceAuthorizationsMerged,
+  approveDeviceAuthorizationDual,
+  rejectDeviceAuthorizationDual,
+} from '../utils/apiHelper';
 
 export interface DeviceAuthItem {
   id: string;
@@ -50,17 +55,13 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
 
   const fetchAuthorizations = async () => {
     try {
-      const apiUrl = getApiBaseUrl();
-      const res = await fetch(`${apiUrl}/auth/device-authorizations`);
-      if (res.ok) {
-        const data = await res.json();
-        const pending = data.pending || [];
-        const history = data.history || [];
-        setPendingList(pending);
-        setHistoryList(history);
-        if (onCountUpdate) {
-          onCountUpdate(pending.length);
-        }
+      const data = await fetchDeviceAuthorizationsMerged();
+      const pending = data.pending || [];
+      const history = data.history || [];
+      setPendingList(pending);
+      setHistoryList(history);
+      if (onCountUpdate) {
+        onCountUpdate(pending.length);
       }
     } catch {
       // Fallback
@@ -69,7 +70,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
 
   useEffect(() => {
     fetchAuthorizations();
-    const interval = setInterval(fetchAuthorizations, 3000);
+    const interval = setInterval(fetchAuthorizations, 2500);
     return () => clearInterval(interval);
   }, []);
 
@@ -93,14 +94,9 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
     setIsLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = getApiBaseUrl();
-      const res = await fetch(`${apiUrl}/auth/device-authorizations/${item.id}/approve`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        setActionMessage(`Approved ${item.user_name}'s phone (${item.device_model}).`);
-        fetchAuthorizations();
-      }
+      await approveDeviceAuthorizationDual(item.id);
+      setActionMessage(`✓ Approved ${item.user_name}'s phone (${item.device_model}). MR can now log in immediately.`);
+      fetchAuthorizations();
     } catch (err: any) {
       setActionMessage(`Error: ${err.message}`);
     } finally {
@@ -112,14 +108,9 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
     setIsLoading(true);
     setActionMessage(null);
     try {
-      const apiUrl = getApiBaseUrl();
-      const res = await fetch(`${apiUrl}/auth/device-authorizations/${item.id}/reject`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        setActionMessage(`Device login request rejected.`);
-        fetchAuthorizations();
-      }
+      await rejectDeviceAuthorizationDual(item.id);
+      setActionMessage(`Device login request rejected.`);
+      fetchAuthorizations();
     } catch (err: any) {
       setActionMessage(`Error: ${err.message}`);
     } finally {

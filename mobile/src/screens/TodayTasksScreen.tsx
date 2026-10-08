@@ -60,8 +60,8 @@ interface TodayTasksScreenProps {
 }
 
 export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
-  currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserId = 'usr-mr-02',
+  currentUserName = 'Aman Rathore',
 }) => {
   // All system tasks across MRs
   const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);

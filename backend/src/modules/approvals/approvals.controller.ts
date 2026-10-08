@@ -51,7 +51,10 @@ export class LeaveController {
   @Post()
   @Roles('MR', 'MANAGER', 'SUPER_ADMIN')
   async createLeave(@CurrentUser() user: any, @Body() dto: CreateLeaveDto) {
-    return this.approvalsService.createLeave(user.id, dto);
+    const isAdminOrMgr = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'MANAGER';
+    const targetMrId = isAdminOrMgr && (dto as any).mr_id ? (dto as any).mr_id : user.id;
+    const autoApprove = isAdminOrMgr && Boolean((dto as any).mr_id && (dto as any).mr_id !== user.id);
+    return this.approvalsService.createLeave(targetMrId, dto, autoApprove, user.id);
   }
 
   @Get('my')

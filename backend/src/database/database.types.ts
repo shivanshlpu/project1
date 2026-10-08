@@ -66,6 +66,8 @@ export interface User {
 
 export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'ORDER_PENDING' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
 
+export type OrderDeliveryStatus = 'PENDING' | 'DELIVERED';
+
 export interface TaskOrderItem {
   product_id?: string;
   product_name: string;
@@ -75,6 +77,34 @@ export interface TaskOrderItem {
   distributor?: string;
   stocker_id?: string;
   notes?: string;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  task_id?: string;
+  mr_id: string;
+  mr_name: string;
+  customer_name: string;
+  location_name?: string;
+  hq_id: string;
+  hq_name: string;
+  stocker_id: string;
+  stocker_name: string;
+  items: TaskOrderItem[];
+  total_units: number;
+  total_amount: number;
+  delivery_status: OrderDeliveryStatus;
+  delivered_at?: string;
+  delivered_by_user_id?: string;
+  delivery_notes?: string;
+  hq_accepted: boolean;
+  accepted_at?: string;
+  accepted_by_user_id?: string;
+  inventory_deducted: boolean;
+  inventory_deducted_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Task {
@@ -104,6 +134,10 @@ export interface Task {
   stocker_name?: string;
   outcome?: string; // Meeting summary / doctor reaction
   orders?: TaskOrderItem[]; // Immediate orders captured
+  order_id?: string;
+  delivery_status?: OrderDeliveryStatus;
+  hq_accepted?: boolean;
+  inventory_deducted?: boolean;
   verification_photo_key?: string;
   verification_photo_source?: 'CAMERA' | 'GALLERY';
   visit_photo?: string | null; // Compressed base64 clinic/detailing proof photo
@@ -362,11 +396,13 @@ export interface RouteBatch {
   mr_id?: string;
   mr_name?: string;
   territory_name?: string;
-  areas: string[];
+  route_stops: string[]; // Ordered route stops e.g. ['Shahdol', 'Gohparu', 'Jaisinghnagar']
+  areas: string[]; // Aliased for backward compatibility
   distance_km: number;
   standard_reimbursement_rate?: number;
   status: 'ACTIVE' | 'INACTIVE';
   created_at: string;
+  updated_at?: string;
 }
 
 export interface HqArea {
@@ -473,6 +509,21 @@ export interface MonthlyTpItem {
   work_type: string; // "Transit" | "Induction" | "Doctor Visit" | "Order Collection" | "Follow-up" | "Other"
   planned_kol_drs: string;
   planned_activity: string;
+
+  // Predefined Route Batch & Reimbursement Integration
+  route_batch_id?: string;
+  route_batch_code?: string;
+  route_batch_name?: string;
+  route?: string; // e.g. "Shahdol → Gohparu → Jaisinghnagar"
+  route_stops?: string[];
+  is_round_trip?: boolean; // Whether distance & fare are calculated as round trip (two-way)
+  one_way_distance_km?: number; // One-way distance from center/route
+  round_trip_distance_km?: number; // Two-way distance (2 * one_way_distance_km)
+  distance_km?: number; // Billable round-trip distance in km
+  reimbursement_rate?: number; // Snapshot of rate per km applied
+  reimbursement_amount?: number; // Calculated two-way fare: round_trip_distance_km * rate
+  reimbursement_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  calculation_basis?: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL';
 }
 
 export interface MonthlyTourPlan {
@@ -494,6 +545,7 @@ export interface AttendanceSettings {
   allowed_punch_in_window_minutes: number; // e.g. 30
   expected_punch_out_time: string; // e.g. "18:00:00"
   allowed_punch_out_window_minutes: number; // e.g. 30
+  reimbursement_rate_per_km?: number; // Admin-configured reimbursement policy rate (e.g. 2.50)
   updated_at: string;
 }
 

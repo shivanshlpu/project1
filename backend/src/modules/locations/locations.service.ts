@@ -166,7 +166,7 @@ export class LocationsService implements OnModuleInit {
 
     const creatorName = authenticatedUser?.name
       || dto.mr_name
-      || (creatorRole === 'MR' ? 'Rahul Sharma (Field MR)' : 'System Admin (Owner)');
+      || (creatorRole === 'MR' ? 'Amar Dwivedi (Field MR)' : 'System Admin (Owner)');
 
     const creatorId = authenticatedUser?.id || dto.mr_id || 'usr-mr-01';
 

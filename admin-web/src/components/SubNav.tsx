@@ -16,6 +16,7 @@ import {
   Calendar,
   Boxes,
   Trophy,
+  ShoppingBag,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 
@@ -23,6 +24,7 @@ export type ManagerTab =
   | 'overview'
   | 'tasks'
   | 'submitted_tasks'
+  | 'orders'
   | 'locations'
   | 'members'
   | 'attendance'
@@ -57,6 +59,7 @@ export const SubNav: React.FC<SubNavProps> = ({
     { id: 'overview' as ManagerTab, label: t.tabOverview, Icon: BarChart3 },
     { id: 'tasks' as ManagerTab, label: lang === 'hi' ? 'असाइन किए गए टास्क' : 'Assigned Tasks', Icon: MapPin },
     { id: 'submitted_tasks' as ManagerTab, label: lang === 'hi' ? 'सबमिट किए गए टास्क' : 'Submitted Tasks', Icon: CheckCircle2 },
+    { id: 'orders' as ManagerTab, label: lang === 'hi' ? 'ऑर्डर्स और डिलीवरी' : 'Orders & Delivery', Icon: ShoppingBag },
     {
       id: 'locations' as ManagerTab,
       label: t.tabLocations,
@@ -69,6 +72,7 @@ export const SubNav: React.FC<SubNavProps> = ({
     { id: 'tp' as ManagerTab, label: t.tabMonthlyTp || 'Monthly TP', Icon: Calendar },
     { id: 'stockers' as ManagerTab, label: t.tabStockers || 'Stocker Management', Icon: Boxes },
     { id: 'competitions' as ManagerTab, label: t.tabCompetitions || 'Competitions', Icon: Trophy },
+
     {
       id: 'approvals' as ManagerTab,
       label: t.tabApprovals,

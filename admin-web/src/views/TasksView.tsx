@@ -47,7 +47,7 @@ import {
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 import { InStockProduct, getStoredInStockProducts, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
-import { getApiBaseUrl } from '../utils/apiHelper';
+import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { markTaskAsDeleted, getDeletedTaskIds } from '../utils/deletedTasksStore';
 
 declare global {
@@ -81,64 +81,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
 }) => {
   const t = translations[lang];
 
-  // Pre-saved Doctor & Location Presets
-  const doctorPresets = [
-    {
-      id: 'doc-01',
-      name: 'District Hospital Shahdol',
-      clinic: 'Civil Hospital & Trauma Centre',
-      specialty: 'District Healthcare Centre',
-      address: 'Hospital Road, Bicharpur, Shahdol, MP',
-      lat: 23.2953,
-      lng: 81.3586,
-      radius: 50,
-      suggestedMr: 'Rahul Sharma',
-    },
-    {
-      id: 'doc-02',
-      name: 'Shree Ram Pharmacy',
-      clinic: 'Shree Ram Medicos Shahdol',
-      specialty: 'Retail Chemist Partner',
-      address: 'Main Market, Station Road, Shahdol, MP',
-      lat: 23.3012,
-      lng: 81.3620,
-      radius: 40,
-      suggestedMr: 'Rahul Sharma',
-    },
-    {
-      id: 'doc-03',
-      name: 'Ambikapur Civil Hospital',
-      clinic: 'Surguja District Hospital',
-      specialty: 'Multispecialty Public Healthcare',
-      address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
-      lat: 23.1197,
-      lng: 83.1979,
-      radius: 50,
-      suggestedMr: 'Vikram Malhotra',
-    },
-    {
-      id: 'doc-04',
-      name: 'Bilaspur Healthcare Centre',
-      clinic: 'Apollo Regional Medical Centre',
-      specialty: 'Super Specialty Hospital',
-      address: 'Vyapar Vihar, Bilaspur, Chhattisgarh',
-      lat: 22.0797,
-      lng: 82.1409,
-      radius: 60,
-      suggestedMr: 'Pooja Verma',
-    },
-    {
-      id: 'doc-05',
-      name: 'Kotma Primary Health Centre',
-      clinic: 'Kotma PHC & Wellness Centre',
-      specialty: 'Primary Healthcare',
-      address: 'Main Road, Kotma, Madhya Pradesh',
-      lat: 23.2035,
-      lng: 81.9669,
-      radius: 40,
-      suggestedMr: 'Amit Kumar',
-    },
-  ];
+  // Pre-saved Doctor & Location Presets (Derived dynamically from authentic saved locations)
+  const doctorPresets: any[] = [];
 
   // Available Products for Detailing Focus (Only in-stock products with quantity > 0 in store)
   const [inStockProducts, setInStockProducts] = useState<InStockProduct[]>(getStoredInStockProducts);
@@ -155,8 +99,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     const fetchMRs = async () => {
       try {
         const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-        const apiUrl = getApiBaseUrl();
-        const res = await fetch(`${apiUrl}/users?role=MR`, {
+        const res = await resilientFetch('/users?role=MR', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -188,8 +131,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [selectedPresetId, setSelectedPresetId] = useState<string>('custom');
   const [taskTitle, setTaskTitle] = useState('');
   const [callCategory, setCallCategory] = useState<'DETAILING' | 'LAUNCH' | 'POB' | 'SAMPLE' | 'HOSPITAL'>('DETAILING');
-  const [assignedMrId, setAssignedMrId] = useState<string>('usr-mr-01');
-  const [assignedMr, setAssignedMr] = useState('Rahul Sharma');
+  const [assignedMrId, setAssignedMrId] = useState<string>('usr-mr-02');
+  const [assignedMr, setAssignedMr] = useState('Aman Rathore');
   const [taskLocationName, setTaskLocationName] = useState('');
   const [taskAddress, setTaskAddress] = useState('');
   const getTodayDateString = () => {
@@ -217,8 +160,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   // Edit Assigned Task State
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState('');
-  const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('usr-mr-01');
-  const [editTaskAssignedMrName, setEditTaskAssignedMrName] = useState('Rahul Sharma');
+  const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('usr-mr-02');
+  const [editTaskAssignedMrName, setEditTaskAssignedMrName] = useState('Aman Rathore');
   const [editTaskDate, setEditTaskDate] = useState('');
   const [editTaskTime, setEditTaskTime] = useState('');
   const [editTaskPriority, setEditTaskPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
@@ -558,7 +501,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           <div style="font-size:11.5px;color:#0F8B5A;font-weight:600;">${loc.doctor_name ? 'Dr. ' + loc.doctor_name : loc.specialization || ''}</div>
           <div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.3;">${loc.address}</div>
           <div style="font-size:11px;color:#0F8B5A;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px;">
-            📍 Marked by: ${loc.created_by_name || 'Rahul Sharma (Field MR)'}
+            📍 Marked by: ${loc.created_by_name || 'Aman Rathore (Field MR)'}
           </div>
           <div style="margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:700;background:#EFF6FF;color:#1A3C6E;padding:2px 6px;border-radius:4px;">${loc.category || 'CLINIC'}</span>
@@ -1233,8 +1176,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleOpenEditTask = (task: TaskItem) => {
     setEditingTask(task);
     setEditTaskTitle(task.title || '');
-    setEditTaskAssignedMrId(task.assigned_mr_id || 'usr-mr-01');
-    setEditTaskAssignedMrName(task.assigned_mr_name || 'Rahul Sharma');
+    setEditTaskAssignedMrId(task.assigned_mr_id || 'usr-mr-02');
+    setEditTaskAssignedMrName(task.assigned_mr_name || 'Aman Rathore');
     setEditTaskDate(task.date || getTodayDateString());
     setEditTaskTime(task.time || '10:00 AM');
     setEditTaskPriority(task.priority || 'HIGH');

@@ -40,6 +40,53 @@ export class MonthlyTpItemDto {
   @IsString()
   @IsOptional()
   planned_activity?: string;
+
+  // Predefined Route Batch & Reimbursement Integration
+  @IsString()
+  @IsOptional()
+  route_batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  route_batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  route_batch_name?: string;
+
+  @IsString()
+  @IsOptional()
+  route?: string;
+
+  @IsArray()
+  @IsOptional()
+  route_stops?: string[];
+
+  @IsOptional()
+  distance_km?: number;
+
+  @IsOptional()
+  is_round_trip?: boolean;
+
+  @IsOptional()
+  one_way_distance_km?: number;
+
+  @IsOptional()
+  round_trip_distance_km?: number;
+
+  @IsOptional()
+  reimbursement_rate?: number;
+
+  @IsOptional()
+  reimbursement_amount?: number;
+
+  @IsString()
+  @IsOptional()
+  reimbursement_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+
+  @IsString()
+  @IsOptional()
+  calculation_basis?: string;
 }
 
 export class SubmitMonthlyTpDto {
@@ -58,6 +105,15 @@ export class SubmitMonthlyTpDto {
 }
 
 export class UpdateTpStatusDto {
+  @IsEnum(['APPROVED', 'REJECTED'])
+  status: 'APPROVED' | 'REJECTED';
+
+  @IsString()
+  @IsOptional()
+  remarks?: string;
+}
+
+export class DecideTpReimbursementDto {
   @IsEnum(['APPROVED', 'REJECTED'])
   status: 'APPROVED' | 'REJECTED';
 

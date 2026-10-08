@@ -15,7 +15,29 @@ import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 interface MonthlyTpScreenProps {
   currentUserId?: string;
   currentUserName?: string;
+  currentUserHqId?: string;
+  currentUserHqName?: string;
   onBack?: () => void;
+}
+
+export interface RouteBatchSuggestion {
+  id: string;
+  batch_code: string;
+  name: string;
+  route: string;
+  route_stops: string[];
+  distance_km: number;
+  one_way_distance_km?: number;
+  round_trip_distance_km?: number;
+  is_round_trip?: boolean;
+  reimbursement_rate?: number;
+  reimbursement_amount?: number;
+  hq_id?: string;
+  hq_name?: string;
+  mr_id?: string;
+  mr_name?: string;
+  territory_name?: string;
+  is_exact_match?: boolean;
 }
 
 interface WorkingTpItem {
@@ -27,6 +49,19 @@ interface WorkingTpItem {
   work_type: string;
   planned_kol_drs: string;
   planned_activity: string;
+  route_batch_id?: string;
+  route_batch_code?: string;
+  route_batch_name?: string;
+  route?: string;
+  route_stops?: string[];
+  distance_km?: number;
+  one_way_distance_km?: number;
+  round_trip_distance_km?: number;
+  is_round_trip?: boolean;
+  reimbursement_rate?: number;
+  reimbursement_amount?: number;
+  reimbursement_status?: string;
+  calculation_basis?: string;
 }
 
 const WORK_TYPES = [
@@ -48,25 +83,79 @@ const DEFAULT_HQS = [
   { id: 'hq-burhar', name: 'Burhar', state: 'Madhya Pradesh' },
 ];
 
+// Predefined Initial Master Batches Configured in System
+const STATIC_PRESET_BATCHES: Array<{
+  id: string;
+  batch_code: string;
+  name: string;
+  route_stops: string[];
+  distance_km: number;
+  reimbursement_rate: number;
+  hq_id: string;
+  mr_id: string;
+}> = [
+  // Amar Dwivedi (Kotma)
+  { id: 'rb-kot-01', batch_code: 'Batch 1', name: 'Kotma → Marwahi → Dhanikundi', route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'], distance_km: 85, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-02', batch_code: 'Batch 2', name: 'Kotma → Kelhari → Janakpur', route_stops: ['Kotma', 'Kelhari', 'Janakpur'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-03', batch_code: 'Batch 3', name: 'Kotma → Keswahi → Girva → Khamhidol', route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-04', batch_code: 'Batch 4', name: 'Kotma → Jaithari → Rajendragram', route_stops: ['Kotma', 'Jaithari', 'Rajendragram'], distance_km: 70, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-05', batch_code: 'Batch 5', name: 'Kotma → Anuppur', route_stops: ['Kotma', 'Anuppur'], distance_km: 45, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-06', batch_code: 'Batch 6', name: 'Kotma → Manendragarh', route_stops: ['Kotma', 'Manendragarh'], distance_km: 65, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-07', batch_code: 'Batch 7', name: 'Kotma → Chirmiri', route_stops: ['Kotma', 'Chirmiri'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-08', batch_code: 'Batch 8', name: 'Kotma → Baikunthpur', route_stops: ['Kotma', 'Baikunthpur'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-09', batch_code: 'Batch 9', name: 'Kotma → Gaurela', route_stops: ['Kotma', 'Gaurela'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+
+  // Aman Rathore (Shahdol)
+  { id: 'rb-sha-01', batch_code: 'Batch 1', name: 'Shahdol → Budhar → Dhanpuri → OPM', route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'], distance_km: 55, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-02', batch_code: 'Batch 2', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-03', batch_code: 'Batch 3', name: 'Shahdol → Gohparu → Jaisinghnagar', route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'], distance_km: 120, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-04', batch_code: 'Batch 4', name: 'Shahdol → Jaitpur', route_stops: ['Shahdol', 'Jaitpur'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-05', batch_code: 'Batch 5', name: 'Shahdol → Manpur', route_stops: ['Shahdol', 'Manpur'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+
+  // Ashish Soni (Ambikapur)
+  { id: 'rb-amb-01', batch_code: 'Batch 1', name: 'Ambikapur → Laknapur → Udaypur → Kedma', route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-02', batch_code: 'Batch 2', name: 'Ambikapur → Batuli → Sitapur → Patthalgawn', route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'], distance_km: 130, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-03', batch_code: 'Batch 3', name: 'Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar', route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'], distance_km: 115, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-04', batch_code: 'Batch 4', name: 'Ambikapur → Pratapur → Siluta → Vadrafnagar', route_stops: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'], distance_km: 140, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-05', batch_code: 'Batch 5', name: 'Ambikapur → Latori → Krwan → Datima → Batra → Bhatgawn', route_stops: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'], distance_km: 125, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+];
+
 const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
   'hq-shahdol': [
-    'Burhar',
-    'Gohparu',
-    'Beohari',
     'Jaisinghnagar',
+    'Gohparu',
+    'Budhar',
+    'Dhanpuri',
+    'OPM',
+    'Pali',
+    'Navrozabad',
+    'Jaitpur',
+    'Manpur',
+    'Beohari',
     'Sohagpur',
     'Singhpur',
     'Shahdol Central',
   ],
   'hq-ambikapur': [
+    'Laknapur',
+    'Udaypur',
+    'Kedma',
+    'Batuli',
     'Sitapur',
-    'Lundra',
-    'Batoli',
-    'Mainpat',
-    'Udaipur',
-    'Lakhanpur',
-    'Surguja',
-    'Ramanujganj',
+    'Patthalgawn',
+    'Silpili',
+    'Vishrampur',
+    'Surajpur',
+    'Devnagar',
+    'Shreenagar',
+    'Pratapur',
+    'Siluta',
+    'Vadrafnagar',
+    'Latori',
+    'Krwan',
+    'Datima',
+    'Batra',
+    'Bhatgawn',
     'Ambikapur Central',
   ],
   'hq-bilaspur': [
@@ -80,12 +169,22 @@ const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
     'Bilaspur City',
   ],
   'hq-kotma': [
-    'Kotma Town',
-    'Anuppur',
+    'Marwahi',
+    'Dhanikundi',
+    'Kelhari',
+    'Janakpur',
+    'Keswahi',
+    'Girva',
+    'Khamhidol',
     'Jaithari',
-    'Bijuri',
     'Rajendragram',
-    'Bhalumuda',
+    'Anuppur',
+    'Manendragarh',
+    'Chirmiri',
+    'Baikunthpur',
+    'Gaurela',
+    'Kotma Town',
+    'Bijuri',
   ],
   'hq-jaisinghnagar': [
     'Jaisinghnagar Town',
@@ -108,12 +207,32 @@ const MONTH_NAMES = [
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
-  currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserId = 'usr-mr-02',
+  currentUserName = 'Aman Rathore',
+  currentUserHqId,
+  currentUserHqName,
   onBack,
 }) => {
+  // Auto-detect HQ based on props or username
+  const initialHqId = (() => {
+    if (currentUserHqId) {
+      const lower = currentUserHqId.toLowerCase();
+      if (lower.includes('kot')) return 'hq-kotma';
+      if (lower.includes('amb')) return 'hq-ambikapur';
+      if (lower.includes('sha')) return 'hq-shahdol';
+      return currentUserHqId;
+    }
+    const nameLower = (currentUserName || '').toLowerCase();
+    if (nameLower.includes('amar')) return 'hq-kotma';
+    if (nameLower.includes('ashish')) return 'hq-ambikapur';
+    return 'hq-shahdol';
+  })();
+
   const [hqs, setHqs] = useState<Array<{ id: string; name: string; state?: string }>>(DEFAULT_HQS);
-  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_HQ_AREAS_MAP['hq-shahdol']);
+  const [selectedHqId, setSelectedHqId] = useState<string>(initialHqId);
+  const [availableAreas, setAvailableAreas] = useState<string[]>(
+    DEFAULT_HQ_AREAS_MAP[initialHqId] || DEFAULT_HQ_AREAS_MAP['hq-shahdol'],
+  );
 
   // Form inputs
   const [formDate, setFormDate] = useState<string>(() => {
@@ -122,11 +241,20 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     const month = String(d.getMonth() + 1).padStart(2, '0');
     return `${day}-${month}-${d.getFullYear()}`;
   });
-  const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
-  const [selectedArea, setSelectedArea] = useState<string>(DEFAULT_HQ_AREAS_MAP['hq-shahdol'][0]);
+  const [selectedArea, setSelectedArea] = useState<string>(
+    (DEFAULT_HQ_AREAS_MAP[initialHqId] || DEFAULT_HQ_AREAS_MAP['hq-shahdol'])[0],
+  );
   const [selectedWorkType, setSelectedWorkType] = useState<string>('Doctor Visit');
   const [kolDrsName, setKolDrsName] = useState<string>('');
   const [plannedActivity, setPlannedActivity] = useState<string>('');
+
+  // Route Batch Suggestion States
+  const [availableBatches, setAvailableBatches] = useState<RouteBatchSuggestion[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<RouteBatchSuggestion | null>(null);
+  const [allHqBatches, setAllHqBatches] = useState<RouteBatchSuggestion[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
+  const [batchSuggestionNotice, setBatchSuggestionNotice] = useState<string>('');
+  const [isAllBatchesModalOpen, setIsAllBatchesModalOpen] = useState<boolean>(false);
 
   // Status Notification Banner
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -137,6 +265,11 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [isSubmittingBatch, setIsSubmittingBatch] = useState<boolean>(false);
   const [submittedPlans, setSubmittedPlans] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'CREATE' | 'VIEW_SUBMITTED'>('CREATE');
+
+  // Edit Modal Route Batch States
+  const [editSelectedBatch, setEditSelectedBatch] = useState<RouteBatchSuggestion | null>(null);
+  const [editAvailableBatches, setEditAvailableBatches] = useState<RouteBatchSuggestion[]>([]);
+  const [isLoadingEditBatches, setIsLoadingEditBatches] = useState<boolean>(false);
 
   // Calendar modal state
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
@@ -230,7 +363,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }
     } catch {}
 
-    if (!loadedHqs.some((h) => h.id === selectedHqId)) {
+    // Match against user's HQ
+    const matched = loadedHqs.find((h) =>
+      (currentUserHqId && (h.id.toLowerCase() === currentUserHqId.toLowerCase() || h.name.toLowerCase() === currentUserHqId.toLowerCase())) ||
+      h.id === selectedHqId
+    );
+    if (matched) {
+      setSelectedHqId(matched.id);
+    } else if (loadedHqs.length > 0) {
       setSelectedHqId(loadedHqs[0].id);
     }
   };
@@ -239,11 +379,211 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     loadHqs();
   }, []);
 
+  // Local helper to match static preset batches (offline / fallback)
+  const matchBatchesLocally = (
+    destination: string,
+    hqId: string,
+    mrId?: string
+  ): RouteBatchSuggestion[] => {
+    const cleanDest = (destination || '').trim().toLowerCase();
+    const cleanHq = (hqId || '').trim().toLowerCase();
+
+    const matchedList = STATIC_PRESET_BATCHES.filter((b) => {
+      const matchesHq = cleanHq.includes(b.hq_id.replace('hq-', '')) || b.hq_id === cleanHq;
+      const matchesMr = mrId && b.mr_id === mrId;
+      return matchesHq || matchesMr;
+    });
+
+    if (!cleanDest) return [];
+
+    const results: { batch: (typeof STATIC_PRESET_BATCHES)[0]; score: number }[] = [];
+
+    for (const b of matchedList) {
+      const stops = b.route_stops.map((s) => s.toLowerCase());
+      const name = b.name.toLowerCase();
+      let score = 0;
+      if (stops.includes(cleanDest)) {
+        score = 100;
+      } else if (stops.some((s) => s.includes(cleanDest) || cleanDest.includes(s))) {
+        score = 70;
+      } else if (name.includes(cleanDest)) {
+        score = 50;
+      }
+
+      if (score > 0) {
+        results.push({ batch: b, score });
+      }
+    }
+
+    results.sort((a, b) => b.score - a.score || a.batch.distance_km - b.batch.distance_km);
+
+    return results.map(({ batch, score }) => ({
+      id: batch.id,
+      batch_code: batch.batch_code,
+      name: batch.name,
+      route: batch.route_stops.join(' → '),
+      route_stops: batch.route_stops,
+      distance_km: batch.distance_km,
+      one_way_distance_km: batch.distance_km,
+      round_trip_distance_km: batch.distance_km * 2,
+      is_round_trip: true,
+      hq_id: batch.hq_id,
+      mr_id: batch.mr_id,
+      is_exact_match: score >= 90,
+    }));
+  };
+
+  const getStaticBatchesForHq = (hqId: string, mrId?: string): RouteBatchSuggestion[] => {
+    const cleanHq = (hqId || '').trim().toLowerCase();
+    return STATIC_PRESET_BATCHES
+      .filter((b) => {
+        const matchesHq = cleanHq.includes(b.hq_id.replace('hq-', '')) || b.hq_id === cleanHq;
+        const matchesMr = mrId && b.mr_id === mrId;
+        return matchesHq || matchesMr;
+      })
+      .map((b) => ({
+        id: b.id,
+        batch_code: b.batch_code,
+        name: b.name,
+        route: b.route_stops.join(' → '),
+        route_stops: b.route_stops,
+        distance_km: b.distance_km,
+        one_way_distance_km: b.distance_km,
+        round_trip_distance_km: b.distance_km * 2,
+        is_round_trip: true,
+        hq_id: b.hq_id,
+        mr_id: b.mr_id,
+        is_exact_match: false,
+      }));
+  };
+
+  // Fetch Route Batch suggestions for a destination
+  const fetchBatchSuggestions = async (destination: string, hqId: string) => {
+    if (!destination || !destination.trim()) {
+      setAvailableBatches([]);
+      setSelectedBatch(null);
+      setBatchSuggestionNotice('');
+      return;
+    }
+
+    setIsLoadingBatches(true);
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(
+        `${baseUrl}/territories/route-batches/suggest?destination=${encodeURIComponent(destination.trim())}&hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        { headers },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableBatches(data.batches || []);
+        setSelectedBatch(data.suggested_batch || (data.batches && data.batches[0]) || null);
+        setBatchSuggestionNotice(data.message || '');
+        setIsLoadingBatches(false);
+        return;
+      }
+    } catch {}
+
+    // Offline / local fallback
+    const localMatches = matchBatchesLocally(destination, hqId, currentUserId);
+    setAvailableBatches(localMatches);
+    setSelectedBatch(localMatches[0] || null);
+    setBatchSuggestionNotice(
+      localMatches.length > 0
+        ? `Found ${localMatches.length} matching batch(es) for '${destination}'`
+        : `No predefined route batch found containing '${destination}'.`,
+    );
+    setIsLoadingBatches(false);
+  };
+
+  // Fetch all assigned route batches for the selected HQ
+  const fetchAllHqBatches = async (hqId: string) => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(
+        `${baseUrl}/territories/route-batches?hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        { headers },
+      );
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          const mapped = list.map((b: any) => ({
+            id: b.id,
+            batch_code: b.batch_code,
+            name: b.name,
+            route: b.route_stops && b.route_stops.length > 0 ? b.route_stops.join(' → ') : b.name,
+            route_stops: b.route_stops || b.areas || [],
+            distance_km: b.distance_km || 0,
+            one_way_distance_km: b.distance_km || 0,
+            round_trip_distance_km: (b.distance_km || 0) * 2,
+            is_round_trip: true,
+            hq_id: b.hq_id,
+            hq_name: b.hq_name,
+          }));
+          setAllHqBatches(mapped);
+          return;
+        }
+      }
+    } catch {}
+
+    const fallback = getStaticBatchesForHq(hqId, currentUserId);
+    setAllHqBatches(fallback);
+  };
+
+  // Fetch suggestions for the Edit Modal
+  const fetchEditBatchSuggestions = async (destination: string, hqId: string) => {
+    if (!destination || !destination.trim()) {
+      setEditAvailableBatches([]);
+      return;
+    }
+    setIsLoadingEditBatches(true);
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(
+        `${baseUrl}/territories/route-batches/suggest?destination=${encodeURIComponent(destination.trim())}&hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        { headers },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setEditAvailableBatches(data.batches || []);
+        if (data.suggested_batch && (!editSelectedBatch || editSelectedBatch.id !== data.suggested_batch.id)) {
+          setEditSelectedBatch(data.suggested_batch);
+        }
+        setIsLoadingEditBatches(false);
+        return;
+      }
+    } catch {}
+
+    const localMatches = matchBatchesLocally(destination, hqId, currentUserId);
+    setEditAvailableBatches(localMatches);
+    if (localMatches.length > 0 && !editSelectedBatch) {
+      setEditSelectedBatch(localMatches[0]);
+    }
+    setIsLoadingEditBatches(false);
+  };
+
+  // Auto-fetch suggestions when destination (selectedArea) or selectedHqId changes
+  useEffect(() => {
+    if (selectedArea && selectedHqId) {
+      fetchBatchSuggestions(selectedArea, selectedHqId);
+    }
+  }, [selectedArea, selectedHqId]);
+
+  useEffect(() => {
+    if (selectedHqId) {
+      fetchAllHqBatches(selectedHqId);
+    }
+  }, [selectedHqId]);
+
   // Load areas when HQ changes
   useEffect(() => {
     const activeAreas = getStoredAreasForHq(selectedHqId);
     setAvailableAreas(activeAreas);
-    setSelectedArea(activeAreas[0] || 'Main Area');
+    if (!activeAreas.includes(selectedArea)) {
+      setSelectedArea(activeAreas[0] || 'Main Area');
+    }
 
     (async () => {
       try {
@@ -273,7 +613,11 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          data.sort((a, b) => new Date(b.submitted_at || b.created_at || 0).getTime() - new Date(a.submitted_at || a.created_at || 0).getTime());
+          data.sort(
+            (a, b) =>
+              new Date(b.submitted_at || b.created_at || 0).getTime() -
+              new Date(a.submitted_at || a.created_at || 0).getTime(),
+          );
           setSubmittedPlans(data);
         }
       }
@@ -377,6 +721,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       work_type: selectedWorkType,
       planned_kol_drs: finalDoctor,
       planned_activity: finalActivity,
+      route_batch_id: selectedBatch?.id,
+      route_batch_code: selectedBatch?.batch_code,
+      route_batch_name: selectedBatch?.name,
+      route: selectedBatch?.route,
+      route_stops: selectedBatch?.route_stops,
+      distance_km: selectedBatch?.distance_km,
+      reimbursement_rate: selectedBatch?.reimbursement_rate,
+      reimbursement_amount: selectedBatch?.reimbursement_amount,
     };
 
     try {
@@ -392,7 +744,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         setStatusNotice({
           type: 'success',
-          message: `✓ Visit successfully Punched & Saved for ${formatDateDDMMYYYY(formDate)} (${currentHq.name} • ${selectedArea})! Editable for 24 hours.`,
+          message: `✓ Visit successfully Punched & Saved for ${formatDateDDMMYYYY(formDate)} (${currentHq.name} • ${selectedArea})! ${selectedBatch ? `Batch: ${selectedBatch.batch_code} (${selectedBatch.distance_km} km one-way • ${selectedBatch.distance_km * 2} km round-trip)` : ''}`,
         });
 
         advanceFormDate();
@@ -452,12 +804,21 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       work_type: selectedWorkType,
       planned_kol_drs: finalDoctor,
       planned_activity: finalActivity,
+      route_batch_id: selectedBatch?.id,
+      route_batch_code: selectedBatch?.batch_code,
+      route_batch_name: selectedBatch?.name,
+      route: selectedBatch?.route,
+      route_stops: selectedBatch?.route_stops,
+      distance_km: selectedBatch?.distance_km,
+      reimbursement_rate: selectedBatch?.reimbursement_rate,
+      reimbursement_amount: selectedBatch?.reimbursement_amount,
+      reimbursement_status: 'PENDING',
     };
 
     setWorkingEntries((prev) => [...prev, newItem]);
     setStatusNotice({
       type: 'success',
-      message: `✓ Added visit for ${formatDateDDMMYYYY(newItem.date)} to working batch below.`,
+      message: `✓ Added visit for ${formatDateDDMMYYYY(newItem.date)} to working batch below (${selectedBatch ? `${selectedBatch.batch_code} • ${selectedBatch.distance_km} km` : 'Unrouted'}).`,
     });
 
     setKolDrsName('');
@@ -569,6 +930,23 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setEditWorkType(entry.work_type || 'Doctor Visit');
     setEditDoctor(entry.planned_kol_drs || '');
     setEditActivity(entry.planned_activity || '');
+
+    if (entry.route_batch_id || entry.route) {
+      setEditSelectedBatch({
+        id: entry.route_batch_id || `batch-${entry.id}`,
+        batch_code: entry.route_batch_code || 'Assigned Batch',
+        name: entry.route_batch_name || entry.route || '',
+        route: entry.route || '',
+        route_stops: entry.route_stops || [],
+        distance_km: entry.distance_km || 0,
+        reimbursement_rate: entry.reimbursement_rate ?? 2.5,
+        reimbursement_amount: entry.reimbursement_amount ?? 0,
+      });
+    } else {
+      setEditSelectedBatch(null);
+    }
+
+    fetchEditBatchSuggestions(entry.planned_area || '', entry.hq_id || selectedHqId);
     setIsEditModalOpen(true);
   };
 
@@ -600,6 +978,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           work_type: editWorkType,
           planned_kol_drs: editDoctor.trim() || 'General Field Detailing',
           planned_activity: editActivity.trim() || 'Routine Field Detailing & Sampling',
+          route_batch_id: editSelectedBatch?.id || e.route_batch_id,
+          route_batch_code: editSelectedBatch?.batch_code || e.route_batch_code,
+          route_batch_name: editSelectedBatch?.name || e.route_batch_name,
+          route: editSelectedBatch?.route || e.route,
+          route_stops: editSelectedBatch?.route_stops || e.route_stops,
+          distance_km: editSelectedBatch?.distance_km ?? e.distance_km,
+          reimbursement_rate: editSelectedBatch?.reimbursement_rate ?? e.reimbursement_rate,
+          reimbursement_amount: editSelectedBatch?.reimbursement_amount ?? e.reimbursement_amount,
         };
       }
       return e;
@@ -761,36 +1147,145 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               <Text style={styles.dropdownChevron}>▼</Text>
             </TouchableOpacity>
 
-            {/* Planned Area Dropdown (Filtered Strictly for selected HQ) */}
+            {/* Planned Destination / Area Input & Picker */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
               <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
-                Planned Area / Sub-Territory:
+                Planned Destination / Area:
               </Text>
               <Text style={{ fontSize: 10.5, color: '#0369A1', fontWeight: '700' }}>
-                Filtered for {activeHqName} ({availableAreas.length})
+                Assigned {activeHqName} ({availableAreas.length})
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.dropdownBox}
-              activeOpacity={0.7}
-              onPress={() =>
-                setPickerModal({
-                  visible: true,
-                  title: `Select Planned Area (${activeHqName})`,
-                  options: availableAreas.map((area) => ({
-                    label: area,
-                    value: area,
-                  })),
-                  selectedValue: selectedArea,
-                  onSelect: (val) => setSelectedArea(val),
-                })
-              }
-            >
-              <Text style={styles.dropdownText} numberOfLines={1}>
-                {selectedArea || 'Select Area'}
-              </Text>
-              <Text style={styles.dropdownChevron}>▼</Text>
-            </TouchableOpacity>
+
+            {/* Destination Input Row: Allows typing destination directly (e.g. Jaisinghnagar) OR picking from HQ areas */}
+            <View style={styles.destinationInputRow}>
+              <TextInput
+                style={[styles.textInput, { flex: 1 }]}
+                value={selectedArea}
+                onChangeText={(text) => setSelectedArea(text)}
+                placeholder="Type destination (e.g. Jaisinghnagar)"
+              />
+              <TouchableOpacity
+                style={styles.pickAreaBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  setPickerModal({
+                    visible: true,
+                    title: `Select Planned Area (${activeHqName})`,
+                    options: availableAreas.map((area) => ({
+                      label: area,
+                      value: area,
+                    })),
+                    selectedValue: selectedArea,
+                    onSelect: (val) => setSelectedArea(val),
+                  })
+                }
+              >
+                <Text style={styles.pickAreaBtnText}>📍 Select Area ▼</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ══════════════ PREDEFINED ROUTE BATCH & REIMBURSEMENT ══════════════ */}
+            <View style={styles.routeBatchCard}>
+              <View style={styles.routeBatchHeaderRow}>
+                <Text style={styles.routeBatchTitle}>🛣️ Route Batch &amp; Travel Distance</Text>
+                {isLoadingBatches && <ActivityIndicator size="small" color="#1A3C6E" />}
+              </View>
+
+              {availableBatches.length > 0 ? (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={styles.routeBatchSub}>
+                    {availableBatches.length === 1
+                      ? `✓ 1 suggested route batch matches destination '${selectedArea}':`
+                      : `✓ ${availableBatches.length} route batches match destination '${selectedArea}'. Select one:`}
+                  </Text>
+
+                  {availableBatches.map((batch) => {
+                    const isSelected = selectedBatch?.id === batch.id;
+                    return (
+                      <TouchableOpacity
+                        key={batch.id}
+                        style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
+                        onPress={() => setSelectedBatch(batch)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.batchCardTop}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                            <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                              {isSelected && <View style={styles.radioInner} />}
+                            </View>
+                            <Text style={[styles.batchCodeText, isSelected && styles.batchCodeTextSelected]}>
+                              {batch.batch_code}
+                            </Text>
+                            {batch.is_exact_match && (
+                              <View style={styles.exactMatchBadge}>
+                                <Text style={styles.exactMatchBadgeText}>Recommended</Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.distPill}>
+                            <Text style={styles.distPillText}>{batch.distance_km} km</Text>
+                          </View>
+                        </View>
+
+                        {/* Complete Route Stops */}
+                        <View style={styles.routeStopsRow}>
+                          <Text style={styles.routeStopsLabel}>Route:</Text>
+                          <Text style={styles.routeStopsValue}>{batch.route}</Text>
+                        </View>
+
+                        {/* Two-Way Round Trip Travel Distance */}
+                        <View style={styles.batchDistRow}>
+                          <View style={styles.distPill}>
+                            <Text style={styles.distPillText}>📏 {batch.distance_km} km (One-Way)</Text>
+                          </View>
+                          <View style={[styles.distPill, { backgroundColor: '#DCFCE7' }]}>
+                            <Text style={[styles.distPillText, { color: '#15803D' }]}>🔄 {batch.distance_km * 2} km (Round-Trip)</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.noBatchNotice}>
+                  <Text style={styles.noBatchNoticeTitle}>
+                    📍 Direct Area Travel to '{selectedArea}'
+                  </Text>
+                  <Text style={styles.noBatchNoticeText}>
+                    No predefined route batch selected. The system will automatically calculate average distance from {activeHqName} center to {selectedArea} boundary for your round-trip journey.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.browseAllBatchesBtn}
+                    onPress={() => setIsAllBatchesModalOpen(true)}
+                  >
+                    <Text style={styles.browseAllBatchesBtnText}>
+                      📋 Browse All {activeHqName} Batches ({allHqBatches.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Active Selection Summary Banner */}
+              {selectedBatch && (
+                <View style={styles.activeBatchSummary}>
+                  <Text style={styles.activeBatchSummaryTitle}>
+                    ✅ Selected Route: <Text style={{ fontWeight: '800', color: '#0F8B5A' }}>{selectedBatch.batch_code}</Text>
+                  </Text>
+                  <Text style={styles.activeBatchSummaryRoute}>
+                    {selectedBatch.route}
+                  </Text>
+                  <View style={styles.activeBatchSummaryMetrics}>
+                    <Text style={styles.activeBatchMetricText}>
+                      📏 One-Way Distance: <Text style={{ fontWeight: '700' }}>{selectedBatch.distance_km} km</Text>
+                    </Text>
+                    <Text style={[styles.activeBatchMetricText, { color: '#0F8B5A', fontWeight: '800' }]}>
+                      🔄 Round Trip (Two-Way): {selectedBatch.distance_km * 2} km
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
 
             {/* Type of Work Dropdown */}
             <Text style={styles.fieldLabel}>Type of Work:</Text>
@@ -905,6 +1400,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         <Text style={styles.tagWorkText}>{item.work_type}</Text>
                       </View>
                     </View>
+                    {item.route ? (
+                      <View style={{ marginTop: 3 }}>
+                        <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700' }}>
+                          🛣️ {item.route_batch_code ? `${item.route_batch_code}: ` : ''}{item.route}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>
+                          🚗 Round-Trip Distance: {item.distance_km || 0} km
+                        </Text>
+                      </View>
+                    ) : null}
                     <Text style={styles.entryDoctor}>Dr: {item.planned_kol_drs}</Text>
                     <Text style={styles.entryActivity}>Task: {item.planned_activity}</Text>
                   </View>
@@ -1023,7 +1528,19 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
                             {e.hq_name} • {e.planned_area}
                           </Text>
-                          <Text style={{ fontSize: 10, color: '#64748B' }}>
+                          {e.route ? (
+                            <View style={{ marginTop: 2 }}>
+                              <Text style={{ fontSize: 10, color: '#0F8B5A', fontWeight: '700' }}>
+                                🛣️ {e.route_batch_code ? `${e.route_batch_code}: ` : ''}{e.route}
+                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                <Text style={{ fontSize: 9.5, color: '#475569' }}>
+                                  🚗 Travel Distance: {e.distance_km || 0} km (Round Trip)
+                                </Text>
+                              </View>
+                            </View>
+                          ) : null}
+                          <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
                             Dr: {e.planned_kol_drs} • {e.planned_activity}
                           </Text>
                         </View>
@@ -1192,29 +1709,90 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                   <Text style={styles.dropdownChevron}>▼</Text>
                 </TouchableOpacity>
 
-                {/* Edit Planned Area Dropdown Filtered for editHq */}
-                <Text style={styles.fieldLabel}>Planned Area / Sub-Territory:</Text>
-                <TouchableOpacity
-                  style={styles.dropdownBox}
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    setPickerModal({
-                      visible: true,
-                      title: 'Edit Planned Area',
-                      options: getStoredAreasForHq(editHqId).map((area) => ({
-                        label: area,
-                        value: area,
-                      })),
-                      selectedValue: editArea,
-                      onSelect: (val) => setEditArea(val),
-                    })
-                  }
-                >
-                  <Text style={styles.dropdownText} numberOfLines={1}>
-                    {editArea || 'Select Area'}
-                  </Text>
-                  <Text style={styles.dropdownChevron}>▼</Text>
-                </TouchableOpacity>
+                {/* Edit Destination / Area */}
+                <Text style={styles.fieldLabel}>Planned Destination / Area:</Text>
+                <View style={styles.destinationInputRow}>
+                  <TextInput
+                    style={[styles.textInput, { flex: 1 }]}
+                    value={editArea}
+                    onChangeText={(text) => {
+                      setEditArea(text);
+                      fetchEditBatchSuggestions(text, editHqId);
+                    }}
+                    placeholder="Destination (e.g. Jaisinghnagar)"
+                  />
+                  <TouchableOpacity
+                    style={styles.pickAreaBtn}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      setPickerModal({
+                        visible: true,
+                        title: 'Edit Planned Area',
+                        options: getStoredAreasForHq(editHqId).map((area) => ({
+                          label: area,
+                          value: area,
+                        })),
+                        selectedValue: editArea,
+                        onSelect: (val) => {
+                          setEditArea(val);
+                          fetchEditBatchSuggestions(val, editHqId);
+                        },
+                      })
+                    }
+                  >
+                    <Text style={styles.pickAreaBtnText}>📍 Select ▼</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Edit Route Batch Suggestion Card */}
+                <View style={[styles.routeBatchCard, { marginTop: 8 }]}>
+                  <Text style={styles.routeBatchTitle}>🛣️ Route Batch &amp; Travel Distance</Text>
+                  {isLoadingEditBatches && <ActivityIndicator size="small" color="#1A3C6E" />}
+
+                  {editAvailableBatches.length > 0 ? (
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={styles.routeBatchSub}>
+                        {editAvailableBatches.length === 1
+                          ? `✓ 1 suggested batch for '${editArea}':`
+                          : `✓ ${editAvailableBatches.length} batches match '${editArea}':`}
+                      </Text>
+                      {editAvailableBatches.map((b) => {
+                        const isSelected = editSelectedBatch?.id === b.id;
+                        return (
+                          <TouchableOpacity
+                            key={b.id}
+                            style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
+                            onPress={() => setEditSelectedBatch(b)}
+                          >
+                            <View style={styles.batchCardTop}>
+                              <Text style={[styles.batchCodeText, isSelected && styles.batchCodeTextSelected]}>
+                                {b.batch_code}
+                              </Text>
+                              <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#0369A1' }}>
+                                {b.distance_km} km (One-Way) • {b.distance_km * 2} km (Round-Trip)
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 2 }}>
+                              {b.route}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 4 }}>
+                      No predefined batch for '{editArea}'. Center-to-boundary direct distance applies.
+                    </Text>
+                  )}
+
+                  {editSelectedBatch && (
+                    <View style={[styles.activeBatchSummary, { marginTop: 6 }]}>
+                      <Text style={styles.activeBatchSummaryTitle}>
+                        Selected: <Text style={{ fontWeight: '800' }}>{editSelectedBatch.batch_code}</Text> ({editSelectedBatch.distance_km} km one-way • {editSelectedBatch.distance_km * 2} km round-trip)
+                      </Text>
+                    </View>
+                  )}
+                </View>
 
                 {/* Edit Work Type Dropdown */}
                 <Text style={styles.fieldLabel}>Type of Work:</Text>
@@ -1344,6 +1922,63 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Browse All Assigned Batches Modal */}
+      {isAllBatchesModalOpen && (
+        <Modal
+          visible={isAllBatchesModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsAllBatchesModalOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.calendarModalBox, { maxWidth: 390, maxHeight: '85%' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
+                  All Assigned Batches for {activeHqName} ({allHqBatches.length})
+                </Text>
+                <TouchableOpacity onPress={() => setIsAllBatchesModalOpen(false)}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#64748B' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator style={{ maxHeight: 380 }}>
+                {allHqBatches.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center', marginVertical: 20 }}>
+                    No route batches assigned for {activeHqName}.
+                  </Text>
+                ) : (
+                  allHqBatches.map((b) => (
+                    <TouchableOpacity
+                      key={b.id}
+                      style={[
+                        styles.batchOptionCard,
+                        selectedBatch?.id === b.id && styles.batchOptionCardSelected,
+                        { marginBottom: 8 },
+                      ]}
+                      onPress={() => {
+                        setSelectedBatch(b);
+                        setIsAllBatchesModalOpen(false);
+                      }}
+                    >
+                      <View style={styles.batchCardTop}>
+                        <Text style={styles.batchCodeText}>{b.batch_code}</Text>
+                        <Text style={styles.distPillText}>{b.distance_km} km</Text>
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
+                        {b.route}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '700', marginTop: 4 }}>
+                        🔄 Two-Way Round Trip: {b.distance_km * 2} km
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </ScrollView>
   );
 };
@@ -1735,5 +2370,258 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '600',
     color: '#475569',
+  },
+  routeBatchCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  routeBatchHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  routeBatchTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  routeBatchSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0369A1',
+    marginBottom: 8,
+  },
+  batchOptionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  batchOptionCardSelected: {
+    borderColor: '#0F8B5A',
+    backgroundColor: '#F0FDF4',
+  },
+  batchCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  radioCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: '#0F8B5A',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0F8B5A',
+  },
+  batchCodeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  batchCodeTextSelected: {
+    color: '#0F8B5A',
+    fontWeight: '800',
+  },
+  exactMatchBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  exactMatchBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  distPill: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  distPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  routeStopsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 6,
+    gap: 4,
+  },
+  routeStopsLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  routeStopsValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1E293B',
+    flex: 1,
+  },
+  batchDistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  calcRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginTop: 8,
+    gap: 6,
+  },
+  calcCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  calcColLabel: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  calcColValue: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 1,
+  },
+  calcSymbol: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94A3B8',
+  },
+  calcTotalCol: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  calcTotalLabel: {
+    fontSize: 9,
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  calcTotalValue: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#15803D',
+  },
+  noBatchNotice: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginTop: 6,
+  },
+  noBatchNoticeTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  noBatchNoticeText: {
+    fontSize: 10.5,
+    color: '#3B82F6',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  browseAllBatchesBtn: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 6,
+    paddingVertical: 6,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  browseAllBatchesBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  activeBatchSummary: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+  },
+  activeBatchSummaryTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#166534',
+  },
+  activeBatchSummaryRoute: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  activeBatchSummaryMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#DCFCE7',
+    paddingTop: 4,
+  },
+  activeBatchMetricText: {
+    fontSize: 10,
+    color: '#334155',
+  },
+  destinationInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickAreaBtn: {
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickAreaBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  reimbursementStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  reimbursementStatusBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
   },
 });

@@ -15,6 +15,7 @@ import {
   MonthlyTpItemDto,
   UpdateTpStatusDto,
   FilterMonthlyTpDto,
+  DecideTpReimbursementDto,
 } from './tour-plans.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -85,6 +86,11 @@ export class TourPlansController {
     return this.tourPlansService.getAdminMonthlyTp(filter);
   }
 
+  @Get(':id')
+  async getTourPlanById(@Param('id') id: string) {
+    return this.tourPlansService.getTourPlanById(id);
+  }
+
   @Patch(':id/status')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async updateTpStatus(
@@ -93,5 +99,22 @@ export class TourPlansController {
     @CurrentUser() user: any,
   ) {
     return this.tourPlansService.updateTpStatus(id, dto, user.id);
+  }
+
+  @Patch(':id/entries/:entryId/reimbursement')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async decideReimbursement(
+    @Param('id') id: string,
+    @Param('entryId') entryId: string,
+    @Body() dto: DecideTpReimbursementDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.tourPlansService.decideReimbursement(
+      id,
+      entryId,
+      dto.status,
+      user.id,
+      dto.remarks,
+    );
   }
 }

@@ -80,6 +80,7 @@ export class ApprovalsService {
       if (leave) {
         leave.status = dto.status;
         leave.approved_by = approverUser?.id || 'admin';
+        this.db.persistToDisk();
         return {
           message: `Leave decided: ${dto.status}`,
           leave,
@@ -100,6 +101,7 @@ export class ApprovalsService {
       approval.status = dto.status;
       approval.comment = dto.comment || approval.comment;
       approval.decided_at = new Date().toISOString();
+      this.db.persistToDisk();
       return { message: `Approval already resolved: ${approval.status}`, approval };
     }
 
@@ -134,6 +136,8 @@ export class ApprovalsService {
       }
     }
 
+    this.db.persistToDisk();
+
     // Auto-dispatch in-app notification to requester
     const notification: Notification = {
       id: `notif-${uuidv4().substring(0, 8)}`,
@@ -165,7 +169,7 @@ export class ApprovalsService {
   }
 
   // Leave management helper methods
-  async createLeave(mrId: string, dto: CreateLeaveDto) {
+  async createLeave(mrId: string, dto: CreateLeaveDto, autoApprove = false, approvedBy?: string) {
     const category =
       dto.category ||
       (dto.reason.toLowerCase().includes('sick') || dto.reason.toLowerCase().includes('medical')
@@ -181,11 +185,15 @@ export class ApprovalsService {
       start_date: dto.start_date,
       end_date: dto.end_date,
       reason: dto.reason,
-      status: 'PENDING',
+      status: autoApprove ? 'APPROVED' : 'PENDING',
+      approved_by: autoApprove ? approvedBy : undefined,
       created_at: new Date().toISOString(),
     };
     this.db.leaveRequests.push(leave);
-    await this.registerApproval('LEAVE', leave.id, mrId);
+    if (!autoApprove) {
+      await this.registerApproval('LEAVE', leave.id, mrId);
+    }
+    this.db.persistToDisk();
 
     return { message: 'Leave request submitted successfully', leave };
   }
@@ -218,6 +226,7 @@ export class ApprovalsService {
         updated_at: new Date().toISOString(),
       };
       this.db.leaveQuotas.push(quota);
+      this.db.persistToDisk();
     }
 
     const approvedLeaves = this.db.leaveRequests.filter(
@@ -279,10 +288,24 @@ export class ApprovalsService {
       this.db.leaveQuotas.push(quota);
     }
 
-    if (dto.casual_total !== undefined) quota.casual_total = Number(dto.casual_total);
-    if (dto.sick_total !== undefined) quota.sick_total = Number(dto.sick_total);
-    if (dto.earned_total !== undefined) quota.earned_total = Number(dto.earned_total);
+    if (dto.casual_total !== undefined) quota.casual_total = Math.max(0, Number(dto.casual_total));
+    if (dto.sick_total !== undefined) quota.sick_total = Math.max(0, Number(dto.sick_total));
+    if (dto.earned_total !== undefined) quota.earned_total = Math.max(0, Number(dto.earned_total));
     quota.updated_at = new Date().toISOString();
+
+    this.db.persistToDisk();
+
+    try {
+      const notif: Notification = {
+        id: `notif-${uuidv4().substring(0, 8)}`,
+        user_id: mrId,
+        type: 'LEAVE_QUOTA_UPDATE',
+        title: 'Leave Allowance Updated',
+        body: `Your leave allowances have been updated: CL: ${quota.casual_total}, SL: ${quota.sick_total}, EL: ${quota.earned_total}`,
+        created_at: new Date().toISOString(),
+      };
+      this.db.notifications.push(notif);
+    } catch {}
 
     return this.getLeaveQuota(mrId);
   }

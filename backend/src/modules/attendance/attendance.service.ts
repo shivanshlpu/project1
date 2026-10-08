@@ -108,6 +108,9 @@ export class AttendanceService implements OnModuleInit {
     if (dto.allowed_punch_out_window_minutes !== undefined) {
       this.db.attendanceSettings.allowed_punch_out_window_minutes = dto.allowed_punch_out_window_minutes;
     }
+    if (dto.reimbursement_rate_per_km !== undefined) {
+      this.db.attendanceSettings.reimbursement_rate_per_km = dto.reimbursement_rate_per_km;
+    }
     this.db.attendanceSettings.updated_at = new Date().toISOString();
     this.db.persistToDisk();
     return this.db.attendanceSettings;

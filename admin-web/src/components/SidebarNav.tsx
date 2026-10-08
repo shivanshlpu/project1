@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ShieldCheck,
   X,
+  ShoppingBag,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { ManagerTab } from './SubNav';
@@ -70,6 +71,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         { id: 'overview', label: t.tabOverview, Icon: BarChart3 },
         { id: 'tasks', label: lang === 'hi' ? 'असाइन किए गए टास्क' : 'Assigned Tasks', Icon: MapPin },
         { id: 'submitted_tasks', label: lang === 'hi' ? 'सबमिट किए गए कार्य' : 'Submitted Tasks', Icon: CheckCircle2 },
+        { id: 'orders', label: lang === 'hi' ? 'ऑर्डर्स और डिलीवरी' : 'Orders & Delivery', Icon: ShoppingBag },
         {
           id: 'locations',
           label: t.tabLocations,

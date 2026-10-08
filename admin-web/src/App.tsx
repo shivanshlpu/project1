@@ -5,6 +5,7 @@ import { SidebarNav } from './components/SidebarNav';
 import { DashboardView } from './views/DashboardView';
 import { TasksView } from './views/TasksView';
 import { SubmittedTasksView } from './views/SubmittedTasksView';
+import { OrdersManagementView } from './views/OrdersManagementView';
 import { SavedLocationsView } from './views/SavedLocationsView';
 import { MembersManagementView } from './views/MembersManagementView';
 import { ApprovalsView } from './views/ApprovalsView';
@@ -22,7 +23,7 @@ import { NewLocationToast, NewLocationItem } from './components/NewLocationToast
 import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
 import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
-import { getApiBaseUrl } from './utils/apiHelper';
+import { getApiBaseUrl, fetchDeviceAuthorizationsMerged } from './utils/apiHelper';
 import './styles/app.css';
 
 interface AuthUser {
@@ -163,18 +164,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const apiUrl = getApiBaseUrl();
-        const res = await fetch(`${apiUrl}/auth/device-authorizations`);
-        if (res.ok) {
-          const data = await res.json();
-          setDeviceApprovalsCount((data.pending || []).length);
-        }
+        const data = await fetchDeviceAuthorizationsMerged();
+        setDeviceApprovalsCount((data.pending || []).length);
       } catch {
         // Fallback silently
       }
     };
     fetchPendingCount();
-    const timer = setInterval(fetchPendingCount, 4000);
+    const timer = setInterval(fetchPendingCount, 3000);
     return () => clearInterval(timer);
   }, []);
 
@@ -424,6 +421,7 @@ export const App: React.FC = () => {
             />
           )}
           {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
+          {managerTab === 'orders' && <OrdersManagementView lang={lang} />}
           {managerTab === 'locations' && (
             <SavedLocationsView
               onAssignTaskToLocation={handleAssignTaskToLocation}

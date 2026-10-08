@@ -148,9 +148,51 @@ export class UsersService {
     }
 
     const deletedUser = this.db.users.splice(userIndex, 1)[0];
+
+    // Cascade delete all associated data for this user across all in-memory collections
+    this.db.tasks = this.db.tasks.filter((t) => t.assigned_mr_id !== id && t.created_by !== id);
+    this.db.taskAssignments = this.db.taskAssignments.filter((ta) => ta.mr_id !== id);
+    this.db.locationVerifications = this.db.locationVerifications.filter((lv) => lv.user_id !== id);
+    this.db.attendance = this.db.attendance.filter((a) => a.user_id !== id);
+
+    const userVisitIds = new Set(this.db.doctorVisits.filter((dv) => dv.mr_id === id).map((dv) => dv.id));
+    this.db.doctorVisits = this.db.doctorVisits.filter((dv) => dv.mr_id !== id);
+    this.db.visitDetails = this.db.visitDetails.filter((vd) => !userVisitIds.has(vd.visit_id));
+
+    const userDcrIds = new Set(this.db.dcrList.filter((dcr) => dcr.mr_id === id).map((dcr) => dcr.id));
+    this.db.dcrList = this.db.dcrList.filter((dcr) => dcr.mr_id !== id);
+    this.db.dcrItems = this.db.dcrItems.filter((item) => !userDcrIds.has(item.dcr_id));
+    this.db.expenses = this.db.expenses.filter((e) => e.mr_id !== id);
+    this.db.leaveRequests = this.db.leaveRequests.filter((lr) => lr.mr_id !== id);
+    this.db.leaveQuotas = this.db.leaveQuotas.filter((lq) => lq.mr_id !== id);
+    this.db.tourPlans = this.db.tourPlans.filter((tp) => tp.mr_id !== id);
+    this.db.monthlyTourPlans = this.db.monthlyTourPlans.filter((mtp) => mtp.mr_id !== id);
+    this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter((da) => da.user_id !== id);
+    this.db.rewardClaims = this.db.rewardClaims.filter((rc) => rc.mr_id !== id);
+    this.db.notifications = this.db.notifications.filter((n) => n.user_id !== id);
+
+    this.db.persistToDisk();
+
+    // Supabase cascade cleanup
+    if (this.db.supabase && this.db.supabase.isConnected) {
+      try {
+        const client = this.db.supabase.getClient();
+        if (client) {
+          await client.from('tasks').delete().or(`assigned_mr_id.eq.${id},created_by.eq.${id}`);
+          await client.from('attendance').delete().eq('user_id', id);
+          await client.from('leave_requests').delete().eq('mr_id', id);
+          await client.from('doctor_visits').delete().eq('mr_id', id);
+          await client.from('device_authorizations').delete().eq('user_id', id);
+          await client.from('users').delete().eq('id', id);
+        }
+      } catch (err: any) {
+        console.warn(`[UsersService] Supabase cascade delete notice for ${id}:`, err?.message);
+      }
+    }
+
     return {
       success: true,
-      message: `Employee ${deletedUser.name} (${id}) deleted successfully`,
+      message: `Employee ${deletedUser.name} (${id}) and all associated records deleted successfully.`,
       id,
     };
   }

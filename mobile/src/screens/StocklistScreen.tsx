@@ -167,19 +167,17 @@ const NON_HQ_NAMES = new Set([
 ]);
 
 export const StocklistScreen: React.FC<StocklistScreenProps> = ({
-  currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserId = 'usr-mr-02',
+  currentUserName = 'Aman Rathore',
   onBack,
 }) => {
   const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>([
-    { id: 'hq-delhi', name: 'Delhi NCR' },
-    { id: 'hq-shahdol', name: 'Shahdol' },
-    { id: 'hq-ambikapur', name: 'Ambikapur' },
-    { id: 'hq-bilaspur', name: 'Bilaspur' },
-    { id: 'hq-kotma', name: 'Kotma' },
+    { id: 'HQ-SHD-001', name: 'Shahdol' },
+    { id: 'HQ-KOT-001', name: 'Kotma' },
+    { id: 'HQ-AMB-001', name: 'Ambikapur' },
   ]);
 
-  const [selectedHqId, setSelectedHqId] = useState<string>('hq-delhi');
+  const [selectedHqId, setSelectedHqId] = useState<string>('HQ-SHD-001');
   const [selectedSubArea, setSelectedSubArea] = useState<string>('ALL');
   const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-delhi'] || []);
   const [stockers, setStockers] = useState<StockerItem[]>([]);

@@ -155,4 +155,9 @@ export class UpdateAttendanceSettingsDto {
   @IsOptional()
   @Min(0)
   allowed_punch_out_window_minutes?: number; // e.g. 30
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  reimbursement_rate_per_km?: number; // e.g. 2.50
 }

@@ -30,6 +30,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNav, MobileTab } from './components/BottomNav';
@@ -40,6 +41,7 @@ import { DoctorDirectoryScreen } from './screens/DoctorDirectoryScreen';
 import { DoctorVisitScreen } from './screens/DoctorVisitScreen';
 import { AttendanceScreen } from './screens/AttendanceScreen';
 import { TaskHistoryScreen } from './screens/TaskHistoryScreen';
+import { OrdersScreen } from './screens/OrdersScreen';
 import { MonthlyTpScreen } from './screens/MonthlyTpScreen';
 import { StocklistScreen } from './screens/StocklistScreen';
 import { CompetitionScreen } from './screens/CompetitionScreen';
@@ -97,11 +99,12 @@ export default function App() {
   }, []);
 
   const [currentTab, setCurrentTab] = useState<MobileTab>('tasks');
-  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'monthly_tp' | 'stocklist' | 'competition'>('menu');
+  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'orders' | 'monthly_tp' | 'stocklist' | 'competition'>('menu');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
   const lastNotifiedVersionRef = React.useRef<string>('');
@@ -336,37 +339,51 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out from this account?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          const user = currentUser;
-          const userIdToLogout = user?.id;
-          const userIdentifier = user?.email || user?.phone;
-          const userDeviceId = user?.device_id;
-          try {
-            const baseUrl = await ApiConfig.getBaseUrl();
-            await fetch(`${baseUrl}/auth/logout`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: userIdToLogout,
-                identifier: userIdentifier,
-                deviceId: userDeviceId,
-              }),
-            }).catch(() => {});
-            await AsyncStorage.removeItem(SESSION_KEY);
-            await AsyncStorage.setItem('@ahtri_requires_reauth_otp', 'true');
-            await ApiConfig.clearSession();
-          } catch {
-            // Ignore
-          }
-          setCurrentUser(null);
-        },
-      },
-    ]);
+    setIsLogoutModalOpen(true);
+  };
+
+  const performLogout = async () => {
+    setIsLogoutModalOpen(false);
+    const userToLogOut = currentUser;
+    const userIdToLogout = userToLogOut?.id;
+    const userIdentifier = userToLogOut?.email || userToLogOut?.phone;
+    const userDeviceId = userToLogOut?.device_id;
+
+    // 1. Instantly clear user state so UI immediately returns to Login screen
+    setCurrentUser(null);
+
+    // 2. Clear all local storage tokens & sessions synchronously
+    try {
+      await AsyncStorage.removeItem(SESSION_KEY);
+      await AsyncStorage.setItem('@ahtri_requires_reauth_otp', 'true');
+      await ApiConfig.clearSession();
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        (window as any).localStorage.removeItem(SESSION_KEY);
+        (window as any).localStorage.removeItem('@ahtri_auth_token');
+        (window as any).localStorage.removeItem('@ahtri_auth_user');
+      }
+    } catch (err) {
+      console.warn('Storage cleanup error on logout:', err);
+    }
+
+    // 3. Notify backend in the background with a fast timeout (2.5s)
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      fetch(`${baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userIdToLogout,
+          identifier: userIdentifier,
+          deviceId: userDeviceId,
+        }),
+        signal: controller.signal,
+      })
+        .catch(() => {})
+        .finally(() => clearTimeout(timer));
+    } catch {}
   };
 
   // Responsive container styles
@@ -417,19 +434,19 @@ export default function App() {
             <View style={styles.brandRow}>
               <Image
                 source={require('../assets/logo.png')}
-                style={{ width: 36, height: 36, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#38BDF8' }}
+                style={{ width: 34, height: 34, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#38BDF8' }}
                 resizeMode="cover"
               />
-              <View>
-                <Text style={styles.brandTitle}>AHTRI FFA Mobile</Text>
-                <Text style={styles.brandUser}>
+              <View style={{ flexShrink: 1, minWidth: 0 }}>
+                <Text style={styles.brandTitle} numberOfLines={1}>AHTRI FFA Mobile</Text>
+                <Text style={styles.brandUser} numberOfLines={1}>
                   {currentUser.name} • {currentUser.hq_name || 'Shahdol'} ({currentUser.hq_code || 'SHD'})
                 </Text>
               </View>
             </View>
 
             {/* Right Header Actions */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               {/* Install PWA Button in Header */}
               {!isAppInstalled && (installPrompt || isIOSWeb) && (
                 <TouchableOpacity style={styles.headerInstallBtn} onPress={handleInstallClick}>
@@ -444,7 +461,7 @@ export default function App() {
               <TouchableOpacity
                 style={styles.logoutBtn}
                 onPress={handleLogout}
-                activeOpacity={0.75}
+                activeOpacity={0.7}
                 accessibilityLabel="Log out from account"
               >
                 <Text style={styles.logoutBtnText}>Logout</Text>
@@ -520,11 +537,24 @@ export default function App() {
             )}
 
             {/* Device & Profile Info / Enterprise Tools (§5-§7, §14, §30) */}
+            {currentTab === 'profile' && moreSubScreen === 'orders' && (
+              <OrdersScreen
+                key={currentUser.id}
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id}
+                currentUserHqName={currentUser.hq_name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
             {currentTab === 'profile' && moreSubScreen === 'monthly_tp' && (
               <MonthlyTpScreen
                 key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id}
+                currentUserHqName={currentUser.hq_name}
                 onBack={() => setMoreSubScreen('menu')}
               />
             )}
@@ -554,6 +584,21 @@ export default function App() {
                   <Text style={{ fontSize: 12, fontWeight: '800', color: '#1A3C6E', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, paddingHorizontal: 2 }}>
                     Field Force Work Tools
                   </Text>
+
+                  {/* Field Orders & Delivery Tracking */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('orders')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#E0F2FE' }]}>
+                      <Text style={{ fontSize: 18 }}>🛍️</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Field Orders &amp; Deliveries</Text>
+                      <Text style={styles.moreNavSubtitle}>View ordered products &amp; mark delivery completion</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
 
                   {/* Monthly Tour Plan */}
                   <TouchableOpacity
@@ -680,6 +725,49 @@ export default function App() {
             isMandatory={updateInfo?.forceUpdate}
           />
 
+          {/* Universal In-App Logout Confirmation Modal */}
+          <Modal
+            visible={isLogoutModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsLogoutModalOpen(false)}
+          >
+            <View style={styles.logoutModalOverlay}>
+              <View style={styles.logoutModalCard}>
+                <View style={styles.logoutModalIconCircle}>
+                  <Text style={{ fontSize: 24 }}>🚪</Text>
+                </View>
+                <Text style={styles.logoutModalTitle}>Log Out of Account?</Text>
+                <Text style={styles.logoutModalMessage}>
+                  Are you sure you want to log out from{' '}
+                  <Text style={{ fontWeight: '800', color: '#0F172A' }}>{currentUser?.name}</Text> (
+                  {currentUser?.hq_name || 'Shahdol'} HQ)?
+                </Text>
+                <Text style={styles.logoutModalSubtext}>
+                  Your local offline sync data is safe. You can log in again anytime with your credentials.
+                </Text>
+
+                <View style={styles.logoutModalBtnRow}>
+                  <TouchableOpacity
+                    style={styles.logoutModalCancelBtn}
+                    onPress={() => setIsLogoutModalOpen(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.logoutModalCancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.logoutModalConfirmBtn}
+                    onPress={performLogout}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.logoutModalConfirmBtnText}>Yes, Log Out</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
           {/* Bottom Navigation */}
           <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
         </SafeAreaView>
@@ -782,20 +870,18 @@ const styles = StyleSheet.create({
   offlineToggle: { backgroundColor: '#DC2626' },
   networkToggleText: { color: '#FFFFFF', fontSize: 9.5, fontWeight: '700' },
   logoutBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    backgroundColor: '#DC2626',
     paddingHorizontal: 11,
     paddingVertical: 5.5,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutBtnText: {
-    color: '#FECACA',
+    color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   screenContainer: { flex: 1, backgroundColor: '#F8FAFC' },
   profileContainer: { flex: 1, padding: 14 },
@@ -949,5 +1035,91 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  logoutModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  logoutModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  logoutModalIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  logoutModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  logoutModalMessage: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 6,
+  },
+  logoutModalSubtext: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 15,
+  },
+  logoutModalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  logoutModalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  logoutModalCancelBtnText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  logoutModalConfirmBtn: {
+    flex: 1,
+    backgroundColor: '#DC2626',
+    paddingVertical: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    shadowColor: '#DC2626',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  logoutModalConfirmBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

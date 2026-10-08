@@ -11,6 +11,10 @@ export class DecideApprovalDto {
 
 export class CreateLeaveDto {
   @IsString()
+  @IsOptional()
+  mr_id?: string;
+
+  @IsString()
   @IsNotEmpty()
   start_date: string; // YYYY-MM-DD
 

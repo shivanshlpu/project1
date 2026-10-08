@@ -28,6 +28,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { resilientFetch } from '../utils/apiHelper';
 
 export const SalesmanPortalView: React.FC = () => {
   // Persistent MR Session State (never logs out unless explicitly requested)
@@ -49,9 +50,9 @@ export const SalesmanPortalView: React.FC = () => {
       }
     }
     return {
-      id: 'usr-mr-01',
-      name: 'Rahul Sharma',
-      email: 'mr@ahtri.com',
+      id: 'usr-mr-02',
+      name: 'Aman Rathore',
+      email: 'aman@ahtri.com',
       phone: '9876543212',
       device_id: 'dev-hw-s22-9f8a2c',
       device_model: 'Samsung Galaxy S22 (SM-S901B)',
@@ -59,8 +60,8 @@ export const SalesmanPortalView: React.FC = () => {
   });
 
   // Login & Device OTP Challenge Simulation State
-  const [simIdentifier, setSimIdentifier] = useState('mr@ahtri.com');
-  const [simPassword, setSimPassword] = useState('Password@123');
+  const [simIdentifier, setSimIdentifier] = useState('aman@ahtri.com');
+  const [simPassword, setSimPassword] = useState('AmanRathoreSHD');
   const [isSimulatingOtherPhone, setIsSimulatingOtherPhone] = useState(false);
   const [simStep, setSimStep] = useState<'credentials' | 'otp_challenge'>('credentials');
   const [simRequestId, setSimRequestId] = useState('');
@@ -151,8 +152,7 @@ export const SalesmanPortalView: React.FC = () => {
     setIsLoggingIn(true);
     setSimOtpError('');
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${apiUrl}/auth/login`, {
+      const res = await resilientFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,8 +169,8 @@ export const SalesmanPortalView: React.FC = () => {
           setSimStep('otp_challenge');
         } else if (data.access_token) {
           const user = {
-            id: data.user?.id || 'usr-mr-01',
-            name: data.user?.name || 'Rahul Sharma',
+            id: data.user?.id || 'usr-mr-02',
+            name: data.user?.name || 'Aman Rathore',
             email: data.user?.email || simIdentifier,
             phone: data.user?.phone || '9876543212',
             device_id: currentSimDeviceId,
@@ -184,7 +184,7 @@ export const SalesmanPortalView: React.FC = () => {
         alert(data.message || 'Login failed');
       }
     } catch {
-      alert('Could not connect to backend server. Make sure backend is running on http://localhost:3000');
+      alert('Could not connect to backend server. Checked local and cloud backends.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -199,8 +199,7 @@ export const SalesmanPortalView: React.FC = () => {
     setIsLoggingIn(true);
     setSimOtpError('');
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${apiUrl}/auth/device-otp/verify`, {
+      const res = await resilientFetch('/auth/device-otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -213,8 +212,8 @@ export const SalesmanPortalView: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.access_token) {
         const user = {
-          id: data.user?.id || 'usr-mr-01',
-          name: data.user?.name || 'Rahul Sharma',
+          id: data.user?.id || 'usr-mr-02',
+          name: data.user?.name || 'Aman Rathore',
           email: data.user?.email || simIdentifier,
           phone: data.user?.phone || '9876543212',
           device_id: currentSimDeviceId,

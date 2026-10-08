@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { resilientFetch } from '../utils/apiHelper';
 
 interface AiChatViewProps {
   lang?: Language;
@@ -101,10 +102,10 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
     {
       category: lang === 'hi' ? '🏖️ लीव बैलेंस व छुट्टी अनुमोदन' : '🏖️ Leave Management & Approval',
       queries: [
-        'Rahul Sharma का लीव बैलेंस चेक करो',
-        'Vikram Malhotra का लीव बैलेंस चेक करो',
-        'राहुल शर्मा को 2 दिन की लीव दो',
-        'विक्रम मल्होत्रा को 1 दिन की सिक लीव दो',
+        'Aman Rathore का लीव बैलेंस चेक करो',
+        'Amar Dwivedi का लीव बैलेंस चेक करो',
+        'अमन राठौर को 2 दिन की लीव दो',
+        'अमर द्विवेदी को 1 दिन की सिक लीव दो',
       ],
     },
     {
@@ -260,11 +261,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         (lower.includes('grant') || lower.includes('दो') || lower.includes('approve') || lower.includes('स्वीकृत')) &&
         (lower.includes('leave') || lower.includes('छुट्टी') || lower.includes('लीव') || lower.includes('cl') || lower.includes('sl'))
       ) {
-        const targetName = lower.includes('vikram') || lower.includes('विक्रम')
-          ? 'Vikram Malhotra'
-          : lower.includes('pooja') || lower.includes('पूजा')
-          ? 'Pooja Verma'
-          : 'Rahul Sharma';
+        const targetName = lower.includes('amar') || lower.includes('अमर')
+          ? 'Amar Dwivedi'
+          : lower.includes('ashish') || lower.includes('आशीष')
+          ? 'Ashish Soni'
+          : 'Aman Rathore';
 
         const category = lower.includes('sick') || lower.includes('सिक') || lower.includes('बीमार')
           ? 'Sick Leave (SL)'
@@ -285,11 +286,10 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
 
         // Trigger backend leave creation if available
         try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-          const mrId = targetName === 'Vikram Malhotra' ? 'usr-mr-02' : targetName === 'Pooja Verma' ? 'usr-mr-03' : 'usr-mr-01';
+          const mrId = targetName === 'Amar Dwivedi' ? 'usr-mr-01' : targetName === 'Ashish Soni' ? 'usr-mr-03' : 'usr-mr-02';
 
-          await fetch(`${apiUrl}/leave`, {
+          await resilientFetch('/leave', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -410,8 +410,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
             },
             tableData: [
               {
-                title: 'Dr. Rajesh Sharma Detailing',
-                mr: 'Rahul Sharma',
+                title: 'Dr. Alok Verma Detailing',
+                mr: 'Aman Rathore',
                 scheduled: '10:30',
                 actual: '10:28',
                 delay: 'Punctual (2m Early)',
@@ -419,8 +419,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                 orders: '2 items (₹9,000)',
               },
               {
-                title: 'Dr. Priya Verma Detailing Call',
-                mr: 'Rahul Sharma',
+                title: 'City Hospital Pharmacy Call',
+                mr: 'Aman Rathore',
                 scheduled: '11:45',
                 actual: 'Pending',
                 delay: 'On Schedule',
@@ -428,8 +428,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                 orders: 'None yet',
               },
               {
-                title: 'Apex Cardiology Detailing',
-                mr: 'Vikram Malhotra',
+                title: 'Civil Hospital Detailing',
+                mr: 'Amar Dwivedi',
                 scheduled: '12:15',
                 actual: '12:12',
                 delay: 'Punctual (3m Early)',
@@ -437,8 +437,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                 orders: 'Detailing in progress',
               },
               {
-                title: 'Dr. Anita Desai Follow-up',
-                mr: 'Pooja Verma',
+                title: 'Kotma Clinic Follow-up',
+                mr: 'Ashish Soni',
                 scheduled: '14:30',
                 actual: '14:28',
                 delay: 'Punctual',
@@ -472,11 +472,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         (lower.includes('leave') || lower.includes('chutti') || lower.includes('छुट्टी') || lower.includes('लीव')) &&
         (lower.includes('balance') || lower.includes('quota') || lower.includes('कितनी') || lower.includes('kitni') || lower.includes('check') || lower.includes('बैलेंस'))
       ) {
-        const target = lower.includes('vikram') || lower.includes('विक्रम')
-          ? 'Vikram Malhotra'
-          : lower.includes('pooja') || lower.includes('पूजा')
-          ? 'Pooja Verma'
-          : 'Rahul Sharma';
+        const target = lower.includes('amar') || lower.includes('अमर')
+          ? 'Amar Dwivedi'
+          : lower.includes('ashish') || lower.includes('आशीष')
+          ? 'Ashish Soni'
+          : 'Aman Rathore';
 
         aiReply = {
           id: `ai-${Date.now()}`,
@@ -568,8 +568,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `**🤖 AI Aura कमांड हब - आप बोलकर या लिखकर यह सब पूछ सकते हैं:**\n\n1. **कार्य रिपोर्ट**: "आज कितना काम हुआ?" या "आज के टास्क दिखाओ"\n2. **उपस्थिति**: "आज किसकी हाजिरी लगी है?" या "फील्ड अटेंडेंस दिखाओ"\n3. **ऑर्डर्स व बिक्री**: "आज कितने ऑर्डर्स मिले?" या "कुल रेवेन्यू बताओ"\n4. **छुट्टी व लीव बैलेंस**: "राहुल शर्मा की लीव बैलेंस चेक करो"\n5. **सीधे छुट्टी स्वीकृत करना**: "राहुल शर्मा को 2 दिन की सिक लीव दो"\n6. **नए क्लिनिक्स**: "कौन-कौन से नए क्लिनिक मार्क हुए हैं?"\n7. **फील्ड टीम ट्रैकिंग**: "फील्ड पर अभी कौन-कौन काम कर रहा है?"\n\n*माइक बटन पर क्लिक करके हिंदी (🇮🇳) या इंग्लिश (🇬🇧) में कभी भी बोलें!*`
-            : `**🤖 AI Aura Command Hub - What You Can Ask (Voice or Text):**\n\n1. **Work Summary**: "How much work was done today?" or "Show today's delay audit"\n2. **Attendance**: "Who has marked attendance today?" or "Show field attendance log"\n3. **Commercial Orders**: "Show total orders captured today" or "Total revenue"\n4. **Leave Balance**: "Check Rahul Sharma's leave balance"\n5. **Direct Leave Approval**: "Grant 2 days Sick Leave to Vikram Malhotra"\n6. **Marked Clinics**: "Which clinics were marked by MRs this week?"\n7. **Live Field Staff**: "Who is currently working in the field?"\n\n*Click the microphone button to speak in English (🇬🇧) or Hindi (🇮🇳)!*`,
+            ? `**🤖 AI Aura कमांड हब - आप बोलकर या लिखकर यह सब पूछ सकते हैं:**\n\n1. **कार्य रिपोर्ट**: "आज कितना काम हुआ?" या "आज के टास्क दिखाओ"\n2. **उपस्थिति**: "आज किसकी हाजिरी लगी है?" या "फील्ड अटेंडेंस दिखाओ"\n3. **ऑर्डर्स व बिक्री**: "आज कितने ऑर्डर्स मिले?" या "कुल रेवेन्यू बताओ"\n4. **छुट्टी व लीव बैलेंस**: "अमन राठौर की लीव बैलेंस चेक करो"\n5. **सीधे छुट्टी स्वीकृत करना**: "अमर द्विवेदी को 2 दिन की सिक लीव दो"\n6. **नए क्लिनिक्स**: "कौन-कौन से नए क्लिनिक मार्क हुए हैं?"\n7. **फील्ड टीम ट्रैकिंग**: "फील्ड पर अभी कौन-कौन काम कर रहा है?"\n\n*माइक बटन पर क्लिक करके हिंदी (🇮🇳) या इंग्लिश (🇬🇧) में कभी भी बोलें!*`
+            : `**🤖 AI Aura Command Hub - What You Can Ask (Voice or Text):**\n\n1. **Work Summary**: "How much work was done today?" or "Show today's delay audit"\n2. **Attendance**: "Who has marked attendance today?" or "Show field attendance log"\n3. **Commercial Orders**: "Show total orders captured today" or "Total revenue"\n4. **Leave Balance**: "Check Aman Rathore's leave balance"\n5. **Direct Leave Approval**: "Grant 2 days Sick Leave to Amar Dwivedi"\n6. **Marked Clinics**: "Which clinics were marked by MRs this week?"\n7. **Live Field Staff**: "Who is currently working in the field?"\n\n*Click the microphone button to speak in English (🇬🇧) or Hindi (🇮🇳)!*`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }

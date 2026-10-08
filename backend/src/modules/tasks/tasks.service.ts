@@ -22,6 +22,7 @@ import {
 } from '../../database/database.types';
 import { NotificationsService } from '../notifications/notifications.module';
 import { InventoryService } from '../inventory/inventory.service';
+import { OrdersService } from '../orders/orders.service';
 
 function getLocalDateString(d: Date = new Date()): string {
   const year = d.getFullYear();
@@ -42,6 +43,7 @@ export class TasksService {
     private readonly db: DatabaseService,
     private readonly notificationsService: NotificationsService,
     private readonly inventoryService: InventoryService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   /**
@@ -361,18 +363,11 @@ export class TasksService {
     task.status = 'COMPLETED';
     task.completed_at = new Date().toISOString();
 
-    // Deduct stock automatically from relevant stocker and HQ (§16 & §17)
+    // Create Order record in Orders collection (Pending Delivery)
+    // NOTE (§Client Requirement): DO NOT directly deduct from inventory here!
+    // Delivery must be marked by employee first, then HQ accepts to start counting/deduction.
     if (validOrders.length > 0) {
-      const effectiveHqId = task.hq_id || dto.hq_id || 'hq-shahdol';
-      const effectiveStockerId = task.stocker_id || dto.stocker_id || 'stk-shd-01';
-      await this.inventoryService.deductStockForOrder(
-        effectiveHqId,
-        effectiveStockerId,
-        validOrders,
-        task.id,
-        task.id,
-        userId,
-      );
+      await this.ordersService.createFromTask(task, validOrders, userId);
     }
 
     // Notify managers
@@ -489,17 +484,12 @@ export class TasksService {
     if (dto.orders && Array.isArray(dto.orders)) {
       task.orders = dto.orders;
 
-      // Automatic Stock Deduction (§16 & §17)
-      const effectiveHqId = task.hq_id || dto.hq_id || 'hq-shahdol';
-      const effectiveStockerId = task.stocker_id || dto.stocker_id || 'stk-shd-01';
-      await this.inventoryService.deductStockForOrder(
-        effectiveHqId,
-        effectiveStockerId,
-        dto.orders,
-        task.id,
-        task.id,
-        userId,
-      );
+      // Create Order record in Orders collection (Pending Delivery)
+      // NOTE (§Client Requirement): DO NOT directly deduct from inventory here!
+      // Delivery must be marked by employee first, then HQ accepts to start counting/deduction.
+      if (dto.orders.length > 0) {
+        await this.ordersService.createFromTask(task, dto.orders, userId);
+      }
     }
 
     // Trigger immediate manager / owner notifications

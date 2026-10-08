@@ -10,6 +10,7 @@ import {
   Platform,
   TextInput,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiConfig } from '../services/apiConfig';
@@ -28,7 +29,11 @@ interface CompletedTask {
   completed_at?: string;
   duration_seconds?: number;
   outcome?: string;
-  orders?: Array<{ product_name: string; quantity: number; total_amount: number }>;
+  orders?: Array<{ product_name: string; quantity: number; total_amount: number; distributor?: string }>;
+  order_id?: string;
+  delivery_status?: 'PENDING' | 'DELIVERED';
+  hq_accepted?: boolean;
+  inventory_deducted?: boolean;
   assigned_mr_name?: string;
 }
 
@@ -37,6 +42,7 @@ type FilterMode = 'today' | 'week' | 'month' | 'all' | 'custom';
 interface TaskHistoryScreenProps {
   currentUserId?: string;
   currentUserName?: string;
+  onNavigateToOrders?: () => void;
 }
 
 function getLocalDateStr(d: Date = new Date()): string {
@@ -87,8 +93,9 @@ function getPriorityColor(priority: string): string {
 }
 
 export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
-  currentUserId = 'usr-mr-01',
-  currentUserName = 'Rahul Sharma',
+  currentUserId = 'usr-mr-02',
+  currentUserName = 'Aman Rathore',
+  onNavigateToOrders,
 }) => {
   const [allCompletedTasks, setAllCompletedTasks] = useState<CompletedTask[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<CompletedTask[]>([]);
@@ -100,6 +107,50 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
   const [showCustomDateModal, setShowCustomDateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<CompletedTask | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [updatingDeliveryId, setUpdatingDeliveryId] = useState<string | null>(null);
+
+  const handleMarkTaskOrderDelivered = async (task: CompletedTask) => {
+    setUpdatingDeliveryId(task.id);
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      let orderId = task.order_id;
+      if (!orderId) {
+        const ordRes = await fetch(`${baseUrl}/orders?task_id=${task.id}`, { headers });
+        if (ordRes.ok) {
+          const ordList = await ordRes.json();
+          if (Array.isArray(ordList) && ordList.length > 0) {
+            orderId = ordList[0].id;
+          }
+        }
+      }
+
+      if (orderId) {
+        const res = await fetch(`${baseUrl}/orders/${orderId}/delivery`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            delivery_status: 'DELIVERED',
+            notes: `Marked delivered from Task History by ${currentUserName}`,
+          }),
+        });
+        if (res.ok) {
+          setSelectedTask((prev) => (prev ? { ...prev, delivery_status: 'DELIVERED' } : null));
+          setAllCompletedTasks((prev) =>
+            prev.map((t) => (t.id === task.id ? { ...t, delivery_status: 'DELIVERED' } : t))
+          );
+          Alert.alert(
+            'Order Marked Delivered! 🚚',
+            'Delivery status updated to DELIVERED. The destination HQ can now accept and count stock.'
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Error marking order delivered:', e);
+    } finally {
+      setUpdatingDeliveryId(null);
+    }
+  };
 
   // Fetch completed tasks from API and local storage (§2.5)
   const fetchCompletedTasks = useCallback(async () => {
@@ -317,10 +368,16 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
           <Text style={styles.statLabel}>Avg. Duration</Text>
         </View>
         <View style={styles.statDivider} />
-        <View style={styles.statItem}>
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={onNavigateToOrders}
+          activeOpacity={onNavigateToOrders ? 0.7 : 1}
+        >
           <Text style={styles.statNumber}>{totalOrders}</Text>
-          <Text style={styles.statLabel}>Orders</Text>
-        </View>
+          <Text style={[styles.statLabel, onNavigateToOrders ? { color: '#0284C7', fontWeight: '700' } : null]}>
+            Orders {onNavigateToOrders ? '→' : ''}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Task List */}
@@ -570,7 +627,30 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
                 {/* Orders */}
                 {selectedTask.orders && selectedTask.orders.length > 0 && (
                   <View style={styles.detailOrdersSection}>
-                    <Text style={styles.detailSectionTitle}>🛒 Orders Placed ({selectedTask.orders.length})</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={styles.detailSectionTitle}>🛒 Orders Placed ({selectedTask.orders.length})</Text>
+                      <View
+                        style={{
+                          paddingVertical: 2,
+                          paddingHorizontal: 8,
+                          borderRadius: 10,
+                          backgroundColor: selectedTask.delivery_status === 'DELIVERED' ? '#DCFCE7' : '#FEF3C7',
+                          borderWidth: 1,
+                          borderColor: selectedTask.delivery_status === 'DELIVERED' ? '#86EFAC' : '#FCD34D',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '800',
+                            color: selectedTask.delivery_status === 'DELIVERED' ? '#15803D' : '#B45309',
+                          }}
+                        >
+                          {selectedTask.delivery_status === 'DELIVERED' ? '🚚 DELIVERED' : '⏳ PENDING DELIVERY'}
+                        </Text>
+                      </View>
+                    </View>
+
                     {selectedTask.orders.map((order, idx) => (
                       <View key={idx} style={styles.orderItem}>
                         <Text style={styles.orderName}>{order.product_name}</Text>
@@ -579,6 +659,65 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
                         </Text>
                       </View>
                     ))}
+
+                    {/* Delivery Status and Action */}
+                    <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                      {selectedTask.delivery_status !== 'DELIVERED' ? (
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#0F8B5A',
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            borderRadius: 6,
+                            alignItems: 'center',
+                            marginBottom: 8,
+                          }}
+                          onPress={() => handleMarkTaskOrderDelivered(selectedTask)}
+                          disabled={updatingDeliveryId === selectedTask.id}
+                        >
+                          <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12 }}>
+                            {updatingDeliveryId === selectedTask.id ? 'Updating...' : '🚚 Mark as Delivered ✓'}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View
+                          style={{
+                            backgroundColor: '#F0FDF4',
+                            padding: 8,
+                            borderRadius: 6,
+                            borderWidth: 1,
+                            borderColor: '#BBF7D0',
+                            marginBottom: 8,
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600', textAlign: 'center' }}>
+                            ✓ Marked as DELIVERED • Awaiting HQ Acceptance to count inventory
+                          </Text>
+                        </View>
+                      )}
+
+                      {onNavigateToOrders && (
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#F0F9FF',
+                            paddingVertical: 7,
+                            paddingHorizontal: 10,
+                            borderRadius: 6,
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#BAE6FD',
+                          }}
+                          onPress={() => {
+                            setShowDetailModal(false);
+                            onNavigateToOrders();
+                          }}
+                        >
+                          <Text style={{ color: '#0369A1', fontWeight: '700', fontSize: 11.5 }}>
+                            View in Field Orders & Deliveries Screen →
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 )}
 

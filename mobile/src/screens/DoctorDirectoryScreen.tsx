@@ -43,7 +43,7 @@ interface DoctorDirectoryScreenProps {
 }
 
 export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
-  currentUser = { id: 'usr-mr-01', name: 'Rahul Sharma', role: 'MR' },
+  currentUser = { id: 'usr-mr-02', name: 'Aman Rathore', role: 'MR' },
 }) => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
 

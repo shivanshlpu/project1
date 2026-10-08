@@ -1,5 +1,145 @@
 {
   "tasks": [],
+  "orders": [
+    {
+      "id": "ord-b03eb79b",
+      "order_number": "ORD-2026-0004",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Surguja Health Center",
+      "location_name": "Surguja Health Center",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 10,
+          "unit_price": 150,
+          "total_amount": 1500,
+          "distributor": "Central Stocker"
+        }
+      ],
+      "total_units": 10,
+      "total_amount": 1500,
+      "delivery_status": "DELIVERED",
+      "hq_accepted": true,
+      "inventory_deducted": true,
+      "delivery_notes": "Handed over package at Surguja clinic reception",
+      "created_at": "2026-10-08T00:32:30.570Z",
+      "updated_at": "2026-10-08T00:32:30.585Z",
+      "delivered_at": "2026-10-08T00:32:30.580Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "accepted_at": "2026-10-08T00:32:30.585Z",
+      "accepted_by_user_id": "usr-admin-shivansh",
+      "inventory_deducted_at": "2026-10-08T00:32:30.585Z"
+    },
+    {
+      "id": "ord-a800818a",
+      "order_number": "ORD-2026-0003",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Surguja Health Center",
+      "location_name": "Surguja Health Center",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 10,
+          "unit_price": 150,
+          "total_amount": 1500,
+          "distributor": "Central Stocker"
+        }
+      ],
+      "total_units": 10,
+      "total_amount": 1500,
+      "delivery_status": "DELIVERED",
+      "hq_accepted": true,
+      "inventory_deducted": true,
+      "delivery_notes": "Handed over package at Surguja clinic reception",
+      "created_at": "2026-10-08T00:17:47.188Z",
+      "updated_at": "2026-10-08T00:17:47.210Z",
+      "delivered_at": "2026-10-08T00:17:47.202Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "accepted_at": "2026-10-08T00:17:47.209Z",
+      "accepted_by_user_id": "usr-admin-shivansh",
+      "inventory_deducted_at": "2026-10-08T00:17:47.210Z"
+    },
+    {
+      "id": "ord-shd-01",
+      "order_number": "ORD-2026-0001",
+      "task_id": "task-01",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "customer_name": "Dr. Rajesh Sharma (City Hospital)",
+      "location_name": "City Hospital, Shahdol",
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "stocker_id": "stk-shd-01",
+      "stocker_name": "Shahdol Stocker 1 (Central Depot)",
+      "items": [
+        {
+          "product_id": "med-01",
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 20,
+          "unit_price": 150,
+          "total_amount": 3000,
+          "distributor": "Shahdol Stocker 1 (Central Depot)"
+        },
+        {
+          "product_id": "med-02",
+          "product_name": "CardioFix-AM (Telmisartan + Amlodipine)",
+          "quantity": 15,
+          "unit_price": 85,
+          "total_amount": 1275,
+          "distributor": "Shahdol Stocker 1 (Central Depot)"
+        }
+      ],
+      "total_units": 35,
+      "total_amount": 4275,
+      "delivery_status": "PENDING",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "created_at": "2026-10-07T20:17:03.575Z",
+      "updated_at": "2026-10-07T20:17:03.575Z"
+    },
+    {
+      "id": "ord-amb-01",
+      "order_number": "ORD-2026-0002",
+      "task_id": "task-02",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Ambikapur Civil Hospital Medico",
+      "location_name": "Hospital Chowk, Ambikapur",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_id": "med-01",
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 30,
+          "unit_price": 150,
+          "total_amount": 4500,
+          "distributor": "Ambikapur Medical Store"
+        }
+      ],
+      "total_units": 30,
+      "total_amount": 4500,
+      "delivery_status": "DELIVERED",
+      "delivered_at": "2026-10-07T23:17:03.575Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "created_at": "2026-10-07T18:17:03.575Z",
+      "updated_at": "2026-10-07T23:17:03.575Z"
+    }
+  ],
   "attendance": [],
   "attendanceSettings": {
     "id": "att-settings-default",
@@ -7,7 +147,8 @@
     "allowed_punch_in_window_minutes": 30,
     "expected_punch_out_time": "18:00:00",
     "allowed_punch_out_window_minutes": 30,
-    "updated_at": "2026-10-05T10:52:38.051Z"
+    "reimbursement_rate_per_km": 2.5,
+    "updated_at": "2026-10-07T22:59:27.877Z"
   },
   "doctorVisits": [],
   "visitDetails": [],
@@ -15,77 +156,300 @@
   "dcrItems": [],
   "expenses": [],
   "leaveRequests": [],
+  "leaveQuotas": [
+    {
+      "mr_id": "usr-mr-01",
+      "casual_total": 6,
+      "sick_total": 5,
+      "earned_total": 0,
+      "updated_at": "2026-10-08T11:53:19.827Z"
+    },
+    {
+      "mr_id": "usr-mr-02",
+      "casual_total": 8,
+      "sick_total": 8,
+      "earned_total": 5,
+      "updated_at": "2026-10-08T11:57:40.755Z"
+    },
+    {
+      "mr_id": "usr-mr-03",
+      "casual_total": 12,
+      "sick_total": 10,
+      "earned_total": 15,
+      "updated_at": "2026-10-08T11:52:50.456Z"
+    },
+    {
+      "mr_id": "usr-admin-shivansh",
+      "casual_total": 12,
+      "sick_total": 10,
+      "earned_total": 15,
+      "updated_at": "2026-10-08T12:19:43.846Z"
+    }
+  ],
   "tourPlans": [],
   "monthlyTourPlans": [
     {
-      "id": "mtp-01",
-      "mr_id": "usr-mr-01",
-      "mr_name": "Rahul Sharma (Field MR)",
-      "month": "2026-09",
-      "status": "APPROVED",
-      "submitted_at": "2026-09-05T10:52:38.265Z",
+      "id": "mtp-2d8ec590",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "month": "2026-08",
+      "status": "SUBMITTED",
       "entries": [
         {
-          "id": "tp-item-1",
-          "date": "02-09-2026",
-          "hq_id": "hq-shahdol",
+          "id": "tp-item-c9e1138e",
+          "date": "2026-08-10",
+          "hq_id": "HQ-SHD-001",
           "hq_name": "Shahdol",
-          "planned_area": "Shahdol",
+          "planned_area": "Jaisinghnagar",
           "work_type": "Doctor Visit",
-          "planned_kol_drs": "Dr. Rajesh Sharma",
-          "planned_activity": "CardioFix-50 Detailing and Scheme Presentation"
+          "planned_kol_drs": "General Field Coverage",
+          "planned_activity": "Doctor & Chemist Detailing",
+          "route_batch_id": "rb-shd-03",
+          "route_batch_code": "Batch 3",
+          "route_batch_name": "Shahdol → Gohparu → Jaisinghnagar",
+          "route": "Shahdol → Gohparu → Jaisinghnagar",
+          "route_stops": [
+            "Shahdol",
+            "Gohparu",
+            "Jaisinghnagar"
+          ],
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "APPROVED"
         },
         {
-          "id": "tp-item-2",
-          "date": "04-09-2026",
-          "hq_id": "hq-shahdol",
+          "id": "tp-item-d8d00508",
+          "date": "10-08-2026",
+          "hq_id": "HQ-SHD-001",
           "hq_name": "Shahdol",
-          "planned_area": "Burhar",
-          "work_type": "Order Collection",
-          "planned_kol_drs": "Dr. Priya Verma",
-          "planned_activity": "Antibiotic syrup follow-up and stockist order booking"
-        },
-        {
-          "id": "tp-item-3",
-          "date": "08-09-2026",
-          "hq_id": "hq-shahdol",
-          "hq_name": "Shahdol",
-          "planned_area": "Kotma",
-          "work_type": "Follow-up",
-          "planned_kol_drs": "Dr. Anita Desai",
-          "planned_activity": "DermaSoothe sample trials evaluation"
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. S. K. Gupta",
+          "planned_activity": "Cardiology Detailing",
+          "route_batch_id": "rb-shd-03",
+          "route_batch_code": "Batch 3",
+          "route_batch_name": "Shahdol → Gohparu → Jaisinghnagar",
+          "route": "Shahdol → Gohparu → Jaisinghnagar",
+          "route_stops": [
+            "Shahdol",
+            "Gohparu",
+            "Jaisinghnagar"
+          ],
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "APPROVED"
         }
-      ]
+      ],
+      "submitted_at": "2026-10-07T22:57:38.054Z",
+      "remarks": "Punched from Mobile App | Eligible distance verified | Verified Shahdol-Gohparu-Jaisinghnagar route and approved 120km claim | Verified Shahdol-Gohparu-Jaisinghnagar route and approved 120km claim"
     },
     {
-      "id": "mtp-02",
-      "mr_id": "usr-mr-01",
-      "mr_name": "Rahul Sharma (Field MR)",
+      "id": "mtp-15152933",
+      "mr_id": "usr-admin-shivansh",
+      "mr_name": "Shivansh Tiwari",
       "month": "2026-10",
       "status": "SUBMITTED",
-      "submitted_at": "2026-10-05T10:52:38.265Z",
       "entries": [
         {
-          "id": "tp-item-4",
-          "date": "04-10-2026",
-          "hq_id": "hq-shahdol",
+          "id": "tp-item-f329b07e",
+          "date": "15-10-2026",
+          "hq_id": "HQ-SHD-001",
           "hq_name": "Shahdol",
-          "planned_area": "Gohparu",
+          "planned_area": "Budhar",
           "work_type": "Doctor Visit",
-          "planned_kol_drs": "Dr. Alok Nath",
-          "planned_activity": "Doctor Detailing & Product Sample Handover"
+          "planned_kol_drs": "Dr. V. K. Patel",
+          "planned_activity": "Cardio product sampling",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
         },
         {
-          "id": "tp-item-5",
-          "date": "05-10-2026",
-          "hq_id": "hq-shahdol",
+          "id": "tp-item-03cef0d5",
+          "date": "16-10-2026",
+          "hq_id": "HQ-SHD-001",
           "hq_name": "Shahdol",
-          "planned_area": "Burhar",
+          "planned_area": "Jaisinghnagar",
           "work_type": "Doctor Visit",
-          "planned_kol_drs": "Dr. Sandeep Gupta",
-          "planned_activity": "Chemist Order Booking & Detailing"
+          "planned_kol_drs": "Dr. S. K. Mishra",
+          "planned_activity": "Chemist detailing",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Jaisinghnagar"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 60,
+          "round_trip_distance_km": 120,
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-074a163c",
+          "date": "17-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Beohari",
+          "work_type": "Order Collection",
+          "planned_kol_drs": "Beohari Central Pharmacy",
+          "planned_activity": "Stock check",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Beohari (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Beohari"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 78,
+          "round_trip_distance_km": 156,
+          "distance_km": 156,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 390,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
         }
-      ]
+      ],
+      "submitted_at": "2026-10-07T23:21:58.905Z",
+      "remarks": "Punched from Mobile App"
+    },
+    {
+      "id": "mtp-ddf6d444",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "month": "2026-10",
+      "status": "SUBMITTED",
+      "entries": [
+        {
+          "id": "tp-item-3fb9ab35",
+          "date": "15-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Budhar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. V. K. Patel",
+          "planned_activity": "Cardio product sampling",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
+        },
+        {
+          "id": "tp-item-ce15a17c",
+          "date": "16-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. S. K. Mishra",
+          "planned_activity": "Chemist detailing",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Jaisinghnagar"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 60,
+          "round_trip_distance_km": 120,
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-43f0663d",
+          "date": "17-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Beohari",
+          "work_type": "Order Collection",
+          "planned_kol_drs": "Beohari Central Pharmacy",
+          "planned_activity": "Stock check",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Beohari (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Beohari"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 78,
+          "round_trip_distance_km": 156,
+          "distance_km": 156,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 390,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-242176e7",
+          "date": "08-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Main Market",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "aaa",
+          "planned_activity": "ddd",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
+        }
+      ],
+      "submitted_at": "2026-10-07T23:25:44.415Z",
+      "remarks": "Punched from Mobile App"
     }
   ],
   "stockerInventory": [
@@ -319,9 +683,9 @@
       "hq_id": "hq-ambikapur",
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-01",
-      "quantity": 60,
+      "quantity": 40,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-05T10:52:38.265Z"
+      "updated_at": "2026-10-08T00:32:30.585Z"
     },
     {
       "id": "inv-stk-amb-01-med-02",
@@ -406,5 +770,535 @@
     }
   ],
   "verificationPhotos": [],
-  "saved_at": "2026-10-05T10:52:38.266Z"
+  "deviceAuthorizations": [
+    {
+      "id": "req-dev-6b5bf187",
+      "user_id": "usr-mr-01",
+      "user_name": "Amar Dwivedi",
+      "user_phone": "9876543212",
+      "user_email": "amar@ahtri.com",
+      "device_id": "dev-gen-ed9fbef1",
+      "device_model": "Android Device (Windows 10)",
+      "otp": "129510",
+      "status": "APPROVED",
+      "created_at": "2026-10-08T01:52:04.782Z",
+      "expires_at": "2026-10-08T02:07:04.782Z",
+      "approved_at": "2026-10-08T01:52:18.977Z",
+      "approved_by": "Shivansh Tiwari (Owner)"
+    }
+  ],
+  "routeBatches": [
+    {
+      "id": "rb-kot-01",
+      "batch_code": "Batch 1",
+      "name": "Kotma → Marwahi → Dhanikundi",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Marwahi",
+        "Dhanikundi"
+      ],
+      "areas": [
+        "Kotma",
+        "Marwahi",
+        "Dhanikundi"
+      ],
+      "distance_km": 85,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-02",
+      "batch_code": "Batch 2",
+      "name": "Kotma → Kelhari → Janakpur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Kelhari",
+        "Janakpur"
+      ],
+      "areas": [
+        "Kotma",
+        "Kelhari",
+        "Janakpur"
+      ],
+      "distance_km": 95,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-03",
+      "batch_code": "Batch 3",
+      "name": "Kotma → Keswahi → Girva → Khamhidol",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Keswahi",
+        "Girva",
+        "Khamhidol"
+      ],
+      "areas": [
+        "Kotma",
+        "Keswahi",
+        "Girva",
+        "Khamhidol"
+      ],
+      "distance_km": 110,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-04",
+      "batch_code": "Batch 4",
+      "name": "Kotma → Jaithari → Rajendragram",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Jaithari",
+        "Rajendragram"
+      ],
+      "areas": [
+        "Kotma",
+        "Jaithari",
+        "Rajendragram"
+      ],
+      "distance_km": 70,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-05",
+      "batch_code": "Batch 5",
+      "name": "Kotma → Anuppur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Anuppur"
+      ],
+      "areas": [
+        "Kotma",
+        "Anuppur"
+      ],
+      "distance_km": 45,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-06",
+      "batch_code": "Batch 6",
+      "name": "Kotma → Manendragarh",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Manendragarh"
+      ],
+      "areas": [
+        "Kotma",
+        "Manendragarh"
+      ],
+      "distance_km": 65,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-07",
+      "batch_code": "Batch 7",
+      "name": "Kotma → Chirmiri",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Chirmiri"
+      ],
+      "areas": [
+        "Kotma",
+        "Chirmiri"
+      ],
+      "distance_km": 80,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-08",
+      "batch_code": "Batch 8",
+      "name": "Kotma → Baikunthpur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Baikunthpur"
+      ],
+      "areas": [
+        "Kotma",
+        "Baikunthpur"
+      ],
+      "distance_km": 90,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-kot-09",
+      "batch_code": "Batch 9",
+      "name": "Kotma → Gaurela",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Gaurela"
+      ],
+      "areas": [
+        "Kotma",
+        "Gaurela"
+      ],
+      "distance_km": 95,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-shd-01",
+      "batch_code": "Batch 1",
+      "name": "Shahdol → Budhar → Dhanpuri → OPM",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Budhar",
+        "Dhanpuri",
+        "OPM"
+      ],
+      "areas": [
+        "Shahdol",
+        "Budhar",
+        "Dhanpuri",
+        "OPM"
+      ],
+      "distance_km": 55,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-shd-02",
+      "batch_code": "Batch 2",
+      "name": "Shahdol → Pali → Navrozabad",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Pali",
+        "Navrozabad"
+      ],
+      "areas": [
+        "Shahdol",
+        "Pali",
+        "Navrozabad"
+      ],
+      "distance_km": 75,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-shd-03",
+      "batch_code": "Batch 3",
+      "name": "Shahdol → Gohparu → Jaisinghnagar",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Gohparu",
+        "Jaisinghnagar"
+      ],
+      "areas": [
+        "Shahdol",
+        "Gohparu",
+        "Jaisinghnagar"
+      ],
+      "distance_km": 120,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-shd-04",
+      "batch_code": "Batch 4",
+      "name": "Shahdol → Jaitpur",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Jaitpur"
+      ],
+      "areas": [
+        "Shahdol",
+        "Jaitpur"
+      ],
+      "distance_km": 80,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-shd-05",
+      "batch_code": "Batch 5",
+      "name": "Shahdol → Manpur",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Manpur"
+      ],
+      "areas": [
+        "Shahdol",
+        "Manpur"
+      ],
+      "distance_km": 110,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-amb-01",
+      "batch_code": "Batch 1",
+      "name": "Ambikapur → Laknapur → Udaypur → Kedma",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Laknapur",
+        "Udaypur",
+        "Kedma"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Laknapur",
+        "Udaypur",
+        "Kedma"
+      ],
+      "distance_km": 90,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-amb-02",
+      "batch_code": "Batch 2",
+      "name": "Ambikapur → Batuli → Sitapur → Patthalgawn",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Batuli",
+        "Sitapur",
+        "Patthalgawn"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Batuli",
+        "Sitapur",
+        "Patthalgawn"
+      ],
+      "distance_km": 130,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-amb-03",
+      "batch_code": "Batch 3",
+      "name": "Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Silpili",
+        "Vishrampur",
+        "Surajpur",
+        "Devnagar",
+        "Shreenagar"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Silpili",
+        "Vishrampur",
+        "Surajpur",
+        "Devnagar",
+        "Shreenagar"
+      ],
+      "distance_km": 115,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-amb-04",
+      "batch_code": "Batch 4",
+      "name": "Ambikapur → Pratapur → Siluta → Vadrafnagar",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Pratapur",
+        "Siluta",
+        "Vadrafnagar"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Pratapur",
+        "Siluta",
+        "Vadrafnagar"
+      ],
+      "distance_km": 140,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    },
+    {
+      "id": "rb-amb-05",
+      "batch_code": "Batch 5",
+      "name": "Ambikapur → Latori → Krwan → Datima → Batra → Bhatgawn",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Latori",
+        "Krwan",
+        "Datima",
+        "Batra",
+        "Bhatgawn"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Latori",
+        "Krwan",
+        "Datima",
+        "Batra",
+        "Bhatgawn"
+      ],
+      "distance_km": 125,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-07T22:36:40.588Z"
+    }
+  ],
+  "userDeviceStates": [
+    {
+      "id": "usr-admin-shivansh"
+    },
+    {
+      "id": "usr-admin-01"
+    },
+    {
+      "id": "usr-mgr-01"
+    },
+    {
+      "id": "usr-mr-01",
+      "device_id": "dev-gen-ed9fbef1",
+      "device_model": "Android Device (Windows 10)",
+      "device_bound_at": "2026-10-08T01:52:18.977Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
+    },
+    {
+      "id": "usr-mr-02",
+      "device_model": "Android Device (Windows 10)",
+      "logged_out": true,
+      "requires_device_otp_on_login": true
+    },
+    {
+      "id": "usr-mr-03"
+    }
+  ],
+  "saved_at": "2026-10-08T12:19:43.847Z"
 }

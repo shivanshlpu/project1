@@ -57,6 +57,7 @@ interface AttendanceSettingsData {
   allowed_punch_in_window_minutes: number;
   expected_punch_out_time: string;
   allowed_punch_out_window_minutes: number;
+  reimbursement_rate_per_km?: number;
   updated_at?: string;
   updated_by?: string;
 }
@@ -1093,6 +1094,27 @@ export const AdminAttendanceView: React.FC = () => {
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, fontWeight: 700 }}
                 />
               </div>
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                TRAVEL REIMBURSEMENT RATE POLICY (₹ / KM)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-brand, #1A3C6E)' }}>₹</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={settings.reimbursement_rate_per_km ?? 2.5}
+                  onChange={(e) => setSettings({ ...settings, reimbursement_rate_per_km: parseFloat(e.target.value) || 0 })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, fontWeight: 700 }}
+                />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>per km</span>
+              </div>
+              <p style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                Default travel reimbursement rate applied across all Medical Representative Tour Plans and route batches (e.g. ₹2.50/km).
+              </p>
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
