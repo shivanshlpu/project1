@@ -4,16 +4,16 @@
   "latestVersion": "1.0.15",
   "latestVersionCode": 16,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://ahtri-backend.onrender.com/download-apk",
+  "downloadUrl": "https://expo.dev/artifacts/eas/_lK0pRbS8C60YlZW5H7Co_pFGAswpWnM-M6CukfqoMM.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-08",
-  "publishedAt": "2026-10-08T13:55:28.769Z",
-  "publishedBy": "System Admin",
+  "publishedAt": "2026-10-08T14:01:35.354Z",
+  "publishedBy": "System Auto-Build",
   "releaseNotes": [
-    "Separate leave allocation per employee from Admin Panel with real-time sync",
-    "Real-time Reflection in Employee ID and mobile app",
-    "Field Orders & Delivery workflow with HQ-specific acceptance",
+    "Separate leave allocation per employee configured directly from Admin Panel",
+    "Instant reflection in Employee ID & dynamic real-time leave quota sync",
+    "Complete Field Orders workflow with HQ-specific assignment & delivery confirmation",
     "Enhanced device hardware authorization & security"
   ]
 }

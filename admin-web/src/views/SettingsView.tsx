@@ -1348,7 +1348,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="url"
                 value={updateData.downloadUrl}
                 onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
-                placeholder="https://expo.dev/artifacts/eas/omgUGKB2T-bajcEOndnTMkYg_1QlcObeMTXw40lwf7I.apk"
+                placeholder="https://expo.dev/artifacts/eas/_lK0pRbS8C60YlZW5H7Co_pFGAswpWnM-M6CukfqoMM.apk"
                 style={{
                   width: '100%',
                   padding: '11px 14px',
