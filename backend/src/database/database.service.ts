@@ -138,6 +138,11 @@ export class DatabaseService implements OnModuleInit {
         verificationPhotos: this.verificationPhotos,
         deviceAuthorizations: this.deviceAuthorizations,
         routeBatches: this.routeBatches,
+        userCredentials: this.users.map((u) => ({
+          id: u.id,
+          email: u.email,
+          password_hash: u.password_hash,
+        })),
         userDeviceStates: this.users.map((u) => ({
           id: u.id,
           device_id: u.device_id,
@@ -197,6 +202,14 @@ export class DatabaseService implements OnModuleInit {
             batchMap.set(b.id, b);
           }
           this.routeBatches = Array.from(batchMap.values());
+        }
+        if (Array.isArray(data.userCredentials)) {
+          data.userCredentials.forEach((cred: any) => {
+            const user = this.users.find((u) => u.id === cred.id || u.email.toLowerCase() === cred.email?.toLowerCase());
+            if (user && cred.password_hash) {
+              user.password_hash = cred.password_hash;
+            }
+          });
         }
         if (Array.isArray(data.userDeviceStates)) {
           data.userDeviceStates.forEach((state: any) => {
@@ -289,6 +302,18 @@ export class DatabaseService implements OnModuleInit {
               await this.syncAttendanceToSupabase(att);
             }
           }
+
+          // Sync users credentials from Supabase
+          const { data: remoteUsers, error: usersErr } = await client.from('users').select('*');
+          if (!usersErr && remoteUsers && remoteUsers.length > 0) {
+            for (const ru of remoteUsers) {
+              const u = this.users.find((usr) => usr.id === ru.id || usr.email.toLowerCase() === ru.email?.toLowerCase());
+              if (u && ru.password_hash) {
+                u.password_hash = ru.password_hash;
+              }
+            }
+          }
+
           // Purge legacy dummy clinics & legacy dummy MR IDs from Supabase if present
           try {
             await client.from('doctors').delete().in('id', ['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
@@ -809,6 +834,35 @@ export class DatabaseService implements OnModuleInit {
         created_at: new Date().toISOString(),
       });
     }
+
+    // 11.1 Seed Default Route Batches (§Master Route Planning)
+    const seedRouteBatches: RouteBatch[] = [
+      // Kotma Batches (Batch 1 - 9)
+      { id: 'rb-kot-01', batch_code: 'Batch 1', name: 'Kotma Town & Local Market', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Kotma Town', 'Station Road', 'Old Market'], areas: ['Kotma Town'], distance_km: 15, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-02', batch_code: 'Batch 2', name: 'Anuppur District Hospital & Market', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Anuppur', 'District Hospital', 'Civil Lines'], areas: ['Anuppur'], distance_km: 35, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-03', batch_code: 'Batch 3', name: 'Jaithari PHC & Thermal Power Belt', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Jaithari', 'Chachai Road', 'PHC Colony'], areas: ['Jaithari'], distance_km: 42, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-04', batch_code: 'Batch 4', name: 'Bijuri Colliery & Main Market', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Bijuri', 'Colliery Road', 'Station Road'], areas: ['Bijuri'], distance_km: 22, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-05', batch_code: 'Batch 5', name: 'Rajendragram Route & Tribal Area', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Rajendragram', 'Amarkantak Road'], areas: ['Rajendragram'], distance_km: 55, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-06', batch_code: 'Batch 6', name: 'Bhalumuda Coalmines & Clinics', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Bhalumuda', 'Mine Gate', 'Main Chowk'], areas: ['Bhalumuda'], distance_km: 28, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-07', batch_code: 'Batch 7', name: 'Kotma Outer & Rural Centers', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Kevai River Belt', 'Kotma Outer'], areas: ['Kotma Town'], distance_km: 30, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-08', batch_code: 'Batch 8', name: 'Anuppur-Jaithari Connected Route', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Anuppur', 'Jaithari'], areas: ['Anuppur', 'Jaithari'], distance_km: 48, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-kot-09', batch_code: 'Batch 9', name: 'Jaithari-Bijuri Extended Loop', hq_id: hqKotma.id, hq_code: 'KOT', hq_name: 'Kotma', mr_id: mr1.id, mr_name: mr1.name, territory_name: 'Kotma HQ Territory', route_stops: ['Jaithari', 'Bijuri'], areas: ['Jaithari', 'Bijuri'], distance_km: 50, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+
+      // Shahdol Batches (Batch 1 - 5)
+      { id: 'rb-shd-01', batch_code: 'Batch 1', name: 'Shahdol Central & Medical College', hq_id: hqShahdol.id, hq_code: 'SHD', hq_name: 'Shahdol', mr_id: mr2.id, mr_name: mr2.name, territory_name: 'Shahdol HQ Territory', route_stops: ['Shahdol Central', 'Gandhi Chowk', 'Medical College Road'], areas: ['Shahdol Central'], distance_km: 20, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-shd-02', batch_code: 'Batch 2', name: 'Burhar Town & Dhanpuri Colliery', hq_id: hqShahdol.id, hq_code: 'SHD', hq_name: 'Shahdol', mr_id: mr2.id, mr_name: mr2.name, territory_name: 'Shahdol HQ Territory', route_stops: ['Burhar Town', 'Dhanpuri', 'Amlai Paper Mills'], areas: ['Burhar'], distance_km: 32, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-shd-03', batch_code: 'Batch 3', name: 'Gohparu & Sohagpur Clinics', hq_id: hqShahdol.id, hq_code: 'SHD', hq_name: 'Shahdol', mr_id: mr2.id, mr_name: mr2.name, territory_name: 'Shahdol HQ Territory', route_stops: ['Gohparu', 'Sohagpur', 'Singhpur'], areas: ['Gohparu', 'Sohagpur'], distance_km: 45, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-shd-04', batch_code: 'Batch 4', name: 'Beohari Sub-Division Route', hq_id: hqShahdol.id, hq_code: 'SHD', hq_name: 'Shahdol', mr_id: mr2.id, mr_name: mr2.name, territory_name: 'Shahdol HQ Territory', route_stops: ['Beohari', 'Rewa Road Junction'], areas: ['Beohari'], distance_km: 78, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-shd-05', batch_code: 'Batch 5', name: 'Jaisinghnagar & Amdih Route', hq_id: hqShahdol.id, hq_code: 'SHD', hq_name: 'Shahdol', mr_id: mr2.id, mr_name: mr2.name, territory_name: 'Shahdol HQ Territory', route_stops: ['Jaisinghnagar Town', 'Amdih', 'Janakpur Road'], areas: ['Jaisinghnagar'], distance_km: 52, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+
+      // Ambikapur Batches (Batch 1 - 5)
+      { id: 'rb-amb-01', batch_code: 'Batch 1', name: 'Ambikapur Central & Ring Road', hq_id: hqAmbikapur.id, hq_code: 'AMB', hq_name: 'Ambikapur', mr_id: mr3.id, mr_name: mr3.name, territory_name: 'Ambikapur HQ Territory', route_stops: ['Ambikapur Central', 'Hospital Road', 'Ring Road'], areas: ['Ambikapur Central'], distance_km: 25, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-amb-02', batch_code: 'Batch 2', name: 'Sitapur & Lundra Corridor', hq_id: hqAmbikapur.id, hq_code: 'AMB', hq_name: 'Ambikapur', mr_id: mr3.id, mr_name: mr3.name, territory_name: 'Ambikapur HQ Territory', route_stops: ['Sitapur', 'Lundra'], areas: ['Sitapur', 'Lundra'], distance_km: 45, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-amb-03', batch_code: 'Batch 3', name: 'Batoli & Mainpat Route', hq_id: hqAmbikapur.id, hq_code: 'AMB', hq_name: 'Ambikapur', mr_id: mr3.id, mr_name: mr3.name, territory_name: 'Ambikapur HQ Territory', route_stops: ['Batoli', 'Mainpat Plateau'], areas: ['Batoli', 'Mainpat'], distance_km: 60, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-amb-04', batch_code: 'Batch 4', name: 'Udaipur & Lakhanpur Belt', hq_id: hqAmbikapur.id, hq_code: 'AMB', hq_name: 'Ambikapur', mr_id: mr3.id, mr_name: mr3.name, territory_name: 'Ambikapur HQ Territory', route_stops: ['Udaipur', 'Lakhanpur'], areas: ['Udaipur', 'Lakhanpur'], distance_km: 40, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'rb-amb-05', batch_code: 'Batch 5', name: 'Ramanujganj & Surguja Border', hq_id: hqAmbikapur.id, hq_code: 'AMB', hq_name: 'Ambikapur', mr_id: mr3.id, mr_name: mr3.name, territory_name: 'Ambikapur HQ Territory', route_stops: ['Ramanujganj', 'Surguja Border'], areas: ['Ramanujganj', 'Surguja'], distance_km: 80, standard_reimbursement_rate: 2.5, status: 'ACTIVE', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+    ];
+    this.routeBatches.push(...seedRouteBatches);
 
     // 12. Seed Stockers (§9 & §10) with sub_area assigned
     const stocker1: Stocker = {

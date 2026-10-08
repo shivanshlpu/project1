@@ -503,16 +503,94 @@ export const SubmittedTasksView: React.FC = () => {
   };
 
   return (
-    <div className="enterprise-panel" style={{ padding: '24px' }}>
+    <div className="tasks-page-container enterprise-panel">
+      <style>{`
+        .tasks-page-container {
+          padding: 24px;
+        }
+        .tasks-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .tasks-header-icon {
+          width: 38px;
+          height: 38px;
+          min-width: 38px;
+          min-height: 38px;
+          flex-shrink: 0;
+          border-radius: 10px;
+          background: #DCFCE7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .tasks-header-h2 {
+          margin: 0;
+          font-size: clamp(18px, 3.8vw, 22px);
+          font-weight: 800;
+          color: #0F172A;
+          line-height: 1.25;
+        }
+        .tasks-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 14px;
+          margin-bottom: 22px;
+        }
+        .tasks-desktop-table {
+          display: block;
+          overflow-x: auto;
+        }
+        .tasks-mobile-card-list {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .tasks-page-container {
+            padding: 12px 12px 28px !important;
+          }
+          .tasks-header-row {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .tasks-header-h2 {
+            font-size: 18px !important;
+          }
+          .tasks-kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 16px !important;
+          }
+          .tasks-desktop-table {
+            display: none !important;
+          }
+          .tasks-mobile-card-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+          }
+        }
+        @media (max-width: 440px) {
+          .tasks-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="tasks-header-row">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="tasks-header-icon">
               <CheckCircle2 size={20} color="#15803D" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#0F172A' }}>
+              <h2 className="tasks-header-h2">
                 MR Submitted Tasks
               </h2>
               <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
@@ -537,7 +615,7 @@ export const SubmittedTasksView: React.FC = () => {
       </div>
 
       {/* KPI Cards Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '22px' }}>
+      <div className="tasks-kpi-grid">
         <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '11px', fontWeight: '700', color: '#166534', textTransform: 'uppercase' }}>
@@ -662,8 +740,8 @@ export const SubmittedTasksView: React.FC = () => {
       </div>
 
       {/* Dedicated Listing Table */}
-      <div className="enterprise-table-wrapper" style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-        <table className="enterprise-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+      <div className="enterprise-table-wrapper tasks-desktop-table" style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflowX: 'auto' }}>
+        <table className="enterprise-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', minWidth: '820px' }}>
           <thead>
             <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #CBD5E1' }}>
               <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: '700', color: '#334155' }}>Task Title & Detailing Call</th>
@@ -857,6 +935,168 @@ export const SubmittedTasksView: React.FC = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View (screens < 768px) */}
+      <div className="tasks-mobile-card-list">
+        {filteredTasks.length === 0 ? (
+          <div style={{ background: '#FFFFFF', padding: '32px 16px', textAlign: 'center', borderRadius: '8px', border: '1px solid #E2E8F0', color: '#64748B' }}>
+            <CheckCircle2 size={32} color="#94A3B8" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+            <div style={{ fontWeight: '700', fontSize: '14px', color: '#334155' }}>No submitted tasks found</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+              Tasks submitted by field MRs will appear here with verified photos, durations, and orders.
+            </div>
+          </div>
+        ) : (
+          filteredTasks.map((t) => {
+            const orderCount = t.orders?.length || 0;
+            const orderAmount = (t.orders || []).reduce((sum, o) => sum + (o.total_amount || 0), 0);
+            const hasPhoto = Boolean(t.visit_photo || t.verification_photo_key);
+            const durationMins = t.duration_seconds ? Math.round(t.duration_seconds / 60) : 25;
+
+            return (
+              <div
+                key={`mob-task-${t.id}`}
+                onClick={() => setSelectedTask(t)}
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '10px',
+                  border: '1px solid #E2E8F0',
+                  padding: '14px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: '800', color: '#0F172A', fontSize: '14px' }}>{t.title}</div>
+                    <div style={{ fontSize: '11px', color: '#059669', fontWeight: '700', marginTop: '2px' }}>
+                      ✓ Completed &amp; Submitted
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#0F172A' }}>
+                      {formatDateDDMMYYYY(t.date || t.completed_at || '2026-10-04')}
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#64748B' }}>
+                      {t.completed_at ? formatDateTimeDDMMYYYY(t.completed_at).split(' ')[1] : t.time || '11:00 AM'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MR & Clinic Location */}
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: '700', color: '#1E293B' }}>
+                    <User size={13} color="#64748B" />
+                    <span>{t.assigned_mr_name || 'Field Representative'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#334155', marginTop: '4px' }}>
+                    <MapPin size={13} color="#0284C7" />
+                    <span>{t.location_name || 'Clinic Facility'}</span>
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>
+                    Geofence: ≤{t.geofence_radius_m || 50}m • Duration: {durationMins} mins
+                  </div>
+                </div>
+
+                {/* Metrics / Orders Strip */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {hasPhoto ? (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const photoUrl = t.visit_photo || (t.verification_photo_key ? `/api/photos/${t.verification_photo_key}` : '');
+                          if (photoUrl) setViewingPhoto({ url: photoUrl, title: t.title, mr: t.assigned_mr_name || 'MR' });
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: '#EFF6FF',
+                          border: '1px solid #BFDBFE',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#1D4ED8',
+                        }}
+                      >
+                        <Camera size={11} /> Photo Proof
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#94A3B8' }}>No Photo</span>
+                    )}
+
+                    {orderCount > 0 && (
+                      <span style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '4px', padding: '2px 6px', fontSize: '11px', fontWeight: '700', color: '#15803D' }}>
+                        🛍️ {orderCount} Orders
+                      </span>
+                    )}
+                  </div>
+
+                  {orderAmount > 0 && (
+                    <div style={{ fontWeight: '800', color: '#7E22CE', fontSize: '13px' }}>
+                      ₹{orderAmount.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '6px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTask(t);
+                    }}
+                    className="btn-enterprise secondary"
+                    style={{ flex: 1, padding: '6px 10px', fontSize: '11.5px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                  >
+                    <Eye size={12} /> Inspect
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrintSlip(t);
+                    }}
+                    className="btn-enterprise secondary"
+                    style={{ flex: 1, padding: '6px 10px', fontSize: '11.5px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                  >
+                    <Printer size={12} /> Audit Slip
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTask(t.id, t.title);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid #FCA5A5',
+                      background: '#FFFFFF',
+                      color: '#DC2626',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Task Complete Detailed Information Modal (§1.2) */}

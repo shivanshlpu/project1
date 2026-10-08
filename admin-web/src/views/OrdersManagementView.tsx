@@ -227,31 +227,133 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   };
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: '1440px', margin: '0 auto', fontFamily: 'inherit' }}>
+    <div className="orders-page-container">
+      <style>{`
+        .orders-page-container {
+          padding: 24px 32px;
+          max-width: 1440px;
+          margin: 0 auto;
+          font-family: inherit;
+        }
+        .orders-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 24px;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+        .orders-title-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1 1 300px;
+        }
+        .orders-header-icon {
+          width: 42px;
+          height: 42px;
+          min-width: 42px;
+          min-height: 42px;
+          flex-shrink: 0;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #FFFFFF;
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+        .orders-header-h1 {
+          font-size: clamp(19px, 3.8vw, 24px);
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.3px;
+          line-height: 1.25;
+        }
+        .orders-header-sub {
+          font-size: 13px;
+          color: #64748B;
+          margin: 4px 0 0;
+          line-height: 1.4;
+        }
+        .orders-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .orders-desktop-table {
+          display: block;
+          overflow-x: auto;
+        }
+        .orders-mobile-card-list {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .orders-page-container {
+            padding: 12px 14px 28px !important;
+          }
+          .orders-header-row {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+          }
+          .orders-title-wrapper {
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .orders-header-icon {
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
+            border-radius: 9px !important;
+            margin-top: 2px !important;
+          }
+          .orders-header-h1 {
+            font-size: 18px !important;
+          }
+          .orders-header-sub {
+            font-size: 12px !important;
+            margin-top: 3px !important;
+          }
+          .orders-kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 16px !important;
+          }
+          .orders-desktop-table {
+            display: none !important;
+          }
+          .orders-mobile-card-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 12px 10px !important;
+          }
+        }
+        @media (max-width: 440px) {
+          .orders-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       {/* Header Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+      <div className="orders-header-row">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#FFFFFF',
-                boxShadow: '0 4px 10px rgba(2, 132, 199, 0.3)',
-              }}
-            >
+          <div className="orders-title-wrapper">
+            <div className="orders-header-icon">
               <ShoppingBag size={20} />
             </div>
             <div>
-              <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
-                Orders & Delivery Supervision
+              <h1 className="orders-header-h1">
+                Orders &amp; Delivery Supervision
               </h1>
-              <p style={{ fontSize: '13px', color: '#64748B', margin: '3px 0 0' }}>
+              <p className="orders-header-sub">
                 Manage field orders, employee delivery tracking, HQ-scoped visibility, and stock count acceptance.
               </p>
             </div>
@@ -265,6 +367,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px',
               padding: '9px 16px',
               backgroundColor: '#FFFFFF',
@@ -275,6 +378,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
               color: '#334155',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
+              width: '100%',
             }}
           >
             <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
@@ -284,14 +388,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
       </div>
 
       {/* KPI Cards Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px',
-        }}
-      >
+      <div className="orders-kpi-grid">
         {/* Total Orders */}
         <div
           style={{
@@ -585,8 +682,9 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <>
+            <div className="orders-desktop-table" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px', minWidth: '880px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#F1F5F9', borderBottom: '1px solid #E2E8F0', color: '#475569' }}>
                   <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>Order # / Date</th>
@@ -859,357 +957,562 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
-      {/* Itemized Order Details Modal */}
-      {selectedOrderForItems && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-          onClick={() => setSelectedOrderForItems(null)}
-        >
-          <div
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              maxWidth: '680px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-              padding: '24px 28px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                borderBottom: '1px solid #E2E8F0',
-                paddingBottom: '16px',
-                marginBottom: '16px',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span
-                    style={{
-                      backgroundColor: '#E0F2FE',
-                      color: '#0369A1',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '800',
-                    }}
-                  >
-                    #{selectedOrderForItems.order_number}
-                  </span>
-                  <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                    Order Details & Product Breakdown
-                  </h2>
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-                  Placed on {formatDateTimeDDMMYYYY(selectedOrderForItems.created_at)} by {selectedOrderForItems.mr_name}
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedOrderForItems(null)}
+            {/* Mobile Card List (Visible on screens < 768px) */}
+        <div className="orders-mobile-card-list">
+          {filteredOrders.map((ord) => {
+            const isDelivered = ord.delivery_status === 'DELIVERED';
+            const isAccepted = ord.hq_accepted;
+            const isProcessing = isProcessingAction === ord.id;
+
+            return (
+              <div
+                key={`mob-${ord.id}`}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  padding: '14px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
                 }}
               >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Meta Information Cards */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px',
-                marginBottom: '20px',
-              }}
-            >
-              <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
-                  Customer / Doctor
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
-                  {selectedOrderForItems.customer_name}
-                </div>
-                {selectedOrderForItems.location_name && (
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                    📍 {selectedOrderForItems.location_name}
+                {/* Header: Order # + Date + Delivery Pill */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontWeight: '800', color: '#0284C7', fontSize: '14px' }}>#{ord.order_number}</span>
+                      <span
+                        style={{
+                          backgroundColor: '#F1F5F9',
+                          border: '1px solid #CBD5E1',
+                          borderRadius: '4px',
+                          padding: '1px 6px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#334155',
+                        }}
+                      >
+                        {ord.hq_name}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                      {formatDateTimeDDMMYYYY(ord.created_at)}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
-                  Target HQ & Stocker
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      fontSize: '10.5px',
+                      fontWeight: '700',
+                      backgroundColor: isDelivered ? '#DCFCE7' : '#FEF3C7',
+                      color: isDelivered ? '#166534' : '#92400E',
+                      border: `1px solid ${isDelivered ? '#86EFAC' : '#FCD34D'}`,
+                    }}
+                  >
+                    {isDelivered ? <Truck size={11} /> : <Clock size={11} />}
+                    <span>{isDelivered ? 'DELIVERED' : 'PENDING'}</span>
+                  </span>
                 </div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
-                  {selectedOrderForItems.hq_name}
+
+                {/* Customer & MR Info */}
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F1F5F9' }}>
+                  <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '13px' }}>{ord.customer_name}</div>
+                  {ord.location_name && ord.location_name !== ord.customer_name && (
+                    <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                      <MapPin size={11} color="#0284C7" />
+                      <span>{ord.location_name}</span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: '11.5px', color: '#334155', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                    <User size={12} color="#64748B" />
+                    <span>MR: {ord.mr_name}</span>
+                    {ord.stocker_name && <span style={{ color: '#94A3B8' }}>• Stocker: {ord.stocker_name}</span>}
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                  📦 {selectedOrderForItems.stocker_name || 'Central Stocker'}
+
+                {/* Products & Total Amount */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+                  <button
+                    onClick={() => setSelectedOrderForItems(ord)}
+                    style={{
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '11.5px',
+                      fontWeight: '600',
+                      color: '#0369A1',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Eye size={12} />
+                    <span>{ord.items?.length || 0} Products ({ord.total_units} units)</span>
+                  </button>
+
+                  <div style={{ fontWeight: '800', color: '#0F8B5A', fontSize: '15px' }}>
+                    ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+
+                {/* Supervision & HQ Acceptance Action Strip */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+                  {/* Toggle Delivery */}
+                  <button
+                    onClick={() => handleToggleDeliveryStatus(ord)}
+                    disabled={isProcessing}
+                    style={{
+                      flex: '1 1 120px',
+                      padding: '6px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: '600',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: isDelivered ? '#F8FAFC' : '#0284C7',
+                      color: isDelivered ? '#475569' : '#FFFFFF',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {isProcessing ? 'Updating...' : isDelivered ? '↩ Mark Pending' : '✓ Mark Delivered'}
+                  </button>
+
+                  {/* HQ Acceptance Action */}
+                  {isAccepted ? (
+                    <div
+                      style={{
+                        flex: '1 1 140px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        padding: '6px 10px',
+                        backgroundColor: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: '#1D4ED8',
+                      }}
+                    >
+                      <CheckCircle2 size={13} color="#2563EB" />
+                      <span>Stock Deducted ✓</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmAcceptOrder(ord)}
+                      disabled={isProcessing || !isDelivered}
+                      style={{
+                        flex: '1 1 140px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: !isDelivered ? '1px dashed #CBD5E1' : '1px solid #16A34A',
+                        backgroundColor: !isDelivered ? '#F8FAFC' : '#DCFCE7',
+                        color: !isDelivered ? '#94A3B8' : '#166534',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: !isDelivered ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <Check size={13} />
+                      <span>{!isDelivered ? 'Awaiting Delivery' : `Accept for ${ord.hq_name}`}</span>
+                    </button>
+                  )}
+
+                  {/* Details Button */}
+                  <button
+                    onClick={() => setSelectedOrderForItems(ord)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '11.5px',
+                      fontWeight: '600',
+                      color: '#334155',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Details
+                  </button>
                 </div>
               </div>
-            </div>
+            );
+          })}
+        </div>
+      </>
+        )}
+    </div>
 
-            {/* Status Status Strip */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                backgroundColor: selectedOrderForItems.hq_accepted ? '#EFF6FF' : '#FFFBEB',
-                border: `1px solid ${selectedOrderForItems.hq_accepted ? '#BFDBFE' : '#FDE68A'}`,
-                marginBottom: '20px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>
-                  Workflow Status
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
-                  Delivery: {selectedOrderForItems.delivery_status} • HQ Acceptance:{' '}
-                  {selectedOrderForItems.hq_accepted ? 'ACCEPTED & COUNTED' : 'PENDING'}
-                </div>
-              </div>
-
-              {/* Action within modal if delivered & not accepted */}
-              {selectedOrderForItems.delivery_status === 'DELIVERED' && !selectedOrderForItems.hq_accepted && (
-                <button
-                  onClick={() => {
-                    setConfirmAcceptOrder(selectedOrderForItems);
-                  }}
+      {/* Itemized Order Details Modal */ }
+  {
+    selectedOrderForItems && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px',
+        }}
+        onClick={() => setSelectedOrderForItems(null)}
+      >
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '95%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            padding: '20px 22px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Modal Header */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              borderBottom: '1px solid #E2E8F0',
+              paddingBottom: '16px',
+              marginBottom: '16px',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
                   style={{
-                    backgroundColor: '#0F8B5A',
-                    color: '#FFFFFF',
-                    border: 'none',
+                    backgroundColor: '#E0F2FE',
+                    color: '#0369A1',
+                    padding: '3px 8px',
                     borderRadius: '6px',
-                    padding: '7px 14px',
                     fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
+                    fontWeight: '800',
                   }}
                 >
-                  Accept & Count Stock
-                </button>
+                  #{selectedOrderForItems.order_number}
+                </span>
+                <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                  Order Details &amp; Product Breakdown
+                </h2>
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+                Placed on {formatDateTimeDDMMYYYY(selectedOrderForItems.created_at)} by {selectedOrderForItems.mr_name}
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedOrderForItems(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748B',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '6px',
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Meta Information Cards */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              marginBottom: '20px',
+            }}
+          >
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+              <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
+                Customer / Doctor
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
+                {selectedOrderForItems.customer_name}
+              </div>
+              {selectedOrderForItems.location_name && (
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                  📍 {selectedOrderForItems.location_name}
+                </div>
               )}
             </div>
 
-            {/* Product Item List */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>
-                Ordered Products ({selectedOrderForItems.items?.length || 0})
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+              <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
+                Target HQ & Stocker
               </div>
-              <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600' }}>Product Name</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Qty</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Unit Price</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Total</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600' }}>Distributor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(selectedOrderForItems.items || []).map((item, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0F172A' }}>
-                          {item.product_name}
-                        </td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#334155' }}>
-                          {item.quantity}
-                        </td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748B' }}>
-                          ₹{(item.unit_price || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0F8B5A' }}>
-                          ₹{(item.total_amount || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: '#64748B', fontSize: '12px' }}>
-                          {item.distributor || 'Central Stocker'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ backgroundColor: '#F8FAFC', borderTop: '2px solid #E2E8F0' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: '800', color: '#0F172A' }}>
-                        Grand Total
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: '#0F172A' }}>
-                        {selectedOrderForItems.total_units} units
-                      </td>
-                      <td style={{ padding: '10px 12px' }}></td>
-                      <td
-                        style={{
-                          padding: '10px 12px',
-                          textAlign: 'right',
-                          fontWeight: '800',
-                          fontSize: '15px',
-                          color: '#0F8B5A',
-                        }}
-                      >
-                        ₹{(selectedOrderForItems.total_amount || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}></td>
-                    </tr>
-                  </tfoot>
-                </table>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
+                {selectedOrderForItems.hq_name}
               </div>
-            </div>
-
-            {/* Close Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setSelectedOrderForItems(null)}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  backgroundColor: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  color: '#334155',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                Close
-              </button>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                📦 {selectedOrderForItems.stocker_name || 'Central Stocker'}
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Confirmation Dialog for HQ Acceptance */}
-      {confirmAcceptOrder && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '20px',
-          }}
-          onClick={() => setConfirmAcceptOrder(null)}
-        >
+          {/* Status Status Strip */}
           <div
             style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '14px',
-              maxWidth: '480px',
-              width: '100%',
-              padding: '24px',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: selectedOrderForItems.hq_accepted ? '#EFF6FF' : '#FFFBEB',
+              border: `1px solid ${selectedOrderForItems.hq_accepted ? '#BFDBFE' : '#FDE68A'}`,
+              marginBottom: '20px',
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  backgroundColor: '#DCFCE7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#16A34A',
-                }}
-              >
-                <Check size={20} />
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>
+                Workflow Status
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                Accept Order & Count Stock?
-              </h3>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
+                Delivery: {selectedOrderForItems.delivery_status} • HQ Acceptance:{' '}
+                {selectedOrderForItems.hq_accepted ? 'ACCEPTED & COUNTED' : 'PENDING'}
+              </div>
             </div>
 
-            <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: '1.5', margin: '0 0 16px' }}>
-              You are about to officially accept Order <strong>#{confirmAcceptOrder.order_number}</strong> for{' '}
-              <strong>{confirmAcceptOrder.hq_name}</strong>.
-            </p>
-
-            <div
-              style={{
-                backgroundColor: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                borderRadius: '8px',
-                padding: '12px 14px',
-                marginBottom: '20px',
-                fontSize: '12.5px',
-                color: '#166534',
-              }}
-            >
-              <div style={{ fontWeight: '700', marginBottom: '4px' }}>Counting will now start:</div>
-              <div>• {confirmAcceptOrder.total_units} product units will be deducted from {confirmAcceptOrder.hq_name} inventory.</div>
-              <div>• This order is already marked as DELIVERED by {confirmAcceptOrder.mr_name}.</div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            {/* Action within modal if delivered & not accepted */}
+            {selectedOrderForItems.delivery_status === 'DELIVERED' && !selectedOrderForItems.hq_accepted && (
               <button
-                onClick={() => setConfirmAcceptOrder(null)}
-                disabled={isProcessingAction === confirmAcceptOrder.id}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
-                  color: '#475569',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
+                onClick={() => {
+                  setConfirmAcceptOrder(selectedOrderForItems);
                 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleExecuteHqAcceptance(confirmAcceptOrder)}
-                disabled={isProcessingAction === confirmAcceptOrder.id}
                 style={{
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  border: 'none',
                   backgroundColor: '#0F8B5A',
                   color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '7px 14px',
+                  fontSize: '12px',
                   fontWeight: '700',
-                  fontSize: '13px',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(15, 139, 90, 0.3)',
                 }}
               >
-                {isProcessingAction === confirmAcceptOrder.id ? 'Accepting & Deducting...' : 'Yes, Accept & Deduct Stock'}
+                Accept & Count Stock
               </button>
+            )}
+          </div>
+
+          {/* Product Item List */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>
+              Ordered Products ({selectedOrderForItems.items?.length || 0})
+            </div>
+            <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600' }}>Product Name</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Qty</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Unit Price</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Total</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600' }}>Distributor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedOrderForItems.items || []).map((item, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0F172A' }}>
+                        {item.product_name}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#334155' }}>
+                        {item.quantity}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748B' }}>
+                        ₹{(item.unit_price || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0F8B5A' }}>
+                        ₹{(item.total_amount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#64748B', fontSize: '12px' }}>
+                        {item.distributor || 'Central Stocker'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderTop: '2px solid #E2E8F0' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: '800', color: '#0F172A' }}>
+                      Grand Total
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: '#0F172A' }}>
+                      {selectedOrderForItems.total_units} units
+                    </td>
+                    <td style={{ padding: '10px 12px' }}></td>
+                    <td
+                      style={{
+                        padding: '10px 12px',
+                        textAlign: 'right',
+                        fontWeight: '800',
+                        fontSize: '15px',
+                        color: '#0F8B5A',
+                      }}
+                    >
+                      ₹{(selectedOrderForItems.total_amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
+
+          {/* Close Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              onClick={() => setSelectedOrderForItems(null)}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '8px',
+                backgroundColor: '#F1F5F9',
+                border: '1px solid #CBD5E1',
+                color: '#334155',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    )
+  }
+
+  {/* Confirmation Dialog for HQ Acceptance */ }
+  {
+    confirmAcceptOrder && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px',
+        }}
+        onClick={() => setConfirmAcceptOrder(null)}
+      >
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '14px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '24px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                backgroundColor: '#DCFCE7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#16A34A',
+              }}
+            >
+              <Check size={20} />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+              Accept Order & Count Stock?
+            </h3>
+          </div>
+
+          <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: '1.5', margin: '0 0 16px' }}>
+            You are about to officially accept Order <strong>#{confirmAcceptOrder.order_number}</strong> for{' '}
+            <strong>{confirmAcceptOrder.hq_name}</strong>.
+          </p>
+
+          <div
+            style={{
+              backgroundColor: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              borderRadius: '8px',
+              padding: '12px 14px',
+              marginBottom: '20px',
+              fontSize: '12.5px',
+              color: '#166534',
+            }}
+          >
+            <div style={{ fontWeight: '700', marginBottom: '4px' }}>Counting will now start:</div>
+            <div>• {confirmAcceptOrder.total_units} product units will be deducted from {confirmAcceptOrder.hq_name} inventory.</div>
+            <div>• This order is already marked as DELIVERED by {confirmAcceptOrder.mr_name}.</div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              onClick={() => setConfirmAcceptOrder(null)}
+              disabled={isProcessingAction === confirmAcceptOrder.id}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '8px',
+                border: '1px solid #CBD5E1',
+                backgroundColor: '#FFFFFF',
+                color: '#475569',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleExecuteHqAcceptance(confirmAcceptOrder)}
+              disabled={isProcessingAction === confirmAcceptOrder.id}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#0F8B5A',
+                color: '#FFFFFF',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(15, 139, 90, 0.3)',
+              }}
+            >
+              {isProcessingAction === confirmAcceptOrder.id ? 'Accepting & Deducting...' : 'Yes, Accept & Deduct Stock'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+    </div >
   );
 };

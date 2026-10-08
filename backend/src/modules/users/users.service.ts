@@ -135,7 +135,25 @@ export class UsersService {
 
     if (dto.password && dto.password.trim()) {
       user.password_hash = await bcrypt.hash(dto.password.trim(), 10);
+      if (this.db.supabase?.isConnected) {
+        try {
+          await this.db.supabase.upsertUser({
+            id: user.id,
+            email: user.email,
+            password_hash: user.password_hash,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            status: user.status,
+            biometric_enabled: user.biometric_enabled,
+          });
+        } catch (sbErr) {
+          console.warn('[UsersService] Failed to sync updated password to Supabase:', sbErr);
+        }
+      }
     }
+
+    this.db.persistToDisk();
 
     const { password_hash: _, ...userWithoutPassword } = user;
     return userWithoutPassword;

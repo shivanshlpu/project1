@@ -77,10 +77,15 @@ export class SupabaseService implements OnModuleInit {
     if (!this.client || !this.isConnected) return null;
     try {
       const lower = identifier.toLowerCase().trim();
+      let targetEmail = lower;
+      if (lower === 'shd' || lower === 'hq-shd-001' || lower === 'aman.rathore@ahtri.com') targetEmail = 'aman@ahtri.com';
+      else if (lower === 'kot' || lower === 'hq-kot-001' || lower === 'amar.dwivedi@ahtri.com') targetEmail = 'amar@ahtri.com';
+      else if (lower === 'amb' || lower === 'hq-amb-001' || lower === 'ashish.soni@ahtri.com') targetEmail = 'ashish@ahtri.com';
+
       const { data, error } = await this.client
         .from('users')
         .select('*')
-        .or(`email.ilike.${lower},phone.eq.${lower}`)
+        .or(`email.ilike.${targetEmail},email.ilike.${lower},phone.eq.${lower},id.eq.${lower}`)
         .limit(1)
         .maybeSingle();
 
