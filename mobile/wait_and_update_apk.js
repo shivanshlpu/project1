@@ -132,11 +132,11 @@ async function checkBuild() {
             `latestVersionCode: 17`
           );
           settingsContent = settingsContent.replace(
-            /downloadUrl:\s*'https:\/\/expo\.dev\/artifacts\/eas\/[^']+\.apk'/,
+            /downloadUrl:\s*'https:\/\/[^']+\.apk'/,
             `downloadUrl: '${downloadUrl}'`
           );
           settingsContent = settingsContent.replace(
-            /placeholder="https:\/\/expo\.dev\/artifacts\/eas\/[^"]+\.apk"/,
+            /placeholder="https:\/\/[^"]+\.apk"/,
             `placeholder="${downloadUrl}"`
           );
           fs.writeFileSync(settingsPath, settingsContent, 'utf-8');

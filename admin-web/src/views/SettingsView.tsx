@@ -242,7 +242,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     latestVersion: '1.0.16',
     latestVersionCode: 17,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://ahtri-backend.onrender.com/download-apk',
+    downloadUrl: 'https://github.com/shivanshlpu/project1/releases/download/v1.0.16/ahtri-ffa-mobile.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -354,12 +354,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         publishedBy: managerName || 'Admin',
       };
 
+      const authToken = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (authToken) {
+        authHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const res = await fetch(`${cleanUrl}/api/app/version`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify(payload),
       });
 
@@ -368,10 +374,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         try {
           await fetch('https://ahtri-backend.onrender.com/api/app/version', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
+            headers: authHeaders,
             body: JSON.stringify(payload),
           });
         } catch {
@@ -1348,7 +1351,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="url"
                 value={updateData.downloadUrl}
                 onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
-                placeholder="https://expo.dev/artifacts/eas/_lK0pRbS8C60YlZW5H7Co_pFGAswpWnM-M6CukfqoMM.apk"
+                placeholder="https://github.com/shivanshlpu/project1/releases/download/v1.0.16/ahtri-ffa-mobile.apk"
                 style={{
                   width: '100%',
                   padding: '11px 14px',
