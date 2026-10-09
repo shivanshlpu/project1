@@ -1,0 +1,13 @@
+# Semgrep ignore configuration
+node_modules/
+dist/
+build/
+web-build/
+.expo/
+*.min.js
+*.bundle.js
+*.map
+**/backend/data/ffa_db_store.json
+**/backend/test/**
+**/*.spec.ts
+**/*.test.ts
