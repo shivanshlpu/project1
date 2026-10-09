@@ -106,7 +106,7 @@ export class TasksService {
       mr_id: mr.id,
       assigned_at: new Date().toISOString(),
     });
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
 
     // Send high-priority remote push notification to MR's phone (WhatsApp-style)
     this.notificationsService.sendPushNotification(
@@ -168,7 +168,7 @@ export class TasksService {
     const callingUser = this.db.users.find((u) => u.id === userId);
     const isManagerOrAdmin = callingUser && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(callingUser.role);
     if (task.assigned_mr_id !== userId && !isManagerOrAdmin) {
-      console.warn(`[Tasks] User ${userId} starting task assigned to ${task.assigned_mr_id}`);
+      throw new ForbiddenException('Access denied: You can only start tasks assigned to your account.');
     }
 
     // 1. Calculate distance server-side using Haversine formula
@@ -230,7 +230,7 @@ export class TasksService {
     task.status = 'IN_PROGRESS';
     task.started_at = new Date().toISOString();
     task.device_integrity_status = 'VERIFIED';
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
     return {
       message: 'Task started successfully within geofence',
       task,
@@ -317,7 +317,7 @@ export class TasksService {
       );
     });
 
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
     return {
       message: 'Call activity saved with Order Pending. You can enter order details later this evening.',
       task,
@@ -386,7 +386,7 @@ export class TasksService {
       );
     });
 
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
     return {
       message: 'Order recorded and task completed successfully. Inventory updated.',
       task,
@@ -401,7 +401,10 @@ export class TasksService {
       throw new ForbiddenException('Task is suspended. Only the Owner can unsuspend it.');
     }
     if (task.status === 'COMPLETED') {
-      throw new BadRequestException('This task has already been completed.');
+      return {
+        message: 'Task was already completed successfully.',
+        task,
+      };
     }
 
     // Check anti-mock and developer mode (§4)
@@ -416,7 +419,7 @@ export class TasksService {
     const callingUser = this.db.users.find((u) => u.id === userId);
     const isManagerOrAdmin = callingUser && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(callingUser.role);
     if (task.assigned_mr_id !== userId && !isManagerOrAdmin) {
-      console.warn(`[Tasks] User ${userId} completing task assigned to ${task.assigned_mr_id}`);
+      throw new ForbiddenException('Access denied: You can only complete tasks assigned to your account.');
     }
 
     const lat = dto.latitude || task.latitude;
@@ -521,7 +524,7 @@ export class TasksService {
       });
     });
 
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
     return {
       message: 'Task completed successfully',
       task,
@@ -593,7 +596,7 @@ export class TasksService {
 
     const mr = this.db.users.find((u) => u.id === task.assigned_mr_id);
 
-    this.db.persistToDisk();
+    await this.db.persistTask(task);
     return {
       message: 'Task successfully unsuspended by Owner. Representative can now execute the call.',
       task: {

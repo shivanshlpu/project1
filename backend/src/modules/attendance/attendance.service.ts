@@ -142,7 +142,7 @@ export class AttendanceService implements OnModuleInit {
           existing.check_in_location_name = dto.location_name;
         }
       }
-      this.db.persistToDisk();
+      await this.db.persistAttendance(existing);
       return { message: 'Attendance already recorded for today (photo & location updated)', attendance: existing };
     }
 
@@ -224,8 +224,7 @@ export class AttendanceService implements OnModuleInit {
       created_at: now.toISOString(),
     };
 
-    this.db.attendance.push(record);
-    this.db.persistToDisk();
+    await this.db.persistAttendance(record);
 
     let lateMsg = '';
     if (lateMinutes > 0) {
@@ -301,7 +300,7 @@ export class AttendanceService implements OnModuleInit {
       earlyMsg = hrs > 0 ? `Early Punch Out — ${hrs} hour ${mins} minutes` : `Early Punch Out — ${earlyMinutes} minutes`;
     }
 
-    this.db.persistToDisk();
+    await this.db.persistAttendance(record);
     return {
       message: earlyMsg ? `Check-out recorded — ${earlyMsg}` : 'Check-out recorded successfully',
       attendance: record,

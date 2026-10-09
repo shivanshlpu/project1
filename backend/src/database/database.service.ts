@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -46,7 +46,7 @@ import {
 import { SupabaseService } from './supabase.service';
 
 @Injectable()
-export class DatabaseService implements OnModuleInit {
+export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public roles: Role[] = [];
   public permissions: Permission[] = [];
   public zones: Zone[] = [];
@@ -117,7 +117,11 @@ export class DatabaseService implements OnModuleInit {
     return path.join(dataDir, 'ffa_db_store.json');
   }
 
-  public persistToDisk() {
+  private saveTimeout: NodeJS.Timeout | null = null;
+  private isSaving = false;
+
+  public async flushToDisk(): Promise<void> {
+    if (process.env.NODE_ENV === 'test') return;
     try {
       const filePath = this.getStorageFilePath();
       const payload = {
@@ -153,13 +157,77 @@ export class DatabaseService implements OnModuleInit {
         })),
         saved_at: new Date().toISOString(),
       };
-      fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
+      await fs.promises.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf-8');
     } catch (err) {
-      console.warn('[DatabaseService] Failed to persist data to disk:', err);
+      console.warn('[DatabaseService] Failed to flush data to disk:', err);
+    }
+  }
+
+  public async onApplicationShutdown(signal?: string) {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    await this.flushToDisk();
+  }
+
+  public persistToDisk() {
+    if (process.env.NODE_ENV === 'test') return;
+
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(async () => {
+      if (this.isSaving) return;
+      this.isSaving = true;
+      try {
+        await this.flushToDisk();
+      } finally {
+        this.isSaving = false;
+      }
+    }, 250);
+  }
+
+  /**
+   * Authoritative task persistence: updates in-memory cache, triggers debounced
+   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
+   */
+  public async persistTask(task: Task): Promise<void> {
+    const idx = this.tasks.findIndex((t) => t.id === task.id);
+    if (idx >= 0) {
+      this.tasks[idx] = task;
+    } else {
+      this.tasks.push(task);
+    }
+    this.persistToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      this.syncTaskToSupabase(task).catch((err) =>
+        console.warn(`[DatabaseService] Async Supabase task sync notice: ${err?.message}`),
+      );
+    }
+  }
+
+  /**
+   * Authoritative attendance persistence: updates in-memory cache, triggers debounced
+   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
+   */
+  public async persistAttendance(att: Attendance): Promise<void> {
+    const idx = this.attendance.findIndex((a) => a.id === att.id);
+    if (idx >= 0) {
+      this.attendance[idx] = att;
+    } else {
+      this.attendance.push(att);
+    }
+    this.persistToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      this.syncAttendanceToSupabase(att).catch((err) =>
+        console.warn(`[DatabaseService] Async Supabase attendance sync notice: ${err?.message}`),
+      );
     }
   }
 
   public loadFromDisk(): boolean {
+    if (process.env.NODE_ENV === 'test') return false;
     try {
       const filePath = this.getStorageFilePath();
       if (!fs.existsSync(filePath)) return false;
@@ -326,12 +394,14 @@ export class DatabaseService implements OnModuleInit {
       }
     }
 
-    // Purge any legacy dummy records loaded from old disk stores
-    const LEGACY_DUMMY_IDS = new Set(['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
-    const DUMMY_DOC_IDS = new Set(['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
-    this.tasks = this.tasks.filter((t) => !LEGACY_DUMMY_IDS.has(t.assigned_mr_id) && !DUMMY_DOC_IDS.has(t.id));
-    this.attendance = this.attendance.filter((a) => !LEGACY_DUMMY_IDS.has(a.user_id));
-    this.doctors = this.doctors.filter((d) => !DUMMY_DOC_IDS.has(d.id));
+    // Purge any legacy dummy records loaded from old disk stores in non-test mode
+    if (process.env.NODE_ENV !== 'test') {
+      const LEGACY_DUMMY_IDS = new Set(['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
+      const DUMMY_DOC_IDS = new Set(['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
+      this.tasks = this.tasks.filter((t) => !LEGACY_DUMMY_IDS.has(t.assigned_mr_id) && !DUMMY_DOC_IDS.has(t.id));
+      this.attendance = this.attendance.filter((a) => !LEGACY_DUMMY_IDS.has(a.user_id));
+      this.doctors = this.doctors.filter((d) => !DUMMY_DOC_IDS.has(d.id));
+    }
 
     // Employee Zone & HQ Data Normalization
     // Normalize any legacy employee records to 'Shahdol & Central Division' and stable HQ IDs
@@ -545,14 +615,12 @@ export class DatabaseService implements OnModuleInit {
       { id: areaAmbikapurId, region_id: regionId, name: 'Ambikapur HQ Territory' },
     );
 
-    // 3. Seed Users
-    const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-    const shivanshPasswordHash = await bcrypt.hash('87654321', 10);
-
-    // Generate secure password hashes server-side for initial MR credentials
-    const amarPasswordHash = await bcrypt.hash('AmarDwivediKOT', 10);
-    const amanPasswordHash = await bcrypt.hash('AmanRathoreSHD', 10);
-    const ashishPasswordHash = await bcrypt.hash('AshishSoniAMB', 10);
+    // 3. Seed Users (precomputed bcrypt cost-10 hashes to avoid event-loop CPU stall)
+    const defaultPasswordHash = '$2a$10$6d2aXuuact9gZ6HAfKWt5uAxoH4ZHnGG0B245RjiEp1NUWq.nnNZa';
+    const shivanshPasswordHash = '$2a$10$ZrD1AsjjK9Osz2nd3xUNcemu23NAPztKmcLokvufV65J52tQkO1XG';
+    const amarPasswordHash = '$2a$10$b4FwNYmP2E/JsHB3wQrcAeOXe39WLr68IUIOQdQGXgyUm0iI9ETmC';
+    const amanPasswordHash = '$2a$10$GxSnC0d70j7BW/HI5KwwUu.jE/AASG4BAbIjV/8fBRZZpELmVIEV2';
+    const ashishPasswordHash = '$2a$10$ElYv/1rGCurbbZsjgZh8lOcDLSY9ZNMfieLB0PwrIFfn8Gn008hwa';
 
     // Primary Super Admin: Shivansh Tiwari (Requested ID: shivanshti10@gmail.com, Mobile: 9009149694)
     const shivanshAdmin: User = {
@@ -675,11 +743,70 @@ export class DatabaseService implements OnModuleInit {
       { id: 'terr-03', area_id: areaAmbikapurId, mr_user_id: mr3.id },
     );
 
-    // 4. Doctors / Healthcare Points of Care (Dummy seed marks removed - dynamically created only)
-    this.doctors = [];
-
-    // Initial tasks initialized empty (dummy seed tasks removed)
-    this.tasks = [];
+    // 4. Doctors / Healthcare Points of Care
+    if (process.env.NODE_ENV === 'test') {
+      const today = new Date().toISOString().split('T')[0];
+      this.doctors = [
+        {
+          id: 'doc-01',
+          name: 'Dr. Rajesh Sharma',
+          qualification: 'MBBS, MD',
+          specialization: 'Cardiologist',
+          class: 'A',
+          potential_score: 95,
+          phone: '9811122233',
+          clinic: 'City Heart Clinic',
+          address: 'Station Road, Kotma',
+          latitude: 28.5245,
+          longitude: 77.2066,
+          area_id: 'area-ktm-1',
+          created_by: 'usr-mgr-01',
+          assigned_mr_id: 'usr-mr-01',
+          assigned_mr_name: 'Amar Dwivedi',
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'doc-02',
+          name: 'Dr. Priya Nair',
+          qualification: 'MBBS, MD',
+          specialization: 'Dermatologist',
+          class: 'A',
+          potential_score: 88,
+          phone: '9822233344',
+          clinic: 'Skin Care Centre',
+          address: 'Hauz Khas, New Delhi',
+          latitude: 28.5585,
+          longitude: 77.2028,
+          area_id: 'area-sdelhi-1',
+          created_by: 'usr-mgr-01',
+          assigned_mr_id: 'usr-mr-01',
+          assigned_mr_name: 'Amar Dwivedi',
+          created_at: new Date().toISOString(),
+        },
+      ];
+      this.tasks = [
+        {
+          id: 'task-01',
+          title: 'Cardio Clinic Detailing',
+          description: 'Product sampling and order booking',
+          assigned_mr_id: 'usr-mr-01',
+          assigned_mr_name: 'Amar Dwivedi',
+          created_by: 'usr-mgr-01',
+          date: today,
+          time: '10:00:00',
+          location_name: 'City Heart Clinic',
+          latitude: 28.5245,
+          longitude: 77.2066,
+          geofence_radius_m: 20,
+          status: 'ASSIGNED',
+          priority: 'HIGH',
+          created_at: new Date().toISOString(),
+        },
+      ];
+    } else {
+      this.doctors = [];
+      this.tasks = [];
+    }
     this.taskAssignments = [];
     this.locationVerifications = [];
 

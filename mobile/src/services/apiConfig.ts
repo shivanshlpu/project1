@@ -6,8 +6,8 @@ const STORAGE_KEYS = {
   SERVER_URL: '@ahtri_custom_server_url',
 };
 
-// Permanent Production Render Backend Endpoint
-export const DEFAULT_API_URL = 'https://ahtri-backend.onrender.com';
+// Permanent Production Render Backend Endpoint (overridable via EXPO_PUBLIC_API_URL)
+export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://ahtri-backend.onrender.com';
 
 export const PRESET_SERVER_URLS = [
   { label: 'Production Render Server', url: DEFAULT_API_URL, desc: 'Live enterprise cloud API' },

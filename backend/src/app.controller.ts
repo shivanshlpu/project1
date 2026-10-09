@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Head, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Head, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SupabaseService } from './database/supabase.service';
+import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
+import { RolesGuard } from './common/roles.guard';
+import { Roles } from './common/roles.decorator';
 
 export interface AppVersionData {
   appName: string;
@@ -22,8 +25,8 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA Mobile',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.15',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '16', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.16',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '17', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
@@ -34,6 +37,9 @@ const defaultAppVersion: AppVersionData = {
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
+    'App Performance & Battery Optimization: Background lifecycle pausing to freeze unnecessary network polling when app is minimized',
+    'Low-End Device Acceleration: Throttled UI intervals across task, order, and leave screens for smooth 60fps interaction',
+    'Network Resilience: Idempotent task completion preventing duplicate submission errors on flaky connectivity',
     'Task Sync & Deleted Task Purge: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage',
     'Logout Re-auth Security: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard',
     'Dynamic Territory HQ: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers',
@@ -113,6 +119,8 @@ export class AppController {
    * Saves to persistent file storage so server restarts never lose the link.
    */
   @Post(['api/app/version', 'app/version'])
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   updateAppVersion(@Body() body: Partial<AppVersionData>) {
     if (body.downloadUrl && body.downloadUrl.trim()) {
       currentAppVersion.downloadUrl = body.downloadUrl.trim();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -147,12 +148,23 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     fetchMyLeaves();
     fetchQuota();
 
-    // Auto-refresh leave quota every 4 seconds so admin updates reflect in real-time
+    // Refresh leave quota periodically while screen is active in foreground
     const intervalId = setInterval(() => {
-      fetchQuota();
-    }, 4000);
+      if (AppState.currentState === 'active') {
+        fetchQuota();
+      }
+    }, 30000);
 
-    return () => clearInterval(intervalId);
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchQuota();
+      }
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      subscription.remove();
+    };
   }, [currentUserId]);
 
   // Quick Preset Date Helpers

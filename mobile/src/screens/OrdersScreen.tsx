@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -131,8 +132,22 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        fetchOrders();
+      }
+    }, 30000);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchOrders();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [fetchOrders]);
 
   const onRefresh = () => {

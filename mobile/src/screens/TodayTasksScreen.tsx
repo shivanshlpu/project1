@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -296,8 +297,23 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
   useEffect(() => {
     fetchTasksFromBackend();
-    const interval = setInterval(fetchTasksFromBackend, 4000);
-    return () => clearInterval(interval);
+    // 25s polling while app is in active foreground (prevents battery and network storm)
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        fetchTasksFromBackend();
+      }
+    }, 25000);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchTasksFromBackend();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [currentUserId]);
 
   // Unique dates from completed history

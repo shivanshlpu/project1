@@ -4,6 +4,7 @@ import { DatabaseModule } from '../../database/database.module';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { OrdersModule } from '../orders/orders.module';
 import { BadRequestException } from '@nestjs/common';
 
 describe('Tasks & 20m Geofence (Node 4 DoD Verification)', () => {
@@ -12,7 +13,7 @@ describe('Tasks & 20m Geofence (Node 4 DoD Verification)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [DatabaseModule, NotificationsModule, InventoryModule],
+      imports: [DatabaseModule, NotificationsModule, InventoryModule, OrdersModule],
       providers: [TasksService],
     }).compile();
 

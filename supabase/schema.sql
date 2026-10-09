@@ -404,3 +404,35 @@ CREATE POLICY "Service role full access on monthly_tour_plans" ON public.monthly
 
 DROP POLICY IF EXISTS "Service role full access on device_authorizations" ON public.device_authorizations;
 CREATE POLICY "Service role full access on device_authorizations" ON public.device_authorizations FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- ==============================================================================
+-- 14. HIGH-PERFORMANCE PRODUCTION INDEXES (OPTIMIZED FOR 100K+ CONCURRENCY)
+-- Eliminates full table scans on high-traffic mobile and admin query paths.
+-- ==============================================================================
+
+-- Tasks: Core workload for field MRs and daily tracking
+CREATE INDEX IF NOT EXISTS idx_tasks_mr_date_status ON public.tasks (assigned_mr_id, date, status);
+CREATE INDEX IF NOT EXISTS idx_tasks_date ON public.tasks (date);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks (status);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON public.tasks (created_at DESC);
+
+-- Attendance: Daily check-in/out and manager team tracking
+CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON public.attendance (user_id, date);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON public.attendance (date);
+
+-- Doctors & Visits: Territory mapping and daily call reporting
+CREATE INDEX IF NOT EXISTS idx_doctors_mr ON public.doctors (assigned_mr_id);
+CREATE INDEX IF NOT EXISTS idx_doctors_specialty ON public.doctors (specialty);
+CREATE INDEX IF NOT EXISTS idx_doctor_visits_mr_date ON public.doctor_visits (mr_id, visit_date);
+CREATE INDEX IF NOT EXISTS idx_doctor_visits_doctor ON public.doctor_visits (doctor_id);
+
+-- Operational Workflows: Expenses, Leave & Tour Plans
+CREATE INDEX IF NOT EXISTS idx_expenses_user_status ON public.expenses (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_user_status ON public.leave_requests (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_mtp_user_month ON public.monthly_tour_plans (user_id, month);
+
+-- Security & Device Binding: Fast auth validation & approval lookups
+CREATE INDEX IF NOT EXISTS idx_device_auth_lookup ON public.device_authorizations (user_id, device_id, status);
+CREATE INDEX IF NOT EXISTS idx_device_auth_pending ON public.device_authorizations (status, expires_at) WHERE status = 'PENDING';
+CREATE INDEX IF NOT EXISTS idx_users_role_status ON public.users (role, status);
+CREATE INDEX IF NOT EXISTS idx_users_device ON public.users (device_id) WHERE device_id IS NOT NULL;

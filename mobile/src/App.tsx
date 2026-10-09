@@ -176,6 +176,7 @@ export default function App() {
     let isMounted = true;
 
     const checkLeaveDecisions = async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
@@ -203,11 +204,18 @@ export default function App() {
     };
 
     checkLeaveDecisions();
-    const leaveInterval = setInterval(checkLeaveDecisions, 10000);
+    const leaveInterval = setInterval(checkLeaveDecisions, 60000);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkLeaveDecisions();
+      }
+    });
 
     return () => {
       isMounted = false;
       clearInterval(leaveInterval);
+      subscription.remove();
     };
   }, [currentUser]);
 

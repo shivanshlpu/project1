@@ -1,22 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { TopNav, AppMode } from './components/TopNav';
 import { SubNav, ManagerTab } from './components/SubNav';
 import { SidebarNav } from './components/SidebarNav';
-import { DashboardView } from './views/DashboardView';
-import { TasksView } from './views/TasksView';
-import { SubmittedTasksView } from './views/SubmittedTasksView';
-import { OrdersManagementView } from './views/OrdersManagementView';
-import { SavedLocationsView } from './views/SavedLocationsView';
-import { MembersManagementView } from './views/MembersManagementView';
-import { ApprovalsView } from './views/ApprovalsView';
-import { ReportsView } from './views/ReportsView';
-import { SettingsView } from './views/SettingsView';
-import { MonthlyTpView } from './views/MonthlyTpView';
-import { StockerManagementView } from './views/StockerManagementView';
-import { AdminAttendanceView } from './views/AdminAttendanceView';
-import { CompetitionsView } from './views/CompetitionsView';
-import { LoginView } from './views/LoginView';
-import { AiChatView } from './views/AiChatView';
 import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
 import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
@@ -25,6 +10,22 @@ import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
 import { getApiBaseUrl, fetchDeviceAuthorizationsMerged } from './utils/apiHelper';
 import './styles/app.css';
+
+const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })));
+const TasksView = lazy(() => import('./views/TasksView').then((m) => ({ default: m.TasksView })));
+const SubmittedTasksView = lazy(() => import('./views/SubmittedTasksView').then((m) => ({ default: m.SubmittedTasksView })));
+const OrdersManagementView = lazy(() => import('./views/OrdersManagementView').then((m) => ({ default: m.OrdersManagementView })));
+const SavedLocationsView = lazy(() => import('./views/SavedLocationsView').then((m) => ({ default: m.SavedLocationsView })));
+const MembersManagementView = lazy(() => import('./views/MembersManagementView').then((m) => ({ default: m.MembersManagementView })));
+const ApprovalsView = lazy(() => import('./views/ApprovalsView').then((m) => ({ default: m.ApprovalsView })));
+const ReportsView = lazy(() => import('./views/ReportsView').then((m) => ({ default: m.ReportsView })));
+const SettingsView = lazy(() => import('./views/SettingsView').then((m) => ({ default: m.SettingsView })));
+const MonthlyTpView = lazy(() => import('./views/MonthlyTpView').then((m) => ({ default: m.MonthlyTpView })));
+const StockerManagementView = lazy(() => import('./views/StockerManagementView').then((m) => ({ default: m.StockerManagementView })));
+const AdminAttendanceView = lazy(() => import('./views/AdminAttendanceView').then((m) => ({ default: m.AdminAttendanceView })));
+const CompetitionsView = lazy(() => import('./views/CompetitionsView').then((m) => ({ default: m.CompetitionsView })));
+const LoginView = lazy(() => import('./views/LoginView').then((m) => ({ default: m.LoginView })));
+const AiChatView = lazy(() => import('./views/AiChatView').then((m) => ({ default: m.AiChatView })));
 
 interface AuthUser {
   id: string;
@@ -111,7 +112,9 @@ export const App: React.FC = () => {
 
   // Live poll pending approvals count (strictly dynamic from actual pending leaves and suspended tasks)
   useEffect(() => {
+    if (!authUser) return;
     const fetchPendingApprovals = async () => {
+      if (document.hidden) return;
       try {
         const apiUrl = getApiBaseUrl();
         const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -162,7 +165,9 @@ export const App: React.FC = () => {
 
   // Live poll pending device authorizations count
   useEffect(() => {
+    if (!authUser) return;
     const fetchPendingCount = async () => {
+      if (document.hidden) return;
       try {
         const data = await fetchDeviceAuthorizationsMerged();
         setDeviceApprovalsCount((data.pending || []).length);
@@ -177,7 +182,9 @@ export const App: React.FC = () => {
 
   // Live poll for newly marked field locations from MRs
   useEffect(() => {
+    if (!authUser) return;
     const fetchRecentLocations = async () => {
+      if (document.hidden) return;
       try {
         const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/locations/recent`);
@@ -219,7 +226,9 @@ export const App: React.FC = () => {
 
   // Live poll for MR completed duties
   useEffect(() => {
+    if (!authUser) return;
     const fetchRecentCompletions = async () => {
+      if (document.hidden) return;
       try {
         const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/tasks/recent-completions`);
@@ -318,7 +327,11 @@ export const App: React.FC = () => {
 
   // If not authenticated, render Login Page
   if (!authUser) {
-    return <LoginView lang={lang} onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>Loading login...</div>}>
+        <LoginView lang={lang} onLoginSuccess={handleLoginSuccess} />
+      </Suspense>
+    );
   }
 
   return (
@@ -413,54 +426,56 @@ export const App: React.FC = () => {
 
         {/* Main Workspace Canvas */}
         <main className="workspace-canvas">
-          {managerTab === 'overview' && <DashboardView lang={lang} />}
-          {managerTab === 'tasks' && (
-            <TasksView
-              prefilledLocation={assignedLocationTarget}
-              onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
-            />
-          )}
-          {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
-          {managerTab === 'orders' && <OrdersManagementView lang={lang} />}
-          {managerTab === 'locations' && (
-            <SavedLocationsView
-              onAssignTaskToLocation={handleAssignTaskToLocation}
-              targetLocationId={focusedLocationId}
-              onClearTargetLocation={() => setFocusedLocationId(null)}
-              onLocationAcknowledge={handleAcknowledgeLocation}
-            />
-          )}
-          {managerTab === 'members' && (
-            <MembersManagementView
-              onNavigateToLocation={(locId) => {
-                setFocusedLocationId(locId);
-                setManagerTab('locations');
-              }}
-            />
-          )}
-          {managerTab === 'approvals' && <ApprovalsView />}
-          {managerTab === 'attendance' && <AdminAttendanceView />}
-          {managerTab === 'tp' && <MonthlyTpView />}
-          {managerTab === 'stockers' && <StockerManagementView />}
-          {managerTab === 'competitions' && <CompetitionsView />}
-          {managerTab === 'reports' && <ReportsView lang={lang} />}
-          {managerTab === 'ai' && (
-            <AiChatView
-              lang={lang}
-              onNavigateTab={(tab) => {
-                if (tab !== 'tasks') setAssignedLocationTarget(null);
-                setManagerTab(tab as any);
-              }}
-            />
-          )}
-          {managerTab === 'settings' && (
-            <SettingsView
-              lang={lang}
-              managerName={managerName}
-              onUpdateManagerName={handleUpdateManagerName}
-              onNavigateTab={(tab) => setManagerTab(tab as any)}
-            />
-          )}
+          <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>Loading workspace...</div>}>
+            {managerTab === 'overview' && <DashboardView lang={lang} />}
+            {managerTab === 'tasks' && (
+              <TasksView
+                prefilledLocation={assignedLocationTarget}
+                onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
+              />
+            )}
+            {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
+            {managerTab === 'orders' && <OrdersManagementView lang={lang} />}
+            {managerTab === 'locations' && (
+              <SavedLocationsView
+                onAssignTaskToLocation={handleAssignTaskToLocation}
+                targetLocationId={focusedLocationId}
+                onClearTargetLocation={() => setFocusedLocationId(null)}
+                onLocationAcknowledge={handleAcknowledgeLocation}
+              />
+            )}
+            {managerTab === 'members' && (
+              <MembersManagementView
+                onNavigateToLocation={(locId) => {
+                  setFocusedLocationId(locId);
+                  setManagerTab('locations');
+                }}
+              />
+            )}
+            {managerTab === 'approvals' && <ApprovalsView />}
+            {managerTab === 'attendance' && <AdminAttendanceView />}
+            {managerTab === 'tp' && <MonthlyTpView />}
+            {managerTab === 'stockers' && <StockerManagementView />}
+            {managerTab === 'competitions' && <CompetitionsView />}
+            {managerTab === 'reports' && <ReportsView lang={lang} />}
+            {managerTab === 'ai' && (
+              <AiChatView
+                lang={lang}
+                onNavigateTab={(tab) => {
+                  if (tab !== 'tasks') setAssignedLocationTarget(null);
+                  setManagerTab(tab as any);
+                }}
+              />
+            )}
+            {managerTab === 'settings' && (
+              <SettingsView
+                lang={lang}
+                managerName={managerName}
+                onUpdateManagerName={handleUpdateManagerName}
+                onNavigateTab={(tab) => setManagerTab(tab as any)}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
 

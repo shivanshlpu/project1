@@ -1,9 +1,12 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, ForgotPasswordDto } from './dto/login.dto';
 import { RequestOtpDto, VerifyOtpDto } from './dto/otp.dto';
 import { RefreshTokenDto } from './dto/refresh.dto';
 import { VerifyDeviceOtpDto } from './dto/device-auth.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { Roles } from '../../common/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +25,8 @@ export class AuthController {
   }
 
   @Get('device-authorizations')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   async getDeviceAuthorizations() {
     return {
       pending: this.authService.getPendingDeviceAuthorizations(),
@@ -30,18 +35,24 @@ export class AuthController {
   }
 
   @Post('device-authorizations/:id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @HttpCode(HttpStatus.OK)
   async approveDevice(@Param('id') id: string) {
     return this.authService.approveDeviceByOwner(id);
   }
 
   @Post('device-authorizations/:id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @HttpCode(HttpStatus.OK)
   async rejectDevice(@Param('id') id: string) {
     return this.authService.rejectDeviceByOwner(id);
   }
 
   @Post('device-binding/reset/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @HttpCode(HttpStatus.OK)
   async resetDeviceBinding(@Param('userId') userId: string) {
     return this.authService.resetDeviceBinding(userId);

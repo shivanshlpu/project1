@@ -140,7 +140,34 @@
       "updated_at": "2026-10-07T23:17:03.575Z"
     }
   ],
-  "attendance": [],
+  "attendance": [
+    {
+      "id": "att-4cc48399",
+      "user_id": "usr-mr-01",
+      "date": "2026-10-09",
+      "check_in_at": "2026-10-09T06:48:54.388Z",
+      "check_in_lat": 28.5245,
+      "check_in_lng": 77.2066,
+      "check_in_location_name": "Lat: 28.5245, Lng: 77.2066",
+      "check_in_photo": null,
+      "photo_captured_at": "2026-10-09T06:48:54.388Z",
+      "photo_purged": false,
+      "distance_meters": 10,
+      "is_verified_location": true,
+      "status": "LATE",
+      "late_minutes": 139,
+      "early_minutes": 341,
+      "working_hours": 0,
+      "punch_in_photo_source": "CAMERA",
+      "device_integrity_status": "VERIFIED",
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "created_at": "2026-10-09T06:48:54.388Z",
+      "check_out_at": "2026-10-09T06:48:54.390Z",
+      "check_out_lat": 28.53,
+      "check_out_lng": 77.21
+    }
+  ],
   "attendanceSettings": {
     "id": "att-settings-default",
     "expected_punch_in_time": "10:00:00",
@@ -155,7 +182,19 @@
   "dcrList": [],
   "dcrItems": [],
   "expenses": [],
-  "leaveRequests": [],
+  "leaveRequests": [
+    {
+      "id": "leave-f04c5d79",
+      "mr_id": "usr-mr-01",
+      "category": "SICK",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-17",
+      "reason": "Medical leave",
+      "status": "APPROVED",
+      "approved_by": "usr-mgr-01",
+      "created_at": "2026-10-09T06:48:53.605Z"
+    }
+  ],
   "leaveQuotas": [
     {
       "mr_id": "usr-mr-01",
@@ -1272,6 +1311,38 @@
       "created_at": "2026-10-07T22:36:40.588Z"
     }
   ],
+  "userCredentials": [
+    {
+      "id": "usr-admin-shivansh",
+      "email": "shivanshti10@gmail.com",
+      "password_hash": "$2a$10$eq/x/tj.gth5.wNTpqKjPelbVTY3PLOcZEP0kBrIH/9PD..ITMoj2"
+    },
+    {
+      "id": "usr-admin-01",
+      "email": "admin@ahtri.com",
+      "password_hash": "$2a$10$DbhOdQbglw0ufjEA7ipr0uigDlvnoDawgdPj.tUA0TPU0glom.GxC"
+    },
+    {
+      "id": "usr-mgr-01",
+      "email": "manager@ahtri.com",
+      "password_hash": "$2a$10$DbhOdQbglw0ufjEA7ipr0uigDlvnoDawgdPj.tUA0TPU0glom.GxC"
+    },
+    {
+      "id": "usr-mr-01",
+      "email": "amar@ahtri.com",
+      "password_hash": "$2a$10$OzrP44IjKezREqSuSKTtxe5Y9uJV9AJyXwfQ6uTnNqIhc9HKSpxmO"
+    },
+    {
+      "id": "usr-mr-02",
+      "email": "aman@ahtri.com",
+      "password_hash": "$2a$10$9oqymSKdoGKrzYCekp18ROcM4CqW0lQuftlghR1xhRR5AmV3ezMIO"
+    },
+    {
+      "id": "usr-mr-03",
+      "email": "ashish@ahtri.com",
+      "password_hash": "$2a$10$OL2d15LLC77FszyQmCRim.F2yEaBb8lQBnuFVS0NLn/kcHUhY5CX."
+    }
+  ],
   "userDeviceStates": [
     {
       "id": "usr-admin-shivansh"
@@ -1300,5 +1371,5 @@
       "id": "usr-mr-03"
     }
   ],
-  "saved_at": "2026-10-08T12:19:43.847Z"
+  "saved_at": "2026-10-09T06:48:55.870Z"
 }

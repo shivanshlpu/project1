@@ -41,7 +41,11 @@ export class TasksController {
     @Headers('x-user-id') headerUserId?: string,
     @Query('date') date?: string,
   ) {
-    const userId = user?.id || queryUserId || headerUserId || 'usr-mr-01';
+    // Prevent IDOR: Field MRs can strictly only query their own tasks
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    const userId = isPrivileged
+      ? (queryUserId || headerUserId || user?.id || 'usr-mr-01')
+      : (user?.id || 'usr-mr-01');
     return this.tasksService.getMyTasks(userId, date);
   }
 

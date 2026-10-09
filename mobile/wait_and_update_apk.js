@@ -73,8 +73,8 @@ async function checkBuild() {
       const versionPayload = {
         appName: 'AHTRI FFA Mobile',
         packageName: 'com.ahtri.ffa',
-        latestVersion: '1.0.15',
-        latestVersionCode: 16,
+        latestVersion: '1.0.16',
+        latestVersionCode: 17,
         minimumVersion: '1.0.0',
         downloadUrl: downloadUrl,
         forceUpdate: false,
@@ -83,10 +83,11 @@ async function checkBuild() {
         publishedAt: new Date().toISOString(),
         publishedBy: 'System Auto-Build',
         releaseNotes: [
+          'App Performance & Battery Optimization: Background lifecycle pausing to freeze network polling when app is minimized',
+          'Low-End Device Acceleration: Throttled UI intervals across task, order, and leave screens for smooth interaction',
+          'Network Resilience: Idempotent task completion preventing duplicate submission errors on flaky connectivity',
           'Separate leave allocation per employee configured directly from Admin Panel',
-          'Instant reflection in Employee ID & dynamic real-time leave quota sync',
           'Complete Field Orders workflow with HQ-specific assignment & delivery confirmation',
-          'Enhanced device hardware authorization & security',
         ],
       };
 
@@ -104,11 +105,11 @@ async function checkBuild() {
           );
           controllerContent = controllerContent.replace(
             /latestVersion:\s*process\.env\.LATEST_APP_VERSION \|\|\s*'[^']*'/,
-            `latestVersion: process.env.LATEST_APP_VERSION || '1.0.15'`
+            `latestVersion: process.env.LATEST_APP_VERSION || '1.0.16'`
           );
           controllerContent = controllerContent.replace(
             /latestVersionCode:\s*parseInt\(process\.env\.LATEST_VERSION_CODE \|\|\s*'[^']*',\s*10\)/,
-            `latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '16', 10)`
+            `latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '17', 10)`
           );
           fs.writeFileSync(controllerPath, controllerContent, 'utf-8');
           console.log(`[AutoAPK] Updated backend/src/app.controller.ts default APK url.`);
@@ -124,11 +125,11 @@ async function checkBuild() {
           let settingsContent = fs.readFileSync(settingsPath, 'utf-8');
           settingsContent = settingsContent.replace(
             /latestVersion:\s*'[^']+'/,
-            `latestVersion: '1.0.15'`
+            `latestVersion: '1.0.16'`
           );
           settingsContent = settingsContent.replace(
             /latestVersionCode:\s*\d+/,
-            `latestVersionCode: 16`
+            `latestVersionCode: 17`
           );
           settingsContent = settingsContent.replace(
             /downloadUrl:\s*'https:\/\/expo\.dev\/artifacts\/eas\/[^']+\.apk'/,

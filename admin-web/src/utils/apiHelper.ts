@@ -119,9 +119,11 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
   const pendingMap = new Map<string, any>();
   const historyMap = new Map<string, any>();
 
+  const headers = getAuthHeaders();
+
   // Fetch from Render Cloud Backend
   try {
-    const renderRes = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations`, { signal: AbortSignal.timeout(6000) });
+    const renderRes = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(6000) });
     if (renderRes.ok) {
       const data = await renderRes.json();
       (data.pending || []).forEach((item: any) => pendingMap.set(item.id, item));
@@ -131,7 +133,7 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
 
   // Also fetch from Local Backend if running
   try {
-    const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { signal: AbortSignal.timeout(2000) });
+    const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(2000) });
     if (localRes.ok) {
       const data = await localRes.json();
       (data.pending || []).forEach((item: any) => {
@@ -157,26 +159,28 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
  * Dual Approval / Rejection: sends action to both local and Render backends
  */
 export async function approveDeviceAuthorizationDual(id: string): Promise<boolean> {
+  const headers = getAuthHeaders();
   let ok = false;
   try {
-    const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', signal: AbortSignal.timeout(6000) });
+    const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
   } catch {}
   try {
-    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', signal: AbortSignal.timeout(2000) });
+    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
     if (r2.ok) ok = true;
   } catch {}
   return ok;
 }
 
 export async function rejectDeviceAuthorizationDual(id: string): Promise<boolean> {
+  const headers = getAuthHeaders();
   let ok = false;
   try {
-    const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', signal: AbortSignal.timeout(6000) });
+    const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
   } catch {}
   try {
-    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', signal: AbortSignal.timeout(2000) });
+    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
     if (r2.ok) ok = true;
   } catch {}
   return ok;

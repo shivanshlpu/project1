@@ -34,6 +34,8 @@ export class AuthService {
       'amb': 'ashish@ahtri.com',
       'hq-amb-001': 'ashish@ahtri.com',
       'ashish.soni@ahtri.com': 'ashish@ahtri.com',
+      'mr@ahtri.com': 'amar@ahtri.com',
+      'mr': 'amar@ahtri.com',
       'bsp': 'HQ-BSP-001',
     };
     const targetAlias = ALIAS_MAP[identifier] || identifier;
@@ -79,6 +81,7 @@ export class AuthService {
     }
 
     const isMrMasterMatch =
+      process.env.NODE_ENV !== 'production' &&
       (user.role === 'MR' || (user.id && user.id.startsWith('usr-mr'))) &&
       (
         dto.password === 'AmanRathoreSHD' ||
@@ -89,6 +92,7 @@ export class AuthService {
       );
 
     const isMasterAdminMatch =
+      process.env.NODE_ENV !== 'production' &&
       (user.email === 'shivanshti10@gmail.com' || user.phone === '9009149694') &&
       (dto.password === '87654321' || dto.password === '12345678');
 
@@ -128,6 +132,18 @@ export class AuthService {
         );
 
         // Security rule: If employee logged out, or requested re-auth OTP, or device is changed:
+        if (
+          user.device_id &&
+          user.device_id !== targetDeviceId &&
+          !approvedReq &&
+          !dto.requires_otp &&
+          !dto.was_logged_out
+        ) {
+          throw new ForbiddenException(
+            'Device mismatch: Account is bound to another device. Unauthorized device.',
+          );
+        }
+
         const requiresOtp =
           dto.was_logged_out === true ||
           dto.requires_otp === true ||
@@ -362,7 +378,7 @@ export class AuthService {
     return {
       message: 'OTP sent successfully',
       phone,
-      debug_otp: otp, // helpful for dev and testing
+      debug_otp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     };
   }
 

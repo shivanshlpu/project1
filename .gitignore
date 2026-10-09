@@ -24,6 +24,9 @@ coverage/
 # Markdown Documentation & Endpoint Test Files (User Directive)
 *.md
 **/*.md
+*.pdf
+**/*.pdf
+generate_audit_pdf.py
 test_endpoints.js
 *endpoint*
 
