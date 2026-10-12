@@ -5,59 +5,50 @@ import { AuthGuard } from '@nestjs/passport';
 export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
-    const authHeader = req.headers['authorization'];
-    const xUserId = req.headers['x-user-id'];
+    const isTest = process.env.NODE_ENV === 'test';
 
-    if (
-      !authHeader ||
-      authHeader === 'Bearer null' ||
-      authHeader === 'Bearer undefined' ||
-      authHeader === 'Bearer' ||
-      !authHeader.startsWith('Bearer eyJ')
-    ) {
-      if (xUserId) {
-        const isAdmin = xUserId.toLowerCase().includes('admin') || xUserId.toLowerCase().includes('shivansh');
-        req.user = {
-          id: xUserId,
-          email: `${xUserId}@ahtri.com`,
-          role: isAdmin ? 'SUPER_ADMIN' : 'MR',
-          name: xUserId,
-        };
-      } else {
-        req.user = {
-          id: 'usr-admin-shivansh',
-          email: 'shivanshti10@gmail.com',
-          role: 'SUPER_ADMIN',
-          name: 'Shivansh Tiwari',
-        };
-      }
+    // In production, strictly enforce JWT authentication
+    if (process.env.NODE_ENV === 'production') {
+      return super.canActivate(context);
+    }
+
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer eyJ')) {
+      return super.canActivate(context);
+    }
+
+    // In automated testing environment, support mock user context if provided
+    if (isTest) {
+      const xUserId = req.headers['x-user-id'] || 'usr-admin-01';
+      const isPrivileged = xUserId.toLowerCase().includes('admin');
+      req.user = {
+        id: xUserId,
+        email: `${xUserId}@ahtri.com`,
+        role: isPrivileged ? 'SUPER_ADMIN' : 'MR',
+        name: 'Test User',
+      };
       return true;
     }
+
+    // Standard JWT verification for non-test environments
     return super.canActivate(context);
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
-      const req = context.switchToHttp().getRequest();
-      const xUserId = req.headers['x-user-id'];
-      if (xUserId) {
-        const isAdmin = xUserId.toLowerCase().includes('admin') || xUserId.toLowerCase().includes('shivansh');
-        req.user = {
+      if (process.env.NODE_ENV === 'test') {
+        const req = context.switchToHttp().getRequest();
+        const xUserId = req.headers['x-user-id'] || 'usr-admin-01';
+        return {
           id: xUserId,
           email: `${xUserId}@ahtri.com`,
-          role: isAdmin ? 'SUPER_ADMIN' : 'MR',
-          name: xUserId,
-        };
-      } else {
-        req.user = {
-          id: 'usr-admin-01',
-          email: 'admin@ahtri.com',
-          role: 'SUPER_ADMIN',
-          name: 'Shivansh Tiwari',
+          role: xUserId.toLowerCase().includes('admin') ? 'SUPER_ADMIN' : 'MR',
+          name: 'Test User',
         };
       }
-      return req.user;
+      throw err || new UnauthorizedException('Authentication token required or expired.');
     }
     return user;
   }
 }
+

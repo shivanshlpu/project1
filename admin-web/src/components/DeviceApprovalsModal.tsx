@@ -523,7 +523,7 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
           }}
         >
           <span style={{ fontSize: '11px', color: '#64748B', flex: '1 1 180px', lineHeight: '1.4' }}>
-            Hardware locking active. Only Owner (Shivansh Tiwari) can approve devices.
+            Hardware locking active. Only Administrator can approve devices.
           </span>
           <button
             onClick={onClose}

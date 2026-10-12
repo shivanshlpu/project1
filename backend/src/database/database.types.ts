@@ -71,8 +71,13 @@ export type OrderDeliveryStatus = 'PENDING' | 'DELIVERED';
 export interface TaskOrderItem {
   product_id?: string;
   product_name: string;
+  packaging_id?: string;
+  packaging_size?: string;
+  packaging_unit?: string;
   quantity: number;
   unit_price?: number;
+  pts_rate?: number;
+  mrp?: number;
   total_amount?: number;
   distributor?: string;
   stocker_id?: string;
@@ -425,15 +430,117 @@ export interface Stocker {
   created_at: string;
 }
 
+export interface MedicinePackagingVariant {
+  id: string;
+  medicine_id: string;
+  variant_name?: string;
+  package_size: number; // e.g. 30, 60, 200, 50, 10
+  package_unit: string; // e.g. "ml", "gm", "tablets", "units", "strips"
+  size?: number;
+  unit?: string;
+  display_label?: string; // e.g. "200 ml", "30 gm", "10*1*10"
+  display_name?: string;
+  pts_rate: number; // Price to Stockist (authoritative order price)
+  mrp: number; // Maximum Retail Price (doctor reference)
+  status: 'ACTIVE' | 'INACTIVE';
+  is_active?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface Medicine {
   id: string;
   name: string;
   code: string;
+  category?: string;
   unit: string;
-  base_price?: number | null;
+  base_price?: number | null; // legacy price or primary PTS rate
+  pts_rate?: number; // Primary PTS rate
+  mrp?: number; // Primary MRP
+  packaging_variants?: MedicinePackagingVariant[];
   low_stock_threshold?: number;
   status: 'ACTIVE' | 'INACTIVE';
   created_at: string;
+  updated_at?: string;
+}
+
+export type StockagePermissionStatus = 'AVAILABLE' | 'RESERVED' | 'CONSUMED' | 'REVOKED' | 'EXPIRED';
+
+export interface MonthlyStockagePermission {
+  id: string;
+  mr_id: string;
+  mr_name: string;
+  mr_email?: string;
+  mr_phone?: string;
+  hq_id?: string;
+  hq_name?: string;
+  stocker_id?: string;
+  stocker_name?: string;
+  year: number; // e.g. 2026
+  month: number; // 1 to 12
+  month_str: string; // "2026-10"
+  status: StockagePermissionStatus;
+  submission_id?: string;
+  granted_by_id: string;
+  granted_by_name: string;
+  granted_at: string;
+  revoked_by_id?: string;
+  revoked_by_name?: string;
+  revoked_at?: string;
+  revoke_reason?: string;
+  consumed_at?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StockageSubmissionStatus = 'PENDING' | 'APPROVED' | 'APPLIED' | 'REJECTED';
+
+export interface StockageSubmissionItem {
+  id: string;
+  medicine_id: string;
+  medicine_name: string;
+  medicine_code: string;
+  variant_id?: string;
+  package_size?: number;
+  package_unit?: string;
+  packaging_display: string;
+  pts_rate?: number;
+  mrp?: number;
+  submitted_quantity: number;
+  approved_quantity?: number;
+  previous_stock?: number;
+  final_stock?: number;
+  batch_no?: string;
+  expiry_date?: string;
+  notes?: string;
+}
+
+export interface StockageSubmissionRequest {
+  id: string;
+  permission_id: string;
+  mr_id: string;
+  mr_name: string;
+  mr_phone?: string;
+  hq_id: string;
+  hq_name: string;
+  stocker_id: string;
+  stocker_name: string;
+  month: string; // "2026-10"
+  year: number;
+  month_num: number;
+  status: StockageSubmissionStatus;
+  items: StockageSubmissionItem[];
+  total_items: number;
+  total_quantity: number;
+  submitted_at: string;
+  reviewed_by_id?: string;
+  reviewed_by_name?: string;
+  reviewed_at?: string;
+  admin_comment?: string;
+  applied_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MonthlyStockEntry {
@@ -463,12 +570,14 @@ export interface StockerInventory {
   hq_id: string;
   stocker_id: string;
   medicine_id: string;
+  variant_id?: string;
+  packaging_display?: string;
   quantity: number; // Can be negative for backorder / shortage per §17
   low_stock_threshold: number;
   updated_at: string;
 }
 
-export type InventoryTransactionType = 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN';
+export type InventoryTransactionType = 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN' | 'STOCKAGE_APPROVED_INWARD';
 
 export interface InventoryTransaction {
   id: string;

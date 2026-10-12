@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import {
@@ -45,7 +46,13 @@ export class AttendanceController {
     @Headers('x-user-id') headerUserId: string | undefined,
     @Body() dto: CheckInDto,
   ) {
-    const userId = user?.id || headerUserId || (dto as any)?.userId || (dto as any)?.employeeId || 'usr-mr-01';
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    const userId = isPrivileged
+      ? ((dto as any)?.userId || headerUserId || user?.id)
+      : user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User authentication required.');
+    }
     return this.attendanceService.checkIn(userId, dto);
   }
 
@@ -56,7 +63,13 @@ export class AttendanceController {
     @Headers('x-user-id') headerUserId: string | undefined,
     @Body() dto: CheckOutDto,
   ) {
-    const userId = user?.id || headerUserId || (dto as any)?.userId || (dto as any)?.employeeId || 'usr-mr-01';
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    const userId = isPrivileged
+      ? ((dto as any)?.userId || headerUserId || user?.id)
+      : user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User authentication required.');
+    }
     return this.attendanceService.checkOut(userId, dto);
   }
 
@@ -67,7 +80,13 @@ export class AttendanceController {
     @Headers('x-user-id') headerUserId?: string,
     @Query('month') month?: string,
   ) {
-    const userId = user?.id || queryUserId || headerUserId || 'usr-mr-01';
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    const userId = isPrivileged
+      ? (queryUserId || headerUserId || user?.id)
+      : user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User authentication required.');
+    }
     return this.attendanceService.getMyAttendance(userId, month);
   }
 
@@ -85,6 +104,7 @@ export class AttendanceController {
   }
 
   @Post('clear-all')
+  @Roles('SUPER_ADMIN')
   @HttpCode(HttpStatus.OK)
   async clearAllAttendance() {
     return this.attendanceService.clearAllAttendance();

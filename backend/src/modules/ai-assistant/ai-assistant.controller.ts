@@ -1,8 +1,13 @@
 import { Controller, Post, Body, Res, UseGuards } from '@nestjs/common';
 import { AiAssistantService, QueryAiDto } from './ai-assistant.service';
 import { Response } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { Roles } from '../../common/roles.decorator';
 
 @Controller('api/ai')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
 export class AiAssistantController {
   constructor(private readonly aiService: AiAssistantService) {}
 

@@ -268,7 +268,7 @@ export const SalesmanPortalView: React.FC = () => {
                     <span>New / Secondary Device Detected</span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#9A3412', marginTop: '6px', lineHeight: '16px' }}>
-                    A 6-digit OTP code has been generated exclusively on the <strong>Owner Dashboard (Shivansh Tiwari)</strong>. Click <strong>Device OTPs</strong> in the top navbar above to view or 1-click approve it!
+                    A 6-digit OTP code has been generated exclusively on the <strong>Administrator Dashboard</strong>. Click <strong>Device OTPs</strong> in the top navbar above to view or 1-click approve it!
                   </div>
                 </div>
 
@@ -634,7 +634,7 @@ export const SalesmanPortalView: React.FC = () => {
                         The scheduled visit date ({formatDateDDMMYYYY(call.date)}) has passed without completion. This call is automatically suspended and locked.
                       </div>
                       <div style={{ fontSize: '11px', color: '#B91C1C', marginTop: '4px', fontWeight: '700' }}>
-                        Contact Owner (Shivansh Tiwari) to unsuspend this call so you can proceed.
+                        Contact Administrator to unsuspend this call so you can proceed.
                       </div>
                     </div>
                   )}

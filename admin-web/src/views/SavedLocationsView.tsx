@@ -97,9 +97,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     // Notify parent to decrement SubNav badge counter
     onLocationAcknowledge?.(id);
 
-    // Persist acknowledgment to backend
     const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-    fetch(`${apiUrl}/locations/${id}/acknowledge`, { method: 'POST' }).catch(() => {});
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    fetch(`${apiUrl}/locations/${id}/acknowledge`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).catch(() => {});
   };
 
   // Central handler for selecting a location (card click or pin click)
@@ -141,7 +144,10 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const fetchLocations = async () => {
     try {
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${apiUrl}/locations`);
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/locations`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data: DoctorItem[] = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -470,9 +476,13 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       setEditingLocation(null);
 
       try {
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
         await fetch(`${apiUrl}/locations/${locData.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             name: locData.name,
             clinic: locData.clinic || locData.name,
@@ -516,9 +526,13 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     mapInstanceRef.current?.setView([created.latitude, created.longitude], 15);
 
     try {
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       await fetch(`${apiUrl}/locations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           name: locData.clinic || locData.name,
           doctor_name: locData.name,

@@ -485,7 +485,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
                 Leave Balance Exhausted
               </Text>
               <Text style={{ fontSize: 11, color: '#7F1D1D', marginTop: 2, lineHeight: 15 }}>
-                Your {leaveCategory} balance is 0. Please speak with your Area Manager (Shivansh Tiwari) to assign or increase your leave allowance.
+                Your {leaveCategory} balance is 0. Please speak with your Area Manager or Administrator to assign or increase your leave allowance.
               </Text>
             </View>
           )}

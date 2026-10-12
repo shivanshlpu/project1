@@ -616,39 +616,83 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Save Marked City to Operating Zones List
   const handleSaveMarkedCity = () => {
     const isHq = newCityBranchTag === 'HEADQUARTERS';
-    const newCity: OperatingCity = {
-      id: `city-${Date.now().toString().slice(-4)}`,
-      cityName: currentCityPin.cityName,
-      state: currentCityPin.state,
-      country: currentCityPin.country,
-      latitude: currentCityPin.lat,
-      longitude: currentCityPin.lng,
-      radiusKm: currentCityPin.radiusKm,
-      isHeadquarters: isHq,
-      branchType: newCityBranchTag,
-    };
+    const targetName = currentCityPin.cityName.trim();
+    const existingIndex = operatingCities.findIndex(
+      (c) => c.cityName.toLowerCase().trim() === targetName.toLowerCase()
+    );
 
     let updatedList: OperatingCity[];
+    let targetCity: OperatingCity;
+
+    if (existingIndex >= 0) {
+      targetCity = {
+        ...operatingCities[existingIndex],
+        state: currentCityPin.state,
+        country: currentCityPin.country,
+        latitude: currentCityPin.lat,
+        longitude: currentCityPin.lng,
+        radiusKm: currentCityPin.radiusKm,
+        isHeadquarters: isHq,
+        branchType: newCityBranchTag,
+      };
+      updatedList = operatingCities.map((c, i) => (i === existingIndex ? targetCity : c));
+    } else {
+      targetCity = {
+        id: `city-${Date.now().toString().slice(-4)}`,
+        cityName: targetName,
+        state: currentCityPin.state,
+        country: currentCityPin.country,
+        latitude: currentCityPin.lat,
+        longitude: currentCityPin.lng,
+        radiusKm: currentCityPin.radiusKm,
+        isHeadquarters: isHq,
+        branchType: newCityBranchTag,
+      };
+      updatedList = [targetCity, ...operatingCities];
+    }
+
     if (isHq) {
-      updatedList = [
-        newCity,
-        ...operatingCities.map((c) => ({
+      updatedList = updatedList.map((c) => {
+        if (c.cityName.toLowerCase().trim() === targetName.toLowerCase()) {
+          return { ...c, isHeadquarters: true, branchType: 'HEADQUARTERS' as BranchTagType };
+        }
+        return {
           ...c,
           isHeadquarters: false,
           branchType: (c.branchType === 'HEADQUARTERS' ? 'SUB_CITY_BRANCH' : c.branchType) as BranchTagType,
-        })),
-      ];
-    } else {
-      updatedList = [newCity, ...operatingCities];
+        };
+      });
     }
 
     setOperatingCities(updatedList);
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedList));
+
+      // Sync with ahtri_inventory_hqs
+      const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
+      const hqsList = savedHqsRaw ? JSON.parse(savedHqsRaw) : [];
+      const updatedHqsList = Array.isArray(hqsList) ? [...hqsList] : [];
+      const hqIdx = updatedHqsList.findIndex(
+        (h: any) => h.name?.toLowerCase().trim() === targetName.toLowerCase()
+      );
+      const hqObj = {
+        id: targetCity.id && targetCity.id.startsWith('hq-') ? targetCity.id : `hq-${targetName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        name: targetName,
+        code: `HQ-${targetName.substring(0, 3).toUpperCase()}`,
+        state: targetCity.state || '',
+        isHeadquarters: isHq,
+      };
+      if (hqIdx >= 0) {
+        updatedHqsList[hqIdx] = { ...updatedHqsList[hqIdx], ...hqObj };
+      } else {
+        updatedHqsList.push(hqObj);
+      }
+      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updatedHqsList));
       window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
-    if (newCityBranchTag === 'HEADQUARTERS' || newCity.isHeadquarters) {
+    // Sync to backend inventory HQs
+    try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
       fetch(`${apiUrl}/inventory/hqs`, {
@@ -658,18 +702,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          name: newCity.cityName.trim(),
-          code: `HQ-${newCity.cityName.trim().substring(0, 3).toUpperCase()}`,
-          state: newCity.state || '',
+          name: targetName,
+          code: `HQ-${targetName.substring(0, 3).toUpperCase()}`,
+          state: targetCity.state || '',
         }),
       }).catch(() => {});
-    }
+    } catch {}
 
     const branchLabel = newCityBranchTag === 'HEADQUARTERS' ? 'Official Headquarters' : newCityBranchTag.replace(/_/g, ' ');
-    setCityNotice(`Saved "${currentCityPin.cityName}" as ${branchLabel}!`);
+    setCityNotice(`Saved "${targetName}" as ${branchLabel}!`);
     setTimeout(() => setCityNotice(null), 3500);
 
-    handleSelectOperatingCity(newCity);
+    handleSelectOperatingCity(targetCity);
   };
 
   // Focus on a saved city
@@ -761,6 +805,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setOperatingCities(updated);
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updated));
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
     const labelMap: Record<BranchTagType, string> = {
@@ -788,7 +833,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setOperatingCities(updated);
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updated));
+
+      // Also remove from ahtri_inventory_hqs
+      const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
+      if (savedHqsRaw) {
+        const savedHqs = JSON.parse(savedHqsRaw);
+        if (Array.isArray(savedHqs)) {
+          const filteredHqs = savedHqs.filter(
+            (h: any) => h.name?.toLowerCase().trim() !== target.cityName.toLowerCase().trim()
+          );
+          localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(filteredHqs));
+        }
+      }
+
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
+
+    // Delete from backend inventory HQs
+    try {
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      fetch(`${apiUrl}/inventory/hqs/${encodeURIComponent(target.cityName.trim())}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }).catch(() => {});
+    } catch {}
+
     setCityNotice(`Removed "${target.cityName}" from operating locations.`);
     setTimeout(() => setCityNotice(null), 3500);
   };

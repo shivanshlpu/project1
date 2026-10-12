@@ -77,11 +77,13 @@ export class SyncService {
       for (const draft of dto.expense_drafts) {
         const exists = this.db.expenses.find((e) => e.id === draft.id);
         if (!exists) {
+          const parsedAmount = typeof draft.amount === 'number' ? draft.amount : parseFloat(draft.amount);
+          if (isNaN(parsedAmount) || parsedAmount < 0) continue;
           this.db.expenses.push({
             id: draft.id,
             mr_id: userId,
-            category: draft.category,
-            amount: draft.amount,
+            category: draft.category || 'OTHER',
+            amount: parsedAmount,
             receipt_file_key: draft.receipt_file_key,
             status: 'PENDING',
             created_at: draft.created_at || new Date().toISOString(),

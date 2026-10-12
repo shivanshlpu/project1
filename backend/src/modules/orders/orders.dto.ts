@@ -10,12 +10,28 @@ export class OrderItemDto {
   @IsString()
   product_name: string;
 
+  @IsOptional()
+  @IsString()
+  packaging_id?: string;
+
+  @IsOptional()
+  @IsString()
+  packaging_size?: string;
+
   @IsNumber()
   quantity: number;
 
   @IsOptional()
   @IsNumber()
   unit_price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  pts_rate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  mrp?: number;
 
   @IsOptional()
   @IsNumber()

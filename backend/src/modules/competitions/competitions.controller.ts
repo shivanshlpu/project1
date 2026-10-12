@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CompetitionsService } from './competitions.service';
 import {
@@ -26,13 +27,15 @@ export class CompetitionsController {
 
   @Get('my')
   async getMyCompetitions(@CurrentUser() user: any) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.competitionsService.getMyCompetitions(userId);
   }
 
   @Post(':id/claim')
   async claimReward(@Param('id') id: string, @CurrentUser() user: any) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.competitionsService.claimReward(id, userId);
   }
 

@@ -57,7 +57,7 @@ export const App: React.FC = () => {
   });
 
   const [managerName, setManagerName] = useState<string>(() => {
-    return localStorage.getItem('ahtri_manager_name') || 'Shivansh Tiwari';
+    return localStorage.getItem('ahtri_manager_name') || 'System Administrator';
   });
 
   // Sidebar Navigation State (Expand / Collapse with Persistence)
@@ -187,7 +187,10 @@ export const App: React.FC = () => {
       if (document.hidden) return;
       try {
         const apiUrl = getApiBaseUrl();
-        const res = await fetch(`${apiUrl}/locations/recent`);
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const res = await fetch(`${apiUrl}/locations/recent`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -208,7 +211,11 @@ export const App: React.FC = () => {
     setRecentNewLocations((prev) => prev.filter((l) => l.id !== id));
     try {
       const apiUrl = getApiBaseUrl();
-      await fetch(`${apiUrl}/locations/${id}/acknowledge`, { method: 'POST' });
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      await fetch(`${apiUrl}/locations/${id}/acknowledge`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
     } catch {
       // Ignored
     }
@@ -218,7 +225,11 @@ export const App: React.FC = () => {
     setRecentNewLocations([]);
     try {
       const apiUrl = getApiBaseUrl();
-      await fetch(`${apiUrl}/locations/acknowledge-all`, { method: 'POST' });
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      await fetch(`${apiUrl}/locations/acknowledge-all`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
     } catch {
       // Ignored
     }

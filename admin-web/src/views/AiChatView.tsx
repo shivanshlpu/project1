@@ -36,6 +36,7 @@ interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: string;
+  relatedQuestions?: string[];
   data?: {
     type?: 'kpis' | 'tasks' | 'leaves' | 'leave_granted' | 'locations';
     kpis?: {
@@ -71,67 +72,157 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const queryCategories = [
-    {
-      category: lang === 'hi' ? '📊 दैनिक कार्य व विजिट्स' : '📊 Daily Detailing & Visits',
-      queries: [
-        'आज कितना काम हुआ?',
-        'आज के पूरे हुए टास्क दिखाओ',
-        'Show today’s visit completion & delay analysis',
-        'Which MRs are delayed on visits today?',
-      ],
-    },
-    {
-      category: lang === 'hi' ? '👥 उपस्थिति व फील्ड हाजिरी' : '👥 Field Attendance & Presence',
-      queries: [
-        'आज किसकी हाजिरी लगी है?',
-        'फील्ड अटेंडेंस लॉग दिखाओ',
-        'Who clocked in on time today?',
-        'Show absent medical representatives',
-      ],
-    },
-    {
-      category: lang === 'hi' ? '💰 कमर्शियल ऑर्डर्स व रेवेन्यू' : '💰 Commercial Orders & Revenue',
-      queries: [
-        'आज कितने ऑर्डर्स मिले?',
-        'Show total orders captured today',
-        'आज का कुल रेवेन्यू कितना है?',
-        'Top selling pharmaceutical products today',
-      ],
-    },
-    {
-      category: lang === 'hi' ? '🏖️ लीव बैलेंस व छुट्टी अनुमोदन' : '🏖️ Leave Management & Approval',
-      queries: [
-        'Aman Rathore का लीव बैलेंस चेक करो',
-        'Amar Dwivedi का लीव बैलेंस चेक करो',
-        'अमन राठौर को 2 दिन की लीव दो',
-        'अमर द्विवेदी को 1 दिन की सिक लीव दो',
-      ],
-    },
-    {
-      category: lang === 'hi' ? '📍 क्लिनिक मैपिंग व जियोफेंस' : '📍 Clinic Locations & Geofence',
-      queries: [
-        'कौन-कौन से नए क्लिनिक मार्क हुए हैं?',
-        'जियोफेंस उल्लंघन ऑडिट दिखाओ',
-        'List doctors visited in South Delhi territory',
-      ],
-    },
-    {
-      category: lang === 'hi' ? '🚗 लाइव टीम लोकेशन ट्रैकिंग' : '🚗 Live Field Tracking',
-      queries: [
-        'फील्ड पर अभी कौन-कौन काम कर रहा है?',
-        'Who is active on field duty right now?',
-        'Show territory-wise MR distribution',
-      ],
-    },
-  ];
+  const isEnglish = voiceLang === 'en-IN';
+
+  const quickPrompts = isEnglish
+    ? [
+        '📊 "How much work was done today?"',
+        '👥 "Who marked attendance today?"',
+        '💰 "Show total orders captured today"',
+        '📦 "Show active monthly MR stockage permissions"',
+        '💊 "List medicine packaging variants and PTS rates"',
+        '🏢 "Show stockers in Shahdol HQ"',
+        '🚚 "Show orders with pending delivery"',
+        '🏖️ "Check Aman Rathore’s leave balance"',
+        '🚗 "Who is active on field duty right now?"',
+      ]
+    : [
+        '📊 "आज कितना काम हुआ?"',
+        '👥 "आज किसकी हाजिरी लगी है?"',
+        '💰 "आज कितने ऑर्डर्स मिले?"',
+        '📦 "मंथली स्टॉकेज परमिशन स्थिति दिखाओ"',
+        '💊 "दवाइयों के पैकेजिंग वेरिएंट्स और PTS रेट्स दिखाओ"',
+        '🏢 "शहडोल के स्टॉकर दिखाओ"',
+        '🚚 "पेंडिंग डिलीवरी ऑर्डर्स दिखाओ"',
+        '🏖️ "लीव बैलेंस चेक करो"',
+        '🚗 "फील्ड पर अभी कौन-कौन काम कर रहा है?"',
+      ];
+
+  const queryCategories = isEnglish
+    ? [
+        {
+          category: '📊 Daily Detailing & Field Visits',
+          queries: [
+            'How much work was done today?',
+            'Show completed visits today',
+            'Show today’s visit completion & delay analysis',
+            'Which MRs are delayed on visits today?',
+          ],
+        },
+        {
+          category: '👥 Field Attendance & Presence',
+          queries: [
+            'Who marked attendance today?',
+            'Show field attendance log',
+            'Who clocked in on time today?',
+            'Show absent medical representatives',
+          ],
+        },
+        {
+          category: '💰 Commercial Orders & Deliveries',
+          queries: [
+            'Show total orders captured today',
+            'Today total revenue & orders',
+            'Show orders with pending delivery',
+            'Top selling pharmaceutical products today',
+          ],
+        },
+        {
+          category: '📦 Stockage Management & Permissions',
+          queries: [
+            'Show active monthly MR stockage permissions',
+            'Review pending MR stock upload requests',
+            'List medicine packaging variants and PTS rates',
+            'Show stockers in Shahdol HQ',
+          ],
+        },
+        {
+          category: '🏖️ Leave Management & Approval',
+          queries: [
+            'Check Aman Rathore’s leave balance',
+            'Check Amar Dwivedi’s leave balance',
+            'Grant 2 days casual leave to Aman Rathore',
+            'Grant 1 day sick leave to Amar Dwivedi',
+          ],
+        },
+        {
+          category: '📍 Clinic Locations & Geofencing',
+          queries: [
+            'Which clinics were marked by MRs this week?',
+            'Show geofence compliance report',
+            'Who is active on field duty right now?',
+            'Show territory-wise MR distribution',
+          ],
+        },
+      ]
+    : [
+        {
+          category: '📊 दैनिक कार्य व विजिट्स',
+          queries: [
+            'आज कितना काम हुआ?',
+            'आज के पूरे हुए टास्क दिखाओ',
+            'आज की विजिट्स और देरी का विश्लेषण दिखाओ',
+            'आज कौन से MR देरी से चल रहे हैं?',
+          ],
+        },
+        {
+          category: '👥 उपस्थिति व फील्ड हाजिरी',
+          queries: [
+            'आज किसकी हाजिरी लगी है?',
+            'फील्ड अटेंडेंस लॉग दिखाओ',
+            'आज समय पर किसने पंच किया?',
+            'अनुपस्थित प्रतिनिधियों की सूची दिखाओ',
+          ],
+        },
+        {
+          category: '💰 कमर्शियल ऑर्डर्स व डिलीवरी',
+          queries: [
+            'आज कितने ऑर्डर्स मिले?',
+            'आज का कुल रेवेन्यू कितना है?',
+            'पेंडिंग डिलीवरी ऑर्डर्स दिखाओ',
+            'सर्वाधिक बिकने वाली दवाइयां दिखाओ',
+          ],
+        },
+        {
+          category: '📦 स्टॉकेज प्रबंधन व परमिशन वर्कफ़्लो',
+          queries: [
+            'मंथली स्टॉकेज परमिशन स्थिति दिखाओ',
+            'पेंडिंग स्टॉक अप्रूवल चेक करो',
+            'दवाइयों के पैकेजिंग वेरिएंट्स और PTS रेट्स दिखाओ',
+            'शहडोल के स्टॉकर दिखाओ',
+          ],
+        },
+        {
+          category: '🏖️ लीव बैलेंस व छुट्टी अनुमोदन',
+          queries: [
+            'Aman Rathore का लीव बैलेंस चेक करो',
+            'Amar Dwivedi का लीव बैलेंस चेक करो',
+            'अमन राठौर को 2 दिन की लीव दो',
+            'अमर द्विवेदी को 1 दिन की सिक लीव दो',
+          ],
+        },
+        {
+          category: '📍 क्लिनिक मैपिंग व जियोफेंस',
+          queries: [
+            'कौन-कौन से नए क्लिनिक मार्क हुए हैं?',
+            'जियोफेंस उल्लंघन ऑडिट दिखाओ',
+            'फील्ड पर अभी कौन-कौन काम कर रहा है?',
+            'टेरिटरी अनुसार फील्ड स्टाफ दिखाओ',
+          ],
+        },
+      ];
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-welcome',
       sender: 'ai',
-      text: `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"Show total orders captured today"*!`,
+      text: voiceLang === 'en-IN'
+        ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show total orders captured today"*!`
+        : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"Show total orders captured today"*!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      relatedQuestions: voiceLang === 'en-IN'
+        ? ['How much work was done today?', 'Who marked attendance today?', 'Show total orders captured today']
+        : ['आज कितना काम हुआ?', 'आज किसकी हाजिरी लगी है?', 'आज कितने ऑर्डर्स मिले?'],
     },
   ]);
 
@@ -211,17 +302,6 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
       setTimeout(() => setSpeechError(null), 5000);
     }
   };
-
-  const quickPrompts = [
-    '🎤 "आज कितना काम हुआ?"',
-    '👥 "आज किसकी हाजिरी लगी है?"',
-    '💰 "आज कितने ऑर्डर्स मिले?"',
-    '🏖️ "लीव बैलेंस चेक करो"',
-    '✨ "2 दिन की सिक लीव स्वीकृत करो"',
-    '📍 "कौन-कौन से क्लिनिक मार्क हुए हैं?"',
-    '🚗 "फील्ड पर अभी कौन-कौन काम कर रहा है?"',
-    '📊 "Show today’s visit completion & delay analysis"',
-  ];
 
   const handleSend = async (userPrompt?: string) => {
     if (recognitionRef.current && isListening) {
@@ -555,7 +635,75 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }
-      // 8. Help & All Options (Hindi & English)
+      // 8. Stockage Management & Permissions (Hindi & English)
+      else if (
+        lower.includes('stockage') ||
+        lower.includes('permission') ||
+        lower.includes('variant') ||
+        lower.includes('packaging') ||
+        lower.includes('pts') ||
+        lower.includes('mrp') ||
+        lower.includes('स्टॉकेज') ||
+        lower.includes('परमिशन') ||
+        lower.includes('वेरिएंट') ||
+        lower.includes('पैकेजिंग') ||
+        lower.includes('रेट')
+      ) {
+        aiReply = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: isHindi
+            ? `**📦 AHTRI स्टॉकेज प्रबंधन व मंथली परमिशन रिपोर्ट:**\n\n1. **मंथली स्टॉकेज परमिशन**: मेडिकल प्रतिनिधियों (MR) को प्रति माह स्टॉकर इनवर्ड/स्टॉक अपलोड करने के लिए एडमिन अनुमति आवश्यक होती है। एक्टिव परमिशन वाले MR मोबाइल से थोक स्टॉक सबमिट कर सकते हैं।\n2. **पैकेजिंग वेरिएंट्स और PTS रेट्स**: सभी 17 आधिकारिक AHTRI दवाइयों के लिए संरचित पैकेजिंग (जैसे 200 ML सिरप, 10*10 स्ट्रिप) और PTS/MRP रेट्स कॉन्फ़िगर हैं।\n3. **एडमिन अप्रूवल वर्कफ़्लो**: MR द्वारा सबमिट किए गए स्टॉकेज अनुरोध एडमिन अनुमोदन के बाद ही स्टॉकर इन्वेंटरी में अपडेट होते हैं।`
+            : `**📦 AHTRI Stockage Management & Monthly Permissions Report:**\n\n1. **Monthly Stockage Upload Permissions**: Medical Representatives require an active Admin monthly permission grant before uploading inward stock from the mobile app.\n2. **Packaging Variants & PTS/MRP Pricing**: All 17 authoritative AHTRI catalog medicines feature standardized packaging (e.g. 200 ML syrups, 10*10 strip blister packs) with exact PTS base rates and MRP retail pricing.\n3. **Admin Verification & Approval**: Field submissions undergo verified manager/admin sign-off before committing to stocker live inventory.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          relatedQuestions: isHindi
+            ? ['दवाइयों के पैकेजिंग वेरिएंट्स और PTS रेट्स दिखाओ', 'शहडोल के स्टॉकर दिखाओ', 'आज कितने ऑर्डर्स मिले?']
+            : ['List medicine packaging variants and PTS rates', 'Show stockers in Shahdol HQ', 'Show total orders captured today'],
+        };
+      }
+      // 9. HQ & Stockers Master Data (Hindi & English)
+      else if (
+        lower.includes('hq') ||
+        lower.includes('headquarter') ||
+        lower.includes('stocker') ||
+        lower.includes('मुख्यालय') ||
+        lower.includes('स्टॉकर') ||
+        lower.includes('shahdol') ||
+        lower.includes('kotma') ||
+        lower.includes('ambikapur')
+      ) {
+        aiReply = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: isHindi
+            ? `**🏢 AHTRI ऑपरेटिंग मुख्यालय (Headquarters) व स्टॉकर सारांश:**\n\n- **Kotma (KOT)**: 1 एक्टिव मेडिकल प्रतिनिधि (Amar Dwivedi), 9 स्वीकृत रूट बैचेस।\n- **Shahdol (SHD)**: 1 एक्टिव मेडिकल प्रतिनिधि (Aman Rathore), 5 स्वीकृत रूट बैचेस, सेंट्रल डिपो व एजेंसी स्टॉकर सक्रिय।\n- **Ambikapur (AMB)**: 1 एक्टिव मेडिकल प्रतिनिधि (Ashish Soni), 5 स्वीकृत रूट बैचेस।\n\n*सेटिंग्स और स्टॉकर मैनेजमेंट सेक्शन लाइव डेटाबेस से 100% सिंक्रोनाइज़्ड हैं।*`
+            : `**🏢 AHTRI Operating Headquarters & Stocker Summary:**\n\n- **Kotma (KOT)**: Assigned MR Amar Dwivedi, 9 active route batches.\n- **Shahdol (SHD)**: Assigned MR Aman Rathore, 5 active route batches, central depot & authorized agencies.\n- **Ambikapur (AMB)**: Assigned MR Ashish Soni, 5 active route batches.\n\n*Headquarters and operating locations in Settings and Stocker Management are fully in sync.*`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          relatedQuestions: isHindi
+            ? ['मंथली स्टॉकेज परमिशन स्थिति दिखाओ', 'पेंडिंग डिलीवरी ऑर्डर्स दिखाओ', 'आज कितना काम हुआ?']
+            : ['Show active monthly MR stockage permissions', 'Show orders with pending delivery', 'How much work was done today?'],
+        };
+      }
+      // 10. Orders Delivery Status (Hindi & English)
+      else if (
+        lower.includes('delivery') ||
+        lower.includes('डिलीवरी') ||
+        lower.includes('dispatch') ||
+        lower.includes('pending delivery')
+      ) {
+        aiReply = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: isHindi
+            ? `**🚚 कमर्शियल ऑर्डर्स डिलीवरी स्टेटस ट्रैकिंग:**\n\n- सभी डॉक्टर विजिट ऑर्डर्स टेरिटरी अनुसार ट्रैक किए जाते हैं।\n- **डिलीवरी स्थिति**: ऑर्डर्स PENDING डिलीवरी स्थिति से DISPATCHED और DELIVERED में स्टॉकर व MR द्वारा अपडेट किए जा सकते हैं।\n- ऑर्डर्स मैनेजमेंट पेज पर सीधे HQ अनुसार डिलीवरी स्टेटस फिल्टर व अपडेट उपलब्ध है।`
+            : `**🚚 Commercial Orders Delivery Status Tracking:**\n\n- Doctor detailing orders are tracked live across assigned territories.\n- **Delivery Lifecycle**: Orders transition from PENDING delivery to DISPATCHED and DELIVERED upon verified stocker fulfillment.\n- The Orders Management page provides instant HQ-based filtering and status resolution.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          relatedQuestions: isHindi
+            ? ['आज कितने ऑर्डर्स मिले?', 'आज कितना काम हुआ?', 'शहडोल के स्टॉकर दिखाओ']
+            : ['Show total orders captured today', 'How much work was done today', 'Show stockers in Shahdol HQ'],
+        };
+      }
+      // 11. Help & All Options (Hindi & English)
       else if (
         lower.includes('help') ||
         lower.includes('option') ||
@@ -568,8 +716,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `**🤖 AI Aura कमांड हब - आप बोलकर या लिखकर यह सब पूछ सकते हैं:**\n\n1. **कार्य रिपोर्ट**: "आज कितना काम हुआ?" या "आज के टास्क दिखाओ"\n2. **उपस्थिति**: "आज किसकी हाजिरी लगी है?" या "फील्ड अटेंडेंस दिखाओ"\n3. **ऑर्डर्स व बिक्री**: "आज कितने ऑर्डर्स मिले?" या "कुल रेवेन्यू बताओ"\n4. **छुट्टी व लीव बैलेंस**: "अमन राठौर की लीव बैलेंस चेक करो"\n5. **सीधे छुट्टी स्वीकृत करना**: "अमर द्विवेदी को 2 दिन की सिक लीव दो"\n6. **नए क्लिनिक्स**: "कौन-कौन से नए क्लिनिक मार्क हुए हैं?"\n7. **फील्ड टीम ट्रैकिंग**: "फील्ड पर अभी कौन-कौन काम कर रहा है?"\n\n*माइक बटन पर क्लिक करके हिंदी (🇮🇳) या इंग्लिश (🇬🇧) में कभी भी बोलें!*`
-            : `**🤖 AI Aura Command Hub - What You Can Ask (Voice or Text):**\n\n1. **Work Summary**: "How much work was done today?" or "Show today's delay audit"\n2. **Attendance**: "Who has marked attendance today?" or "Show field attendance log"\n3. **Commercial Orders**: "Show total orders captured today" or "Total revenue"\n4. **Leave Balance**: "Check Aman Rathore's leave balance"\n5. **Direct Leave Approval**: "Grant 2 days Sick Leave to Amar Dwivedi"\n6. **Marked Clinics**: "Which clinics were marked by MRs this week?"\n7. **Live Field Staff**: "Who is currently working in the field?"\n\n*Click the microphone button to speak in English (🇬🇧) or Hindi (🇮🇳)!*`,
+            ? `**🤖 AI Aura कमांड हब - आप बोलकर या लिखकर यह सब पूछ सकते हैं:**\n\n1. **कार्य रिपोर्ट**: "आज कितना काम हुआ?" या "आज के टास्क दिखाओ"\n2. **उपस्थिति**: "आज किसकी हाजिरी लगी है?" या "फील्ड अटेंडेंस दिखाओ"\n3. **ऑर्डर्स व बिक्री**: "आज कितने ऑर्डर्स मिले?" या "कुल रेवेन्यू बताओ"\n4. **स्टॉकेज व परमिशन**: "मंथली स्टॉकेज परमिशन स्थिति दिखाओ"\n5. **पैकेजिंग वेरिएंट्स**: "दवाइयों के पैकेजिंग वेरिएंट्स और PTS रेट्स दिखाओ"\n6. **छुट्टी व लीव बैलेंस**: "अमन राठौर की लीव बैलेंस चेक करो"\n7. **सीधे छुट्टी स्वीकृत करना**: "अमर द्विवेदी को 2 दिन की सिक लीव दो"\n8. **नए क्लिनिक्स**: "कौन-कौन से नए क्लिनिक मार्क हुए हैं?"\n9. **फील्ड टीम ट्रैकिंग**: "फील्ड पर अभी कौन-कौन काम कर रहा है?"\n\n*माइक बटन पर क्लिक करके हिंदी (🇮🇳) या इंग्लिश (🇬🇧) में कभी भी बोलें!*`
+            : `**🤖 AI Aura Command Hub - What You Can Ask (Voice or Text):**\n\n1. **Work Summary**: "How much work was done today?" or "Show today's delay audit"\n2. **Attendance**: "Who has marked attendance today?" or "Show field attendance log"\n3. **Commercial Orders**: "Show total orders captured today" or "Total revenue"\n4. **Stockage & Permissions**: "Show active monthly MR stockage permissions"\n5. **Packaging Variants**: "List medicine packaging variants and PTS rates"\n6. **Leave Balance**: "Check Aman Rathore's leave balance"\n7. **Direct Leave Approval**: "Grant 2 days Sick Leave to Amar Dwivedi"\n8. **Marked Clinics**: "Which clinics were marked by MRs this week?"\n9. **Live Field Staff**: "Who is currently working in the field?"\n\n*Click the microphone button to speak in English (🇬🇧) or Hindi (🇮🇳)!*`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }
@@ -579,10 +727,35 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `मैंने आपके प्रश्न **"${textToSend}"** के लिए ऑपरेशंस डेटाबेस चेक किया।\n\nसभी फील्ड सिस्टम और GPS ट्रैकिंग 100% जियोफेंस अनुपालन के साथ सक्रिय हैं। आप मुझसे पूछ सकते हैं: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, या *"आज कितने ऑर्डर्स मिले?"*।`
-            : `I queried your operations database regarding **"${textToSend}"**.\n\nAll systems are operational. Field GPS tracking is active with 100% geofence compliance. You can ask me: *"How much work was done today?"*, *"Show attendance status"*, or *"Grant 2 days sick leave"*.`,
+            ? `मैंने आपके प्रश्न **"${textToSend}"** के लिए ऑपरेशंस डेटाबेस चेक किया।\n\nसभी फील्ड सिस्टम और GPS ट्रैकिंग 100% जियोफेंस अनुपालन के साथ सक्रिय हैं। आप मुझसे पूछ सकते हैं: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, या *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*।`
+            : `I queried your operations database regarding **"${textToSend}"**.\n\nAll systems are operational. Field GPS tracking is active with 100% geofence compliance. You can ask me: *"How much work was done today?"*, *"Show attendance status"*, or *"Show active monthly MR stockage permissions"*.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
+      }
+
+      // Populate context-rich related questions if not set
+      if (!aiReply.relatedQuestions || aiReply.relatedQuestions.length === 0) {
+        if (lower.includes('order') || lower.includes('ऑर्डर') || lower.includes('revenue') || lower.includes('बिक्री') || lower.includes('delivery')) {
+          aiReply.relatedQuestions = isHindi
+            ? ['पेंडिंग डिलीवरी ऑर्डर्स दिखाओ', 'आज कितना काम हुआ?', 'शहडोल के स्टॉकर दिखाओ']
+            : ['Show orders with pending delivery', 'How much work was done today?', 'Show stockers in Shahdol HQ'];
+        } else if (lower.includes('attendance') || lower.includes('हाजिरी') || lower.includes('clock') || lower.includes('पंच')) {
+          aiReply.relatedQuestions = isHindi
+            ? ['फील्ड पर अभी कौन-कौन काम कर रहा है?', 'Aman Rathore का लीव बैलेंस चेक करो', 'आज कितना काम हुआ?']
+            : ['Who is active on field duty right now?', 'Check Aman Rathore’s leave balance', 'How much work was done today?'];
+        } else if (lower.includes('stock') || lower.includes('stockage') || lower.includes('स्टॉक') || lower.includes('variant') || lower.includes('rate') || lower.includes('pts') || lower.includes('mrp')) {
+          aiReply.relatedQuestions = isHindi
+            ? ['दवाइयों के पैकेजिंग वेरिएंट्स और PTS रेट्स दिखाओ', 'मंथली स्टॉकेज परमिशन स्थिति दिखाओ', 'शहडोल के स्टॉकर दिखाओ']
+            : ['List medicine packaging variants and PTS rates', 'Show active monthly MR stockage permissions', 'Show stockers in Shahdol HQ'];
+        } else if (lower.includes('leave') || lower.includes('छुट्टी') || lower.includes('chutti') || lower.includes('sick')) {
+          aiReply.relatedQuestions = isHindi
+            ? ['Aman Rathore का लीव बैलेंस चेक करो', 'Amar Dwivedi का लीव बैलेंस चेक करो', 'आज किसकी हाजिरी लगी है?']
+            : ['Check Aman Rathore’s leave balance', 'Check Amar Dwivedi’s leave balance', 'Who marked attendance today?'];
+        } else {
+          aiReply.relatedQuestions = isHindi
+            ? ['आज कितना काम हुआ?', 'आज किसकी हाजिरी लगी है?', 'मंथली स्टॉकेज परमिशन स्थिति दिखाओ']
+            : ['How much work was done today?', 'Who marked attendance today?', 'Show active monthly MR stockage permissions'];
+        }
       }
 
       setMessages((prev) => [...prev, aiReply]);
@@ -744,7 +917,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '700', color: '#1E293B' }}>
             <Sparkles size={13} color="#2563EB" />
             <span className="ai-aura-prompt-title">
-              {lang === 'hi' ? 'त्वरित प्रश्न:' : 'Quick Questions:'}
+              {voiceLang === 'hi-IN' ? 'त्वरित प्रश्न:' : 'Quick Questions:'}
             </span>
           </div>
           <button
@@ -767,7 +940,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
             }}
           >
             <HelpCircle size={12} />
-            <span>{lang === 'hi' ? '📋 सभी प्रश्न (All)' : '📋 All Queries (24)'}</span>
+            <span>{voiceLang === 'hi-IN' ? '📋 सभी प्रश्न (All)' : '📋 All Queries (28)'}</span>
           </button>
         </div>
 
@@ -1094,6 +1267,48 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                       <div style={{ fontSize: '11px', color: '#0F8B5A', fontWeight: '700', marginTop: '4px' }}>
                         Remaining Balance: {msg.data.actionReceipt.remainingBalance} days • Synced with Mobile
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Related Questions / Follow-up Options Below Message */}
+                {!isUser && msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #E2E8F0' }}>
+                    <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748B', marginBottom: '6px' }}>
+                      {voiceLang === 'hi-IN' ? '🔍 संबंधित प्रश्न:' : '🔍 Related Questions:'}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {msg.relatedQuestions.map((q, qIdx) => (
+                        <button
+                          key={qIdx}
+                          type="button"
+                          onClick={() => handleSend(q)}
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            padding: '4px 10px',
+                            borderRadius: '14px',
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#1A3C6E',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#EFF6FF';
+                            e.currentTarget.style.borderColor = '#93C5FD';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#F8FAFC';
+                            e.currentTarget.style.borderColor = '#CBD5E1';
+                          }}
+                        >
+                          <span>{q}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}

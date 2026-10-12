@@ -64,7 +64,8 @@ export class LeaveController {
 
   @Get('quota')
   async getLeaveQuota(@CurrentUser() user: any, @Query('mr_id') mrId?: string) {
-    const targetId = mrId || user.id;
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    const targetId = (isPrivileged && mrId) ? mrId : user.id;
     return this.approvalsService.getLeaveQuota(targetId);
   }
 

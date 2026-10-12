@@ -18,6 +18,41 @@ import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
 import { AuditLog } from '../../database/database.types';
 
+function redactSensitiveAuditData(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) {
+    return data.map((item) => redactSensitiveAuditData(item));
+  }
+  const SENSITIVE_KEYS = new Set([
+    'password',
+    'password_hash',
+    'passwordhash',
+    'token',
+    'refreshtoken',
+    'refresh_token',
+    'access_token',
+    'secret',
+    'jwt_secret',
+    'otp',
+    'currentpassword',
+    'newpassword',
+    'confirmpassword',
+  ]);
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const keyLower = key.toLowerCase();
+    if (SENSITIVE_KEYS.has(keyLower) || keyLower.includes('password') || keyLower.includes('secret')) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = redactSensitiveAuditData(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
   constructor(private readonly db: DatabaseService) {}
@@ -38,7 +73,7 @@ export class AuditInterceptor implements NestInterceptor {
               action: `${method} ${req.route?.path || req.url}`,
               entity_type: req.url.split('/')[1]?.toUpperCase() || 'GENERAL',
               entity_id: req.params?.id || resBody?.id || resBody?.task?.id || resBody?.dcr?.id || 'N/A',
-              new_value_json: req.body,
+              new_value_json: redactSensitiveAuditData(req.body),
               ip_address: req.ip || req.connection?.remoteAddress,
               device_info: req.headers['user-agent'] || 'Unknown Device',
               created_at: new Date().toISOString(),

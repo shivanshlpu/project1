@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
@@ -18,6 +19,12 @@ import {
   AdjustStockDto,
   CreateMonthlyStockEntryDto,
   BatchMonthlyStockEntryDto,
+  CreatePackagingVariantDto,
+  UpdatePackagingVariantDto,
+  GrantStockagePermissionDto,
+  RevokeStockagePermissionDto,
+  SubmitStockageRequestDto,
+  ReviewStockageRequestDto,
 } from './inventory.dto';
 import {
   Headquarter,
@@ -27,6 +34,10 @@ import {
   StockerInventory,
   InventoryTransaction,
   MonthlyStockEntry,
+  MonthlyStockagePermission,
+  StockageSubmissionRequest,
+  StockageSubmissionItem,
+  MedicinePackagingVariant,
 } from '../../database/database.types';
 import { NotificationsService } from '../notifications/notifications.module';
 
@@ -134,6 +145,8 @@ export class InventoryService {
     this.db.headquarters.splice(index, 1);
     this.db.stockers = this.db.stockers.filter((s) => s.hq_id !== hq.id && s.hq_id !== hq.hq_id);
     this.db.hqAreas = this.db.hqAreas.filter((a) => a.hq_id !== hq.id && a.hq_id !== hq.hq_id);
+    this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.hq_id !== hq.id && inv.hq_id !== hq.hq_id);
+    this.db.persistToDisk();
     return { success: true, message: 'Headquarter deleted successfully' };
   }
 
@@ -215,7 +228,10 @@ export class InventoryService {
   async getStockers(hqId?: string, subArea?: string): Promise<any[]> {
     let list = this.db.stockers;
     if (hqId && hqId !== 'ALL') {
-      list = list.filter((s) => s.hq_id === hqId);
+      const hq = this.db.findHeadquarter(hqId);
+      const targetId = hq?.id || hqId;
+      const legacyId = hq?.legacy_id;
+      list = list.filter((s) => s.hq_id === targetId || s.hq_id === hqId || (legacyId && s.hq_id === legacyId));
     }
     if (subArea && subArea !== 'ALL') {
       list = list.filter((s) => s.sub_area && s.sub_area.toLowerCase() === subArea.toLowerCase());
@@ -287,7 +303,7 @@ export class InventoryService {
     return { success: true, message: 'Stocker deleted successfully' };
   }
 
-  // === 4. MEDICINES MASTER ===
+  // === 4. MEDICINES MASTER & PACKAGING VARIANTS ===
   async getMedicines(includeInactive = false, hqId?: string): Promise<any[]> {
     let list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
 
@@ -304,12 +320,21 @@ export class InventoryService {
       list = list.filter((m) => validMedicineIds.has(m.id));
     }
 
-    return list.map((m) => ({
-      ...m,
-      product_code: m.code,
-      is_active: m.status === 'ACTIVE',
-      low_stock_threshold: m.low_stock_threshold || 10,
-    }));
+    return list.map((m) => {
+      const variants = (m.packaging_variants && m.packaging_variants.length > 0)
+        ? m.packaging_variants
+        : this.db.medicinePackagingVariants.filter((v) => v.medicine_id === m.id);
+
+      return {
+        ...m,
+        product_code: m.code,
+        pts_rate: m.pts_rate ?? m.base_price ?? 0,
+        mrp: m.mrp ?? (m.pts_rate ? Number((m.pts_rate * 1.45).toFixed(2)) : 0),
+        packaging_variants: variants,
+        is_active: m.status === 'ACTIVE',
+        low_stock_threshold: m.low_stock_threshold || 10,
+      };
+    });
   }
 
   async createMedicine(dto: CreateMedicineDto): Promise<any> {
@@ -322,18 +347,59 @@ export class InventoryService {
         ? Number(dto.base_price)
         : null;
 
+    const medId = `med-${uuidv4().substring(0, 8)}`;
+    const ptsRate = dto.pts_rate !== undefined ? Number(dto.pts_rate) : (basePrice || 0);
+    const mrp = dto.mrp !== undefined ? Number(dto.mrp) : ptsRate ? Number((ptsRate * 1.45).toFixed(2)) : 0;
+
+    const variants: MedicinePackagingVariant[] = [];
+    if (dto.packaging_variants && Array.isArray(dto.packaging_variants)) {
+      for (const v of dto.packaging_variants) {
+        variants.push({
+          id: `var-${medId}-${uuidv4().substring(0, 6)}`,
+          medicine_id: medId,
+          variant_name: v.variant_name || `${v.package_size} ${v.package_unit}`,
+          package_size: Number(v.package_size) || 1,
+          package_unit: v.package_unit || 'units',
+          display_label: v.display_label || `${v.package_size} ${v.package_unit}`,
+          pts_rate: Number(v.pts_rate) || ptsRate,
+          mrp: Number(v.mrp) || mrp,
+          status: v.status || 'ACTIVE',
+          created_at: new Date().toISOString(),
+        });
+      }
+    } else {
+      // Default single variant matching unit
+      variants.push({
+        id: `var-${medId}-default`,
+        medicine_id: medId,
+        variant_name: dto.unit || 'Standard Pack',
+        package_size: 1,
+        package_unit: dto.unit || 'units',
+        display_label: dto.unit || 'Units',
+        pts_rate: ptsRate,
+        mrp: mrp,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      });
+    }
+
     const med: Medicine = {
-      id: `med-${uuidv4().substring(0, 8)}`,
+      id: medId,
       name: dto.name.trim(),
       code,
+      category: dto.category || 'General',
       unit: dto.unit || 'Units',
-      base_price: basePrice,
+      base_price: ptsRate,
+      pts_rate: ptsRate,
+      mrp: mrp,
+      packaging_variants: variants,
       low_stock_threshold: threshold,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
 
     this.db.medicines.push(med);
+    this.db.medicinePackagingVariants.push(...variants);
 
     // Initialize stock records across all existing active stockers
     for (const stk of this.db.stockers) {
@@ -362,11 +428,23 @@ export class InventoryService {
     if (dto.name) med.name = dto.name;
     if (dto.code) med.code = dto.code.toUpperCase();
     if (dto.unit) med.unit = dto.unit;
-    if (dto.base_price !== undefined) {
+    if (dto.category) med.category = dto.category;
+    if (dto.pts_rate !== undefined) {
+      med.pts_rate = Number(dto.pts_rate);
+      med.base_price = med.pts_rate;
+    } else if (dto.base_price !== undefined) {
       med.base_price =
         dto.base_price !== null && (dto.base_price as any) !== '' ? Number(dto.base_price) : null;
+      med.pts_rate = med.base_price || 0;
     }
+    if (dto.mrp !== undefined) med.mrp = Number(dto.mrp);
     if (dto.status) med.status = dto.status;
+    if (dto.packaging_variants && Array.isArray(dto.packaging_variants)) {
+      med.packaging_variants = dto.packaging_variants;
+      this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
+      this.db.medicinePackagingVariants.push(...dto.packaging_variants);
+    }
+    med.updated_at = new Date().toISOString();
 
     return med;
   }
@@ -377,7 +455,73 @@ export class InventoryService {
 
     this.db.medicines.splice(index, 1);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.medicine_id !== id);
+    this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
     return { success: true, message: 'Medicine deleted successfully' };
+  }
+
+  async getPackagingVariants(medicineId?: string): Promise<MedicinePackagingVariant[]> {
+    if (medicineId) {
+      return this.db.medicinePackagingVariants.filter((v) => v.medicine_id === medicineId);
+    }
+    return this.db.medicinePackagingVariants;
+  }
+
+  async createPackagingVariant(dto: CreatePackagingVariantDto): Promise<MedicinePackagingVariant> {
+    const med = this.db.medicines.find((m) => m.id === dto.medicine_id);
+    if (!med) throw new NotFoundException('Medicine not found');
+
+    const variant: MedicinePackagingVariant = {
+      id: `var-${dto.medicine_id}-${uuidv4().substring(0, 6)}`,
+      medicine_id: dto.medicine_id,
+      variant_name: dto.variant_name || `${dto.package_size} ${dto.package_unit}`,
+      package_size: Number(dto.package_size),
+      package_unit: dto.package_unit.trim(),
+      display_label: dto.display_label || `${dto.package_size} ${dto.package_unit.trim()}`,
+      pts_rate: Number(dto.pts_rate),
+      mrp: Number(dto.mrp),
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+
+    if (!med.packaging_variants) med.packaging_variants = [];
+    med.packaging_variants.push(variant);
+    this.db.medicinePackagingVariants.push(variant);
+    return variant;
+  }
+
+  async updatePackagingVariant(id: string, dto: UpdatePackagingVariantDto): Promise<MedicinePackagingVariant> {
+    const variant = this.db.medicinePackagingVariants.find((v) => v.id === id);
+    if (!variant) throw new NotFoundException('Packaging variant not found');
+
+    if (dto.package_size !== undefined) variant.package_size = Number(dto.package_size);
+    if (dto.package_unit !== undefined) variant.package_unit = dto.package_unit.trim();
+    if (dto.variant_name !== undefined) variant.variant_name = dto.variant_name;
+    if (dto.display_label !== undefined) variant.display_label = dto.display_label;
+    if (dto.pts_rate !== undefined) variant.pts_rate = Number(dto.pts_rate);
+    if (dto.mrp !== undefined) variant.mrp = Number(dto.mrp);
+    if (dto.status !== undefined) variant.status = dto.status;
+    variant.updated_at = new Date().toISOString();
+
+    const med = this.db.medicines.find((m) => m.id === variant.medicine_id);
+    if (med && med.packaging_variants) {
+      const idx = med.packaging_variants.findIndex((v) => v.id === id);
+      if (idx >= 0) med.packaging_variants[idx] = variant;
+    }
+
+    return variant;
+  }
+
+  async deletePackagingVariant(id: string): Promise<{ success: boolean; message: string }> {
+    const idx = this.db.medicinePackagingVariants.findIndex((v) => v.id === id);
+    if (idx === -1) throw new NotFoundException('Packaging variant not found');
+    const variant = this.db.medicinePackagingVariants[idx];
+    this.db.medicinePackagingVariants.splice(idx, 1);
+
+    const med = this.db.medicines.find((m) => m.id === variant.medicine_id);
+    if (med && med.packaging_variants) {
+      med.packaging_variants = med.packaging_variants.filter((v) => v.id !== id);
+    }
+    return { success: true, message: 'Packaging variant deleted successfully' };
   }
 
   // === 5. STOCKER INVENTORY & STOCK ISOLATION ===
@@ -743,7 +887,7 @@ export class InventoryService {
       expiry_date: dto.expiry_date || '',
       notes: dto.notes || '',
       user_id: userId,
-      user_name: user?.name || 'Shivansh Tripathi (Admin)',
+      user_name: user?.name || 'System Admin',
       created_at: new Date().toISOString(),
     };
     this.db.monthlyStockEntries.push(entry);
@@ -783,6 +927,502 @@ export class InventoryService {
     return {
       message: `Batch recorded: ${results.length} medicine inward entries saved.`,
       entries: results.map((r) => r.entry),
+    };
+  }
+
+  // === 9. MONTHLY MR UPLOAD PERMISSIONS (§1) ===
+  async grantStockagePermissions(
+    dto: GrantStockagePermissionDto,
+    adminUser: any,
+  ): Promise<{ message: string; granted: MonthlyStockagePermission[] }> {
+    if (!dto.mr_ids || !Array.isArray(dto.mr_ids) || dto.mr_ids.length === 0) {
+      throw new BadRequestException('At least one MR must be selected');
+    }
+    if (!dto.month && dto.month_year) {
+      const parts = dto.month_year.split('-');
+      if (parts.length === 2) {
+        dto.year = dto.year || parseInt(parts[0], 10);
+        dto.month = parseInt(parts[1], 10);
+      }
+    }
+    if (!dto.month || dto.month < 1 || dto.month > 12) {
+      throw new BadRequestException('Month must be between 1 and 12');
+    }
+    const currentYear = new Date().getFullYear();
+    const targetYear = dto.year || currentYear;
+    const monthStr = `${targetYear}-${String(dto.month).padStart(2, '0')}`;
+
+    const grantedList: MonthlyStockagePermission[] = [];
+
+    for (const mrId of dto.mr_ids) {
+      const mr = this.db.users.find((u) => u.id === mrId);
+      if (!mr) continue;
+
+      // Check if MR already has an active AVAILABLE permission for this month
+      const existing = this.db.monthlyStockagePermissions.find(
+        (p) => p.mr_id === mrId && p.month_str === monthStr && p.status === 'AVAILABLE',
+      );
+      if (existing) {
+        grantedList.push(existing);
+        continue;
+      }
+
+      const permId = `perm-${targetYear}${String(dto.month).padStart(2, '0')}-${mr.id}-${uuidv4().substring(0, 4)}`;
+      const hq = dto.hq_id ? this.db.findHeadquarter(dto.hq_id) : (mr.hq_id ? this.db.findHeadquarter(mr.hq_id) : null);
+      const stocker = dto.stocker_id ? this.db.stockers.find((s) => s.id === dto.stocker_id) : null;
+
+      const perm: MonthlyStockagePermission = {
+        id: permId,
+        mr_id: mr.id,
+        mr_name: mr.name,
+        mr_email: mr.email,
+        mr_phone: mr.phone,
+        hq_id: hq?.id || mr.hq_id || 'hq-shahdol',
+        hq_name: hq?.name || 'Shahdol',
+        stocker_id: stocker?.id || 'stk-shd-01',
+        stocker_name: stocker?.name || 'Central Pharma Stockist',
+        year: targetYear,
+        month: dto.month,
+        month_str: monthStr,
+        status: 'AVAILABLE',
+        granted_by_id: adminUser.id,
+        granted_by_name: adminUser.name || 'System Admin',
+        granted_at: new Date().toISOString(),
+        notes: dto.notes || `Stockage upload authorization for ${monthStr}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      this.db.monthlyStockagePermissions.unshift(perm);
+      grantedList.push(perm);
+
+      // Audit log & Notify MR
+      this.notificationsService.sendPushNotification(
+        mr.id,
+        '📦 Stockage Upload Permission Granted',
+        `Admin granted permission for monthly Stockage upload for ${monthStr}. You may now submit your monthly stock.`,
+        { permissionId: perm.id, month: monthStr, type: 'STOCKAGE_PERMISSION_GRANTED' },
+      );
+    }
+
+    return {
+      message: `Stockage upload permission granted to ${grantedList.length} MR(s) for ${monthStr}`,
+      granted: grantedList,
+    };
+  }
+
+  async getStockagePermissions(query?: {
+    month?: string;
+    year?: number;
+    mr_id?: string;
+    status?: string;
+  }): Promise<MonthlyStockagePermission[]> {
+    let list = [...this.db.monthlyStockagePermissions];
+
+    if (query?.month) {
+      list = list.filter((p) => p.month_str === query.month || String(p.month) === query.month);
+    }
+    if (query?.year) {
+      list = list.filter((p) => p.year === Number(query.year));
+    }
+    if (query?.mr_id && query.mr_id !== 'ALL') {
+      list = list.filter((p) => p.mr_id === query.mr_id);
+    }
+    if (query?.status && query.status !== 'ALL') {
+      list = list.filter((p) => p.status === query.status);
+    }
+
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  async revokeStockagePermission(
+    permId: string,
+    adminUser: any,
+    reason?: string,
+  ): Promise<MonthlyStockagePermission> {
+    const perm = this.db.monthlyStockagePermissions.find((p) => p.id === permId);
+    if (!perm) throw new NotFoundException('Permission not found');
+
+    if (perm.status === 'CONSUMED') {
+      throw new BadRequestException('Cannot revoke an already consumed permission');
+    }
+
+    perm.status = 'REVOKED';
+    perm.revoked_by_id = adminUser.id;
+    perm.revoked_by_name = adminUser.name || 'System Admin';
+    perm.revoked_at = new Date().toISOString();
+    perm.revoke_reason = reason || 'Revoked by Admin';
+    perm.updated_at = new Date().toISOString();
+
+    return perm;
+  }
+
+  async getMrActiveStockagePermission(
+    mrId: string,
+    monthStr?: string,
+  ): Promise<{ has_permission: boolean; permission: MonthlyStockagePermission | null }> {
+    const targetMonth = monthStr || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const perm = this.db.monthlyStockagePermissions.find(
+      (p) => p.mr_id === mrId && p.month_str === targetMonth && (p.status === 'AVAILABLE' || p.status === 'RESERVED'),
+    );
+
+    return {
+      has_permission: !!perm && perm.status === 'AVAILABLE',
+      permission: perm || null,
+    };
+  }
+
+  // === 10. MR BULK STOCKAGE SUBMISSION & ADDITIVE APPROVAL WORKFLOW (§2 & §3) ===
+  async submitStockageRequest(
+    dto: SubmitStockageRequestDto,
+    mrUser: any,
+  ): Promise<{ message: string; request: StockageSubmissionRequest }> {
+    const perm = this.db.monthlyStockagePermissions.find((p) => p.id === dto.permission_id);
+    if (!perm) {
+      throw new NotFoundException('Stockage upload permission not found');
+    }
+
+    // Security check: MR cannot submit with another MR's permission
+    if (perm.mr_id !== mrUser.id) {
+      throw new ForbiddenException('You cannot use a permission granted to another representative');
+    }
+
+    // One permission = one submission state enforcement
+    if (perm.status === 'RESERVED') {
+      throw new BadRequestException('A submission is already pending review for this permission');
+    }
+    if (perm.status === 'CONSUMED') {
+      throw new BadRequestException('This upload permission has already been consumed by a prior approved submission');
+    }
+    if (perm.status === 'REVOKED') {
+      throw new BadRequestException('This upload permission has been revoked by the administrator');
+    }
+    if (perm.status !== 'AVAILABLE') {
+      throw new BadRequestException(`Permission is not available for new submissions (status: ${perm.status})`);
+    }
+
+    if (!dto.items || !Array.isArray(dto.items) || dto.items.length === 0) {
+      throw new BadRequestException('At least one medicine row must be included in the submission');
+    }
+
+    // Check for duplicate medicine & variant rows within the draft
+    const seenItems = new Set<string>();
+    const validatedItems: StockageSubmissionItem[] = [];
+
+    for (const item of dto.items) {
+      const med = this.db.medicines.find((m) => m.id === item.medicine_id);
+      if (!med || med.status !== 'ACTIVE') {
+        throw new BadRequestException(`Medicine ID "${item.medicine_id}" is not active or found in catalog`);
+      }
+
+      const variantKey = `${item.medicine_id}__${item.variant_id || 'default'}`;
+      if (seenItems.has(variantKey)) {
+        throw new BadRequestException(`Duplicate entry for medicine "${med.name}" in submission draft. Please combine quantities into one row.`);
+      }
+      seenItems.add(variantKey);
+
+      const rawQty = item.quantity !== undefined ? item.quantity : (item as any).submitted_quantity;
+      const qty = Number(rawQty);
+      if (!qty || qty <= 0 || !Number.isFinite(qty)) {
+        throw new BadRequestException(`Quantity for "${med.name}" must be a positive number`);
+      }
+
+      // Lookup variant if present
+      let variant: MedicinePackagingVariant | undefined;
+      if (item.variant_id) {
+        variant = this.db.medicinePackagingVariants.find(
+          (v) => v.id === item.variant_id && v.medicine_id === med.id && v.status === 'ACTIVE',
+        );
+      }
+      if (!variant && med.packaging_variants && med.packaging_variants.length > 0) {
+        variant = med.packaging_variants[0];
+      }
+
+      const packagingDisplay = variant?.display_label || variant?.variant_name || med.unit || 'Units';
+      const ptsRate = variant?.pts_rate || med.pts_rate || med.base_price || 0;
+      const mrp = variant?.mrp || med.mrp || 0;
+
+      validatedItems.push({
+        id: `item-${uuidv4().substring(0, 8)}`,
+        medicine_id: med.id,
+        medicine_name: med.name,
+        medicine_code: med.code,
+        variant_id: variant?.id,
+        package_size: variant?.package_size,
+        package_unit: variant?.package_unit,
+        packaging_display: packagingDisplay,
+        pts_rate: ptsRate,
+        mrp: mrp,
+        submitted_quantity: qty,
+        approved_quantity: qty, // Default pre-fill for Admin review
+        batch_no: item.batch_no || '',
+        expiry_date: item.expiry_date || '',
+        notes: item.notes || '',
+      });
+    }
+
+    const reqId = `sub-${perm.year}${String(perm.month).padStart(2, '0')}-${uuidv4().substring(0, 6)}`;
+    const effectiveHqId = dto.hq_id || perm.hq_id || mrUser.hq_id || 'hq-shahdol';
+    const hq = this.db.findHeadquarter(effectiveHqId);
+    const stocker = dto.stocker_id
+      ? this.db.stockers.find((s) => s.id === dto.stocker_id)
+      : this.db.stockers.find((s) => s.hq_id === effectiveHqId) || this.db.stockers[0];
+
+    const submission: StockageSubmissionRequest = {
+      id: reqId,
+      permission_id: perm.id,
+      mr_id: mrUser.id,
+      mr_name: mrUser.name || 'Field Representative',
+      mr_phone: mrUser.phone || '',
+      hq_id: effectiveHqId,
+      hq_name: hq?.name || 'Shahdol',
+      stocker_id: stocker?.id || 'stk-shd-01',
+      stocker_name: stocker?.name || 'Central Pharma Stockist',
+      month: perm.month_str,
+      year: perm.year,
+      month_num: perm.month,
+      status: 'PENDING',
+      items: validatedItems,
+      total_items: validatedItems.length,
+      total_quantity: validatedItems.reduce((acc, i) => acc + i.submitted_quantity, 0),
+      submitted_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // One permission = one submission: transition status to RESERVED
+    perm.status = 'RESERVED';
+    perm.submission_id = reqId;
+    perm.updated_at = new Date().toISOString();
+
+    this.db.stockageSubmissionRequests.unshift(submission);
+
+    // Notify Administrators
+    const admins = this.db.users.filter((u) => ['SUPER_ADMIN', 'ADMIN'].includes(u.role) && !u.deleted_at);
+    admins.forEach((admin) => {
+      this.notificationsService.sendPushNotification(
+        admin.id,
+        '📋 New MR Stockage Request Submitted',
+        `MR ${submission.mr_name} submitted Stockage upload (${submission.total_items} medicines, ${submission.total_quantity} units) for ${submission.month}. Pending your approval.`,
+        { submissionId: submission.id, mrId: submission.mr_id, month: submission.month, type: 'STOCKAGE_SUBMISSION_PENDING' },
+      );
+    });
+
+    return {
+      message: 'Stockage data submitted successfully for Admin review',
+      request: submission,
+    };
+  }
+
+  async getStockageRequests(query?: {
+    status?: string;
+    mr_id?: string;
+    month?: string;
+    hq_id?: string;
+  }): Promise<StockageSubmissionRequest[]> {
+    let list = [...this.db.stockageSubmissionRequests];
+
+    if (query?.status && query.status !== 'ALL') {
+      list = list.filter((r) => r.status === query.status);
+    }
+    if (query?.mr_id && query.mr_id !== 'ALL') {
+      list = list.filter((r) => r.mr_id === query.mr_id);
+    }
+    if (query?.month && query.month !== 'ALL') {
+      list = list.filter((r) => r.month === query.month);
+    }
+    if (query?.hq_id && query.hq_id !== 'ALL') {
+      list = list.filter((r) => r.hq_id === query.hq_id);
+    }
+
+    return list.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+  }
+
+  async getStockageRequestById(id: string): Promise<StockageSubmissionRequest> {
+    const req = this.db.stockageSubmissionRequests.find((r) => r.id === id);
+    if (!req) throw new NotFoundException('Stockage request not found');
+    return req;
+  }
+
+  /**
+   * ADMIN APPROVAL WORKFLOW WITH ADDITIVE STOCKAGE RULE (§3 & §7)
+   * New Stockage Quantity = Existing Stockage Quantity + Approved Quantity
+   * Never replace the existing quantity with the newly submitted quantity!
+   * Idempotent: repeated clicks will not double add!
+   */
+  async reviewStockageRequest(
+    reqId: string,
+    dto: ReviewStockageRequestDto,
+    adminUser: any,
+  ): Promise<{ message: string; request: StockageSubmissionRequest }> {
+    const request = this.db.stockageSubmissionRequests.find((r) => r.id === reqId);
+    if (!request) throw new NotFoundException('Stockage request not found');
+
+    // Idempotency safeguard: repeated clicks cannot add quantities twice
+    if (request.status === 'APPLIED') {
+      throw new BadRequestException('This request has already been approved and applied to official Stockage');
+    }
+    if (request.status === 'REJECTED') {
+      throw new BadRequestException('This request has already been reviewed and rejected');
+    }
+
+    const perm = this.db.monthlyStockagePermissions.find((p) => p.id === request.permission_id);
+
+    const effectiveAction =
+      dto.action ||
+      (dto.status === 'APPROVED' ? 'APPROVE' : dto.status === 'REJECTED' ? 'REJECT' : undefined);
+    const reviewComment = dto.comment || dto.admin_notes;
+
+    // === REJECTION PATH ===
+    if (effectiveAction === 'REJECT') {
+      request.status = 'REJECTED';
+      request.admin_comment = reviewComment || 'Rejected by Administrator';
+      request.reviewed_by_id = adminUser.id;
+      request.reviewed_by_name = adminUser.name || 'System Admin';
+      request.reviewed_at = new Date().toISOString();
+      request.updated_at = new Date().toISOString();
+
+      // Rule: Official Stockage is completely untouched (+0 units)
+      // Rule: Permission remains linked and not silently reusable
+      if (perm) {
+        perm.updated_at = new Date().toISOString();
+      }
+
+      this.notificationsService.sendPushNotification(
+        request.mr_id,
+        '❌ Stockage Submission Rejected',
+        `Your Stockage submission for ${request.month} was rejected by Admin. Reason: ${request.admin_comment}`,
+        { submissionId: request.id, status: 'REJECTED', type: 'STOCKAGE_REJECTED' },
+      );
+
+      return {
+        message: 'Stockage request rejected. Official inventory was not modified.',
+        request,
+      };
+    }
+
+    // === APPROVAL PATH (ADDITIVE QUANTITY APPLICATION) ===
+    if (effectiveAction !== 'APPROVE') {
+      throw new BadRequestException('Invalid review action. Must be APPROVE or REJECT.');
+    }
+
+    // Apply any Admin item adjustments
+    if (dto.item_adjustments && Array.isArray(dto.item_adjustments)) {
+      for (const adj of dto.item_adjustments) {
+        const item = request.items.find(
+          (i) => (adj.item_id && i.id === adj.item_id) || (adj.medicine_id && i.medicine_id === adj.medicine_id),
+        );
+        if (item && adj.approved_quantity !== undefined) {
+          const adjQty = Number(adj.approved_quantity);
+          if (adjQty < 0 || !Number.isFinite(adjQty)) {
+            throw new BadRequestException(`Approved quantity for ${item.medicine_name} must be non-negative`);
+          }
+          item.approved_quantity = adjQty;
+          if (adj.reason) item.notes = adj.reason;
+        }
+      }
+    }
+
+    // Execute additive stock update for all line items atomically
+    for (const item of request.items) {
+      const approvedQty = Number(item.approved_quantity !== undefined ? item.approved_quantity : item.submitted_quantity);
+      if (approvedQty <= 0) continue;
+
+      let inv = this.db.stockerInventory.find(
+        (i) => i.stocker_id === request.stocker_id && i.medicine_id === item.medicine_id,
+      );
+
+      if (!inv) {
+        inv = {
+          id: `inv-${request.stocker_id}-${item.medicine_id}`,
+          hq_id: request.hq_id,
+          stocker_id: request.stocker_id,
+          medicine_id: item.medicine_id,
+          variant_id: item.variant_id,
+          packaging_display: item.packaging_display,
+          quantity: 0,
+          low_stock_threshold: 15,
+          updated_at: new Date().toISOString(),
+        };
+        this.db.stockerInventory.push(inv);
+      }
+
+      const previousStock = inv.quantity;
+      // CRITICAL BUSINESS RULE: Add to existing stock! Never replace!
+      // New Stockage Quantity = Existing Stockage Quantity + Approved Quantity
+      inv.quantity = previousStock + approvedQty;
+      inv.updated_at = new Date().toISOString();
+
+      item.previous_stock = previousStock;
+      item.approved_quantity = approvedQty;
+      item.final_stock = inv.quantity;
+
+      // 1. Audit Transaction Log (§8 & §19)
+      const tx: InventoryTransaction = {
+        id: `tx-${uuidv4().substring(0, 8)}`,
+        hq_id: request.hq_id,
+        stocker_id: request.stocker_id,
+        medicine_id: item.medicine_id,
+        quantity: approvedQty,
+        balance_after: inv.quantity,
+        transaction_type: 'STOCKAGE_APPROVED_INWARD',
+        user_id: adminUser.id,
+        reason: `MR Stockage Approval for ${request.month} by ${adminUser.name} (Previous: ${previousStock}, Added: +${approvedQty}, Final: ${inv.quantity} ${item.packaging_display})`,
+        timestamp: new Date().toISOString(),
+      };
+      this.db.inventoryTransactions.push(tx);
+
+      // 2. Monthly Inward Entry Log
+      const monthlyEntry: MonthlyStockEntry = {
+        id: `entry-${uuidv4().substring(0, 8)}`,
+        hq_id: request.hq_id,
+        hq_name: request.hq_name,
+        stocker_id: request.stocker_id,
+        stocker_name: request.stocker_name,
+        month: request.month,
+        entry_date: new Date().toISOString().split('T')[0],
+        invoice_no: `STOCKAGE-${request.id}`,
+        medicine_id: item.medicine_id,
+        medicine_name: item.medicine_name,
+        medicine_code: item.medicine_code,
+        quantity: approvedQty,
+        unit: item.packaging_display,
+        batch_no: item.batch_no || '',
+        expiry_date: item.expiry_date || '',
+        notes: `Approved MR submission from ${request.mr_name}`,
+        user_id: request.mr_id,
+        user_name: request.mr_name,
+        created_at: new Date().toISOString(),
+      };
+      this.db.monthlyStockEntries.push(monthlyEntry);
+    }
+
+    // Only after successful Stockage application: mark Applied & Consume permission
+    request.status = 'APPLIED';
+    request.applied_at = new Date().toISOString();
+    request.reviewed_by_id = adminUser.id;
+    request.reviewed_by_name = adminUser.name || 'System Admin';
+    request.reviewed_at = new Date().toISOString();
+    request.admin_comment = dto.comment || 'Approved and added to official Stockage';
+    request.updated_at = new Date().toISOString();
+
+    if (perm) {
+      perm.status = 'CONSUMED';
+      perm.consumed_at = new Date().toISOString();
+      perm.updated_at = new Date().toISOString();
+    }
+
+    // Notify MR
+    this.notificationsService.sendPushNotification(
+      request.mr_id,
+      '✅ Stockage Upload Approved & Applied!',
+      `Your monthly Stockage submission for ${request.month} has been approved by ${adminUser.name} and successfully added to official stock.`,
+      { submissionId: request.id, status: 'APPLIED', type: 'STOCKAGE_APPLIED' },
+    );
+
+    return {
+      message: `Stockage request approved successfully! Approved quantities have been added to existing stock.`,
+      request,
     };
   }
 }

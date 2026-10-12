@@ -3,7 +3,11 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { DatabaseService } from '../../database/database.service';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'ahtri_jwt_super_secret_key_development_only';
+const DEFAULT_DEV_SECRET = 'ahtri_jwt_super_secret_key_development_only';
+if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_DEV_SECRET)) {
+  console.error('[SECURITY CRITICAL] JWT_SECRET must be explicitly set to a strong secret in production! Using fallback key is insecure.');
+}
+export const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_DEV_SECRET;
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

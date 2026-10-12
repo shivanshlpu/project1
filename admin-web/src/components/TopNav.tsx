@@ -39,7 +39,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   lang,
   onToggleLang,
   onSearch,
-  managerName = 'Shivansh Tiwari',
+  managerName = 'System Administrator',
   onOpenSettings,
   onLogout,
   onToggleSidebar,
@@ -341,8 +341,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                   {managerName}
                 </span>
                 <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                  {managerName.includes('Shivansh')
-                    ? 'Super Admin (Owner)'
+                  {managerName.toLowerCase().includes('admin')
+                    ? 'Super Admin'
                     : lang === 'hi' ? 'क्षेत्र व्यवसाय प्रबंधक' : 'Area Business Manager'}
                 </span>
               </div>
@@ -472,8 +472,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                     {managerName}
                   </span>
                   <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>
-                    {managerName.includes('Shivansh')
-                      ? 'Super Admin (Owner)'
+                    {managerName.toLowerCase().includes('admin')
+                      ? 'Super Admin'
                       : lang === 'hi' ? 'क्षेत्र व्यवसाय प्रबंधक' : 'Area Business Manager'}
                   </span>
                 </div>

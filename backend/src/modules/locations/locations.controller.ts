@@ -10,11 +10,16 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/locations.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { Roles } from '../../common/roles.decorator';
 
 @Controller('locations')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
@@ -29,6 +34,7 @@ export class LocationsController {
   }
 
   @Post()
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR')
   @HttpCode(HttpStatus.CREATED)
   async createLocation(@Body() dto: CreateLocationDto, @Req() req: any) {
     const user = req.user || null;
@@ -37,12 +43,14 @@ export class LocationsController {
 
   @Put(':id')
   @Patch(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @HttpCode(HttpStatus.OK)
   async updateLocation(@Param('id') id: string, @Body() dto: Partial<CreateLocationDto>) {
     return this.locationsService.updateLocation(id, dto);
   }
 
   @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @HttpCode(HttpStatus.OK)
   async deleteLocation(@Param('id') id: string) {
     return this.locationsService.deleteLocation(id);
@@ -60,4 +68,5 @@ export class LocationsController {
     return this.locationsService.acknowledgeAllLocations();
   }
 }
+
 

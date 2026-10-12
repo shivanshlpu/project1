@@ -36,10 +36,15 @@ export function getApiBaseUrl(): string {
 
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+  let user: any = {};
+  try {
+    user = JSON.parse(localStorage.getItem('ahtri_user') || '{}');
+  } catch {}
+
   return {
     'Content-Type': 'application/json',
-    'x-user-id': 'usr-admin-shivansh',
-    'x-user-role': 'SUPER_ADMIN',
+    ...(user?.id ? { 'x-user-id': user.id } : {}),
+    ...(user?.role ? { 'x-user-role': user.role } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }

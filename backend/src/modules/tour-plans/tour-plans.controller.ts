@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { TourPlansService } from './tour-plans.service';
 import {
@@ -32,7 +33,8 @@ export class TourPlansController {
     @CurrentUser() user: any,
     @Body() dto: MonthlyTpItemDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tourPlansService.punchVisit(userId, dto);
   }
 
@@ -41,7 +43,8 @@ export class TourPlansController {
     @CurrentUser() user: any,
     @Body() dto: SubmitMonthlyTpDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tourPlansService.submitMonthlyTourPlan(userId, dto);
   }
 
@@ -51,7 +54,8 @@ export class TourPlansController {
     @Param('id') id: string,
     @Body() dto: SubmitMonthlyTpDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tourPlansService.editTourPlan(userId, id, dto);
   }
 
@@ -61,7 +65,8 @@ export class TourPlansController {
     @Param('id') id: string,
     @Param('entryId') entryId: string,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tourPlansService.deleteTourPlanEntry(userId, id, entryId);
   }
 
@@ -70,7 +75,8 @@ export class TourPlansController {
     @CurrentUser() user: any,
     @Query('month') month?: string,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tourPlansService.getMyTourPlans(userId, month);
   }
 

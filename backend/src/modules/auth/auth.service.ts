@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import { LoginDto, ForgotPasswordDto } from './dto/login.dto';
@@ -80,23 +81,17 @@ export class AuthService {
       isMatch = await bcrypt.compare(dto.password, user.password_hash);
     }
 
-    const isMrMasterMatch =
-      process.env.NODE_ENV !== 'production' &&
-      (user.role === 'MR' || (user.id && user.id.startsWith('usr-mr'))) &&
-      (
-        dto.password === 'AmanRathoreSHD' ||
+    // Strict credential verification: only valid password hashes are accepted.
+    // Automated test suite allows seeded test passwords only when NODE_ENV is strictly 'test'.
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    const isTestMatch =
+      isTestEnv &&
+      (dto.password === 'Password@123' ||
         dto.password === 'AmarDwivediKOT' ||
-        dto.password === 'AshishSoniAMB' ||
-        dto.password === 'Password@123' ||
-        dto.password === '12345678'
-      );
+        dto.password === 'AmanRathoreSHD' ||
+        dto.password === 'AshishSoniAMB');
 
-    const isMasterAdminMatch =
-      process.env.NODE_ENV !== 'production' &&
-      (user.email === 'shivanshti10@gmail.com' || user.phone === '9009149694') &&
-      (dto.password === '87654321' || dto.password === '12345678');
-
-    if (!isMatch && !isMasterAdminMatch && !isMrMasterMatch) {
+    if (!isMatch && !isTestMatch) {
       throw new UnauthorizedException('Invalid credentials.');
     }
 
@@ -206,7 +201,7 @@ export class AuthService {
               device_model: authReq.device_model,
               user_name: user.name,
               message:
-                'Security verification required. A 6-digit OTP code has been generated on the Owner Dashboard (Shivansh Tiwari). Please ask the Owner for the code to log in.',
+                'Security verification required. A 6-digit OTP code has been generated on the Admin Dashboard. Please ask the Administrator for the code to log in.',
               debug_otp: process.env.NODE_ENV === 'development' ? authReq.otp : undefined,
             };
           }
@@ -262,7 +257,7 @@ export class AuthService {
 
     req.status = 'APPROVED';
     req.approved_at = new Date().toISOString();
-    req.approved_by = 'Shivansh Tiwari (Owner)';
+    req.approved_by = 'Administrator';
     this.db.persistToDisk();
 
     if (this.db.supabase?.isConnected) {
@@ -277,7 +272,7 @@ export class AuthService {
     return this.generateAuthPayload(user);
   }
 
-  async approveDeviceByOwner(requestId: string, ownerName: string = 'Shivansh Tiwari') {
+  async approveDeviceByOwner(requestId: string, ownerName: string = 'Administrator') {
     const req = this.db.deviceAuthorizations.find(
       (r) => r.id === requestId && r.status === 'PENDING',
     );
@@ -370,15 +365,16 @@ export class AuthService {
       throw new NotFoundException(`User with phone ${phone} not found.`);
     }
 
-    // Generate 6-digit OTP (e.g. 123456 or random)
-    const otp = '123456';
+    // Generate secure 6-digit OTP using cryptographic randomness
+    const isTest = process.env.NODE_ENV === 'test';
+    const otp = isTest ? '123456' : crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     this.db.otpStore.set(phone, { otp, expiresAt });
 
     return {
       message: 'OTP sent successfully',
       phone,
-      debug_otp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      debug_otp: isTest ? otp : undefined,
     };
   }
 
@@ -502,7 +498,7 @@ export class AuthService {
       device_id: targetDeviceId,
       device_model: authReq.device_model,
       user_name: user.name,
-      message: '6-digit OTP generated on Admin Dashboard (Shivansh Tiwari).',
+      message: '6-digit OTP generated on Admin Dashboard.',
     };
   }
 

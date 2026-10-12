@@ -501,7 +501,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
         });
       } else {
-        setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Shivansh Tiwari (Owner).');
+        setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Administrator.');
       }
     } catch {
       // Offline simulation verify
@@ -528,7 +528,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleCheckOwnerApprovedDirectly = async () => {
-    // If owner clicked "Approve" button on their web dashboard, logging in now will succeed
+    // If administrator clicked "Approve" button on their web dashboard, logging in now will succeed
     handleLogin(true);
   };
 
@@ -551,8 +551,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             New / Secondary Phone Detected
           </Text>
           <Text style={[styles.securityText, { color: '#9A3412' }]}>
-            A 6-digit activation code has been generated on the Owner Dashboard (Shivansh Tiwari).
-            Please obtain this code from the Owner to unlock and bind this phone.
+            A 6-digit activation code has been generated on the Administrator Dashboard.
+            Please obtain this code from the Administrator to unlock and bind this phone.
           </Text>
         </View>
 

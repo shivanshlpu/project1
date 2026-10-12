@@ -297,11 +297,10 @@ CREATE INDEX IF NOT EXISTS idx_doctors_specialty ON public.doctors(specialty);
 
 -- ==============================================================================
 -- 12. INITIAL PRIMARY SEED DATA
--- Default Passwords: 'Password@123' and '87654321' for Shivansh Tiwari
+-- Default seed administrative and field accounts
 -- ==============================================================================
 INSERT INTO public.users (id, name, email, phone, password_hash, role, status, biometric_enabled, created_at)
 VALUES 
-  ('usr-admin-shivansh', 'Shivansh Tiwari', 'shivanshti10@gmail.com', '9009149694', '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
   ('usr-admin-01', 'System Admin', 'admin@ahtri.com', '9876543210', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
   ('usr-mgr-01', 'Anil Kumar (Area Manager)', 'manager@ahtri.com', '9876543211', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MANAGER', 'ACTIVE', FALSE, NOW()),
   ('usr-mr-01', 'Amar Dwivedi', 'amar@ahtri.com', '9876543212', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
@@ -453,3 +452,104 @@ CREATE INDEX IF NOT EXISTS idx_device_auth_lookup ON public.device_authorization
 CREATE INDEX IF NOT EXISTS idx_device_auth_pending ON public.device_authorizations (status, expires_at) WHERE status = 'PENDING';
 CREATE INDEX IF NOT EXISTS idx_users_role_status ON public.users (role, status);
 CREATE INDEX IF NOT EXISTS idx_users_device ON public.users (device_id) WHERE device_id IS NOT NULL;
+
+-- ==============================================================================
+-- 15. PACKAGING VARIANTS & MONTHLY STOCKAGE WORKFLOW
+-- ==============================================================================
+ALTER TABLE public.medicines ADD COLUMN IF NOT EXISTS pts_rate NUMERIC(10, 2);
+ALTER TABLE public.medicines ADD COLUMN IF NOT EXISTS mrp NUMERIC(10, 2);
+
+CREATE TABLE IF NOT EXISTS public.medicine_packaging_variants (
+  id VARCHAR(64) PRIMARY KEY,
+  medicine_id VARCHAR(64) NOT NULL REFERENCES public.medicines(id) ON DELETE CASCADE,
+  size NUMERIC(10, 2) NOT NULL,
+  unit VARCHAR(50) NOT NULL,
+  display_name VARCHAR(100) NOT NULL,
+  pts_rate NUMERIC(10, 2) NOT NULL,
+  mrp NUMERIC(10, 2) NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.monthly_stockage_permissions (
+  id VARCHAR(64) PRIMARY KEY,
+  mr_id VARCHAR(64) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  mr_name VARCHAR(255) NOT NULL,
+  month_year VARCHAR(7) NOT NULL,
+  stocker_id VARCHAR(64),
+  hq_id VARCHAR(64),
+  status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE' CHECK (
+    status IN ('AVAILABLE', 'RESERVED', 'CONSUMED', 'REVOKED', 'EXPIRED')
+  ),
+  granted_by_admin_id VARCHAR(64) NOT NULL,
+  granted_by_admin_name VARCHAR(255) NOT NULL,
+  notes TEXT,
+  revoked_at TIMESTAMPTZ,
+  revoked_by_admin_id VARCHAR(64),
+  consumed_at TIMESTAMPTZ,
+  reserved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.stockage_submission_requests (
+  id VARCHAR(64) PRIMARY KEY,
+  permission_id VARCHAR(64) NOT NULL REFERENCES public.monthly_stockage_permissions(id),
+  mr_id VARCHAR(64) NOT NULL REFERENCES public.users(id),
+  mr_name VARCHAR(255) NOT NULL,
+  month_year VARCHAR(7) NOT NULL,
+  stocker_id VARCHAR(64) NOT NULL,
+  hq_id VARCHAR(64) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED' CHECK (
+    status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'APPLIED')
+  ),
+  total_items INT NOT NULL DEFAULT 0,
+  total_quantity NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by_admin_id VARCHAR(64),
+  reviewed_by_admin_name VARCHAR(255),
+  admin_notes TEXT,
+  applied_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.stockage_submission_items (
+  id VARCHAR(64) PRIMARY KEY,
+  request_id VARCHAR(64) NOT NULL REFERENCES public.stockage_submission_requests(id) ON DELETE CASCADE,
+  medicine_id VARCHAR(64) NOT NULL REFERENCES public.medicines(id),
+  medicine_name VARCHAR(255) NOT NULL,
+  packaging_id VARCHAR(64),
+  packaging_size VARCHAR(100),
+  packaging_unit VARCHAR(50),
+  submitted_quantity NUMERIC(10, 2) NOT NULL,
+  approved_quantity NUMERIC(10, 2),
+  previous_stock NUMERIC(10, 2),
+  final_stock NUMERIC(10, 2),
+  pts_rate NUMERIC(10, 2),
+  mrp NUMERIC(10, 2),
+  notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_stockage_permissions_mr_month ON public.monthly_stockage_permissions(mr_id, month_year, status);
+CREATE INDEX IF NOT EXISTS idx_stockage_requests_mr_month ON public.stockage_submission_requests(mr_id, month_year, status);
+
+ALTER TABLE public.medicine_packaging_variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.monthly_stockage_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stockage_submission_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stockage_submission_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Service role full access on medicine_packaging_variants" ON public.medicine_packaging_variants;
+CREATE POLICY "Service role full access on medicine_packaging_variants" ON public.medicine_packaging_variants FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role full access on monthly_stockage_permissions" ON public.monthly_stockage_permissions;
+CREATE POLICY "Service role full access on monthly_stockage_permissions" ON public.monthly_stockage_permissions FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role full access on stockage_submission_requests" ON public.stockage_submission_requests;
+CREATE POLICY "Service role full access on stockage_submission_requests" ON public.stockage_submission_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role full access on stockage_submission_items" ON public.stockage_submission_items;
+CREATE POLICY "Service role full access on stockage_submission_items" ON public.stockage_submission_items FOR ALL TO service_role USING (true) WITH CHECK (true);

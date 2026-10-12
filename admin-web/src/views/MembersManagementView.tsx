@@ -55,15 +55,6 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 }) => {
   const [members, setMembers] = useState<MRMemberItem[]>([
     {
-      id: 'usr-admin-shivansh',
-      name: 'Shivansh Tiwari',
-      email: 'shivanshti10@gmail.com',
-      phone: '9009149694',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-    {
       id: 'usr-admin-01',
       name: 'System Admin',
       email: 'admin@ahtri.com',
@@ -124,12 +115,48 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       created_at: new Date().toISOString(),
     },
   ]);
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-admin-shivansh');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-admin-01');
   const [activeTab, setActiveTab] = useState<'performance' | 'locations' | 'leaves' | 'security'>('performance');
   const [searchQuery, setSearchQuery] = useState('');
   const [memberPage, setMemberPage] = useState<number>(1);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Fetch dynamic users from backend on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const res = await fetch(`${apiUrl}/users`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setMembers(
+              data.map((u: any) => ({
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                phone: u.phone,
+                role: u.role,
+                status: u.status || 'ACTIVE',
+                hq_id: u.hq_id,
+                hq_code: u.hq_code,
+                hq_name: u.hq_name,
+                assigned_territory: u.assigned_territory || `${u.hq_name || 'HQ'} Territory`,
+                created_at: u.created_at || new Date().toISOString(),
+              })),
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch dynamic members from backend:', err);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // Dedicated Secure Password Reset State (Plaintext passwords never displayed or saved locally)
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);

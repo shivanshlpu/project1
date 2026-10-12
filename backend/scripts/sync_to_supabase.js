@@ -116,11 +116,11 @@ async function main() {
   console.log('⏳ Syncing users...');
   const defaultUsers = [
     {
-      id: 'usr-admin-shivansh',
-      name: 'Shivansh Tiwari',
-      email: 'shivanshti10@gmail.com',
-      phone: '9009149694',
-      password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
+      id: 'usr-admin-01',
+      name: process.env.ADMIN_NAME || 'System Admin',
+      email: process.env.ADMIN_EMAIL || 'admin@ahtri.com',
+      phone: process.env.ADMIN_PHONE || '9876543210',
+      password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
       biometric_enabled: false,

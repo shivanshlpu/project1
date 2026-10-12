@@ -30,8 +30,8 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
-  const [identifier, setIdentifier] = useState('shivanshti10@gmail.com');
-  const [password, setPassword] = useState('12345678');
+  const [identifier, setIdentifier] = useState('admin@ahtri.com');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,11 +41,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
     setAuthMode(mode);
     setErrorMsg(null);
     if (mode === 'email') {
-      setIdentifier('shivanshti10@gmail.com');
+      setIdentifier('admin@ahtri.com');
     } else {
-      setIdentifier('9009149694');
+      setIdentifier('9876543210');
     }
-    setPassword('12345678');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,7 +78,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           }),
         });
       } catch (localErr) {
-        // Fallback to live production Render backend if localhost is offline
+        // Fallback to live backend if localhost is offline
         try {
           response = await fetch('https://ahtri-backend.onrender.com/auth/login', {
             method: 'POST',
@@ -92,56 +91,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             }),
           });
         } catch {
-          // If network is completely down, allow verified default admin credentials
-          if (
-            (cleanIdentifier === 'shivanshti10@gmail.com' || cleanIdentifier === '9009149694') &&
-            (password === '87654321' || password === '12345678')
-          ) {
-            const fallbackAdmin = {
-              id: 'usr-admin-shivansh',
-              name: 'Shivansh Tiwari',
-              email: 'shivanshti10@gmail.com',
-              phone: '9009149694',
-              role: 'SUPER_ADMIN',
-              token: 'auth-token-shivansh-' + Date.now(),
-            };
-            if (rememberMe) {
-              localStorage.setItem('ahtri_auth_token', fallbackAdmin.token);
-              localStorage.setItem('ahtri_user', JSON.stringify(fallbackAdmin));
-              localStorage.setItem('ahtri_manager_name', fallbackAdmin.name);
-            }
-            onLoginSuccess(fallbackAdmin);
-            return;
-          }
-          throw new Error('Unable to connect to backend server. Please check your internet connection.');
+          throw new Error('Unable to connect to backend server. Please verify your connection or server status.');
         }
       }
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Fallback for Super Admin Shivansh Tiwari with new password 87654321
-        if (
-          (cleanIdentifier === 'shivanshti10@gmail.com' || cleanIdentifier === '9009149694') &&
-          (password === '87654321' || password === '12345678')
-        ) {
-          const fallbackAdmin = {
-            id: 'usr-admin-shivansh',
-            name: 'Shivansh Tiwari',
-            email: 'shivanshti10@gmail.com',
-            phone: '9009149694',
-            role: 'SUPER_ADMIN',
-            token: 'auth-token-shivansh-' + Date.now(),
-          };
-          if (rememberMe) {
-            localStorage.setItem('ahtri_auth_token', fallbackAdmin.token);
-            localStorage.setItem('ahtri_user', JSON.stringify(fallbackAdmin));
-            localStorage.setItem('ahtri_manager_name', fallbackAdmin.name);
-          }
-          onLoginSuccess(fallbackAdmin);
-          return;
-        }
-
         const message = Array.isArray(data?.message)
           ? data.message.join(', ')
           : data?.message || 'Login failed. Please check credentials.';
@@ -226,19 +182,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           <div className="quickfill-btn-group">
             <button
               type="button"
-              className={`quickfill-chip ${authMode === 'email' && identifier === 'shivanshti10@gmail.com' ? 'active' : ''}`}
+              className={`quickfill-chip ${authMode === 'email' && identifier === 'admin@ahtri.com' ? 'active' : ''}`}
               onClick={() => handleQuickFill('email')}
             >
               <Mail size={12} />
-              <span>Email: shivanshti10@gmail.com</span>
+              <span>Email: admin@ahtri.com</span>
             </button>
             <button
               type="button"
-              className={`quickfill-chip ${authMode === 'phone' && identifier === '9009149694' ? 'active' : ''}`}
+              className={`quickfill-chip ${authMode === 'phone' && identifier === '9876543210' ? 'active' : ''}`}
               onClick={() => handleQuickFill('phone')}
             >
               <Phone size={12} />
-              <span>Mobile: 9009149694</span>
+              <span>Mobile: 9876543210</span>
             </button>
           </div>
         </div>
@@ -258,7 +214,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             className={`login-tab ${authMode === 'email' ? 'active' : ''}`}
             onClick={() => {
               setAuthMode('email');
-              if (identifier === '9009149694') setIdentifier('shivanshti10@gmail.com');
+              if (identifier === '9876543210') setIdentifier('admin@ahtri.com');
               setErrorMsg(null);
             }}
           >
@@ -270,7 +226,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             className={`login-tab ${authMode === 'phone' ? 'active' : ''}`}
             onClick={() => {
               setAuthMode('phone');
-              if (identifier === 'shivanshti10@gmail.com') setIdentifier('9009149694');
+              if (identifier === 'admin@ahtri.com') setIdentifier('9876543210');
               setErrorMsg(null);
             }}
           >
@@ -295,7 +251,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
                 type={authMode === 'email' ? 'email' : 'tel'}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={authMode === 'email' ? 'e.g. shivanshti10@gmail.com' : 'e.g. 9009149694'}
+                placeholder={authMode === 'email' ? 'e.g. admin@ahtri.com' : 'e.g. 9876543210'}
                 className="login-input"
                 autoComplete={authMode === 'email' ? 'username' : 'tel'}
                 required

@@ -7,18 +7,21 @@ import { VerifyDeviceOtpDto } from './dto/device-auth.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
+import { AuthRateLimiterGuard } from '../../common/rate-limiter.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('device-otp/verify')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async verifyDeviceOtp(@Body() dto: VerifyDeviceOtpDto) {
     return this.authService.verifyDeviceOtp(dto);
@@ -59,12 +62,14 @@ export class AuthController {
   }
 
   @Post('otp/request')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Body() dto: RequestOtpDto) {
     return this.authService.requestOtp(dto);
   }
 
   @Post('otp/verify')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
@@ -85,6 +90,7 @@ export class AuthController {
   }
 
   @Post('device-otp/request')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async requestDeviceOtp(
     @Body() dto: { identifier: string; deviceId?: string; deviceModel?: string },
@@ -93,6 +99,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);

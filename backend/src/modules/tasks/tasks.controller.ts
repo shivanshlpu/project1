@@ -9,6 +9,7 @@ import {
   Query,
   Headers,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import {
@@ -44,8 +45,11 @@ export class TasksController {
     // Prevent IDOR: Field MRs can strictly only query their own tasks
     const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
     const userId = isPrivileged
-      ? (queryUserId || headerUserId || user?.id || 'usr-mr-01')
-      : (user?.id || 'usr-mr-01');
+      ? (queryUserId || headerUserId || user?.id)
+      : user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User authentication required.');
+    }
     return this.tasksService.getMyTasks(userId, date);
   }
 
@@ -67,7 +71,8 @@ export class TasksController {
     @CurrentUser() user: any,
     @Body() dto: VerifyLocationDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tasksService.startTask(id, userId, dto);
   }
 
@@ -77,7 +82,8 @@ export class TasksController {
     @CurrentUser() user: any,
     @Body() dto: SkipOrderDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tasksService.skipOrder(id, userId, dto);
   }
 
@@ -87,7 +93,8 @@ export class TasksController {
     @CurrentUser() user: any,
     @Body() dto: SubmitOrderDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tasksService.submitPendingOrder(id, userId, dto);
   }
 
@@ -98,7 +105,8 @@ export class TasksController {
     @CurrentUser() user: any,
     @Body() dto: VerifyLocationDto,
   ) {
-    const userId = user?.id || 'usr-mr-01';
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
     return this.tasksService.completeTask(id, userId, dto);
   }
 
@@ -150,7 +158,7 @@ export class TasksController {
   }
 
   @Delete()
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN')
   async clearAllTasks(@Query('location') location?: string) {
     if (location) {
       return this.tasksService.deleteTasksByLocation(location);
@@ -159,7 +167,7 @@ export class TasksController {
   }
 
   @Post('clear-all')
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN')
   async clearAllTasksPost() {
     return this.tasksService.clearAllTasks();
   }

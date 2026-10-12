@@ -481,27 +481,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {selectedRowIds.size > 0 && (
+              <button
+                className="btn-enterprise primary"
+                style={{ background: '#0F8B5A', borderColor: '#0F8B5A', color: '#FFFFFF' }}
+                onClick={() => downloadCSV(true)}
+                title="Download CSV for selected rows only"
+              >
+                <Download size={14} />
+                <span>Download Selected ({selectedRowIds.size}) CSV</span>
+              </button>
+            )}
             <button
-              className={`btn-enterprise ${selectedFormat === 'csv' ? 'primary' : 'secondary'}`}
-              onClick={() => setSelectedFormat('csv')}
+              className="btn-enterprise primary"
+              style={{ background: '#1A3C6E', borderColor: '#1A3C6E', color: '#FFFFFF' }}
+              onClick={() => downloadCSV(false)}
+              title="Download CSV spreadsheet of all filtered records"
             >
-              <FileSpreadsheet size={13} />
-              <span>CSV Spreadsheet</span>
+              <FileSpreadsheet size={14} />
+              <span>Download CSV ({filteredRecords.length})</span>
             </button>
             <button
-              className={`btn-enterprise ${selectedFormat === 'pdf' ? 'primary' : 'secondary'}`}
-              onClick={() => setSelectedFormat('pdf')}
+              className="btn-enterprise secondary"
+              onClick={() => downloadPDF(false)}
+              title="Print or save Executive PDF Report"
             >
-              <Printer size={13} />
-              <span>Executive PDF / Print</span>
+              <Printer size={14} color="#DC2626" />
+              <span>Download PDF ({filteredRecords.length})</span>
             </button>
             <button
-              className={`btn-enterprise ${selectedFormat === 'json' ? 'primary' : 'secondary'}`}
-              onClick={() => setSelectedFormat('json')}
+              className="btn-enterprise secondary"
+              onClick={() => {
+                setSelectedFormat('json');
+                handleExportAction(false);
+              }}
+              title="Download raw structured JSON dataset"
             >
-              <FileCode size={13} />
-              <span>JSON Dataset</span>
+              <FileCode size={14} color="#64748B" />
+              <span>Download JSON</span>
             </button>
           </div>
         </div>
@@ -665,26 +683,43 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           </div>
 
           <div className="panel-controls-group" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {selectedRowIds.size > 0 && (
-              <button
-                className="btn-enterprise primary sm"
-                style={{ background: '#0F8B5A', borderColor: '#0F8B5A' }}
-                onClick={() => handleExportAction(true)}
-              >
-                <Download size={13} />
-                <span>Export Selected ({selectedRowIds.size})</span>
-              </button>
+            {selectedRowIds.size > 0 ? (
+              <>
+                <button
+                  className="btn-enterprise primary sm"
+                  style={{ background: '#0F8B5A', borderColor: '#0F8B5A' }}
+                  onClick={() => downloadCSV(true)}
+                >
+                  <Download size={13} />
+                  <span>Download Selected ({selectedRowIds.size}) CSV</span>
+                </button>
+                <button
+                  className="btn-enterprise secondary sm"
+                  onClick={() => downloadPDF(true)}
+                >
+                  <Printer size={13} />
+                  <span>Download Selected ({selectedRowIds.size}) PDF</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn-enterprise primary sm"
+                  style={{ background: '#1A3C6E', borderColor: '#1A3C6E' }}
+                  onClick={() => downloadCSV(false)}
+                >
+                  <Download size={13} />
+                  <span>Download CSV ({filteredRecords.length})</span>
+                </button>
+                <button
+                  className="btn-enterprise secondary sm"
+                  onClick={() => downloadPDF(false)}
+                >
+                  <Printer size={13} />
+                  <span>Download PDF</span>
+                </button>
+              </>
             )}
-            <button className="btn-enterprise secondary sm" onClick={() => handleExportAction(false)}>
-              <Download size={13} />
-              <span>
-                {selectedFormat === 'csv'
-                  ? `Export All Filtered CSV (${filteredRecords.length})`
-                  : selectedFormat === 'pdf'
-                  ? `Export All Filtered PDF (${filteredRecords.length})`
-                  : `Export All Filtered JSON (${filteredRecords.length})`}
-              </span>
-            </button>
           </div>
         </div>
 

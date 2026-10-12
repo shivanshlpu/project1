@@ -146,8 +146,25 @@ export class CreateMedicineDto {
   base_price?: number;
 
   @IsNumber()
+  @Min(0)
+  @IsOptional()
+  pts_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  mrp?: number;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @IsNumber()
   @IsOptional()
   low_stock_threshold?: number;
+
+  @IsOptional()
+  packaging_variants?: any[];
 }
 
 export class UpdateMedicineDto {
@@ -168,9 +185,26 @@ export class UpdateMedicineDto {
   @IsOptional()
   base_price?: number;
 
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  pts_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  mrp?: number;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+
   @IsEnum(['ACTIVE', 'INACTIVE'])
   @IsOptional()
   status?: 'ACTIVE' | 'INACTIVE';
+
+  @IsOptional()
+  packaging_variants?: any[];
 }
 
 export class AdjustStockDto {
@@ -276,4 +310,220 @@ export class BatchMonthlyStockEntryDto {
 
   @IsOptional()
   items?: MonthlyStockItemDto[];
+}
+
+export class CreatePackagingVariantDto {
+  @IsString()
+  @IsNotEmpty()
+  medicine_id: string;
+
+  @IsNumber()
+  @Min(0.01)
+  @IsOptional()
+  package_size?: number;
+
+  @IsNumber()
+  @Min(0.01)
+  @IsOptional()
+  size?: number;
+
+  @IsString()
+  @IsOptional()
+  package_unit?: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsString()
+  @IsOptional()
+  variant_name?: string;
+
+  @IsString()
+  @IsOptional()
+  display_label?: string;
+
+  @IsString()
+  @IsOptional()
+  display_name?: string;
+
+  @IsNumber()
+  @Min(0)
+  pts_rate: number;
+
+  @IsNumber()
+  @Min(0)
+  mrp: number;
+
+  @IsOptional()
+  is_active?: boolean;
+}
+
+export class UpdatePackagingVariantDto {
+  @IsNumber()
+  @Min(0.01)
+  @IsOptional()
+  package_size?: number;
+
+  @IsNumber()
+  @Min(0.01)
+  @IsOptional()
+  size?: number;
+
+  @IsString()
+  @IsOptional()
+  package_unit?: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsString()
+  @IsOptional()
+  variant_name?: string;
+
+  @IsString()
+  @IsOptional()
+  display_label?: string;
+
+  @IsString()
+  @IsOptional()
+  display_name?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  pts_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  mrp?: number;
+
+  @IsEnum(['ACTIVE', 'INACTIVE'])
+  @IsOptional()
+  status?: 'ACTIVE' | 'INACTIVE';
+
+  @IsOptional()
+  is_active?: boolean;
+}
+
+export class GrantStockagePermissionDto {
+  @IsNotEmpty()
+  mr_ids: string[]; // Can select one or multiple MRs
+
+  @IsNumber()
+  @IsOptional()
+  month?: number; // 1-12
+
+  @IsNumber()
+  @IsOptional()
+  year?: number; // e.g. 2026
+
+  @IsString()
+  @IsOptional()
+  month_year?: string; // e.g. '2026-11'
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsString()
+  @IsOptional()
+  stocker_id?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class RevokeStockagePermissionDto {
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
+export class StockageSubmissionItemDto {
+  @IsString()
+  @IsNotEmpty()
+  medicine_id: string;
+
+  @IsString()
+  @IsOptional()
+  variant_id?: string;
+
+  @IsString()
+  @IsOptional()
+  packaging_id?: string;
+
+  @IsNumber()
+  @IsOptional()
+  quantity?: number;
+
+  @IsNumber()
+  @IsOptional()
+  submitted_quantity?: number;
+
+  @IsString()
+  @IsOptional()
+  batch_no?: string;
+
+  @IsString()
+  @IsOptional()
+  expiry_date?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class SubmitStockageRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  permission_id: string;
+
+  @IsString()
+  @IsOptional()
+  month_year?: string;
+
+  @IsString()
+  @IsOptional()
+  stocker_id?: string;
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
+
+  @IsNotEmpty()
+  items: StockageSubmissionItemDto[];
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class ReviewStockageRequestDto {
+  @IsEnum(['APPROVE', 'REJECT'])
+  @IsOptional()
+  action?: 'APPROVE' | 'REJECT';
+
+  @IsEnum(['APPROVED', 'REJECTED'])
+  @IsOptional()
+  status?: 'APPROVED' | 'REJECTED';
+
+  @IsString()
+  @IsOptional()
+  comment?: string;
+
+  @IsString()
+  @IsOptional()
+  admin_notes?: string;
+
+  @IsOptional()
+  item_adjustments?: Array<{
+    item_id?: string;
+    medicine_id?: string;
+    approved_quantity: number;
+    reason?: string;
+  }>;
 }

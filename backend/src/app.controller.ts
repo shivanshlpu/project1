@@ -123,7 +123,15 @@ export class AppController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   updateAppVersion(@Body() body: Partial<AppVersionData>) {
     if (body.downloadUrl && body.downloadUrl.trim()) {
-      currentAppVersion.downloadUrl = body.downloadUrl.trim();
+      const trimmedUrl = body.downloadUrl.trim();
+      try {
+        const parsed = new URL(trimmedUrl);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          currentAppVersion.downloadUrl = trimmedUrl;
+        }
+      } catch {
+        // Ignore invalid URL schemes
+      }
     }
 
     if (body.latestVersion && body.latestVersion.trim()) {

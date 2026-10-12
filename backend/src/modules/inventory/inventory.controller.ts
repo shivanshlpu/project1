@@ -23,6 +23,12 @@ import {
   AdjustStockDto,
   CreateMonthlyStockEntryDto,
   BatchMonthlyStockEntryDto,
+  CreatePackagingVariantDto,
+  UpdatePackagingVariantDto,
+  GrantStockagePermissionDto,
+  RevokeStockagePermissionDto,
+  SubmitStockageRequestDto,
+  ReviewStockageRequestDto,
 } from './inventory.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -207,5 +213,119 @@ export class InventoryController {
     @CurrentUser() user: any,
   ) {
     return this.inventoryService.createBatchMonthlyStockEntries(dto, user.id);
+  }
+
+  // === PACKAGING VARIANTS & PRICING (§4 & §5) ===
+  @Get('packaging-variants')
+  async getPackagingVariants(@Query('medicine_id') medicineId?: string) {
+    return this.inventoryService.getPackagingVariants(medicineId);
+  }
+
+  @Post('packaging-variants')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async createPackagingVariant(@Body() dto: CreatePackagingVariantDto) {
+    return this.inventoryService.createPackagingVariant(dto);
+  }
+
+  @Patch('packaging-variants/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async updatePackagingVariant(
+    @Param('id') id: string,
+    @Body() dto: UpdatePackagingVariantDto,
+  ) {
+    return this.inventoryService.updatePackagingVariant(id, dto);
+  }
+
+  @Delete('packaging-variants/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deletePackagingVariant(@Param('id') id: string) {
+    return this.inventoryService.deletePackagingVariant(id);
+  }
+
+  // === MONTHLY MR STOCKAGE UPLOAD PERMISSIONS (§1) ===
+  @Get('stockage/permissions')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async getStockagePermissions(
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Query('mr_id') mrId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.inventoryService.getStockagePermissions({
+      month,
+      year: year ? parseInt(year, 10) : undefined,
+      mr_id: mrId,
+      status,
+    });
+  }
+
+  @Post('stockage/permissions')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async grantStockagePermissions(
+    @Body() dto: GrantStockagePermissionDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.grantStockagePermissions(dto, user);
+  }
+
+  @Post('stockage/permissions/:id/revoke')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async revokeStockagePermission(
+    @Param('id') id: string,
+    @Body() dto: RevokeStockagePermissionDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.revokeStockagePermission(id, user, dto.reason);
+  }
+
+  @Get('stockage/active-permission')
+  async getMrActiveStockagePermission(
+    @CurrentUser() user: any,
+    @Query('month') month?: string,
+  ) {
+    return this.inventoryService.getMrActiveStockagePermission(user.id, month);
+  }
+
+  // === MR BULK STOCKAGE SUBMISSION & ADMIN APPROVAL (§2, §3, §7) ===
+  @Post('stockage/submit')
+  @Roles('MR', 'SUPER_ADMIN', 'ADMIN')
+  async submitStockageRequest(
+    @Body() dto: SubmitStockageRequestDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.submitStockageRequest(dto, user);
+  }
+
+  @Get('stockage/requests')
+  async getStockageRequests(
+    @CurrentUser() user: any,
+    @Query('status') status?: string,
+    @Query('mr_id') mrId?: string,
+    @Query('month') month?: string,
+    @Query('hq_id') hqId?: string,
+  ) {
+    // If authenticated as MR, can only view own requests (§2)
+    const effectiveMrId = user.role === 'MR' ? user.id : mrId;
+    return this.inventoryService.getStockageRequests({
+      status,
+      mr_id: effectiveMrId,
+      month,
+      hq_id: hqId,
+    });
+  }
+
+  @Get('stockage/requests/:id')
+  async getStockageRequestById(@Param('id') id: string) {
+    return this.inventoryService.getStockageRequestById(id);
+  }
+
+  @Post('stockage/requests/:id/review')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async reviewStockageRequest(
+    @Param('id') id: string,
+    @Body() dto: ReviewStockageRequestDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.inventoryService.reviewStockageRequest(id, dto, user);
   }
 }

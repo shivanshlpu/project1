@@ -159,7 +159,10 @@ export function updateSavedLocation(id: string, updates: Partial<DoctorItem>): D
 export async function syncSavedLocationsWithBackend(): Promise<DoctorItem[]> {
   try {
     const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-    const res = await fetch(`${apiUrl}/locations`);
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    const res = await fetch(`${apiUrl}/locations`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data: DoctorItem[] = await res.json();
       if (Array.isArray(data)) {

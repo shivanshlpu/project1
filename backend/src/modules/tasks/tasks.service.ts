@@ -149,7 +149,7 @@ export class TasksService {
 
     if (task.status === 'SUSPENDED') {
       throw new ForbiddenException(
-        'This task has been suspended because 1 day passed without a visit. Contact Owner (Shivansh Tiwari) to unsuspend this task before you can start.',
+        'This task has been suspended because 1 day passed without a visit. Contact System Administrator to unsuspend this task before you can start.',
       );
     }
 

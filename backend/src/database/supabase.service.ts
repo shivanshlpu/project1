@@ -76,16 +76,19 @@ export class SupabaseService implements OnModuleInit {
   async findUserByIdentifier(identifier: string) {
     if (!this.client || !this.isConnected) return null;
     try {
-      const lower = identifier.toLowerCase().trim();
-      let targetEmail = lower;
-      if (lower === 'shd' || lower === 'hq-shd-001' || lower === 'aman.rathore@ahtri.com') targetEmail = 'aman@ahtri.com';
-      else if (lower === 'kot' || lower === 'hq-kot-001' || lower === 'amar.dwivedi@ahtri.com') targetEmail = 'amar@ahtri.com';
-      else if (lower === 'amb' || lower === 'hq-amb-001' || lower === 'ashish.soni@ahtri.com') targetEmail = 'ashish@ahtri.com';
+      // Sanitize input to prevent PostgREST filter syntax injection (allow alphanumeric, @, -, _, .)
+      const cleanIdent = identifier.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase().trim();
+      if (!cleanIdent) return null;
+
+      let targetEmail = cleanIdent;
+      if (cleanIdent === 'shd' || cleanIdent === 'hq-shd-001' || cleanIdent === 'aman.rathore@ahtri.com') targetEmail = 'aman@ahtri.com';
+      else if (cleanIdent === 'kot' || cleanIdent === 'hq-kot-001' || cleanIdent === 'amar.dwivedi@ahtri.com') targetEmail = 'amar@ahtri.com';
+      else if (cleanIdent === 'amb' || cleanIdent === 'hq-amb-001' || cleanIdent === 'ashish.soni@ahtri.com') targetEmail = 'ashish@ahtri.com';
 
       const { data, error } = await this.client
         .from('users')
         .select('*')
-        .or(`email.ilike.${targetEmail},email.ilike.${lower},phone.eq.${lower},id.eq.${lower}`)
+        .or(`email.ilike.${targetEmail},email.ilike.${cleanIdent},phone.eq.${cleanIdent},id.eq.${cleanIdent}`)
         .limit(1)
         .maybeSingle();
 

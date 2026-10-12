@@ -472,7 +472,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     if (task.status === 'SUSPENDED') {
       Alert.alert(
         'TASK SUSPENDED',
-        `Scheduled date (${formatDateDDMMYYYY(task.date)}) has passed without visit completion. This task is locked by company administration.\n\nOnly Owner (Shivansh Tiwari) can unsuspend it so you can complete this task.`,
+        `Scheduled date (${formatDateDDMMYYYY(task.date)}) has passed without visit completion. This task is locked by company administration.\n\nOnly Administrator can unsuspend it so you can complete this task.`,
       );
       return;
     }
@@ -567,7 +567,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     if (task.status === 'SUSPENDED') {
       Alert.alert(
         'Task Suspended',
-        'This task is suspended. Please contact Owner (Shivansh Tiwari) to unsuspend.',
+        'This task is suspended. Please contact Administrator to unsuspend.',
       );
       return;
     }
@@ -908,7 +908,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                         Scheduled date ({formatDateDDMMYYYY(task.date)}) has passed without visit completion. This call is locked by company administration.
                       </Text>
                       <Text style={styles.suspendedContactText}>
-                        Contact Owner (Shivansh Tiwari) to unsuspend this call so you can complete it.
+                        Contact Administrator to unsuspend this call so you can complete it.
                       </Text>
                     </View>
                   )}

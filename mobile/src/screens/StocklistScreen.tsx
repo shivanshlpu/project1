@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
 
@@ -316,9 +317,190 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryProductItem[]>([]);
   const [companyCatalog, setCompanyCatalog] = useState<InventoryProductItem[]>(MASTER_COMPANY_MEDICINES);
-  const [viewMode, setViewMode] = useState<'stockist' | 'catalog'>('stockist');
+  const [viewMode, setViewMode] = useState<'stockist' | 'catalog' | 'stockage'>('stockist');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Monthly Stockage Upload State
+  const [activePermission, setActivePermission] = useState<any>(null);
+  const [stockageRequests, setStockageRequests] = useState<any[]>([]);
+  const [packagingVariants, setPackagingVariants] = useState<any[]>([]);
+  const [draftItems, setDraftItems] = useState<
+    Array<{
+      id: string;
+      medicine_id: string;
+      medicine_name: string;
+      packaging_id?: string;
+      packaging_size?: string;
+      packaging_unit?: string;
+      quantity: number;
+      pts_rate: number;
+      mrp: number;
+    }>
+  >([]);
+  const [selectedDraftMedId, setSelectedDraftMedId] = useState<string>('');
+  const [selectedDraftVarId, setSelectedDraftVarId] = useState<string>('');
+  const [draftQuantityInput, setDraftQuantityInput] = useState<string>('50');
+  const [submissionNotes, setSubmissionNotes] = useState<string>('');
+  const [isSubmittingStockage, setIsSubmittingStockage] = useState<boolean>(false);
+
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+  const fetchStockageData = async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders(currentUserId);
+
+      // Fetch active permission for current MR
+      const permRes = await fetch(`${baseUrl}/inventory/stockage/active-permission?month_year=${currentMonth}`, {
+        headers,
+      });
+      if (permRes.ok) {
+        const permData = await permRes.json();
+        setActivePermission(permData);
+      } else {
+        setActivePermission(null);
+      }
+
+      // Fetch requests history
+      const reqRes = await fetch(`${baseUrl}/inventory/stockage/requests`, { headers });
+      if (reqRes.ok) {
+        const reqData = await reqRes.json();
+        setStockageRequests(Array.isArray(reqData) ? reqData : []);
+      }
+
+      // Fetch packaging variants
+      const varRes = await fetch(`${baseUrl}/inventory/packaging-variants`, { headers });
+      if (varRes.ok) {
+        const varData = await varRes.json();
+        setPackagingVariants(Array.isArray(varData) ? varData : []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch Stockage data in mobile', err);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'stockage') {
+      fetchStockageData();
+    }
+  }, [viewMode]);
+
+  const handleAddDraftRow = () => {
+    if (!selectedDraftMedId) {
+      Alert.alert('Selection Required', 'Please select a medicine to add.');
+      return;
+    }
+    const qty = parseInt(draftQuantityInput, 10);
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid positive quantity.');
+      return;
+    }
+
+    const med = companyCatalog.find((m) => m.medicine_id === selectedDraftMedId || m.id === selectedDraftMedId);
+    if (!med) return;
+
+    const variant = selectedDraftVarId
+      ? packagingVariants.find((v) => v.id === selectedDraftVarId)
+      : packagingVariants.find((v) => v.medicine_id === med.medicine_id);
+
+    // Prevent duplicate medicine + variant in draft
+    const alreadyExists = draftItems.some(
+      (d) => d.medicine_id === med.medicine_id && (d.packaging_id || '') === (variant?.id || ''),
+    );
+    if (alreadyExists) {
+      Alert.alert('Duplicate Row', `This medicine packaging variant is already added to your draft list.`);
+      return;
+    }
+
+    const pts = variant ? variant.pts_rate : med.price || 150;
+    const mrp = variant ? variant.mrp : Math.round(pts * 1.4);
+
+    const newRow = {
+      id: `${Date.now()}_${Math.random()}`,
+      medicine_id: med.medicine_id,
+      medicine_name: med.medicine_name,
+      packaging_id: variant?.id,
+      packaging_size: variant ? `${variant.size} ${variant.unit}` : med.unit,
+      packaging_unit: variant?.unit || med.unit,
+      quantity: qty,
+      pts_rate: pts,
+      mrp: mrp,
+    };
+
+    setDraftItems((prev) => [...prev, newRow]);
+    setDraftQuantityInput('50');
+  };
+
+  const handleRemoveDraftRow = (id: string) => {
+    setDraftItems((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  const handleSubmitStockage = async () => {
+    if (!activePermission || activePermission.status !== 'AVAILABLE') {
+      Alert.alert('No Active Permission', 'You do not have an active upload permission for this month.');
+      return;
+    }
+    if (draftItems.length === 0) {
+      Alert.alert('Draft Empty', 'Please add at least one medicine row to your submission draft.');
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Stockage Submission',
+      `Submit ${draftItems.length} medicine item(s) for ${activePermission.month_year}?\n\nReminder: Single-use permission will be reserved and sent to Administrator for additive Stockage review.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm & Submit',
+          onPress: async () => {
+            setIsSubmittingStockage(true);
+            try {
+              const baseUrl = await ApiConfig.getBaseUrl();
+              const headers = await ApiConfig.getAuthHeaders(currentUserId);
+
+              const payload = {
+                permission_id: activePermission.id,
+                month_year: activePermission.month_year,
+                stocker_id: selectedStockerId || activePermission.stocker_id || stockers[0]?.id || 'stk-shd-01',
+                hq_id: selectedHqId || activePermission.hq_id || 'hq-shahdol',
+                items: draftItems.map((d) => ({
+                  medicine_id: d.medicine_id,
+                  packaging_id: d.packaging_id,
+                  submitted_quantity: d.quantity,
+                })),
+                notes: submissionNotes.trim() || undefined,
+              };
+
+              const res = await fetch(`${baseUrl}/inventory/stockage/submit`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload),
+              });
+
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Submission failed');
+              }
+
+              Alert.alert(
+                'Stockage Submitted! 📦',
+                `Your monthly Stockage request for ${activePermission.month_year} has been submitted.\n\n• Permission: RESERVED\n• Status: UNDER REVIEW\n\nOnce Admin approves, approved quantities will be added to the official Stockage.`,
+              );
+
+              setDraftItems([]);
+              setSubmissionNotes('');
+              await fetchStockageData();
+            } catch (err: any) {
+              Alert.alert('Submission Error', err.message || 'Could not submit Stockage.');
+            } finally {
+              setIsSubmittingStockage(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   // Fetch Master Company Medicines Catalog
   useEffect(() => {
@@ -504,225 +686,573 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
               💊 All Medicines ({companyCatalog.length})
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modeTab, viewMode === 'stockage' && styles.modeTabActive]}
+            onPress={() => setViewMode('stockage')}
+          >
+            <Text style={[styles.modeTabText, viewMode === 'stockage' && styles.modeTabTextActive]}>
+              📋 Monthly Stockage
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* 1. HQ Selector (§10 & §14) - Optional if in catalog mode */}
-      {viewMode === 'stockist' && (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>1. Select Headquarters (HQ):</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {hqs.map((hq) => {
-              const isSelected = selectedHqId === hq.id;
-              return (
-                <TouchableOpacity
-                  key={hq.id}
-                  style={[styles.chip, isSelected && styles.chipActive]}
-                  onPress={() => {
-                    setSelectedHqId(hq.id);
-                    setSelectedSubArea('ALL');
-                  }}
-                >
-                  <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                    {hq.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 2. Sub-Area / Tehsil / Market Filter */}
-      {viewMode === 'stockist' && (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>2. Select Sub-Area / Market / Tehsil:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            <TouchableOpacity
-              style={[styles.chip, selectedSubArea === 'ALL' && styles.chipActiveTertiary]}
-              onPress={() => setSelectedSubArea('ALL')}
+      {viewMode === 'stockage' ? (
+        <View style={{ padding: 12 }}>
+          {/* Permission Status Banner */}
+          <View
+            style={{
+              backgroundColor:
+                activePermission?.status === 'AVAILABLE'
+                  ? '#ECFDF5'
+                  : activePermission?.status === 'RESERVED'
+                  ? '#FEF3C7'
+                  : activePermission?.status === 'CONSUMED'
+                  ? '#EFF6FF'
+                  : '#F1F5F9',
+              borderRadius: 8,
+              padding: 14,
+              borderWidth: 1.5,
+              borderColor:
+                activePermission?.status === 'AVAILABLE'
+                  ? '#10B981'
+                  : activePermission?.status === 'RESERVED'
+                  ? '#F59E0B'
+                  : activePermission?.status === 'CONSUMED'
+                  ? '#3B82F6'
+                  : '#CBD5E1',
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '800',
+                color:
+                  activePermission?.status === 'AVAILABLE'
+                    ? '#065F46'
+                    : activePermission?.status === 'RESERVED'
+                    ? '#92400E'
+                    : activePermission?.status === 'CONSUMED'
+                    ? '#1E40AF'
+                    : '#475569',
+              }}
             >
-              <Text style={[styles.chipText, selectedSubArea === 'ALL' && styles.chipTextActive]}>
-                All Areas ({stockers.length})
-              </Text>
-            </TouchableOpacity>
-            {availableAreas.map((area) => {
-              const isSelected = selectedSubArea.toLowerCase() === area.toLowerCase();
-              const count = stockers.filter((s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()).length;
-              return (
-                <TouchableOpacity
-                  key={area}
-                  style={[styles.chip, isSelected && styles.chipActiveTertiary]}
-                  onPress={() => setSelectedSubArea(area)}
-                >
-                  <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                    📍 {area} {count > 0 ? `(${count})` : ''}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 3. Stocker Selector under HQ & Sub-Area (§14) */}
-      {viewMode === 'stockist' && (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>
-            3. Select Stocker / Distributor Depot:
-            {selectedSubArea !== 'ALL' ? ` (${selectedSubArea})` : ''}
-          </Text>
-          {filteredStockers.length === 0 ? (
-            <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
-              No stockers registered in {selectedSubArea === 'ALL' ? 'this HQ' : selectedSubArea} yet. Showing company catalog below.
+              {activePermission?.status === 'AVAILABLE'
+                ? `✅ ACTIVE PERMISSION: ${activePermission.month_year}`
+                : activePermission?.status === 'RESERVED'
+                ? `⏳ SUBMISSION UNDER REVIEW (${activePermission.month_year})`
+                : activePermission?.status === 'CONSUMED'
+                ? `🎉 STOCKAGE CONSUMED & APPLIED (${activePermission.month_year})`
+                : '🔒 NO ACTIVE UPLOAD PERMISSION'}
             </Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {filteredStockers.map((stk) => {
-                const isSelected = selectedStockerId === stk.id;
-                return (
-                  <TouchableOpacity
-                    key={stk.id}
-                    style={[styles.chip, isSelected && styles.chipActiveSecondary]}
-                    onPress={() => setSelectedStockerId(stk.id)}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {stk.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-
-          {selectedStocker && (
-            <View style={styles.stockerInfoBox}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
-                  📦 {selectedStocker.name}
-                </Text>
-                {selectedStocker.sub_area ? (
-                  <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
-                      📍 {selectedStocker.sub_area}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              {selectedStocker.contact_person ? (
-                <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
-                  Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
-                </Text>
-              ) : null}
-              {selectedStocker.address ? (
-                <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
-                  {selectedStocker.address}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* 4. Medicines Inventory Table / Cards (§12, §14, §17) */}
-      <View style={styles.card}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <Text style={styles.cardLabel}>
-            {viewMode === 'catalog'
-              ? `💊 All Company Medicines Catalog (${filteredInventory.length})`
-              : `📦 Available Stockist Medicines (${filteredInventory.length})`}
-          </Text>
-        </View>
-
-        {/* Search */}
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="🔍 Search medicine by name or code..."
-          placeholderTextColor="#94A3B8"
-        />
-
-        {isLoading ? (
-          <ActivityIndicator style={{ padding: 20 }} color="#1A3C6E" />
-        ) : filteredInventory.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No medicines found in this stocker's inventory.</Text>
+            <Text style={{ fontSize: 11.5, color: '#475569', marginTop: 4, lineHeight: 17 }}>
+              {activePermission?.status === 'AVAILABLE'
+                ? `You have 1 active upload permission granted by ${activePermission.granted_by_admin_name || 'Admin'} for ${activePermission.month_year}. Add medicine rows below and submit.`
+                : activePermission?.status === 'RESERVED'
+                ? 'Your Stockage submission has been sent and is currently pending Admin review. Single-use permission is reserved; you cannot submit again until reviewed.'
+                : activePermission?.status === 'CONSUMED'
+                ? 'Your submitted Stockage for this month has been approved and additive quantities successfully applied to official stock.'
+                : 'To upload monthly Stockage data, an Administrator must grant you permission after telephonic verification. Contact your Area Manager or Admin.'}
+            </Text>
           </View>
-        ) : (
-          filteredInventory.map((item) => {
-            const isOutOfStock = item.quantity <= 0;
-            const isLowStock = !isOutOfStock && item.status === 'Low Stock';
 
-            return (
-              <View key={item.id} style={styles.productCard}>
+          {/* Bulk Submission Draft Builder (Shown when Permission is AVAILABLE) */}
+          {activePermission?.status === 'AVAILABLE' && (
+            <View style={[styles.card, { margin: 0, marginBottom: 14 }]}>
+              <Text style={styles.cardLabel}>Bulk Stockage Submission Form ({activePermission.month_year})</Text>
+
+              {/* Medicine Selector */}
+              <Text style={[styles.cardLabel, { marginTop: 6, fontSize: 11, color: '#64748B' }]}>
+                1. Select Medicine:
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {companyCatalog.map((med) => {
+                  const isSelected = selectedDraftMedId === med.medicine_id;
+                  return (
+                    <TouchableOpacity
+                      key={med.id}
+                      style={[
+                        styles.chip,
+                        isSelected && { backgroundColor: '#0F8B5A', borderColor: '#0F8B5A' },
+                      ]}
+                      onPress={() => {
+                        setSelectedDraftMedId(med.medicine_id);
+                        const vList = packagingVariants.filter((v) => v.medicine_id === med.medicine_id);
+                        if (vList.length > 0) setSelectedDraftVarId(vList[0].id);
+                        else setSelectedDraftVarId('');
+                      }}
+                    >
+                      <Text style={[styles.chipText, isSelected && { color: '#FFFFFF', fontWeight: '800' }]}>
+                        💊 {med.medicine_name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Packaging Variant Selector */}
+              {selectedDraftMedId ? (
+                (() => {
+                  const currentVariants = packagingVariants.filter(
+                    (v) => v.medicine_id === selectedDraftMedId && v.is_active,
+                  );
+                  const selectedVariant = currentVariants.find((v) => v.id === selectedDraftVarId) || currentVariants[0];
+
+                  return (
+                    <View style={{ marginBottom: 10 }}>
+                      <Text style={[styles.cardLabel, { fontSize: 11, color: '#64748B' }]}>
+                        2. Select Packaging Variant & Unit:
+                      </Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                        {currentVariants.length > 0 ? (
+                          currentVariants.map((v) => {
+                            const isVarSelected = (selectedDraftVarId || currentVariants[0]?.id) === v.id;
+                            return (
+                              <TouchableOpacity
+                                key={v.id}
+                                style={[
+                                  styles.chip,
+                                  isVarSelected && { backgroundColor: '#1A3C6E', borderColor: '#1A3C6E' },
+                                ]}
+                                onPress={() => setSelectedDraftVarId(v.id)}
+                              >
+                                <Text style={[styles.chipText, isVarSelected && { color: '#FFFFFF', fontWeight: '800' }]}>
+                                  {v.display_name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        ) : (
+                          <View style={{ paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 11, color: '#64748B' }}>Standard packaging unit</Text>
+                          </View>
+                        )}
+                      </ScrollView>
+
+                      {/* Read-only PTS & MRP display */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          gap: 10,
+                          backgroundColor: '#F8FAFC',
+                          padding: 8,
+                          borderRadius: 6,
+                          marginBottom: 10,
+                          borderWidth: 1,
+                          borderColor: '#E2E8F0',
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#047857' }}>
+                            PTS RATE (READ-ONLY)
+                          </Text>
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#047857' }}>
+                            ₹{Number(selectedVariant?.pts_rate || 150).toFixed(2)}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>
+                            MRP (REFERENCE ONLY)
+                          </Text>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B' }}>
+                            ₹{Number(selectedVariant?.mrp || 210).toFixed(2)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })()
+              ) : null}
+
+              {/* Quantity Input */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.productName}>{item.medicine_name}</Text>
-                  <Text style={styles.productCode}>
-                    Code: {item.medicine_code} • {item.unit}
-                  </Text>
-                  <Text style={styles.productPrice}>
-                    {item.price != null ? `₹${Number(item.price).toLocaleString()} per unit` : 'Price not set'}
-                  </Text>
+                  <Text style={[styles.cardLabel, { fontSize: 11, color: '#64748B' }]}>Quantity (Units):</Text>
+                  <TextInput
+                    style={[styles.searchInput, { marginBottom: 0, fontWeight: '800', fontSize: 14 }]}
+                    keyboardType="numeric"
+                    placeholder="e.g. 50"
+                    value={draftQuantityInput}
+                    onChangeText={setDraftQuantityInput}
+                  />
                 </View>
 
-                {/* Stock Quantity & Status Badge (§17) */}
-                <View style={{ alignItems: 'flex-end' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                    <Text
-                      style={[
-                        styles.quantityNumber,
-                        item.quantity < 0
-                          ? { color: '#B91C1C' }
-                          : item.quantity === 0
-                          ? { color: '#D97706' }
-                          : { color: '#15803D' },
-                      ]}
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#0F8B5A',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 6,
+                    alignSelf: 'flex-end',
+                  }}
+                  onPress={handleAddDraftRow}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12 }}>+ Add to Draft</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Unsubmitted Draft Rows */}
+              <Text style={[styles.cardLabel, { fontSize: 11, marginTop: 4 }]}>
+                Draft Rows Ready to Submit ({draftItems.length}):
+              </Text>
+
+              {draftItems.length === 0 ? (
+                <Text style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 8 }}>
+                  No medicines added to draft yet. Select a medicine above and tap "+ Add to Draft".
+                </Text>
+              ) : (
+                <View style={{ marginBottom: 12 }}>
+                  {draftItems.map((item, idx) => (
+                    <View
+                      key={item.id}
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingVertical: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#F1F5F9',
+                      }}
                     >
-                      {item.quantity}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#64748B', marginLeft: 2 }}>units</Text>
-                  </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '800', fontSize: 12, color: '#0F172A' }}>
+                          {idx + 1}. {item.medicine_name}
+                        </Text>
+                        <Text style={{ fontSize: 10.5, color: '#64748B' }}>
+                          Pack: {item.packaging_size} &bull; Qty: {item.quantity} &bull; PTS: ₹{item.pts_rate}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveDraftRow(item.id)}
+                        style={{ padding: 6 }}
+                      >
+                        <Text style={{ color: '#DC2626', fontWeight: '800', fontSize: 12 }}>Remove ✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
 
                   <View
-                    style={[
-                      styles.stockStatusBadge,
-                      item.quantity < 0
-                        ? { backgroundColor: '#FEE2E2' }
-                        : item.quantity === 0
-                        ? { backgroundColor: '#FEF3C7' }
-                        : isLowStock
-                        ? { backgroundColor: '#FFEDD5' }
-                        : { backgroundColor: '#DCFCE7' },
-                    ]}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      marginTop: 8,
+                      paddingTop: 8,
+                      borderTopWidth: 1,
+                      borderTopColor: '#E2E8F0',
+                    }}
                   >
-                    <Text
-                      style={[
-                        styles.stockStatusText,
-                        item.quantity < 0
-                          ? { color: '#B91C1C' }
-                          : item.quantity === 0
-                          ? { color: '#B45309' }
-                          : isLowStock
-                          ? { color: '#C2410C' }
-                          : { color: '#15803D' },
-                      ]}
-                    >
-                      {item.quantity < 0
-                        ? `Shortage (${item.quantity})`
-                        : item.quantity === 0
-                        ? 'Out of Stock'
-                        : isLowStock
-                        ? 'Low Stock'
-                        : 'Available'}
+                    <Text style={{ fontWeight: '700', fontSize: 12, color: '#334155' }}>Total Submission Units:</Text>
+                    <Text style={{ fontWeight: '900', fontSize: 13, color: '#0F8B5A' }}>
+                      {draftItems.reduce((acc, i) => acc + i.quantity, 0)} units ({draftItems.length} items)
                     </Text>
                   </View>
                 </View>
+              )}
+
+              {/* Submission Notes */}
+              <TextInput
+                style={[styles.searchInput, { marginTop: 6 }]}
+                placeholder="Optional notes or Stocker verification details..."
+                value={submissionNotes}
+                onChangeText={setSubmissionNotes}
+              />
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                disabled={isSubmittingStockage || draftItems.length === 0}
+                style={{
+                  backgroundColor: draftItems.length > 0 ? '#1A3C6E' : '#94A3B8',
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  marginTop: 6,
+                }}
+                onPress={handleSubmitStockage}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
+                  {isSubmittingStockage ? 'Submitting...' : '🚀 Submit Complete Stockage Request'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Submission History Section */}
+          <View style={[styles.card, { margin: 0 }]}>
+            <Text style={styles.cardLabel}>My Stockage Submission History</Text>
+            {stockageRequests.length === 0 ? (
+              <Text style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 10 }}>
+                No past submissions found for your ID.
+              </Text>
+            ) : (
+              stockageRequests.map((req) => (
+                <View
+                  key={req.id}
+                  style={{
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F1F5F9',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontWeight: '800', fontSize: 12.5, color: '#0F172A' }}>
+                      Month: {req.month_year} ({req.total_items} items)
+                    </Text>
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        backgroundColor:
+                          req.status === 'APPLIED' ? '#DCFCE7' : req.status === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '800',
+                          color:
+                            req.status === 'APPLIED' ? '#166534' : req.status === 'REJECTED' ? '#991B1B' : '#B45309',
+                        }}
+                      >
+                        {req.status === 'APPLIED' ? 'APPROVED & APPLIED' : req.status}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                    Submitted: {new Date(req.submitted_at).toLocaleDateString()} &bull; Total Units: {req.total_quantity}
+                  </Text>
+                  {req.admin_notes && (
+                    <Text style={{ fontSize: 10.5, color: '#475569', fontStyle: 'italic', marginTop: 2 }}>
+                      Admin Feedback: {req.admin_notes}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* 1. HQ Selector (§10 & §14) - Optional if in catalog mode */}
+          {viewMode === 'stockist' && (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>1. Select Headquarters (HQ):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                {hqs.map((hq) => {
+                  const isSelected = selectedHqId === hq.id;
+                  return (
+                    <TouchableOpacity
+                      key={hq.id}
+                      style={[styles.chip, isSelected && styles.chipActive]}
+                      onPress={() => {
+                        setSelectedHqId(hq.id);
+                        setSelectedSubArea('ALL');
+                      }}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                        {hq.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* 2. Sub-Area / Tehsil / Market Filter */}
+          {viewMode === 'stockist' && (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>2. Select Sub-Area / Market / Tehsil:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                <TouchableOpacity
+                  style={[styles.chip, selectedSubArea === 'ALL' && styles.chipActiveTertiary]}
+                  onPress={() => setSelectedSubArea('ALL')}
+                >
+                  <Text style={[styles.chipText, selectedSubArea === 'ALL' && styles.chipTextActive]}>
+                    All Areas ({stockers.length})
+                  </Text>
+                </TouchableOpacity>
+                {availableAreas.map((area) => {
+                  const isSelected = selectedSubArea.toLowerCase() === area.toLowerCase();
+                  const count = stockers.filter((s) => (s.sub_area || '').toLowerCase() === area.toLowerCase()).length;
+                  return (
+                    <TouchableOpacity
+                      key={area}
+                      style={[styles.chip, isSelected && styles.chipActiveTertiary]}
+                      onPress={() => setSelectedSubArea(area)}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                        📍 {area} {count > 0 ? `(${count})` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* 3. Stocker Selector under HQ & Sub-Area (§14) */}
+          {viewMode === 'stockist' && (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>
+                3. Select Stocker / Distributor Depot:
+                {selectedSubArea !== 'ALL' ? ` (${selectedSubArea})` : ''}
+              </Text>
+              {filteredStockers.length === 0 ? (
+                <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
+                  No stockers registered in {selectedSubArea === 'ALL' ? 'this HQ' : selectedSubArea} yet. Showing company catalog below.
+                </Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                  {filteredStockers.map((stk) => {
+                    const isSelected = selectedStockerId === stk.id;
+                    return (
+                      <TouchableOpacity
+                        key={stk.id}
+                        style={[styles.chip, isSelected && styles.chipActiveSecondary]}
+                        onPress={() => setSelectedStockerId(stk.id)}
+                      >
+                        <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                          {stk.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              {selectedStocker && (
+                <View style={styles.stockerInfoBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
+                      📦 {selectedStocker.name}
+                    </Text>
+                    {selectedStocker.sub_area ? (
+                      <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
+                          📍 {selectedStocker.sub_area}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {selectedStocker.contact_person ? (
+                    <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
+                      Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
+                    </Text>
+                  ) : null}
+                  {selectedStocker.address ? (
+                    <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                      {selectedStocker.address}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* 4. Medicines Inventory Table / Cards (§12, §14, §17) */}
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.cardLabel}>
+                {viewMode === 'catalog'
+                  ? `💊 All Company Medicines Catalog (${filteredInventory.length})`
+                  : `📦 Available Stockist Medicines (${filteredInventory.length})`}
+              </Text>
+            </View>
+
+            {/* Search */}
+            <TextInput
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="🔍 Search medicine by name or code..."
+              placeholderTextColor="#94A3B8"
+            />
+
+            {isLoading ? (
+              <ActivityIndicator style={{ padding: 20 }} color="#1A3C6E" />
+            ) : filteredInventory.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>No medicines found in this stocker's inventory.</Text>
               </View>
-            );
-          })
-        )}
-      </View>
+            ) : (
+              filteredInventory.map((item) => {
+                const isOutOfStock = item.quantity <= 0;
+                const isLowStock = !isOutOfStock && item.status === 'Low Stock';
+
+                return (
+                  <View key={item.id} style={styles.productCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.productName}>{item.medicine_name}</Text>
+                      <Text style={styles.productCode}>
+                        Code: {item.medicine_code} • {item.unit}
+                      </Text>
+                      <Text style={styles.productPrice}>
+                        {item.price != null ? `₹${Number(item.price).toLocaleString()} per unit` : 'Price not set'}
+                      </Text>
+                    </View>
+
+                    {/* Stock Quantity & Status Badge (§17) */}
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                        <Text
+                          style={[
+                            styles.quantityNumber,
+                            item.quantity < 0
+                              ? { color: '#B91C1C' }
+                              : item.quantity === 0
+                              ? { color: '#D97706' }
+                              : { color: '#15803D' },
+                          ]}
+                        >
+                          {item.quantity}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: '#64748B', marginLeft: 2 }}>units</Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.stockStatusBadge,
+                          item.quantity < 0
+                            ? { backgroundColor: '#FEE2E2' }
+                            : item.quantity === 0
+                            ? { backgroundColor: '#FEF3C7' }
+                            : isLowStock
+                            ? { backgroundColor: '#FFEDD5' }
+                            : { backgroundColor: '#DCFCE7' },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.stockStatusText,
+                            item.quantity < 0
+                              ? { color: '#B91C1C' }
+                              : item.quantity === 0
+                              ? { color: '#B45309' }
+                              : isLowStock
+                              ? { color: '#C2410C' }
+                              : { color: '#15803D' },
+                          ]}
+                        >
+                          {item.quantity < 0
+                            ? `Shortage (${item.quantity})`
+                            : item.quantity === 0
+                            ? 'Out of Stock'
+                            : isLowStock
+                            ? 'Low Stock'
+                            : 'Available'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 };

@@ -106,19 +106,119 @@ export class OrdersService {
     return order;
   }
 
+  private resolveItemPricing(item: any, userRole?: string): {
+    matchedMed: any;
+    variant: any;
+    ptsRate: number;
+    mrp: number;
+    packagingDisplay?: string;
+  } {
+    const matchedMed = this.db.medicines.find(
+      (m) =>
+        (item.product_id && m.id === item.product_id) ||
+        m.code.toLowerCase() === (item.product_id || '').toLowerCase() ||
+        m.name.toLowerCase() === (item.product_name || '').trim().toLowerCase(),
+    );
+
+    if (!matchedMed) {
+      throw new BadRequestException(`Medicine '${item.product_name || item.product_id}' not found in medicine master`);
+    }
+
+    let variant: any = null;
+    let ptsRate = 0;
+    let mrp = matchedMed.mrp || 0;
+
+    if (item.packaging_id) {
+      variant = (this.db.medicinePackagingVariants || []).find(
+        (v) => v.id === item.packaging_id && v.medicine_id === matchedMed.id,
+      );
+      if (!variant) {
+        throw new BadRequestException(`Packaging variant does not belong to medicine '${matchedMed.name}'`);
+      }
+      const isActive = variant.is_active !== undefined ? variant.is_active : (variant.status === 'ACTIVE');
+      if (!isActive) {
+        const variantName = variant.display_label || variant.variant_name || variant.display_name || variant.id;
+        throw new BadRequestException(`Packaging variant '${variantName}' is inactive`);
+      }
+      ptsRate = variant.pts_rate;
+      mrp = variant.mrp;
+    } else {
+      // Find active variants for this medicine
+      const variants = (this.db.medicinePackagingVariants || []).filter(
+        (v) => v.medicine_id === matchedMed.id && (v.is_active !== false && v.status !== 'INACTIVE'),
+      );
+      if (variants.length > 0) {
+        if (item.packaging_size) {
+          const matchedVariant = variants.find(
+            (v) =>
+              `${v.package_size || v.size || ''} ${v.package_unit || v.unit || ''}`.trim().toLowerCase() === item.packaging_size.toLowerCase() ||
+              (v.display_label || v.display_name || v.variant_name || '').toLowerCase() === item.packaging_size.toLowerCase(),
+          );
+          if (matchedVariant) {
+            variant = matchedVariant;
+            ptsRate = matchedVariant.pts_rate;
+            mrp = matchedVariant.mrp;
+          }
+        }
+        if (!variant) {
+          variant = variants[0];
+          ptsRate = variant.pts_rate;
+          mrp = variant.mrp;
+        }
+      } else {
+        ptsRate = matchedMed.pts_rate || matchedMed.base_price || 0;
+        mrp = matchedMed.mrp || 0;
+      }
+    }
+
+    if (!ptsRate || ptsRate <= 0) {
+      throw new BadRequestException(
+        `Medicine '${matchedMed.name}' does not have a valid PTS rate configured. Cannot calculate order amount.`,
+      );
+    }
+
+    // Reject price tampering attempts by non-admins
+    if (userRole === 'MR' || !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+      if (item.unit_price !== undefined && Math.abs(Number(item.unit_price) - ptsRate) > 0.01) {
+        throw new BadRequestException(
+          `Unauthorized price tampering: MR cannot modify PTS rate for '${matchedMed.name}'. Authoritative PTS is ₹${ptsRate}.`,
+        );
+      }
+    }
+
+    const packagingDisplay = variant
+      ? `${variant.size} ${variant.unit}`
+      : item.packaging_size || (matchedMed.packaging_variants && matchedMed.packaging_variants[0]?.display_name) || undefined;
+
+    return { matchedMed, variant, ptsRate, mrp, packagingDisplay };
+  }
+
   async createOrder(dto: CreateOrderDto, user: any): Promise<Order> {
     const validItems = (dto.items || [])
       .filter((i) => Number(i.quantity) > 0 && i.product_name?.trim()?.length > 0)
-      .map((i) => ({
-        product_id: i.product_id,
-        product_name: i.product_name.trim(),
-        quantity: Math.max(1, parseInt(String(i.quantity), 10) || 1),
-        unit_price: parseFloat(String(i.unit_price || 0)) || 0,
-        total_amount:
-          (Math.max(1, parseInt(String(i.quantity), 10) || 1)) *
-          (parseFloat(String(i.unit_price || 0)) || 0),
-        distributor: i.distributor || 'Central Stocker',
-      }));
+      .map((i) => {
+        const qty = Math.max(1, parseInt(String(i.quantity), 10) || 1);
+        const { matchedMed, variant, ptsRate, mrp, packagingDisplay } = this.resolveItemPricing(
+          i,
+          user?.role,
+        );
+
+        const lineTotal = Math.round(qty * ptsRate * 100) / 100;
+
+        return {
+          product_id: matchedMed.id,
+          product_name: matchedMed.name,
+          packaging_id: variant?.id,
+          packaging_size: packagingDisplay,
+          packaging_unit: variant?.unit,
+          quantity: qty,
+          unit_price: ptsRate, // Authoritative PTS Rate
+          pts_rate: ptsRate,
+          mrp: mrp, // Reference only
+          total_amount: lineTotal,
+          distributor: i.distributor || 'Central Stocker',
+        };
+      });
 
     if (validItems.length === 0) {
       throw new BadRequestException('At least one valid item with positive quantity is required');
@@ -197,16 +297,39 @@ export class OrdersService {
   async createFromTask(task: Task, items: any[], userId: string): Promise<Order | null> {
     const validItems = (items || [])
       .filter((i) => Number(i.quantity) > 0 && i.product_name?.trim()?.length > 0)
-      .map((i) => ({
-        product_id: i.product_id,
-        product_name: i.product_name.trim(),
-        quantity: Math.max(1, parseInt(String(i.quantity), 10) || 1),
-        unit_price: parseFloat(String(i.unit_price || 0)) || 0,
-        total_amount:
-          (Math.max(1, parseInt(String(i.quantity), 10) || 1)) *
-          (parseFloat(String(i.unit_price || 0)) || 0),
-        distributor: i.distributor || 'Central Stocker',
-      }));
+      .map((i) => {
+        const qty = Math.max(1, parseInt(String(i.quantity), 10) || 1);
+        try {
+          const { matchedMed, variant, ptsRate, mrp, packagingDisplay } = this.resolveItemPricing(
+            i,
+            'MR',
+          );
+          const lineTotal = Math.round(qty * ptsRate * 100) / 100;
+          return {
+            product_id: matchedMed.id,
+            product_name: matchedMed.name,
+            packaging_id: variant?.id,
+            packaging_size: packagingDisplay,
+            packaging_unit: variant?.unit,
+            quantity: qty,
+            unit_price: ptsRate,
+            pts_rate: ptsRate,
+            mrp: mrp,
+            total_amount: lineTotal,
+            distributor: i.distributor || 'Central Stocker',
+          };
+        } catch {
+          const fallbackPrice = parseFloat(String(i.unit_price || 0)) || 0;
+          return {
+            product_id: i.product_id,
+            product_name: i.product_name.trim(),
+            quantity: qty,
+            unit_price: fallbackPrice,
+            total_amount: qty * fallbackPrice,
+            distributor: i.distributor || 'Central Stocker',
+          };
+        }
+      });
 
     if (validItems.length === 0) return null;
 

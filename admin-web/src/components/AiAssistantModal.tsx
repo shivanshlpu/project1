@@ -98,10 +98,18 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
     setQuery('');
     setIsLoading(true);
 
+    const getAuthHeaders = () => {
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+    };
+
     try {
       const res = await fetch(`${apiUrl}/api/ai/query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           query: q,
           dateRange: { start: startDate, end: endDate },
@@ -135,10 +143,14 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   // Export Excel handler
   const handleExportExcel = async () => {
     setIsExportingExcel(true);
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
     try {
       const res = await fetch(`${apiUrl}/api/ai/export/excel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           dateRange: { start: startDate, end: endDate },
         }),
@@ -165,10 +177,14 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   // Export PDF / Print handler
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
     try {
       const res = await fetch(`${apiUrl}/api/ai/export/pdf`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           dateRange: { start: startDate, end: endDate },
         }),

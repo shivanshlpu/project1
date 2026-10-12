@@ -21,14 +21,30 @@ coverage/
 .env.production.local
 !.env.example
 
-# Markdown Documentation & Endpoint Test Files (User Directive)
+# Runtime Database Stores & Snapshots (Local Retention)
+backend/data/ffa_db_store.json
+**/ffa_db_store.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Private Internal Documentation, Plans & AI Prompts (Local Retention)
 *.md
 **/*.md
 *.pdf
 **/*.pdf
+docs/
+build-system/skills/
 generate_audit_pdf.py
+
+# Local Development Scripts & Ad-Hoc Test Files (Local Retention)
 test_endpoints.js
 *endpoint*
+backend/test_orders_workflow.js
+backend/test_round_trip_and_distance.js
+backend/test/benchmark-concurrency.js
+backend/test/load-test.k6.js
+mobile/wait_and_update_apk.js
 
 # Certificates & Private Keys
 *.pem
@@ -43,7 +59,6 @@ test_endpoints.js
 # Expo & Mobile Build Artifacts
 .expo/
 *.apk
-*.jks
 *.p8
 *.mobileprovision
 
@@ -57,10 +72,6 @@ pnpm-debug.log*
 # Editor & OS Artifacts
 .DS_Store
 Thumbs.db
-
-# Scratch directory
-scratch/
-
 desktop.ini
 .vscode/*
 !.vscode/extensions.json
@@ -70,3 +81,6 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch Directory
+scratch/

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
+import { StockageWorkflowPanel } from '../components/StockageWorkflowPanel';
 
 interface Headquarter {
   id: string;
@@ -102,19 +103,44 @@ const NON_HQ_NAMES = new Set([
 
 const getMergedHqs = (): Headquarter[] => {
   const map = new Map<string, Headquarter>();
-  for (const hq of DEFAULT_HQS) {
-    map.set(hq.name.toLowerCase().trim(), { ...hq });
-  }
 
+  // 1. Check if operating cities are configured in Settings (authoritative source)
+  try {
+    const savedCities = localStorage.getItem('ahtri_operating_cities');
+    if (savedCities) {
+      const parsed = JSON.parse(savedCities);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        for (const c of parsed) {
+          const name = c.cityName || c.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (NON_HQ_NAMES.has(key)) continue;
+            const isHq = !!c.isHeadquarters || c.branchType === 'HEADQUARTERS';
+            map.set(key, {
+              id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+              name: name.trim(),
+              code: `HQ-${name.substring(0, 3).toUpperCase()}`,
+              state: c.state || '',
+              isHeadquarters: isHq,
+            });
+          }
+        }
+        if (map.size > 0) {
+          return Array.from(map.values());
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Fall back to ahtri_inventory_hqs if operating cities not set
   try {
     const saved = localStorage.getItem('ahtri_inventory_hqs');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         for (const item of parsed) {
           if (item && item.name) {
             const key = item.name.toLowerCase().trim();
-            // Jaisinghnagar, Burhar etc. are sub-areas, never HQs
             if (NON_HQ_NAMES.has(key)) continue;
             map.set(key, {
               id: item.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
@@ -125,35 +151,17 @@ const getMergedHqs = (): Headquarter[] => {
             });
           }
         }
-      }
-    }
-  } catch {}
-
-  try {
-    const savedCities = localStorage.getItem('ahtri_operating_cities');
-    if (savedCities) {
-      const parsed = JSON.parse(savedCities);
-      if (Array.isArray(parsed)) {
-        for (const c of parsed) {
-          const name = c.cityName || c.name;
-          if (name) {
-            const key = name.toLowerCase().trim();
-            if (NON_HQ_NAMES.has(key)) continue;
-            const isHq = !!c.isHeadquarters || c.branchType === 'HEADQUARTERS';
-            if (!isHq) continue; // Only actual HQs should be merged
-            const existing = map.get(key);
-            map.set(key, {
-              id: existing?.id || (c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`),
-              name: name.trim(),
-              code: existing?.code || `HQ-${name.substring(0, 3).toUpperCase()}`,
-              state: c.state || existing?.state || '',
-              isHeadquarters: isHq,
-            });
-          }
+        if (map.size > 0) {
+          return Array.from(map.values());
         }
       }
     }
   } catch {}
+
+  // 3. Fallback to default HQs
+  for (const hq of DEFAULT_HQS) {
+    map.set(hq.name.toLowerCase().trim(), { ...hq });
+  }
 
   return Array.from(map.values());
 };
@@ -177,6 +185,9 @@ interface MedicineItem {
   product_code: string;
   unit: string;
   base_price?: number | null;
+  pts_rate?: number;
+  mrp?: number;
+  packaging_variants?: any[];
   status?: string;
   is_active: boolean;
   low_stock_threshold: number;
@@ -234,7 +245,7 @@ interface InventoryAuditItem {
 }
 
 export const StockerManagementView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'INVENTORY' | 'MONTHLY_INWARD' | 'STOCKERS' | 'MEDICINES' | 'ALERTS' | 'AUDIT'>('INVENTORY');
+  const [activeTab, setActiveTab] = useState<'INVENTORY' | 'STOCKAGE_WORKFLOW' | 'MONTHLY_INWARD' | 'STOCKERS' | 'MEDICINES' | 'ALERTS' | 'AUDIT'>('INVENTORY');
 
   const initialHqs = getMergedHqs();
   const defaultSelectedHq = initialHqs.find((h) => h.isHeadquarters) || initialHqs[0];
@@ -404,27 +415,53 @@ export const StockerManagementView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          const current = getMergedHqs();
+          // If operating cities is configured in Settings, that is the authoritative list
+          const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
+          let operatingNames: Set<string> | null = null;
+          if (savedCitiesRaw) {
+            try {
+              const parsed = JSON.parse(savedCitiesRaw);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                operatingNames = new Set(
+                  parsed.map((c: any) => (c.cityName || c.name || '').toLowerCase().trim()).filter(Boolean)
+                );
+              }
+            } catch {}
+          }
+
           const map = new Map<string, Headquarter>();
-          current.forEach((h) => map.set(h.name.toLowerCase().trim(), h));
           data.forEach((h: any) => {
             const key = h.name.toLowerCase().trim();
             if (NON_HQ_NAMES.has(key)) return;
-            const existing = map.get(key);
+            // Filter out any HQ that was deleted in Settings
+            if (operatingNames && !operatingNames.has(key)) return;
             map.set(key, {
               id: h.id,
               name: h.name,
               code: h.code || `HQ-${h.name.substring(0, 3).toUpperCase()}`,
               state: h.state || '',
-              isHeadquarters: existing?.isHeadquarters || false,
+              isHeadquarters: h.isHeadquarters || false,
             });
           });
+
+          // Also include any new operating cities from Settings
+          const current = getMergedHqs();
+          current.forEach((h) => {
+            const key = h.name.toLowerCase().trim();
+            if (NON_HQ_NAMES.has(key)) return;
+            if (!map.has(key)) {
+              map.set(key, h);
+            }
+          });
+
           const merged = Array.from(map.values());
-          setHqs(merged);
-          try {
-            localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(merged));
-          } catch {}
-          return;
+          if (merged.length > 0) {
+            setHqs(merged);
+            try {
+              localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(merged));
+            } catch {}
+            return;
+          }
         }
       }
     } catch {}
@@ -446,6 +483,13 @@ export const StockerManagementView: React.FC = () => {
       window.removeEventListener('storage', handleHqUpdate);
     };
   }, [apiUrl]);
+
+  useEffect(() => {
+    if (hqs.length > 0 && !hqs.some((h) => h.id === selectedHqId)) {
+      setSelectedHqId(hqs[0].id);
+      setNewStockerHqId(hqs[0].id);
+    }
+  }, [hqs, selectedHqId]);
 
   // Load stockers when HQ changes (§10)
   const fetchStockers = async () => {
@@ -679,6 +723,23 @@ export const StockerManagementView: React.FC = () => {
     setHqs(updated);
     try {
       localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
+
+      // Also update in ahtri_operating_cities
+      const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
+      if (savedCitiesRaw) {
+        const cities = JSON.parse(savedCitiesRaw);
+        if (Array.isArray(cities)) {
+          const updatedCities = cities.map((c: any) => {
+            const cName = (c.cityName || c.name || '').toLowerCase().trim();
+            if (cName === editingHq.name.toLowerCase().trim()) {
+              return { ...c, cityName: name, name, state };
+            }
+            return c;
+          });
+          localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedCities));
+        }
+      }
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
     setIsEditHqModalOpen(false);
@@ -707,6 +768,20 @@ export const StockerManagementView: React.FC = () => {
     setHqs(updated);
     try {
       localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
+
+      // Also remove from ahtri_operating_cities
+      const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
+      if (savedCitiesRaw) {
+        const cities = JSON.parse(savedCitiesRaw);
+        if (Array.isArray(cities)) {
+          const filteredCities = cities.filter((c: any) => {
+            const cName = (c.cityName || c.name || '').toLowerCase().trim();
+            return cName !== target.name.toLowerCase().trim();
+          });
+          localStorage.setItem('ahtri_operating_cities', JSON.stringify(filteredCities));
+        }
+      }
+      window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
     if (selectedHqId === hqId && updated.length > 0) {
@@ -1150,6 +1225,34 @@ export const StockerManagementView: React.FC = () => {
 
         <button
           onClick={() => {
+            setActiveTab('STOCKAGE_WORKFLOW');
+            fetchMedicines();
+          }}
+          style={{
+            flex: 'none',
+            padding: '8px 14px',
+            borderRadius: 6,
+            border: 'none',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            background: activeTab === 'STOCKAGE_WORKFLOW' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'STOCKAGE_WORKFLOW' ? '#0F8B5A' : 'var(--color-text-secondary)',
+            boxShadow: activeTab === 'STOCKAGE_WORKFLOW' ? 'var(--shadow-xs)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <CheckCircle size={14} color={activeTab === 'STOCKAGE_WORKFLOW' ? '#0F8B5A' : '#64748B'} />
+          <span>MR Stockage Permissions &amp; Approvals</span>
+          <span style={{ background: '#DCFCE7', color: '#166534', fontSize: 10, padding: '1px 6px', borderRadius: 8, fontWeight: 800 }}>Workflow</span>
+        </button>
+
+        <button
+          onClick={() => {
             setActiveTab('MONTHLY_INWARD');
             fetchMedicines();
             fetchMonthlyEntries();
@@ -1413,6 +1516,20 @@ export const StockerManagementView: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* ================= TAB: STOCKAGE PERMISSIONS & APPROVALS WORKFLOW ================= */}
+      {activeTab === 'STOCKAGE_WORKFLOW' && (
+        <StockageWorkflowPanel
+          apiUrl={apiUrl}
+          getAuthHeaders={getAuthHeaders}
+          hqs={hqs}
+          stockers={stockers}
+          medicines={medicines}
+          onRefreshInventory={() => {
+            fetchInventory();
+          }}
+        />
       )}
 
       {/* ================= TAB 1: STOCKER INVENTORY ================= */}
@@ -2547,7 +2664,8 @@ export const StockerManagementView: React.FC = () => {
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medicine Name</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>SKU Code</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Packaging Unit</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Fixed Base Price</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#047857' }}>PTS Rate (₹)</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>MRP (₹)</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Low Stock Threshold</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Catalog Status</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
@@ -2565,8 +2683,11 @@ export const StockerManagementView: React.FC = () => {
                     <td style={{ padding: '11px 14px', color: '#334155' }}>
                       {med.unit}
                     </td>
-                    <td style={{ padding: '11px 14px', fontWeight: 800, color: '#166534' }}>
-                      {med.base_price != null ? `₹${Number(med.base_price).toFixed(2)}` : <span style={{ color: '#94A3B8', fontWeight: 500 }}>— (No Price)</span>}
+                    <td style={{ padding: '11px 14px', fontWeight: 800, color: '#047857' }}>
+                      ₹{Number(med.pts_rate || med.base_price || 0).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '11px 14px', fontWeight: 600, color: '#64748B' }}>
+                      {med.mrp != null ? `₹${Number(med.mrp).toFixed(2)}` : '—'}
                     </td>
                     <td style={{ padding: '11px 14px', color: '#64748B' }}>
                       {med.low_stock_threshold} units

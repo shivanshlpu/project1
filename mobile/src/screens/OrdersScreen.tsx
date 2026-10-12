@@ -661,18 +661,13 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
                     />
                   </View>
 
-                  <View style={{ width: 75, marginRight: 6 }}>
-                    <Text style={styles.itemSubLabel}>Price (₹)</Text>
-                    <TextInput
-                      style={[styles.modalItemInput, { textAlign: 'center' }]}
-                      keyboardType="numeric"
-                      value={item.unit_price}
-                      onChangeText={(val) => {
-                        setNewOrderItems((prev) =>
-                          prev.map((i) => (i.id === item.id ? { ...i, unit_price: val } : i))
-                        );
-                      }}
-                    />
+                  <View style={{ width: 85, marginRight: 6 }}>
+                    <Text style={styles.itemSubLabel}>PTS Rate (₹)</Text>
+                    <View style={[styles.modalItemInput, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' }]}>
+                      <Text style={{ fontWeight: '800', color: '#047857', fontSize: 12 }}>
+                        ₹{parseFloat(item.unit_price || '0').toFixed(2)}
+                      </Text>
+                    </View>
                   </View>
 
                   {newOrderItems.length > 1 && (
