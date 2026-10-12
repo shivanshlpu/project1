@@ -28,7 +28,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="logo-badge">A</div>
+        <div
+          className="logo-badge"
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '8px',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+            overflow: 'hidden',
+          }}
+        >
+          <img
+            src="/assets/ahtri_logo.png"
+            alt="AHTRI BIOTECH"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
+        </div>
         <div>
           <h2 className="brand-title">AHTRI FFA</h2>
           <div className="brand-subtitle">Field Force Automation</div>

@@ -109,7 +109,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
   const fetchOrders = useCallback(async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
-      const headers = await ApiConfig.getAuthHeaders();
+      const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
       // Scoped fetch: will return orders matching current user's HQ or created by this user
       const res = await fetch(`${baseUrl}/orders`, { headers });
@@ -182,7 +182,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
             setActionProcessingId(order.id);
             try {
               const baseUrl = await ApiConfig.getBaseUrl();
-              const headers = await ApiConfig.getAuthHeaders();
+              const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
               const res = await fetch(`${baseUrl}/orders/${order.id}/delivery`, {
                 method: 'PATCH',
@@ -241,7 +241,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
-      const headers = await ApiConfig.getAuthHeaders();
+      const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
       const res = await fetch(`${baseUrl}/orders`, {
         method: 'POST',

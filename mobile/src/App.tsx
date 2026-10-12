@@ -442,8 +442,8 @@ export default function App() {
             <View style={styles.brandRow}>
               <Image
                 source={require('../assets/logo.png')}
-                style={{ width: 34, height: 34, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#38BDF8' }}
-                resizeMode="cover"
+                style={{ width: 36, height: 36, borderRadius: 8, marginRight: 8, backgroundColor: '#FFFFFF', padding: 2, borderWidth: 1, borderColor: '#CBD5E1' }}
+                resizeMode="contain"
               />
               <View style={{ flexShrink: 1, minWidth: 0 }}>
                 <Text style={styles.brandTitle} numberOfLines={1}>AHTRI FFA Mobile</Text>

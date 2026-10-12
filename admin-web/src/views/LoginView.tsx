@@ -181,8 +181,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
       <div className="login-card">
         {/* Brand Header */}
         <div className="login-brand-header">
-          <div className="login-badge">
-            <Building size={26} color="#ffffff" />
+          <div
+            className="login-badge"
+            style={{
+              background: '#FFFFFF',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+              borderRadius: '16px',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '72px',
+              height: '72px',
+              margin: '0 auto 12px',
+              border: '1.5px solid #E2E8F0',
+              overflow: 'hidden',
+            }}
+          >
+            <img
+              src="/assets/ahtri_logo.png"
+              alt="AHTRI BIOTECH"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           <div className="login-brand-title">
             <h2>AHTRI BIOTECH</h2>

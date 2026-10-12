@@ -183,22 +183,25 @@ export const TopNav: React.FC<TopNavProps> = ({
             <div
               className="company-badge"
               style={{
-                background: 'linear-gradient(135deg, #1A3C6E 0%, #0F274A 100%)',
+                background: '#FFFFFF',
                 borderRadius: '8px',
-                width: '32px',
-                height: '32px',
+                width: '36px',
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 5px rgba(26, 60, 110, 0.25)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
                 flexShrink: 0,
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                border: '1px solid #E2E8F0',
+                padding: '2px',
+                overflow: 'hidden',
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 4H14V10H20V14H14V20H10V14H4V10H10V4Z" fill="#FFFFFF" />
-                <circle cx="12" cy="12" r="2.2" fill="#10B981" />
-              </svg>
+              <img
+                src="/assets/ahtri_logo.png"
+                alt="AHTRI BIOTECH"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </div>
             <div className="brand-text-col">
               <span className="brand-org-name" style={{ fontSize: '13.5px', fontWeight: 800, letterSpacing: '0.03em', color: '#0F172A', whiteSpace: 'nowrap' }}>

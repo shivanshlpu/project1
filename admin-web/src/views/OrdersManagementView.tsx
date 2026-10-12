@@ -54,8 +54,8 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
       const headers = getAuthHeaders();
 
       const [ordersRes, hqsRes] = await Promise.all([
-        resilientFetch(`${baseUrl}/orders`, { headers }),
-        resilientFetch(`${baseUrl}/inventory/hqs`, { headers }).catch(() => null),
+        resilientFetch('/orders', { headers }),
+        resilientFetch('/inventory/hqs', { headers }).catch(() => null),
       ]);
 
       if (ordersRes && ordersRes.ok) {
@@ -89,9 +89,22 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     return orders.filter((o) => {
       // HQ filter
       if (filterHq !== 'ALL') {
-        const hqNorm = filterHq.toLowerCase();
-        const ordHqNorm = (o.hq_id || '').toLowerCase();
-        if (!ordHqNorm.includes(hqNorm) && o.hq_id !== filterHq && o.hq_name !== filterHq) {
+        const selectedHq = hqs.find((h) => h.id === filterHq);
+        const selectedHqName = (selectedHq?.name || '').toLowerCase();
+        const selectedHqCode = (selectedHq?.code || '').toLowerCase();
+        const selectedHqId = filterHq.toLowerCase();
+
+        const ordHqId = (o.hq_id || '').toLowerCase();
+        const ordHqName = (o.hq_name || '').toLowerCase();
+
+        const matches =
+          ordHqId === selectedHqId ||
+          ordHqName === selectedHqName ||
+          (selectedHqCode && (ordHqId.includes(selectedHqCode) || ordHqName.includes(selectedHqCode))) ||
+          (selectedHqName && ordHqName.includes(selectedHqName)) ||
+          (ordHqName && selectedHqName && (ordHqName.includes(selectedHqName) || selectedHqName.includes(ordHqName)));
+
+        if (!matches) {
           return false;
         }
       }
@@ -143,8 +156,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     const nextStatus = order.delivery_status === 'DELIVERED' ? 'PENDING' : 'DELIVERED';
     setIsProcessingAction(order.id);
     try {
-      const baseUrl = getApiUrl().replace(/\/+$/, '');
-      const res = await resilientFetch(`${baseUrl}/orders/${order.id}/delivery`, {
+      const res = await resilientFetch(`/orders/${order.id}/delivery`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -187,8 +199,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   const handleExecuteHqAcceptance = async (order: OrderItemRecord) => {
     setIsProcessingAction(order.id);
     try {
-      const baseUrl = getApiUrl().replace(/\/+$/, '');
-      const res = await resilientFetch(`${baseUrl}/orders/${order.id}/accept`, {
+      const res = await resilientFetch(`/orders/${order.id}/accept`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
       });

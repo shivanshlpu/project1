@@ -539,8 +539,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <View style={styles.brandContainer}>
           <Image
             source={require('../../assets/logo.png')}
-            style={{ width: 68, height: 68, borderRadius: 16, marginBottom: 12, borderWidth: 1.5, borderColor: '#EA580C' }}
-            resizeMode="cover"
+            style={{ width: 76, height: 76, borderRadius: 16, marginBottom: 12, backgroundColor: '#FFFFFF', padding: 4, borderWidth: 1, borderColor: '#EA580C' }}
+            resizeMode="contain"
           />
           <Text style={styles.brandTitle}>Device Authorization Required</Text>
           <Text style={styles.brandSubtitle}>Owner-Controlled Security Verification</Text>
@@ -638,8 +638,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       <View style={styles.brandContainer}>
         <Image
           source={require('../../assets/logo.png')}
-          style={{ width: 78, height: 78, borderRadius: 18, marginBottom: 14, borderWidth: 1.5, borderColor: '#38BDF8' }}
-          resizeMode="cover"
+          style={{ width: 92, height: 92, borderRadius: 20, marginBottom: 14, backgroundColor: '#FFFFFF', padding: 6, borderWidth: 1, borderColor: '#38BDF8' }}
+          resizeMode="contain"
         />
         <Text style={styles.brandTitle}>AHTRI Field Force Automation</Text>
         <Text style={styles.brandSubtitle}>Medical Representative Mobile Gateway</Text>

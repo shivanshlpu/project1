@@ -49,7 +49,9 @@ export class OrdersService {
     // If not admin, the user can ONLY see orders for their assigned HQ (or their own created orders)
     // "only the HQ for which it was made can see it in their ID, not all HQs"
     if (!isAdmin) {
-      const userHqNorm = this.normalizeHq(user?.hq_id);
+      const dbUser = this.db.users.find((u) => u.id === user?.id);
+      const effectiveHq = user?.hq_id || (user as any)?.area_id || dbUser?.hq_id || (dbUser as any)?.area_id;
+      const userHqNorm = this.normalizeHq(effectiveHq);
       list = list.filter((ord) => {
         const ordHqNorm = this.normalizeHq(ord.hq_id);
         const matchesHq = userHqNorm && ordHqNorm && userHqNorm === ordHqNorm;
@@ -90,7 +92,9 @@ export class OrdersService {
 
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
     if (!isAdmin) {
-      const userHqNorm = this.normalizeHq(user?.hq_id);
+      const dbUser = this.db.users.find((u) => u.id === user?.id);
+      const effectiveHq = user?.hq_id || (user as any)?.area_id || dbUser?.hq_id || (dbUser as any)?.area_id;
+      const userHqNorm = this.normalizeHq(effectiveHq);
       const ordHqNorm = this.normalizeHq(order.hq_id);
       const matchesHq = userHqNorm && ordHqNorm && userHqNorm === ordHqNorm;
       const isCreator = order.mr_id === user?.id;
@@ -262,7 +266,9 @@ export class OrdersService {
 
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
     const isCreator = order.mr_id === user?.id;
-    const isSameHq = this.normalizeHq(order.hq_id) === this.normalizeHq(user?.hq_id);
+    const dbUser = this.db.users.find((u) => u.id === user?.id);
+    const effectiveHq = user?.hq_id || (user as any)?.area_id || dbUser?.hq_id || (dbUser as any)?.area_id;
+    const isSameHq = this.normalizeHq(order.hq_id) === this.normalizeHq(effectiveHq);
 
     if (!isAdmin && !isCreator && !isSameHq) {
       throw new ForbiddenException('You do not have permission to update the delivery status of this order');

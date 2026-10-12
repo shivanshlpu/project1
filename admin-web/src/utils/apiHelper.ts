@@ -53,9 +53,21 @@ export async function resilientFetch(
   init?: RequestInit,
   timeoutMs = 8000
 ): Promise<Response> {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const primaryBase = getApiBaseUrl();
+  // Strip protocol and hostname if absolute URL was passed
+  let cleanEndpoint = endpoint;
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    try {
+      const parsed = new URL(endpoint);
+      cleanEndpoint = parsed.pathname + parsed.search;
+    } catch {
+      cleanEndpoint = endpoint.replace(/^https?:\/\/[^/]+/, '');
+    }
+  }
+  if (!cleanEndpoint.startsWith('/')) {
+    cleanEndpoint = `/${cleanEndpoint}`;
+  }
 
+  const primaryBase = getApiBaseUrl();
   const baseHeaders = getAuthHeaders();
   const mergedInit: RequestInit = {
     ...init,
@@ -85,7 +97,7 @@ export async function resilientFetch(
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       const fallbackRes = await fetch(`${RENDER_BACKEND_URL}${cleanEndpoint}`, {
-        ...init,
+        ...mergedInit,
         signal: controller.signal,
       });
       clearTimeout(timer);
@@ -100,7 +112,7 @@ export async function resilientFetch(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     const localRes = await fetch(`${LOCAL_BACKEND_URL}${cleanEndpoint}`, {
-      ...init,
+      ...mergedInit,
       signal: controller.signal,
     });
     clearTimeout(timer);
