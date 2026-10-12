@@ -63,14 +63,23 @@ interface OrdersScreenProps {
 }
 
 const COMMON_PRODUCTS = [
-  { name: 'Cefixime 200mg Tablets', price: 120 },
-  { name: 'Amoxicillin + Clav 625mg', price: 185 },
-  { name: 'Paracetamol 650mg Tabs', price: 35 },
-  { name: 'Pantoprazole 40mg DSR', price: 140 },
-  { name: 'Azithromycin 500mg Tabs', price: 110 },
-  { name: 'Montelukast + Levocetirizine', price: 95 },
-  { name: 'Multivitamin & Zinc Syrup', price: 80 },
-  { name: 'Diclofenac Gel 30g', price: 65 },
+  { name: 'AHTRI-S (200 ML)', price: 38.40 },
+  { name: 'AHTRI-A A2Z (200 ML)', price: 36.80 },
+  { name: 'AHTYME (200 ML)', price: 36.80 },
+  { name: 'ATHRIMOX CV 625 (10*1*10)', price: 68.00 },
+  { name: 'AHTRI-P (20*10)', price: 12.00 },
+  { name: 'TRIPAN DSR (10*10)', price: 20.80 },
+  { name: 'AHTRI SP (10*10)', price: 19.80 },
+  { name: 'TRIZOLE OC (30 GM)', price: 37.80 },
+  { name: 'TRIZOLE 200 (10*10)', price: 64.20 },
+  { name: 'AHTRI K27 (10*1*10)', price: 38.20 },
+  { name: 'TRIDIC GEL (30 GM)', price: 55.20 },
+  { name: 'AHTRI STRETCH MARK CREAM (50 GM)', price: 357.37 },
+  { name: 'AHTRI 5G SYP (200 ML)', price: 157.00 },
+  { name: 'TRIRAB DSR (10*10)', price: 80.46 },
+  { name: 'AHTRIMOX CV SUSPENSION (30 ML)', price: 42.00 },
+  { name: 'MAFTRI P (60 ML)', price: 63.70 },
+  { name: 'AHTRI 9G (200 ML)', price: 147.50 },
 ];
 
 export const OrdersScreen: React.FC<OrdersScreenProps> = ({

@@ -111,7 +111,7 @@ export const SalesmanPortalView: React.FC = () => {
 
   // Detailing State
   const [sampleUnits, setSampleUnits] = useState<number>(5);
-  const [doctorFeedback, setDoctorFeedback] = useState<string>('Reviewed clinical trial data for CardioFix-50. Prescribed for 12 hypertensive patients.');
+  const [doctorFeedback, setDoctorFeedback] = useState<string>('Reviewed clinical trial data for AHTRI-S. Prescribed for 12 patients.');
   const [signatureCaptured, setSignatureCaptured] = useState<boolean>(false);
 
   // Expense State
@@ -768,7 +768,7 @@ export const SalesmanPortalView: React.FC = () => {
                   Core Formulation:
                 </label>
                 <div style={{ background: '#e8eef8', color: '#0052cc', fontWeight: 600, padding: '7px 10px', borderRadius: '4px', fontSize: '12px' }}>
-                  CardioFix-50 (Telmisartan 40mg + Amlodipine 5mg)
+                  AHTRI-S (200 ML)
                 </div>
               </div>
 
@@ -865,7 +865,7 @@ export const SalesmanPortalView: React.FC = () => {
                 </div>
                 <div style={{ fontSize: '11px', color: '#5e6c84' }}>Apex Heart Centre, Saket • 10:30 AM</div>
                 <div style={{ fontSize: '11px', color: '#00875a', fontWeight: 600, marginTop: '2px' }}>
-                  {sampleUnits} strips CardioFix-50 dispensed
+                  {sampleUnits} packs AHTRI-S dispensed
                 </div>
               </div>
 

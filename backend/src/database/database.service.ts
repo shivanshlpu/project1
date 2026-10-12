@@ -259,7 +259,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
-        if (Array.isArray(data.stockerInventory)) this.stockerInventory = data.stockerInventory;
+        if (Array.isArray(data.stockerInventory)) {
+          const validMedIds = new Set(this.medicines.map((m) => m.id));
+          const existingInventory = data.stockerInventory.filter((inv: any) => validMedIds.has(inv.medicine_id));
+          const invMap = new Map<string, StockerInventory>();
+          for (const inv of this.stockerInventory) {
+            invMap.set(`${inv.stocker_id}-${inv.medicine_id}`, inv);
+          }
+          for (const inv of existingInventory) {
+            invMap.set(`${inv.stocker_id}-${inv.medicine_id}`, inv);
+          }
+          this.stockerInventory = Array.from(invMap.values());
+        }
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;
@@ -382,6 +393,28 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
+          // Sync medicines with Supabase
+          const { data: remoteMeds, error: medsErr } = await client
+            .from('medicines')
+            .select('*')
+            .order('id', { ascending: true });
+          if (!medsErr && remoteMeds && remoteMeds.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
+            this.medicines = remoteMeds.map((rm: any) => ({
+              id: rm.id,
+              name: rm.name,
+              code: rm.sku || rm.code || rm.id,
+              unit: rm.pack_size || rm.unit || 'Units',
+              base_price:
+                rm.unit_price !== undefined && rm.unit_price !== null
+                  ? Number(rm.unit_price)
+                  : null,
+              low_stock_threshold: 15,
+              status: rm.is_active === false ? 'INACTIVE' : 'ACTIVE',
+              created_at: rm.created_at || new Date().toISOString(),
+            }));
+          }
+
           // Purge legacy dummy clinics & legacy dummy MR IDs from Supabase if present
           try {
             await client.from('doctors').delete().in('id', ['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
@@ -398,9 +431,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     if (process.env.NODE_ENV !== 'test') {
       const LEGACY_DUMMY_IDS = new Set(['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
       const DUMMY_DOC_IDS = new Set(['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
+      const LEGACY_MED_NAMES = new Set([
+        'CardioFix-50 (Telmisartan 40mg)',
+        'CardioFix-AM (Telmisartan + Amlodipine)',
+        'DermaSoothe Cream 30g',
+        'Glucotrol-M (Metformin 500mg)',
+        'AhtriCef-O 200mg (Cefixime)',
+        'CardioFix 50mg',
+      ]);
       this.tasks = this.tasks.filter((t) => !LEGACY_DUMMY_IDS.has(t.assigned_mr_id) && !DUMMY_DOC_IDS.has(t.id));
       this.attendance = this.attendance.filter((a) => !LEGACY_DUMMY_IDS.has(a.user_id));
       this.doctors = this.doctors.filter((d) => !DUMMY_DOC_IDS.has(d.id));
+      this.medicines = this.medicines.filter((m) => !LEGACY_MED_NAMES.has(m.name));
     }
 
     // Employee Zone & HQ Data Normalization
@@ -1403,59 +1445,186 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       },
     ];
 
-    // 14. Seed Medicines Master (§11)
-    const med1: Medicine = {
-      id: 'med-01',
-      name: 'CardioFix-50 (Telmisartan 40mg)',
-      code: 'CF-50',
-      unit: 'Box of 10x10',
-      base_price: 180,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const med2: Medicine = {
-      id: 'med-02',
-      name: 'CardioFix-AM (Telmisartan + Amlodipine)',
-      code: 'CF-AM',
-      unit: 'Box of 10x10',
-      base_price: 220,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const med3: Medicine = {
-      id: 'med-03',
-      name: 'DermaSoothe Cream 30g',
-      code: 'DS-30',
-      unit: 'Tube',
-      base_price: 210,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const med4: Medicine = {
-      id: 'med-04',
-      name: 'Glucotrol-M (Metformin 500mg)',
-      code: 'GM-500',
-      unit: 'Box of 10x10',
-      base_price: 145,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    const med5: Medicine = {
-      id: 'med-05',
-      name: 'AhtriCef-O 200mg (Cefixime)',
-      code: 'ACO-200',
-      unit: 'Strip of 10',
-      base_price: 165,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    };
-    this.medicines.push(med1, med2, med3, med4, med5);
+    // 14. Seed Medicines Master (§11) - Authoritative 17 AHTRI Medicine Catalog
+    const seedMedicinesList: Medicine[] = [
+      {
+        id: 'med-01',
+        name: 'AHTRI-S',
+        code: 'AHTRI-S',
+        unit: '200 ML',
+        base_price: 38.40,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-02',
+        name: 'AHTRI-A A2Z',
+        code: 'AHTRI-A-A2Z',
+        unit: '200 ML',
+        base_price: 36.80,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-03',
+        name: 'AHTYME',
+        code: 'AHTYME',
+        unit: '200 ML',
+        base_price: 36.80,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-04',
+        name: 'ATHRIMOX CV 625',
+        code: 'ATHRIMOX-CV-625',
+        unit: '10*1*10',
+        base_price: 68.00,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-05',
+        name: 'AHTRI-P',
+        code: 'AHTRI-P',
+        unit: '20*10',
+        base_price: 12.00,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-06',
+        name: 'TRIPAN DSR',
+        code: 'TRIPAN-DSR',
+        unit: '10*10',
+        base_price: 20.80,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-07',
+        name: 'AHTRI SP',
+        code: 'AHTRI-SP',
+        unit: '10*10',
+        base_price: 19.80,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-08',
+        name: 'TRIZOLE OC',
+        code: 'TRIZOLE-OC',
+        unit: '30 GM',
+        base_price: 37.80,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-09',
+        name: 'TRIZOLE 200',
+        code: 'TRIZOLE-200',
+        unit: '10*10',
+        base_price: 64.20,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-10',
+        name: 'AHTRI K27',
+        code: 'AHTRI-K27',
+        unit: '10*1*10',
+        base_price: 38.20,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-11',
+        name: 'TRIDIC GEL',
+        code: 'TRIDIC-GEL',
+        unit: '30 GM',
+        base_price: 55.20,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-12',
+        name: 'AHTRI STRETCH MARK CREAM',
+        code: 'AHTRI-SMC',
+        unit: '50 GM',
+        base_price: 357.37,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-13',
+        name: 'AHTRI 5G SYP',
+        code: 'AHTRI-5G-SYP',
+        unit: '200 ML',
+        base_price: 157.00,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-14',
+        name: 'TRIRAB DSR',
+        code: 'TRIRAB-DSR',
+        unit: '10*10',
+        base_price: 80.46,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-15',
+        name: 'AHTRIMOX CV SUSPENSION',
+        code: 'AHTRIMOX-CV-SUSP',
+        unit: '30 ML',
+        base_price: 42.00,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-16',
+        name: 'MAFTRI P',
+        code: 'MAFTRI-P',
+        unit: '60 ML',
+        base_price: 63.70,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'med-17',
+        name: 'AHTRI 9G',
+        code: 'AHTRI-9G',
+        unit: '200 ML',
+        base_price: 147.50,
+        status: 'ACTIVE',
+        low_stock_threshold: 15,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    this.medicines = seedMedicinesList;
 
     // 14. Seed Stocker Inventory (§12 & §13) - Seed every stocker with complete medicines inventory
     for (const stk of this.stockers) {
       let mIdx = 1;
       for (const med of this.medicines) {
-        const qty = mIdx === 3 ? 15 : mIdx === 2 ? 30 : 50 + (mIdx * 10);
+        const qty = mIdx === 3 ? 15 : mIdx === 2 ? 30 : 50 + (mIdx * 5);
         this.stockerInventory.push({
           id: `inv-${stk.id}-${med.id}`,
           hq_id: stk.hq_id,
@@ -1474,7 +1643,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       id: 'tx-init-01',
       hq_id: hqShahdol.id,
       stocker_id: stocker1.id,
-      medicine_id: med1.id,
+      medicine_id: seedMedicinesList[0].id,
       quantity: 50,
       balance_after: 50,
       transaction_type: 'INITIAL',
@@ -1494,12 +1663,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         month: '2026-10',
         entry_date: '2026-10-01',
         invoice_no: 'INV-AHTRI-2026/10-01',
-        medicine_id: med1.id,
-        medicine_name: med1.name,
-        medicine_code: med1.code,
+        medicine_id: seedMedicinesList[0].id,
+        medicine_name: seedMedicinesList[0].name,
+        medicine_code: seedMedicinesList[0].code,
         quantity: 50,
-        unit: med1.unit,
-        batch_no: 'CF50-B2610',
+        unit: seedMedicinesList[0].unit,
+        batch_no: 'AHTRI-S-B2610',
         expiry_date: '2028-09-30',
         notes: 'Monthly batch delivery from central warehouse',
         user_id: 'usr-admin-shivansh',
@@ -1515,12 +1684,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         month: '2026-10',
         entry_date: '2026-10-01',
         invoice_no: 'INV-AHTRI-2026/10-01',
-        medicine_id: med4.id,
-        medicine_name: med4.name,
-        medicine_code: med4.code,
+        medicine_id: seedMedicinesList[3].id,
+        medicine_name: seedMedicinesList[3].name,
+        medicine_code: seedMedicinesList[3].code,
         quantity: 85,
-        unit: med4.unit,
-        batch_no: 'GM500-B2610',
+        unit: seedMedicinesList[3].unit,
+        batch_no: 'ATHRIMOX-B2610',
         expiry_date: '2028-11-30',
         notes: 'Regular monthly replenishment',
         user_id: 'usr-admin-shivansh',
@@ -1532,16 +1701,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     // 15. Seed Active Competition (§27)
     this.competitions.push({
       id: 'comp-shd-01',
-      name: 'Shahdol CardioFix-50 Sprint',
+      name: 'Shahdol AHTRI-S Sprint',
       start_date: '2026-09-01',
       end_date: '2026-10-31',
       hq_id: hqShahdol.id,
       hq_name: 'Shahdol',
-      medicine_id: med1.id,
-      medicine_name: 'CardioFix-50 (Telmisartan 40mg)',
+      medicine_id: seedMedicinesList[0].id,
+      medicine_name: seedMedicinesList[0].name,
       target_quantity: 100,
       reward_amount: 2000,
-      description: 'Sell 100 units of CardioFix-50 in Shahdol territory during September & October 2026 to earn an instant ₹2,000 cash incentive.',
+      description: `Sell 100 units of ${seedMedicinesList[0].name} in Shahdol territory during September & October 2026 to earn an instant ₹2,000 cash incentive.`,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     });
@@ -1563,7 +1732,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           planned_area: 'Shahdol',
           work_type: 'Doctor Visit',
           planned_kol_drs: 'Dr. Rajesh Sharma',
-          planned_activity: 'CardioFix-50 Detailing and Scheme Presentation',
+          planned_activity: 'AHTRI-S Detailing and Scheme Presentation',
         },
         {
           id: 'tp-item-2',
@@ -1636,16 +1805,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           stocker_name: stocker1.name,
           items: [
             {
-              product_id: med1.id,
-              product_name: med1.name,
+              product_id: seedMedicinesList[0].id,
+              product_name: seedMedicinesList[0].name,
               quantity: 20,
               unit_price: 150,
               total_amount: 3000,
               distributor: stocker1.name,
             },
             {
-              product_id: med2.id,
-              product_name: med2.name,
+              product_id: seedMedicinesList[1].id,
+              product_name: seedMedicinesList[1].name,
               quantity: 15,
               unit_price: 85,
               total_amount: 1275,
@@ -1674,8 +1843,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           stocker_name: stocker6.name,
           items: [
             {
-              product_id: med1.id,
-              product_name: med1.name,
+              product_id: seedMedicinesList[0].id,
+              product_name: seedMedicinesList[0].name,
               quantity: 30,
               unit_price: 150,
               total_amount: 4500,

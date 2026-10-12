@@ -3123,7 +3123,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                         value={taskTitle}
                         onChange={(e) => setTaskTitle(e.target.value)}
                         style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', boxSizing: 'border-box' }}
-                        placeholder="e.g. Dr. Rajesh Sharma Detailing - CardioFix Launch"
+                        placeholder="e.g. Dr. Rajesh Sharma Detailing - AHTRI-S Launch"
                       />
                     </div>
 

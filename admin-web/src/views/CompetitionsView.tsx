@@ -961,7 +961,7 @@ export const CompetitionsView: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Shahdol CardioFix-50 Festive Sprint"
+                placeholder="e.g. Shahdol AHTRI-S Festive Sprint"
                 value={compName}
                 onChange={(e) => setCompName(e.target.value)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}

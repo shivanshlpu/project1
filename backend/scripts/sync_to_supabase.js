@@ -205,11 +205,23 @@ async function main() {
   // 6. Sync Medicines
   console.log('⏳ Syncing medicines...');
   const defaultMedicines = [
-    { id: 'med-01', name: 'CardioFix-50', sku: 'CF-50-TEL', composition: 'Telmisartan 40mg', category: 'Cardiovascular', pack_size: '10x10 Tablets', unit_price: 180.0, mrp: 220.0, is_active: true },
-    { id: 'med-02', name: 'DermaSoothe Cream', sku: 'DS-CRM-30', composition: 'Clobetasol + Neomycin', category: 'Dermatology', pack_size: '30g Tube', unit_price: 210.0, mrp: 260.0, is_active: true },
-    { id: 'med-03', name: 'Glucotrol-M', sku: 'GLU-M-500', composition: 'Metformin 500mg', category: 'Diabetic', pack_size: '10x15 Tablets', unit_price: 145.0, mrp: 185.0, is_active: true },
-    { id: 'med-04', name: 'PanSafe-DSR', sku: 'PAN-DSR-40', composition: 'Pantoprazole 40mg + Domperidone 30mg', category: 'Gastro', pack_size: '10x10 Capsules', unit_price: 160.0, mrp: 210.0, is_active: true },
-    { id: 'med-05', name: 'ImmunoShield-C', sku: 'IMM-C-500', composition: 'Vitamin C 500mg + Zinc 10mg', category: 'Nutraceutical', pack_size: '20 Effervescent Tablets', unit_price: 120.0, mrp: 150.0, is_active: true },
+    { id: 'med-01', name: 'AHTRI-S', sku: 'AHTRI-S', pack_size: '200 ML', unit_price: 38.40, is_active: true },
+    { id: 'med-02', name: 'AHTRI-A A2Z', sku: 'AHTRI-A-A2Z', pack_size: '200 ML', unit_price: 36.80, is_active: true },
+    { id: 'med-03', name: 'AHTYME', sku: 'AHTYME', pack_size: '200 ML', unit_price: 36.80, is_active: true },
+    { id: 'med-04', name: 'ATHRIMOX CV 625', sku: 'ATHRIMOX-CV-625', pack_size: '10*1*10', unit_price: 68.00, is_active: true },
+    { id: 'med-05', name: 'AHTRI-P', sku: 'AHTRI-P', pack_size: '20*10', unit_price: 12.00, is_active: true },
+    { id: 'med-06', name: 'TRIPAN DSR', sku: 'TRIPAN-DSR', pack_size: '10*10', unit_price: 20.80, is_active: true },
+    { id: 'med-07', name: 'AHTRI SP', sku: 'AHTRI-SP', pack_size: '10*10', unit_price: 19.80, is_active: true },
+    { id: 'med-08', name: 'TRIZOLE OC', sku: 'TRIZOLE-OC', pack_size: '30 GM', unit_price: 37.80, is_active: true },
+    { id: 'med-09', name: 'TRIZOLE 200', sku: 'TRIZOLE-200', pack_size: '10*10', unit_price: 64.20, is_active: true },
+    { id: 'med-10', name: 'AHTRI K27', sku: 'AHTRI-K27', pack_size: '10*1*10', unit_price: 38.20, is_active: true },
+    { id: 'med-11', name: 'TRIDIC GEL', sku: 'TRIDIC-GEL', pack_size: '30 GM', unit_price: 55.20, is_active: true },
+    { id: 'med-12', name: 'AHTRI STRETCH MARK CREAM', sku: 'AHTRI-SMC', pack_size: '50 GM', unit_price: 357.37, is_active: true },
+    { id: 'med-13', name: 'AHTRI 5G SYP', sku: 'AHTRI-5G-SYP', pack_size: '200 ML', unit_price: 157.00, is_active: true },
+    { id: 'med-14', name: 'TRIRAB DSR', sku: 'TRIRAB-DSR', pack_size: '10*10', unit_price: 80.46, is_active: true },
+    { id: 'med-15', name: 'AHTRIMOX CV SUSPENSION', sku: 'AHTRIMOX-CV-SUSP', pack_size: '30 ML', unit_price: 42.00, is_active: true },
+    { id: 'med-16', name: 'MAFTRI P', sku: 'MAFTRI-P', pack_size: '60 ML', unit_price: 63.70, is_active: true },
+    { id: 'med-17', name: 'AHTRI 9G', sku: 'AHTRI-9G', pack_size: '200 ML', unit_price: 147.50, is_active: true },
   ];
   for (const med of defaultMedicines) {
     const { error } = await supabase.from('medicines').upsert(med, { onConflict: 'id' });
@@ -242,7 +254,7 @@ async function main() {
     {
       id: 'task-01',
       title: 'Dr. Rajesh Sharma Clinic Detailing',
-      description: 'Present CardioFix-50 scheme and distribute product samples.',
+      description: 'Present AHTRI-S scheme and distribute product samples.',
       assigned_mr_id: 'usr-mr-01',
       created_by: 'usr-mgr-01',
       date: '2026-10-05',

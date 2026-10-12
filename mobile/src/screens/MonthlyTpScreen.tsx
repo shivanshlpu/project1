@@ -1336,7 +1336,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               style={[styles.textInput, { height: 52 }]}
               value={plannedActivity}
               onChangeText={setPlannedActivity}
-              placeholder="e.g. CardioFix-50 scheme presentation & sample distribution [Optional]"
+              placeholder="e.g. AHTRI-S scheme presentation & sample distribution [Optional]"
               multiline
             />
 

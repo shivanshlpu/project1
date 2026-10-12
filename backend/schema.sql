@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS public.medicines (
   composition TEXT,
   category VARCHAR(100),
   pack_size VARCHAR(50),
-  unit_price NUMERIC(10, 2) NOT NULL,
+  unit_price NUMERIC(10, 2),
   mrp NUMERIC(10, 2),
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -330,14 +330,31 @@ VALUES
   ('stk-kot-01', 'Kotma Medico Stockists - Kotma', 'HQ-KOT-001', 'Main Market, Kotma', '9893054321')
 ON CONFLICT (id) DO NOTHING;
 
--- Medicines
+-- Medicines (17 AHTRI Catalog Products)
 INSERT INTO public.medicines (id, name, sku, composition, category, pack_size, unit_price, mrp)
 VALUES 
-  ('med-01', 'CardioFix-50', 'CF-50-TEL', 'Telmisartan 40mg', 'Cardiovascular', '10x10 Tablets', 180.00, 220.00),
-  ('med-02', 'DermaSoothe Cream', 'DS-CRM-30', 'Clobetasol + Neomycin', 'Dermatology', '30g Tube', 210.00, 260.00),
-  ('med-03', 'Glucotrol-M', 'GLU-M-500', 'Metformin 500mg', 'Diabetic', '10x15 Tablets', 145.00, 185.00),
-  ('med-04', 'PanSafe-DSR', 'PAN-DSR-40', 'Pantoprazole 40mg + Domperidone 30mg', 'Gastro', '10x10 Capsules', 160.00, 210.00)
-ON CONFLICT (id) DO NOTHING;
+  ('med-01', 'AHTRI-S', 'AHTRI-S', NULL, 'General', '200 ML', 38.40, NULL),
+  ('med-02', 'AHTRI-A A2Z', 'AHTRI-A-A2Z', NULL, 'General', '200 ML', 36.80, NULL),
+  ('med-03', 'AHTYME', 'AHTYME', NULL, 'General', '200 ML', 36.80, NULL),
+  ('med-04', 'ATHRIMOX CV 625', 'ATHRIMOX-CV-625', NULL, 'Antibiotic', '10*1*10', 68.00, NULL),
+  ('med-05', 'AHTRI-P', 'AHTRI-P', NULL, 'Analgesic', '20*10', 12.00, NULL),
+  ('med-06', 'TRIPAN DSR', 'TRIPAN-DSR', NULL, 'Gastro', '10*10', 20.80, NULL),
+  ('med-07', 'AHTRI SP', 'AHTRI-SP', NULL, 'Anti-inflammatory', '10*10', 19.80, NULL),
+  ('med-08', 'TRIZOLE OC', 'TRIZOLE-OC', NULL, 'Dermatology', '30 GM', 37.80, NULL),
+  ('med-09', 'TRIZOLE 200', 'TRIZOLE-200', NULL, 'Antifungal', '10*10', 64.20, NULL),
+  ('med-10', 'AHTRI K27', 'AHTRI-K27', NULL, 'Nutraceutical', '10*1*10', 38.20, NULL),
+  ('med-11', 'TRIDIC GEL', 'TRIDIC-GEL', NULL, 'Pain Relief', '30 GM', 55.20, NULL),
+  ('med-12', 'AHTRI STRETCH MARK CREAM', 'AHTRI-SMC', NULL, 'Cosmeceutical', '50 GM', 357.37, NULL),
+  ('med-13', 'AHTRI 5G SYP', 'AHTRI-5G-SYP', NULL, 'Syrup', '200 ML', 157.00, NULL),
+  ('med-14', 'TRIRAB DSR', 'TRIRAB-DSR', NULL, 'Gastro', '10*10', 80.46, NULL),
+  ('med-15', 'AHTRIMOX CV SUSPENSION', 'AHTRIMOX-CV-SUSP', NULL, 'Pediatric', '30 ML', 42.00, NULL),
+  ('med-16', 'MAFTRI P', 'MAFTRI-P', NULL, 'Pediatric', '60 ML', 63.70, NULL),
+  ('med-17', 'AHTRI 9G', 'AHTRI-9G', NULL, 'Syrup', '200 ML', 147.50, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  sku = EXCLUDED.sku,
+  pack_size = EXCLUDED.pack_size,
+  unit_price = EXCLUDED.unit_price;
 
 -- ==============================================================================
 -- 13. ROW LEVEL SECURITY (RLS) POLICIES

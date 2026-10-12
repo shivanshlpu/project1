@@ -176,7 +176,7 @@ interface MedicineItem {
   code?: string;
   product_code: string;
   unit: string;
-  base_price: number;
+  base_price?: number | null;
   status?: string;
   is_active: boolean;
   low_stock_threshold: number;
@@ -889,7 +889,7 @@ export const StockerManagementView: React.FC = () => {
           code: code,
           product_code: code,
           unit: newMedUnit.trim(),
-          base_price: parseFloat(newMedPrice) || 100,
+          base_price: newMedPrice.trim() !== '' ? parseFloat(newMedPrice) : null,
           low_stock_threshold: parseInt(newMedThreshold) || 10,
         }),
       });
@@ -919,7 +919,7 @@ export const StockerManagementView: React.FC = () => {
     setEditMedName(med.name);
     setEditMedCode(med.product_code || med.code || '');
     setEditMedUnit(med.unit || 'Strip of 10');
-    setEditMedPrice(String(med.base_price || 100));
+    setEditMedPrice(med.base_price != null ? String(med.base_price) : '');
     setEditMedThreshold(String(med.low_stock_threshold || 10));
     setEditMedStatus(med.is_active ? 'ACTIVE' : 'INACTIVE');
     setIsEditMedicineModalOpen(true);
@@ -935,7 +935,7 @@ export const StockerManagementView: React.FC = () => {
           name: editMedName.trim(),
           code: (editMedCode.trim() || editingMedicine.code || '').toUpperCase(),
           unit: editMedUnit.trim(),
-          base_price: parseFloat(editMedPrice) || 100,
+          base_price: editMedPrice.trim() !== '' ? parseFloat(editMedPrice) : null,
           status: editMedStatus,
         }),
       });
@@ -1913,7 +1913,7 @@ export const StockerManagementView: React.FC = () => {
                         const invItem = inventory.find((i) => i.medicine_id === m.id);
                         return (
                           <option key={m.id} value={m.id}>
-                            {m.name} ({m.product_code || m.code}) — Current Stock: {invItem ? invItem.quantity : 0} {m.unit} (₹{m.base_price})
+                            {m.name} ({m.product_code || m.code}) — Current Stock: {invItem ? invItem.quantity : 0} {m.unit} {m.base_price != null ? `(₹${m.base_price})` : '(No Price)'}
                           </option>
                         );
                       })}
@@ -1949,7 +1949,7 @@ export const StockerManagementView: React.FC = () => {
                           💊 {med?.name}
                         </div>
                         <div style={{ fontSize: 11.5, color: '#047857', marginTop: 2 }}>
-                          SKU: <strong>{med?.product_code || med?.code}</strong> • Unit: <strong>{med?.unit}</strong> • Fixed Price: <strong>₹{med?.base_price}</strong>
+                          SKU: <strong>{med?.product_code || med?.code}</strong> • Unit: <strong>{med?.unit}</strong> • Fixed Price: <strong>{med?.base_price != null ? `₹${med.base_price}` : '— (No Price)'}</strong>
                         </div>
                       </div>
 
@@ -2566,7 +2566,7 @@ export const StockerManagementView: React.FC = () => {
                       {med.unit}
                     </td>
                     <td style={{ padding: '11px 14px', fontWeight: 800, color: '#166534' }}>
-                      ₹{med.base_price.toFixed(2)}
+                      {med.base_price != null ? `₹${Number(med.base_price).toFixed(2)}` : <span style={{ color: '#94A3B8', fontWeight: 500 }}>— (No Price)</span>}
                     </td>
                     <td style={{ padding: '11px 14px', color: '#64748B' }}>
                       {med.low_stock_threshold} units
@@ -3482,7 +3482,7 @@ export const StockerManagementView: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. CardioFix-50 (Telmisartan 40mg)"
+                placeholder="e.g. AHTRI-S (200 ML)"
                 value={newMedName}
                 onChange={(e) => setNewMedName(e.target.value)}
                 autoFocus
@@ -3521,11 +3521,11 @@ export const StockerManagementView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  BASE PRICE (₹) *
+                  BASE PRICE (₹) (Optional)
                 </label>
                 <input
                   type="number"
-                  placeholder="180"
+                  placeholder="Leave blank if no price"
                   value={newMedPrice}
                   onChange={(e) => setNewMedPrice(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
@@ -3649,10 +3649,11 @@ export const StockerManagementView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  BASE PRICE (₹) *
+                  BASE PRICE (₹) (Optional)
                 </label>
                 <input
                   type="number"
+                  placeholder="Leave blank if no price"
                   value={editMedPrice}
                   onChange={(e) => setEditMedPrice(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
@@ -3784,7 +3785,7 @@ export const StockerManagementView: React.FC = () => {
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, background: '#FFFFFF', boxSizing: 'border-box' }}
               >
                 <option value="ALL">All Divisions / Categories</option>
-                <option value="CARDIO">Cardiology (CardioFix)</option>
+                <option value="CARDIO">Cardiology</option>
                 <option value="RESP">Respiratory / Antibiotics</option>
                 <option value="DERMA">Dermatology</option>
                 <option value="PAED">Paediatrics</option>

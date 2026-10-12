@@ -142,7 +142,8 @@ export class CreateMedicineDto {
 
   @IsNumber()
   @Min(0)
-  base_price: number;
+  @IsOptional()
+  base_price?: number;
 
   @IsNumber()
   @IsOptional()

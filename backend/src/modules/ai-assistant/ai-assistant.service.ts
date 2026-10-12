@@ -204,20 +204,20 @@ export class AiAssistantService {
         answer = `### 💰 आज के कमर्शियल ऑर्डर्स की जानकारी (${dateLabel})\n\n` +
           `- **कुल बुक किए गए ऑर्डर्स**: 3 ऑर्डर्स\n` +
           `- **कुल रेवेन्यू (Revenue)**: **₹13,200**\n` +
-          `- **शीर्ष उत्पाद (Top Product)**: CardioFix-50 (Telmisartan) — 34 पैक्स\n` +
+          `- **शीर्ष उत्पाद (Top Product)**: AHTRI-S — 34 पैक्स\n` +
           `- **वितरक (Distributor)**: Apollo Pharmacy (साकेत व हौज खास हब)\n` +
           `- **जियोफेंस ऑडिट**: सभी ऑर्डर्स डॉक्टर क्लिनिक पर ऑन-साइट वेरिफाइड हैं।`;
       } else {
         answer = `### 💰 Commercial Orders Summary (${dateLabel})\n\n` +
           `- **Total Orders Booked**: 3 orders\n` +
           `- **Total Revenue**: **₹13,200**\n` +
-          `- **Top Product**: CardioFix-50 (Telmisartan) — 34 packs\n` +
+          `- **Top Product**: AHTRI-S — 34 packs\n` +
           `- **Fulfillment Hub**: Apollo Pharmacy (Saket & Hauz Khas)\n` +
           `- **Compliance**: 100% verified on-site during detailing calls.`;
       }
       breakdown = [
-        { 'Doctor / Clinic': 'Dr. Rajesh Sharma (Apex Cardiology)', Product: 'CardioFix-50 + NeuroVibe', Units: 30, Amount: '₹9,000', Status: 'VERIFIED' },
-        { 'Doctor / Clinic': 'Dr. Anita Desai (Max Healthcare)', Product: 'CardioFix-50', Units: 14, Amount: '₹4,200', Status: 'VERIFIED' },
+        { 'Doctor / Clinic': 'Dr. Rajesh Sharma (Apex Cardiology)', Product: 'AHTRI-S', Units: 30, Amount: '₹9,000', Status: 'VERIFIED' },
+        { 'Doctor / Clinic': 'Dr. Anita Desai (Max Healthcare)', Product: 'AHTRI-S', Units: 14, Amount: '₹4,200', Status: 'VERIFIED' },
       ];
     } else if (
       queryLower.includes('work status') ||

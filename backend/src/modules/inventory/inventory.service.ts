@@ -317,12 +317,17 @@ export class InventoryService {
     const code = rawCode.toUpperCase();
     const threshold = Number(dto.low_stock_threshold) || 10;
 
+    const basePrice =
+      dto.base_price !== undefined && dto.base_price !== null && (dto.base_price as any) !== ''
+        ? Number(dto.base_price)
+        : null;
+
     const med: Medicine = {
       id: `med-${uuidv4().substring(0, 8)}`,
       name: dto.name.trim(),
       code,
       unit: dto.unit || 'Units',
-      base_price: Number(dto.base_price) || 0,
+      base_price: basePrice,
       low_stock_threshold: threshold,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
@@ -357,7 +362,10 @@ export class InventoryService {
     if (dto.name) med.name = dto.name;
     if (dto.code) med.code = dto.code.toUpperCase();
     if (dto.unit) med.unit = dto.unit;
-    if (dto.base_price !== undefined) med.base_price = dto.base_price;
+    if (dto.base_price !== undefined) {
+      med.base_price =
+        dto.base_price !== null && (dto.base_price as any) !== '' ? Number(dto.base_price) : null;
+    }
     if (dto.status) med.status = dto.status;
 
     return med;

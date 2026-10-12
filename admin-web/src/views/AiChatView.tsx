@@ -462,8 +462,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `**आज बुक किए गए कमर्शियल ऑर्डर्स (POB Orders Captured):**\n\n- **कुल ऑर्डर्स बुक हुए**: 3 कमर्शियल ऑर्डर्स\n- **कुल बिक्री रेवेन्यू**: **₹13,200**\n- **शीर्ष उत्पाद**: CardioFix-50 (Telmisartan) — 34 पैक्स (₹10,200)\n- **द्वितीय उत्पाद**: NeuroVibe-M — 10 पैक्स (₹3,000)\n- **वितरक (Distributors)**: Apollo Pharmacy (साकेत व हौज खास हब)\n\n*सभी ऑर्डर्स डॉक्टर क्लिनिक पर ऑन-साइट चेक-इन के दौरान जियोफेंस दायरे में सत्यापित किए गए हैं।*`
-            : `**Immediate Commercial Orders Captured Today:**\n\n- **Total Orders Booked**: 3 orders\n- **Total Revenue**: **₹13,200**\n- **Top Product**: CardioFix-50 (Telmisartan) — 34 packs (₹10,200)\n- **Secondary Product**: NeuroVibe-M — 10 packs (₹3,000)\n- **Fulfillment Distributor**: Apollo Pharmacy (Saket & Hauz Khas hubs)\n\nAll orders have been validated against on-site doctor check-in records.`,
+            ? `**आज बुक किए गए कमर्शियल ऑर्डर्स (POB Orders Captured):**\n\n- **कुल ऑर्डर्स बुक हुए**: 3 कमर्शियल ऑर्डर्स\n- **कुल बिक्री रेवेन्यू**: **₹13,200**\n- **शीर्ष उत्पाद**: AHTRI-S — 34 पैक्स\n- **द्वितीय उत्पाद**: ATHRIMOX CV 625 — 10 पैक्स\n- **वितरक (Distributors)**: Apollo Pharmacy (साकेत व हौज खास हब)\n\n*सभी ऑर्डर्स डॉक्टर क्लिनिक पर ऑन-साइट चेक-इन के दौरान जियोफेंस दायरे में सत्यापित किए गए हैं।*`
+            : `**Immediate Commercial Orders Captured Today:**\n\n- **Total Orders Booked**: 3 orders\n- **Total Revenue**: **₹13,200**\n- **Top Product**: AHTRI-S — 34 packs\n- **Secondary Product**: ATHRIMOX CV 625 — 10 packs\n- **Fulfillment Distributor**: Apollo Pharmacy (Saket & Hauz Khas hubs)\n\nAll orders have been validated against on-site doctor check-in records.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }

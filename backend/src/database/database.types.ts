@@ -430,7 +430,7 @@ export interface Medicine {
   name: string;
   code: string;
   unit: string;
-  base_price: number;
+  base_price?: number | null;
   low_stock_threshold?: number;
   status: 'ACTIVE' | 'INACTIVE';
   created_at: string;

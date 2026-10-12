@@ -428,7 +428,7 @@ export const SubmittedTasksView: React.FC = () => {
 
         <div class="section-heading">Doctor Call Feedback &amp; Clinical Discussion</div>
         <div class="feedback-box">
-          "${task.outcome || 'Presented clinical trial efficacy data for CardioFix-50; doctor confirmed monthly prescription potential.'}"
+          "${task.outcome || 'Presented clinical trial efficacy data for AHTRI-S; doctor confirmed monthly prescription potential.'}"
         </div>
 
         ${photoUrl ? `
@@ -1180,7 +1180,7 @@ export const SubmittedTasksView: React.FC = () => {
                 Doctor Call Feedback &amp; Discussion
               </div>
               <div style={{ fontSize: '13px', color: '#1E293B', fontStyle: 'italic', background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px' }}>
-                "{selectedTask.outcome || 'Presented clinical trial efficacy data for CardioFix-50; doctor confirmed monthly prescription potential.'}"
+                "{selectedTask.outcome || 'Presented clinical trial efficacy data for AHTRI-S; doctor confirmed monthly prescription potential.'}"
               </div>
             </div>
 

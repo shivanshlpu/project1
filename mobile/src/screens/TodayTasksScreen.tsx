@@ -46,13 +46,23 @@ export interface MobileTaskItem {
 }
 
 const COMPANY_MEDICINES_CHIPS = [
-  { name: 'CardioFix-50 (Telmisartan 40mg)', short: 'CardioFix-50', price: 180 },
-  { name: 'CardioFix-AM (Telmisartan + Amlodipine)', short: 'CardioFix-AM', price: 220 },
-  { name: 'DermaSoothe Cream 30g', short: 'DermaSoothe', price: 210 },
-  { name: 'Glucotrol-M (Metformin 500mg)', short: 'Glucotrol-M', price: 145 },
-  { name: 'AhtriCef-O 200mg (Cefixime)', short: 'AhtriCef-O', price: 165 },
-  { name: 'PanSafe-DSR Capsules', short: 'PanSafe-DSR', price: 160 },
-  { name: 'Pedix Suspension', short: 'Pedix Susp.', price: 120 },
+  { name: 'AHTRI-S (200 ML)', short: 'AHTRI-S', price: 38.40 },
+  { name: 'AHTRI-A A2Z (200 ML)', short: 'AHTRI-A A2Z', price: 36.80 },
+  { name: 'AHTYME (200 ML)', short: 'AHTYME', price: 36.80 },
+  { name: 'ATHRIMOX CV 625 (10*1*10)', short: 'ATHRIMOX CV 625', price: 68.00 },
+  { name: 'AHTRI-P (20*10)', short: 'AHTRI-P', price: 12.00 },
+  { name: 'TRIPAN DSR (10*10)', short: 'TRIPAN DSR', price: 20.80 },
+  { name: 'AHTRI SP (10*10)', short: 'AHTRI SP', price: 19.80 },
+  { name: 'TRIZOLE OC (30 GM)', short: 'TRIZOLE OC', price: 37.80 },
+  { name: 'TRIZOLE 200 (10*10)', short: 'TRIZOLE 200', price: 64.20 },
+  { name: 'AHTRI K27 (10*1*10)', short: 'AHTRI K27', price: 38.20 },
+  { name: 'TRIDIC GEL (30 GM)', short: 'TRIDIC GEL', price: 55.20 },
+  { name: 'AHTRI STRETCH MARK CREAM (50 GM)', short: 'STRETCH MARK', price: 357.37 },
+  { name: 'AHTRI 5G SYP (200 ML)', short: 'AHTRI 5G', price: 157.00 },
+  { name: 'TRIRAB DSR (10*10)', short: 'TRIRAB DSR', price: 80.46 },
+  { name: 'AHTRIMOX CV SUSPENSION (30 ML)', short: 'AHTRIMOX CV SUSP', price: 42.00 },
+  { name: 'MAFTRI P (60 ML)', short: 'MAFTRI P', price: 63.70 },
+  { name: 'AHTRI 9G (200 ML)', short: 'AHTRI 9G', price: 147.50 },
 ];
 
 interface TodayTasksScreenProps {
@@ -83,7 +93,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const [completingTask, setCompletingTask] = useState<MobileTaskItem | null>(null);
   const [visitPhoto, setVisitPhoto] = useState<PhotoResult | null>(null);
   const [visitOutcome, setVisitOutcome] = useState(
-    'Reviewed CardioFix-50 scheme. Doctor agreed to prescribe for 20 patients.',
+    'Reviewed AHTRI-S scheme. Doctor agreed to prescribe for 20 patients.',
   );
   // Multi-Order State for Task Completion (Initialized empty - orders created only when MR explicitly adds them per §2.1)
   const [modalOrders, setModalOrders] = useState<
@@ -1222,7 +1232,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                 {/* Preset Chips */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4, marginBottom: 12 }}>
                   {[
-                    'Detailed CardioFix-50 scheme',
+                    'Detailed AHTRI-S scheme',
                     'Samples handed over',
                     'Doctor agreed to prescribe',
                     'Follow-up next week',
