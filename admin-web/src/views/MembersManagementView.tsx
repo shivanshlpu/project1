@@ -36,6 +36,7 @@ import {
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
 import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { getStoredSavedLocations } from '../utils/savedLocationsStore';
+import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
 
 interface LeaveQuotaData {
   mr_id: string;
@@ -174,7 +175,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     e.preventDefault();
     if (!resettingMember) return;
     if (!newResetPassword.trim() || newResetPassword.trim().length < 6) {
-      alert('Password must be at least 6 characters long.');
+      showCenteredNotice({
+        title: 'Validation Warning',
+        message: 'Password must be at least 6 characters long.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -287,9 +292,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   };
 
   const handleDeleteMember = async (member: MRMemberItem) => {
-    const ok = window.confirm(
-      `Are you sure you want to permanently delete employee "${member.name}" (${member.id})?\n\nThis will permanently delete their account and all associated tasks, attendance, visit history, and device authorizations from the entire system. This action cannot be undone.`,
-    );
+    const ok = await showConfirmModal({
+      title: `Delete Employee "${member.name}"`,
+      message: `Are you sure you want to permanently delete employee "${member.name}" (${member.id})?\n\nThis will permanently delete their account and all associated tasks, attendance, visit history, and device authorizations from the entire system. This action cannot be undone.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Employee',
+      cancelText: 'Keep Employee',
+    });
     if (!ok) return;
 
     try {
@@ -314,7 +323,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     e.preventDefault();
     if (!editingMember) return;
     if (!editName.trim() || !editPhone.trim()) {
-      alert('Full Name and Phone Number are required.');
+      showCenteredNotice({
+        title: 'Required Information',
+        message: 'Full Name and Phone Number are required.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -544,23 +557,26 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   // Reset Device Lock
   const handleResetDevice = async (id: string, name: string) => {
-    if (
-      window.confirm(
-        `Are you sure you want to reset device binding for ${name}? The current phone lock will be cleared, allowing the MR to pair their new device on next login.`
+    const ok = await showConfirmModal({
+      title: 'Reset Device Lock',
+      message: `Are you sure you want to reset device binding for ${name}?\n\nThe current phone lock will be cleared, allowing the MR to pair their new device on their next login.`,
+      type: 'warning',
+      confirmText: 'Reset Device Lock',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+
+    try {
+      await resilientFetch(`/auth/device-binding/reset/${id}`, { method: 'POST' });
+    } catch {}
+    setMembers(
+      members.map((m) =>
+        m.id === id
+          ? { ...m, device_id: undefined, device_model: undefined, device_bound_at: undefined }
+          : m
       )
-    ) {
-      try {
-        await resilientFetch(`/auth/device-binding/reset/${id}`, { method: 'POST' });
-      } catch {}
-      setMembers(
-        members.map((m) =>
-          m.id === id
-            ? { ...m, device_id: undefined, device_model: undefined, device_bound_at: undefined }
-            : m
-        )
-      );
-      showToast(`Device binding cleared for ${name}.`);
-    }
+    );
+    showToast(`Device binding cleared for ${name}.`);
   };
 
   // Copy Account Information (Strictly no plaintext passwords)
@@ -1922,7 +1938,11 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     const pwd = (document.getElementById('reg-password') as HTMLInputElement)?.value;
 
                     if (!name || !phone || !email) {
-                      alert('Please fill in required fields');
+                      showCenteredNotice({
+                        title: 'Required Information',
+                        message: 'Please fill in all required fields.',
+                        type: 'warning',
+                      });
                       return;
                     }
 

@@ -15,6 +15,7 @@ import {
   CornerDownRight,
   Upload,
 } from 'lucide-react';
+import { showConfirmModal } from './CenteredModalNotice';
 
 export interface HeadquarterItem {
   id: string;
@@ -388,7 +389,14 @@ export const HqTerritoryManager: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete Headquarters "${target.name}"? Sub-areas associated with this HQ will also be removed.`)) {
+    const ok = await showConfirmModal({
+      title: `Delete Headquarters "${target.name}"`,
+      message: `Are you sure you want to delete Headquarters "${target.name}"?\n\nSub-areas and territory records associated with this HQ will also be removed.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Headquarters',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
       return;
     }
 
@@ -544,9 +552,14 @@ export const HqTerritoryManager: React.FC = () => {
 
   const handleDeleteArea = async (areaId: string) => {
     const target = areas.find((a) => a.id === areaId);
-    if (!target) return;
-
-    if (!window.confirm(`Delete sub-area "${target.name}"?`)) return;
+    const ok = await showConfirmModal({
+      title: `Delete Sub-Area "${target.name}"`,
+      message: `Are you sure you want to delete sub-area "${target.name}"?\n\nThis action cannot be undone.`,
+      isDestructive: true,
+      confirmText: 'Delete Sub-Area',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
 
     try {
       await fetch(`${apiUrl}/inventory/areas/${areaId}`, {

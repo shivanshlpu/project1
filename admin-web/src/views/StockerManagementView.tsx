@@ -24,6 +24,7 @@ import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 import { StockageWorkflowPanel } from '../components/StockageWorkflowPanel';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
 
 interface Headquarter {
   id: string;
@@ -873,10 +874,21 @@ export const StockerManagementView: React.FC = () => {
     const target = hqs.find((h) => h.id === hqId);
     if (!target) return;
     if (hqs.length <= 1) {
-      alert('At least one headquarters must remain configured.');
+      showCenteredNotice({
+        title: 'Action Restricted',
+        message: 'At least one headquarters must remain configured.',
+        type: 'warning',
+      });
       return;
     }
-    if (!confirm(`Are you sure you want to delete headquarters "${target.name}"? Stockers under this HQ will be removed.`)) {
+    const ok = await showConfirmModal({
+      title: `Delete Headquarters "${target.name}"`,
+      message: `Are you sure you want to delete headquarters "${target.name}"?\n\nStockers under this HQ will also be removed.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete HQ',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
       return;
     }
 
@@ -1054,7 +1066,14 @@ export const StockerManagementView: React.FC = () => {
   const handleDeleteStocker = async (stockerId: string) => {
     const target = stockers.find((s) => s.id === stockerId);
     if (!target) return;
-    if (!confirm(`Are you sure you want to delete stocker "${target.name}"?`)) return;
+    const ok = await showConfirmModal({
+      title: `Delete Stocker "${target.name}"`,
+      message: `Are you sure you want to delete stocker "${target.name}"?\n\nThis stocker and their assigned territory records will be removed.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Stocker',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers/${stockerId}`, {
@@ -1192,7 +1211,14 @@ export const StockerManagementView: React.FC = () => {
   const handleDeleteMedicine = async (medId: string) => {
     const target = medicines.find((m) => m.id === medId);
     if (!target) return;
-    if (!confirm(`Are you sure you want to delete "${target.name}" from the master catalog?`)) return;
+    const ok = await showConfirmModal({
+      title: `Delete Medicine "${target.name}"`,
+      message: `Are you sure you want to delete "${target.name}" from the master catalog?\n\nStock and inventory records referencing this medicine will be affected.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Medicine',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`${apiUrl}/inventory/medicines/${medId}`, {

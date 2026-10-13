@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { resilientFetch, getAuthHeaders, RENDER_BACKEND_URL } from '../utils/apiHelper';
+import { showConfirmModal } from '../components/CenteredModalNotice';
 
 interface AttendanceRecord {
   id: string;
@@ -346,7 +347,14 @@ export const AdminAttendanceView: React.FC = () => {
 
   // Clear all attendance records from database and UI
   const handleClearAllAttendance = async () => {
-    if (!window.confirm('Are you sure you want to remove ALL attendance records from the database? This cannot be undone.')) {
+    const ok = await showConfirmModal({
+      title: 'Clear All Attendance Records',
+      message: 'Are you sure you want to remove ALL attendance records from the database?\n\nThis will purge attendance history across all employees and cannot be undone.',
+      isDestructive: true,
+      confirmText: 'Yes, Clear All Records',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
       return;
     }
     setIsLoading(true);

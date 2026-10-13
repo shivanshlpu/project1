@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { resilientFetch } from '../utils/apiHelper';
+import { showConfirmModal } from '../components/CenteredModalNotice';
 
 export const SalesmanPortalView: React.FC = () => {
   // Persistent MR Session State (never logs out unless explicitly requested)
@@ -232,8 +233,15 @@ export const SalesmanPortalView: React.FC = () => {
     }
   };
 
-  const handleSalesmanLogout = () => {
-    if (window.confirm('Are you sure you want to log out from this phone session?')) {
+  const handleSalesmanLogout = async () => {
+    const ok = await showConfirmModal({
+      title: 'End Session',
+      message: 'Are you sure you want to log out from this phone session?',
+      type: 'confirm',
+      confirmText: 'Log Out',
+      cancelText: 'Cancel',
+    });
+    if (ok) {
       localStorage.removeItem('ahtri_salesman_session');
       setSalesmanUser(null);
       setSimStep('credentials');

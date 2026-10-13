@@ -22,6 +22,7 @@ import {
   Send,
   Building,
 } from 'lucide-react';
+import { showConfirmModal } from './CenteredModalNotice';
 
 interface Headquarter {
   id: string;
@@ -290,7 +291,14 @@ const DEFAULT_MRS_FALLBACK = [
 
   // Revoke Permission
   const handleRevokePermission = async (permId: string, mrName: string) => {
-    if (!window.confirm(`Revoke upload permission for ${mrName}? This MR will no longer be authorized to submit Stockage for this month.`)) {
+    const ok = await showConfirmModal({
+      title: 'Revoke Upload Permission',
+      message: `Revoke upload permission for ${mrName}?\n\nThis MR will no longer be authorized to submit Stockage for this month.`,
+      type: 'warning',
+      confirmText: 'Yes, Revoke Permission',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
       return;
     }
 

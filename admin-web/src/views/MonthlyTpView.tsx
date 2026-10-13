@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl } from '../utils/apiHelper';
+import { showConfirmModal } from '../components/CenteredModalNotice';
 
 export interface MonthlyTpItem {
   id: string;
@@ -601,7 +602,14 @@ export const MonthlyTpView: React.FC = () => {
 
   // Delete Route Batch
   const handleDeleteBatch = async (batch: RouteBatchItem) => {
-    if (!window.confirm(`Are you sure you want to delete ${batch.batch_code} (${batch.name})?`)) {
+    const ok = await showConfirmModal({
+      title: `Delete Route Batch "${batch.batch_code}"`,
+      message: `Are you sure you want to delete route batch "${batch.batch_code}" (${batch.name})?\n\nThis will remove the route batch template from the territory system.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Route Batch',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
       return;
     }
     try {
