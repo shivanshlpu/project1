@@ -310,6 +310,11 @@ export const App: React.FC = () => {
   const handleLoginSuccess = (user: AuthUser) => {
     setAuthUser(user);
     setManagerName(user.name);
+    if (user.token) {
+      localStorage.setItem('ahtri_auth_token', user.token);
+      localStorage.setItem('token', user.token);
+    }
+    localStorage.setItem('ahtri_user', JSON.stringify(user));
     localStorage.setItem('ahtri_manager_name', user.name);
   };
 

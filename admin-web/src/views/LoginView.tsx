@@ -107,10 +107,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
         token: data.access_token,
       };
 
+      // Always store active session credentials in localStorage for all views and API calls
+      localStorage.setItem('ahtri_auth_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('ahtri_user', JSON.stringify(userData));
+      localStorage.setItem('ahtri_manager_name', userData.name);
       if (rememberMe) {
-        localStorage.setItem('ahtri_auth_token', data.access_token);
-        localStorage.setItem('ahtri_user', JSON.stringify(userData));
-        localStorage.setItem('ahtri_manager_name', userData.name);
+        localStorage.setItem('ahtri_remember_me', 'true');
       }
 
       onLoginSuccess(userData);

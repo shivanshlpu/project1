@@ -396,13 +396,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         publishedBy: managerName || 'Admin',
       };
 
-      const authToken = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      let authToken = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      if (!authToken) {
+        try {
+          const u = JSON.parse(localStorage.getItem('ahtri_user') || '{}');
+          if (u?.token) authToken = u.token;
+        } catch {}
+      }
+
       const authHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       };
       if (authToken) {
         authHeaders['Authorization'] = `Bearer ${authToken}`;
+      } else {
+        throw new Error('Your session has expired. Please sign out from the top bar and log in again.');
       }
 
       const res = await fetch(`${cleanUrl}/api/app/version`, {
@@ -425,6 +434,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Your session has expired. Please sign out from the top right and sign back in.');
+        }
         throw new Error(`Server returned HTTP ${res.status}`);
       }
 
