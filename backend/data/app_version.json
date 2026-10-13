@@ -1,19 +1,19 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.18",
-  "latestVersionCode": 19,
+  "latestVersion": "1.0.19",
+  "latestVersionCode": 20,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.18/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.19/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-13",
-  "publishedAt": "2026-10-13T00:00:00.000Z",
+  "publishedAt": "2026-10-13T05:15:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Stockage Management & Monthly Upload Permission Workflow: Direct mobile bulk stock submission with Admin verification and approval",
-    "Authoritative 17 AHTRI Medicine Catalog with Structured Packaging Variants & PTS/MRP Pricing",
-    "Synchronized Headquarters and operating locations with real-time Stocker inventory",
-    "Direct one-click export reporting and bilingual Aura AI with contextual follow-up questions"
+    "Updated Login Gateway: Admin-assigned credentials entry with mandatory 6-digit OTP verification",
+    "Master Route-Batch Selection: Fully configured 19 master batches across Kotma, Shahdol, and Ambikapur with intelligent sub-stop route matching",
+    "Stockage Management & Monthly Upload Permissions: Isolated multi-HQ inventory with real-time stock deduplication",
+    "Authoritative 17 AHTRI Medicine Catalog with Structured Packaging Variants & PTS/MRP Pricing"
   ]
 }
