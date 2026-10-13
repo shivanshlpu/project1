@@ -29,21 +29,21 @@ describe('AuthService (Node 1 DoD Verification)', () => {
 
   it('should login successfully with valid email and password', async () => {
     const res = (await service.login({
-      identifier: 'admin@ahtri.com',
-      password: 'Password@123',
+      identifier: 'shivanshti10@gmail.com',
+      password: '12345678',
     })) as any;
 
     expect(res).toBeDefined();
     expect(res.access_token).toBeDefined();
     expect(res.refresh_token).toBeDefined();
     expect(res.user.role).toBe('SUPER_ADMIN');
-    expect(res.user.email).toBe('admin@ahtri.com');
+    expect(res.user.email).toBe('shivanshti10@gmail.com');
   });
 
   it('should reject login with wrong password', async () => {
     await expect(
       service.login({
-        identifier: 'admin@ahtri.com',
+        identifier: 'shivanshti10@gmail.com',
         password: 'WrongPassword',
       }),
     ).rejects.toThrow(UnauthorizedException);

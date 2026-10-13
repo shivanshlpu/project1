@@ -61,6 +61,7 @@ export interface User {
   logged_out?: boolean;
   biometric_enabled: boolean;
   created_at: string;
+  updated_at?: string;
   deleted_at?: string;
 }
 

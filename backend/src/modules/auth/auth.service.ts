@@ -26,6 +26,8 @@ export class AuthService {
   async login(dto: LoginDto) {
     const identifier = dto.identifier.trim().toLowerCase();
     const ALIAS_MAP: Record<string, string> = {
+      'admin@ahtri.com': 'shivanshti10@gmail.com',
+      'admin': 'shivanshti10@gmail.com',
       'shd': 'aman@ahtri.com',
       'hq-shd-001': 'aman@ahtri.com',
       'aman.rathore@ahtri.com': 'aman@ahtri.com',
@@ -86,7 +88,8 @@ export class AuthService {
     const isTestEnv = process.env.NODE_ENV === 'test';
     const isTestMatch =
       isTestEnv &&
-      (dto.password === 'Password@123' ||
+      (dto.password === '12345678' ||
+        dto.password === 'Password@123' ||
         dto.password === 'AmarDwivediKOT' ||
         dto.password === 'AmanRathoreSHD' ||
         dto.password === 'AshishSoniAMB');

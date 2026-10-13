@@ -8,7 +8,6 @@ import {
   EyeOff,
   ShieldCheck,
   Database,
-  Sparkles,
   ArrowRight,
   AlertCircle,
   Loader2,
@@ -30,22 +29,12 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
-  const [identifier, setIdentifier] = useState('admin@ahtri.com');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const handleQuickFill = (mode: 'email' | 'phone') => {
-    setAuthMode(mode);
-    setErrorMsg(null);
-    if (mode === 'email') {
-      setIdentifier('admin@ahtri.com');
-    } else {
-      setIdentifier('9876543210');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,32 +162,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           <span className="live-ping-dot" />
         </div>
 
-        {/* Quick-fill Demo Shortcut */}
-        <div className="login-quickfill-box">
-          <div className="quickfill-label">
-            <Sparkles size={13} color="#0052cc" />
-            <span>Quick Fill Admin Credentials:</span>
-          </div>
-          <div className="quickfill-btn-group">
-            <button
-              type="button"
-              className={`quickfill-chip ${authMode === 'email' && identifier === 'admin@ahtri.com' ? 'active' : ''}`}
-              onClick={() => handleQuickFill('email')}
-            >
-              <Mail size={12} />
-              <span>Email: admin@ahtri.com</span>
-            </button>
-            <button
-              type="button"
-              className={`quickfill-chip ${authMode === 'phone' && identifier === '9876543210' ? 'active' : ''}`}
-              onClick={() => handleQuickFill('phone')}
-            >
-              <Phone size={12} />
-              <span>Mobile: 9876543210</span>
-            </button>
-          </div>
-        </div>
-
         {/* Error Alert */}
         {errorMsg && (
           <div className="login-error-banner">
@@ -214,7 +177,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             className={`login-tab ${authMode === 'email' ? 'active' : ''}`}
             onClick={() => {
               setAuthMode('email');
-              if (identifier === '9876543210') setIdentifier('admin@ahtri.com');
               setErrorMsg(null);
             }}
           >
@@ -226,7 +188,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             className={`login-tab ${authMode === 'phone' ? 'active' : ''}`}
             onClick={() => {
               setAuthMode('phone');
-              if (identifier === 'admin@ahtri.com') setIdentifier('9876543210');
               setErrorMsg(null);
             }}
           >
@@ -251,7 +212,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
                 type={authMode === 'email' ? 'email' : 'tel'}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={authMode === 'email' ? 'e.g. admin@ahtri.com' : 'e.g. 9876543210'}
+                placeholder={authMode === 'email' ? 'Enter admin email' : 'Enter mobile number'}
                 className="login-input"
                 autoComplete={authMode === 'email' ? 'username' : 'tel'}
                 required
@@ -267,7 +228,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password (e.g. 12345678)"
+                placeholder="Enter password"
                 className="login-input"
                 autoComplete="current-password"
                 required

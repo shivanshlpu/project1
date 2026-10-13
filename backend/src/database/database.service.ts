@@ -155,9 +155,38 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         monthlyStockagePermissions: this.monthlyStockagePermissions,
         stockageSubmissionRequests: this.stockageSubmissionRequests,
         medicinePackagingVariants: this.medicinePackagingVariants,
+        users: this.users.map((u) => ({
+          id: u.id,
+          name: u.name,
+          phone: u.phone,
+          email: u.email,
+          role: u.role,
+          password_hash: u.password_hash,
+          status: u.status,
+          zone_id: u.zone_id,
+          region_id: u.region_id,
+          area_id: u.area_id,
+          hq_id: u.hq_id,
+          hq_code: u.hq_code,
+          hq_name: u.hq_name,
+          territory: u.territory,
+          assigned_territory: u.assigned_territory,
+          assigned_route_batches: u.assigned_route_batches,
+          route_batches: u.route_batches,
+          manager_id: u.manager_id,
+          biometric_enabled: u.biometric_enabled,
+          device_id: u.device_id,
+          device_model: u.device_model,
+          device_bound_at: u.device_bound_at,
+          logged_out: u.logged_out,
+          requires_device_otp_on_login: u.requires_device_otp_on_login,
+          created_at: u.created_at,
+          updated_at: u.updated_at,
+        })),
         userCredentials: this.users.map((u) => ({
           id: u.id,
           email: u.email,
+          phone: u.phone,
           password_hash: u.password_hash,
         })),
         userDeviceStates: this.users.map((u) => ({
@@ -295,11 +324,23 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           }
           this.routeBatches = Array.from(batchMap.values());
         }
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          data.users.forEach((savedU: any) => {
+            const idx = this.users.findIndex((u) => u.id === savedU.id);
+            if (idx >= 0) {
+              this.users[idx] = { ...this.users[idx], ...savedU };
+            } else {
+              this.users.push(savedU);
+            }
+          });
+        }
         if (Array.isArray(data.userCredentials)) {
           data.userCredentials.forEach((cred: any) => {
             const user = this.users.find((u) => u.id === cred.id || u.email.toLowerCase() === cred.email?.toLowerCase());
-            if (user && cred.password_hash) {
-              user.password_hash = cred.password_hash;
+            if (user) {
+              if (cred.password_hash) user.password_hash = cred.password_hash;
+              if (cred.email) user.email = cred.email;
+              if (cred.phone) user.phone = cred.phone;
             }
           });
         }
@@ -693,17 +734,17 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
 
     // 3. Seed Users (precomputed bcrypt cost-10 hashes to avoid event-loop CPU stall)
     const defaultPasswordHash = '$2a$10$x4quOhBAtj/c8IRuA7S.DuBeT/8p2rilsaVim9RCBQQW6cKVqbuFC'; // Hash of Password@123
-    const adminPasswordHash = '$2a$10$x4quOhBAtj/c8IRuA7S.DuBeT/8p2rilsaVim9RCBQQW6cKVqbuFC'; // Hash of Password@123
+    const adminPasswordHash = '$2a$10$MW1mfmr2.I1UgSsYuHI6qO3c8blaOrCcPownKQatdrgz8.7HyPhNG'; // Hash of 12345678
     const amarPasswordHash = '$2a$10$b4FwNYmP2E/JsHB3wQrcAeOXe39WLr68IUIOQdQGXgyUm0iI9ETmC';
     const amanPasswordHash = '$2a$10$GxSnC0d70j7BW/HI5KwwUu.jE/AASG4BAbIjV/8fBRZZpELmVIEV2';
     const ashishPasswordHash = '$2a$10$ElYv/1rGCurbbZsjgZh8lOcDLSY9ZNMfieLB0PwrIFfn8Gn008hwa';
 
-    // Primary Super Admin: Configurable via ADMIN_EMAIL/ADMIN_PHONE environment variables
+    // Primary Super Admin: Configurable via ADMIN_EMAIL/ADMIN_PHONE environment variables or database updates
     const adminOwner: User = {
       id: 'usr-admin-owner',
-      name: process.env.ADMIN_NAME || 'System Administrator',
-      phone: process.env.ADMIN_PHONE || '9876543210',
-      email: process.env.ADMIN_EMAIL || 'admin@ahtri.com',
+      name: process.env.ADMIN_NAME || 'Shivansh',
+      phone: process.env.ADMIN_PHONE || '9009149694',
+      email: process.env.ADMIN_EMAIL || 'shivanshti10@gmail.com',
       password_hash: adminPasswordHash,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
@@ -713,10 +754,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
 
     const superAdmin: User = {
       id: 'usr-admin-01',
-      name: 'System Admin',
-      phone: '9876543210',
-      email: 'admin@ahtri.com',
-      password_hash: defaultPasswordHash,
+      name: process.env.ADMIN_NAME || 'Shivansh',
+      phone: process.env.ADMIN_PHONE || '9009149694',
+      email: process.env.ADMIN_EMAIL || 'shivanshti10@gmail.com',
+      password_hash: adminPasswordHash,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
       biometric_enabled: false,
