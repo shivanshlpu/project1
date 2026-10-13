@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Language } from '../utils/i18n';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface LoginViewProps {
   lang: Language;
@@ -52,8 +53,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
 
     setIsLoading(true);
     try {
-      // Post to backend via Vite proxy /api or directly
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       let response: Response | null = null;
       try {
         response = await fetch(`${apiUrl}/auth/login`, {
@@ -66,21 +66,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             password: password,
           }),
         });
-      } catch (localErr) {
-        // Fallback to live backend if localhost is offline
-        try {
-          response = await fetch('https://ahtri-backend.onrender.com/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              identifier: cleanIdentifier,
-              password: password,
-            }),
-          });
-        } catch {
-          throw new Error('Unable to connect to backend server. Please verify your connection or server status.');
+      } catch (primaryErr) {
+        // Fallback to Render live backend if primary endpoint failed
+        if (apiUrl !== 'https://ahtri-backend.onrender.com') {
+          try {
+            response = await fetch('https://ahtri-backend.onrender.com/auth/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                identifier: cleanIdentifier,
+                password: password,
+              }),
+            });
+          } catch {
+            throw new Error('Unable to connect to backend server. Please verify your connection or server status.');
+          }
+        } else {
+          throw new Error('Unable to connect to backend server. The free cloud server may be waking up from inactivity (typically takes 20-40s). Please try again in a few moments.');
         }
       }
 

@@ -48,7 +48,9 @@ async function bootstrap() {
       if (
         process.env.NODE_ENV !== 'production' ||
         allowedOrigins.includes(origin) ||
-        origin.endsWith('.onrender.com')
+        origin.endsWith('.onrender.com') ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('vercel.app')
       ) {
         return callback(null, true);
       }
