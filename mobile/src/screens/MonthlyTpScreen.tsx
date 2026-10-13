@@ -95,29 +95,29 @@ const STATIC_PRESET_BATCHES: Array<{
   mr_id: string;
 }> = [
   // Amar Dwivedi (Kotma)
-  { id: 'rb-kot-01', batch_code: 'Batch 1', name: 'Kotma → Marwahi → Dhanikundi', route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'], distance_km: 85, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-02', batch_code: 'Batch 2', name: 'Kotma → Kelhari → Janakpur', route_stops: ['Kotma', 'Kelhari', 'Janakpur'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-03', batch_code: 'Batch 3', name: 'Kotma → Keswahi → Girva → Khamhidol', route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-04', batch_code: 'Batch 4', name: 'Kotma → Jaithari → Rajendragram', route_stops: ['Kotma', 'Jaithari', 'Rajendragram'], distance_km: 70, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-05', batch_code: 'Batch 5', name: 'Kotma → Anuppur', route_stops: ['Kotma', 'Anuppur'], distance_km: 45, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-06', batch_code: 'Batch 6', name: 'Kotma → Manendragarh', route_stops: ['Kotma', 'Manendragarh'], distance_km: 65, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-07', batch_code: 'Batch 7', name: 'Kotma → Chirmiri', route_stops: ['Kotma', 'Chirmiri'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-08', batch_code: 'Batch 8', name: 'Kotma → Baikunthpur', route_stops: ['Kotma', 'Baikunthpur'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
-  { id: 'rb-kot-09', batch_code: 'Batch 9', name: 'Kotma → Gaurela', route_stops: ['Kotma', 'Gaurela'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-01', batch_code: 'KOT-B01', name: 'Kotma → Marwahi → Dhanikundi', route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'], distance_km: 85, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-02', batch_code: 'KOT-B02', name: 'Kotma → Kelhari → Janakpur', route_stops: ['Kotma', 'Kelhari', 'Janakpur'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-03', batch_code: 'KOT-B03', name: 'Kotma → Keswahi → Girva → Khamhidol', route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-04', batch_code: 'KOT-B04', name: 'Kotma → Jaithari → Rajendragram', route_stops: ['Kotma', 'Jaithari', 'Rajendragram'], distance_km: 70, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-05', batch_code: 'KOT-B05', name: 'Kotma → Anuppur', route_stops: ['Kotma', 'Anuppur'], distance_km: 45, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-06', batch_code: 'KOT-B06', name: 'Kotma → Manendragarh', route_stops: ['Kotma', 'Manendragarh'], distance_km: 65, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-07', batch_code: 'KOT-B07', name: 'Kotma → Chirmiri', route_stops: ['Kotma', 'Chirmiri'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-08', batch_code: 'KOT-B08', name: 'Kotma → Baikunthpur', route_stops: ['Kotma', 'Baikunthpur'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
+  { id: 'rb-kot-09', batch_code: 'KOT-B09', name: 'Kotma → Gaurela', route_stops: ['Kotma', 'Gaurela'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
 
   // Aman Rathore (Shahdol)
-  { id: 'rb-sha-01', batch_code: 'Batch 1', name: 'Shahdol → Budhar → Dhanpuri → OPM', route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'], distance_km: 55, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
-  { id: 'rb-sha-02', batch_code: 'Batch 2', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
-  { id: 'rb-sha-03', batch_code: 'Batch 3', name: 'Shahdol → Gohparu → Jaisinghnagar', route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'], distance_km: 120, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
-  { id: 'rb-sha-04', batch_code: 'Batch 4', name: 'Shahdol → Jaitpur', route_stops: ['Shahdol', 'Jaitpur'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
-  { id: 'rb-sha-05', batch_code: 'Batch 5', name: 'Shahdol → Manpur', route_stops: ['Shahdol', 'Manpur'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-01', batch_code: 'SHD-B01', name: 'Shahdol → Budhar → Dhanpuri → OPM', route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'], distance_km: 55, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-02', batch_code: 'SHD-B02', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-03', batch_code: 'SHD-B03', name: 'Shahdol → Gohparu → Jaisinghnagar', route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'], distance_km: 120, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-04', batch_code: 'SHD-B04', name: 'Shahdol → Jaitpur', route_stops: ['Shahdol', 'Jaitpur'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-05', batch_code: 'SHD-B05', name: 'Shahdol → Manpur', route_stops: ['Shahdol', 'Manpur'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
 
   // Ashish Soni (Ambikapur)
-  { id: 'rb-amb-01', batch_code: 'Batch 1', name: 'Ambikapur → Laknapur → Udaypur → Kedma', route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
-  { id: 'rb-amb-02', batch_code: 'Batch 2', name: 'Ambikapur → Batuli → Sitapur → Patthalgawn', route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'], distance_km: 130, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
-  { id: 'rb-amb-03', batch_code: 'Batch 3', name: 'Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar', route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'], distance_km: 115, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
-  { id: 'rb-amb-04', batch_code: 'Batch 4', name: 'Ambikapur → Pratapur → Siluta → Vadrafnagar', route_stops: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'], distance_km: 140, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
-  { id: 'rb-amb-05', batch_code: 'Batch 5', name: 'Ambikapur → Latori → Krwan → Datima → Batra → Bhatgawn', route_stops: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'], distance_km: 125, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-01', batch_code: 'AMB-B01', name: 'Ambikapur → Laknapur → Udaypur → Kedma', route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-02', batch_code: 'AMB-B02', name: 'Ambikapur → Batuli → Sitapur → Patthalgawn', route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'], distance_km: 130, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-03', batch_code: 'AMB-B03', name: 'Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar', route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'], distance_km: 115, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-04', batch_code: 'AMB-B04', name: 'Ambikapur → Pratapur → Siluta → Vadrafnagar', route_stops: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'], distance_km: 140, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
+  { id: 'rb-amb-05', batch_code: 'AMB-B05', name: 'Ambikapur → Latori → Krwan → Datima → Batra → Bhatgawn', route_stops: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'], distance_km: 125, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
 ];
 
 const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
