@@ -193,10 +193,7 @@ export const HqTerritoryManager: React.FC = () => {
       const resHqs = await fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() });
       if (resHqs.ok) {
         const dataHqs = await resHqs.json();
-        if (Array.isArray(dataHqs) && dataHqs.length > 0) {
           const map = new Map<string, HeadquarterItem>();
-          DEFAULT_MANAGED_HQS.forEach((h) => map.set(h.id, h));
-          hqs.forEach((h) => map.set(h.id, h));
           dataHqs.forEach((h: any) => {
             const hId = h.hq_id || h.id;
             const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
@@ -211,8 +208,9 @@ export const HqTerritoryManager: React.FC = () => {
             });
           });
           const mergedHqs = Array.from(map.values());
-          persistHqs(mergedHqs);
-        }
+          if (mergedHqs.length > 0) {
+            persistHqs(mergedHqs);
+          }
       }
 
       // 2. Fetch Areas
@@ -359,6 +357,25 @@ export const HqTerritoryManager: React.FC = () => {
 
     const updated = hqs.map((h) => (h.id === editingHq.id ? { ...h, name, code, state } : h));
     persistHqs(updated);
+
+    // Sync with operating cities
+    try {
+      const citiesRaw = localStorage.getItem('ahtri_operating_cities');
+      if (citiesRaw) {
+        const cities = JSON.parse(citiesRaw);
+        if (Array.isArray(cities)) {
+          const updatedCities = cities.map((c: any) => {
+            const cName = (c.cityName || c.name || '').toLowerCase().trim();
+            if (cName === editingHq.name.toLowerCase().trim()) {
+              return { ...c, cityName: name, name, state };
+            }
+            return c;
+          });
+          localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedCities));
+        }
+      }
+    } catch {}
+
     setEditingHq(null);
     showNotice('success', `Headquarters "${name}" updated successfully!`);
   };
@@ -386,6 +403,20 @@ export const HqTerritoryManager: React.FC = () => {
     const updatedAreas = areas.filter((a) => a.hq_id !== hqId);
     persistHqs(updatedHqs);
     persistAreas(updatedAreas);
+
+    // Also remove from ahtri_operating_cities
+    try {
+      const citiesRaw = localStorage.getItem('ahtri_operating_cities');
+      if (citiesRaw) {
+        const cities = JSON.parse(citiesRaw);
+        if (Array.isArray(cities)) {
+          const filtered = cities.filter(
+            (c: any) => (c.cityName || c.name || '').toLowerCase().trim() !== target.name.toLowerCase().trim()
+          );
+          localStorage.setItem('ahtri_operating_cities', JSON.stringify(filtered));
+        }
+      }
+    } catch {}
 
     if (selectedHqId === hqId) {
       setSelectedHqId(updatedHqs[0].id);

@@ -66,9 +66,9 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month'>('today');
   const [isListening, setIsListening] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [isAllQuestionsOpen, setIsAllQuestionsOpen] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-IN'>(() => (lang === 'hi' ? 'hi-IN' : 'en-IN'));
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -229,6 +229,29 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    const newLang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+    setVoiceLang(newLang);
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'msg-welcome') {
+        return [
+          {
+            id: 'msg-welcome',
+            sender: 'ai',
+            text: newLang === 'en-IN'
+              ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show active monthly MR stockage permissions"*!`
+              : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            relatedQuestions: newLang === 'en-IN'
+              ? ['How much work was done today?', 'Who marked attendance today?', 'Show active monthly MR stockage permissions']
+              : ['आज कितना काम हुआ?', 'आज किसकी हाजिरी लगी है?', 'मंथली स्टॉकेज परमिशन स्थिति दिखाओ'],
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [lang]);
 
   useEffect(() => {
     scrollToBottom();

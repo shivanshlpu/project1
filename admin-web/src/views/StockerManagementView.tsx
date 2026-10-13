@@ -158,9 +158,11 @@ const getMergedHqs = (): Headquarter[] => {
     }
   } catch {}
 
-  // 3. Fallback to default HQs
-  for (const hq of DEFAULT_HQS) {
-    map.set(hq.name.toLowerCase().trim(), { ...hq });
+  // 3. Fallback only if no settings exist at all
+  if (!localStorage.getItem('ahtri_operating_cities') && !localStorage.getItem('ahtri_inventory_hqs')) {
+    for (const hq of DEFAULT_HQS) {
+      map.set(hq.name.toLowerCase().trim(), { ...hq });
+    }
   }
 
   return Array.from(map.values());
@@ -444,15 +446,30 @@ export const StockerManagementView: React.FC = () => {
             });
           });
 
-          // Also include any new operating cities from Settings
-          const current = getMergedHqs();
-          current.forEach((h) => {
-            const key = h.name.toLowerCase().trim();
-            if (NON_HQ_NAMES.has(key)) return;
-            if (!map.has(key)) {
-              map.set(key, h);
-            }
-          });
+          // Also include any active operating cities from Settings that are not yet in backend
+          if (operatingNames && savedCitiesRaw) {
+            try {
+              const parsed = JSON.parse(savedCitiesRaw);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((c: any) => {
+                  const name = c.cityName || c.name;
+                  if (name) {
+                    const key = name.toLowerCase().trim();
+                    if (NON_HQ_NAMES.has(key)) return;
+                    if (!map.has(key)) {
+                      map.set(key, {
+                        id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+                        name: name.trim(),
+                        code: `HQ-${name.substring(0, 3).toUpperCase()}`,
+                        state: c.state || '',
+                        isHeadquarters: !!c.isHeadquarters || c.branchType === 'HEADQUARTERS',
+                      });
+                    }
+                  }
+                });
+              }
+            } catch {}
+          }
 
           const merged = Array.from(map.values());
           if (merged.length > 0) {

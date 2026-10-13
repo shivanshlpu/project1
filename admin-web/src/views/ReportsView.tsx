@@ -482,45 +482,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {selectedRowIds.size > 0 && (
-              <button
-                className="btn-enterprise primary"
-                style={{ background: '#0F8B5A', borderColor: '#0F8B5A', color: '#FFFFFF' }}
-                onClick={() => downloadCSV(true)}
-                title="Download CSV for selected rows only"
-              >
-                <Download size={14} />
-                <span>Download Selected ({selectedRowIds.size}) CSV</span>
-              </button>
-            )}
-            <button
-              className="btn-enterprise primary"
-              style={{ background: '#1A3C6E', borderColor: '#1A3C6E', color: '#FFFFFF' }}
-              onClick={() => downloadCSV(false)}
-              title="Download CSV spreadsheet of all filtered records"
-            >
-              <FileSpreadsheet size={14} />
-              <span>Download CSV ({filteredRecords.length})</span>
-            </button>
-            <button
-              className="btn-enterprise secondary"
-              onClick={() => downloadPDF(false)}
-              title="Print or save Executive PDF Report"
-            >
-              <Printer size={14} color="#DC2626" />
-              <span>Download PDF ({filteredRecords.length})</span>
-            </button>
-            <button
-              className="btn-enterprise secondary"
-              onClick={() => {
-                setSelectedFormat('json');
-                handleExportAction(false);
-              }}
-              title="Download raw structured JSON dataset"
-            >
-              <FileCode size={14} color="#64748B" />
-              <span>Download JSON</span>
-            </button>
+            <div style={{ padding: '6px 12px', background: '#F1F5F9', borderRadius: '6px', fontSize: '12px', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={14} color="#0F8B5A" />
+              <span>{filteredRecords.length} records ready for export</span>
+            </div>
           </div>
         </div>
       </div>
@@ -674,52 +639,139 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
         </div>
       </div>
 
+      {/* UNIFIED EXPORT ACTION CENTER */}
+      <div className="enterprise-panel" style={{ padding: '16px 20px', background: '#F8FAFC', border: '1.5px solid #CBD5E1' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          {/* Format Selection Chips */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: '800', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              3. Export Format:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedFormat('csv')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                border: `1.5px solid ${selectedFormat === 'csv' ? '#0F8B5A' : '#CBD5E1'}`,
+                background: selectedFormat === 'csv' ? '#ECFDF5' : '#FFFFFF',
+                color: selectedFormat === 'csv' ? '#065F46' : '#475569',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <FileSpreadsheet size={15} color={selectedFormat === 'csv' ? '#0F8B5A' : '#64748B'} />
+              <span>Excel / CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedFormat('pdf')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                border: `1.5px solid ${selectedFormat === 'pdf' ? '#DC2626' : '#CBD5E1'}`,
+                background: selectedFormat === 'pdf' ? '#FEF2F2' : '#FFFFFF',
+                color: selectedFormat === 'pdf' ? '#991B1B' : '#475569',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Printer size={15} color={selectedFormat === 'pdf' ? '#DC2626' : '#64748B'} />
+              <span>Executive PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedFormat('json')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                border: `1.5px solid ${selectedFormat === 'json' ? '#1A3C6E' : '#CBD5E1'}`,
+                background: selectedFormat === 'json' ? '#EFF6FF' : '#FFFFFF',
+                color: selectedFormat === 'json' ? '#1E40AF' : '#475569',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <FileCode size={15} color={selectedFormat === 'json' ? '#1A3C6E' : '#64748B'} />
+              <span>Structured JSON</span>
+            </button>
+          </div>
+
+          {/* Action Trigger Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {selectedRowIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedRowIds(new Set())}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Clear Selection ({selectedRowIds.size})
+              </button>
+            )}
+
+            {selectedRowIds.size > 0 ? (
+              <button
+                type="button"
+                className="btn-enterprise primary"
+                style={{ background: '#0F8B5A', borderColor: '#0F8B5A', color: '#FFFFFF', padding: '8px 16px', fontWeight: '700' }}
+                onClick={() => handleExportAction(true)}
+              >
+                <Download size={15} />
+                <span>Download Selected ({selectedRowIds.size}) as {selectedFormat.toUpperCase()}</span>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className="btn-enterprise primary"
+              style={{ background: '#1A3C6E', borderColor: '#1A3C6E', color: '#FFFFFF', padding: '8px 16px', fontWeight: '700' }}
+              onClick={() => handleExportAction(false)}
+            >
+              <Download size={15} />
+              <span>Download All Filtered ({filteredRecords.length}) as {selectedFormat.toUpperCase()}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* INTERACTIVE DATA PREVIEW TABLE */}
       <div className="enterprise-panel">
         <div className="panel-header-bar">
           <div className="panel-headline">
             <Table size={16} color="#0052cc" />
-            <span>{t.previewTable} ({filteredRecords.length} Rows Matching Filters)</span>
+            <span>
+              {t.previewTable} ({filteredRecords.length} Rows Matching Filters
+              {selectedRowIds.size > 0 ? ` • ${selectedRowIds.size} Selected` : ''})
+            </span>
           </div>
 
-          <div className="panel-controls-group" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {selectedRowIds.size > 0 ? (
-              <>
-                <button
-                  className="btn-enterprise primary sm"
-                  style={{ background: '#0F8B5A', borderColor: '#0F8B5A' }}
-                  onClick={() => downloadCSV(true)}
-                >
-                  <Download size={13} />
-                  <span>Download Selected ({selectedRowIds.size}) CSV</span>
-                </button>
-                <button
-                  className="btn-enterprise secondary sm"
-                  onClick={() => downloadPDF(true)}
-                >
-                  <Printer size={13} />
-                  <span>Download Selected ({selectedRowIds.size}) PDF</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="btn-enterprise primary sm"
-                  style={{ background: '#1A3C6E', borderColor: '#1A3C6E' }}
-                  onClick={() => downloadCSV(false)}
-                >
-                  <Download size={13} />
-                  <span>Download CSV ({filteredRecords.length})</span>
-                </button>
-                <button
-                  className="btn-enterprise secondary sm"
-                  onClick={() => downloadPDF(false)}
-                >
-                  <Printer size={13} />
-                  <span>Download PDF</span>
-                </button>
-              </>
-            )}
+          <div className="panel-controls-group" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B' }}>
+              Select rows using checkboxes to export specific records
+            </span>
           </div>
         </div>
 

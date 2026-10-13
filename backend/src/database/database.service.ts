@@ -148,6 +148,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         verificationPhotos: this.verificationPhotos,
         deviceAuthorizations: this.deviceAuthorizations,
         routeBatches: this.routeBatches,
+        headquarters: this.headquarters,
+        stockers: this.stockers,
+        hqAreas: this.hqAreas,
+        medicines: this.medicines,
         monthlyStockagePermissions: this.monthlyStockagePermissions,
         stockageSubmissionRequests: this.stockageSubmissionRequests,
         medicinePackagingVariants: this.medicinePackagingVariants,
@@ -316,6 +320,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.stockageSubmissionRequests) && data.stockageSubmissionRequests.length > 0) {
           this.stockageSubmissionRequests = data.stockageSubmissionRequests;
+        }
+        if (Array.isArray(data.headquarters) && data.headquarters.length > 0) {
+          this.headquarters = data.headquarters;
+        }
+        if (Array.isArray(data.stockers)) {
+          this.stockers = data.stockers;
+        }
+        if (Array.isArray(data.hqAreas)) {
+          this.hqAreas = data.hqAreas;
+        }
+        if (Array.isArray(data.medicines) && data.medicines.length > 0) {
+          this.medicines = data.medicines;
         }
         if (Array.isArray(data.medicinePackagingVariants) && data.medicinePackagingVariants.length > 0) {
           this.medicinePackagingVariants = data.medicinePackagingVariants;
@@ -956,12 +972,14 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       created_at: new Date().toISOString(),
     };
 
-    this.headquarters.push(
-      hqKotma,
-      hqShahdol,
-      hqAmbikapur,
-      hqBilaspur,
-    );
+    if (this.headquarters.length === 0) {
+      this.headquarters.push(
+        hqKotma,
+        hqShahdol,
+        hqAmbikapur,
+        hqBilaspur,
+      );
+    }
 
     // 11. Seed HQ Areas (Mapped strictly per HQ)
     const areas = [
@@ -1012,14 +1030,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       { id: 'area-bhr-03', hq_id: hqShahdol.id, name: 'Amlai' },
       { id: 'area-bhr-04', hq_id: hqShahdol.id, name: 'Bakaho' },
     ];
-    for (const a of areas) {
-      this.hqAreas.push({
-        id: a.id,
-        hq_id: a.hq_id,
-        name: a.name,
-        status: 'ACTIVE',
-        created_at: new Date().toISOString(),
-      });
+    if (this.hqAreas.length === 0) {
+      for (const a of areas) {
+        this.hqAreas.push({
+          id: a.id,
+          hq_id: a.hq_id,
+          name: a.name,
+          status: 'ACTIVE',
+          created_at: new Date().toISOString(),
+        });
+      }
     }
 
     // 11.1 Seed Default Route Batches (§Master Route Planning)
@@ -1129,10 +1149,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
-    this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
+    if (this.stockers.length === 0) {
+      this.stockers.push(stocker1, stocker2, stocker3, stocker4, stocker5, stocker6, stocker7);
+    }
 
     // 13. Seed Route Batches (19 Configured Master Batches across Kotma, Shahdol & Ambikapur)
-    this.routeBatches = [
+    if (this.routeBatches.length === 0) {
+      this.routeBatches = [
       // MR: Amar Dwivedi | HQ: Kotma (9 Batches)
       {
         id: 'rb-kot-01',
@@ -1462,6 +1485,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         created_at: new Date().toISOString(),
       },
     ];
+    }
 
     // 14. Seed Medicines Master (§11) - Authoritative 17 AHTRI Medicine Catalog with Structured Packaging & PTS/MRP Rates
     const seedMedicinesList: Medicine[] = [
@@ -2141,8 +2165,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ],
       },
     ];
-    this.medicines = seedMedicinesList;
-    this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []);
+    if (this.medicines.length === 0) {
+      this.medicines = seedMedicinesList;
+      this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []);
+    }
 
     // 14. Stocker Inventory - Clean Initial Inventory Records for every Stocker & Listed Medicine
     for (const stk of this.stockers) {

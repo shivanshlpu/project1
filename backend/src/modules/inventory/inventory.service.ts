@@ -89,6 +89,7 @@ export class InventoryService {
     };
 
     this.db.headquarters.push(hq);
+    this.db.persistToDisk();
     return hq;
   }
 
@@ -134,6 +135,7 @@ export class InventoryService {
     if (dto.state !== undefined) hq.state = dto.state.trim();
     if (dto.status) hq.status = dto.status;
 
+    this.db.persistToDisk();
     return hq;
   }
 
