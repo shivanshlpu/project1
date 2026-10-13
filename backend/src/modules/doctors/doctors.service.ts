@@ -46,7 +46,7 @@ export class DoctorsService {
       address: dto.address,
       latitude: dto.latitude,
       longitude: dto.longitude,
-      area_id: dto.area_id || 'area-sdelhi-1',
+      area_id: dto.area_id || 'area-shd-07',
       created_by: createdBy,
       created_by_role: creator ? creator.role : 'MR',
       created_by_name: creator ? creator.name : 'Unknown User',

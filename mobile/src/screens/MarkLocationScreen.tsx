@@ -351,7 +351,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
                   setDoctorName(doc.name);
                   setClinicName(doc.clinic);
                   setSpecialization(doc.specialization || 'General');
-                  setAddress(doc.address || `${doc.clinic}, South Delhi`);
+                  setAddress(doc.address || `${doc.clinic}, Shahdol`);
                 }}
               >
                 <Text

@@ -32,6 +32,7 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 export interface MonthlyTpItem {
   id: string;
@@ -189,7 +190,7 @@ export const MonthlyTpView: React.FC = () => {
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [processingTpId, setProcessingTpId] = useState<string | null>(null);
 
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = getApiBaseUrl();
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');

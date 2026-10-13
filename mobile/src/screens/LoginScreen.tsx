@@ -34,9 +34,9 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const [identifier, setIdentifier] = useState('SHD');
-  const [password, setPassword] = useState('AmanRathoreSHD');
-  const [phone, setPhone] = useState('9876543213');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
 
   // Real Hardware Fingerprint of the running phone
   const [currentDeviceId, setCurrentDeviceId] = useState('dev-hw-s22-9f8a2c');
@@ -652,73 +652,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           Sign in using your assigned HQ Code, HQ ID, email, or mobile number.
         </Text>
 
-        {/* Quick MR Select Chips */}
-        <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
-            QUICK ACCESS ACCOUNTS:
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-            <TouchableOpacity
-              onPress={() => {
-                setIdentifier('9876543213');
-                setPassword('AmanRathoreSHD');
-                setPhone('9876543213');
-              }}
-              style={{
-                backgroundColor: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#EFF6FF' : '#F1F5F9',
-                borderColor: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#3B82F6' : '#CBD5E1',
-                borderWidth: 1,
-                paddingVertical: 5,
-                paddingHorizontal: 8,
-                borderRadius: 6,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543213' || identifier.toUpperCase() === 'SHD') ? '#1D4ED8' : '#334155' }}>
-                Aman Rathore (SHD)
-              </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => {
-                setIdentifier('9876543212');
-                setPassword('AmarDwivediKOT');
-                setPhone('9876543212');
-              }}
-              style={{
-                backgroundColor: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#EFF6FF' : '#F1F5F9',
-                borderColor: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#3B82F6' : '#CBD5E1',
-                borderWidth: 1,
-                paddingVertical: 5,
-                paddingHorizontal: 8,
-                borderRadius: 6,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543212' || identifier.toUpperCase() === 'KOT') ? '#1D4ED8' : '#334155' }}>
-                Amar Dwivedi (KOT)
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setIdentifier('9876543214');
-                setPassword('AshishSoniAMB');
-                setPhone('9876543214');
-              }}
-              style={{
-                backgroundColor: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#EFF6FF' : '#F1F5F9',
-                borderColor: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#3B82F6' : '#CBD5E1',
-                borderWidth: 1,
-                paddingVertical: 5,
-                paddingHorizontal: 8,
-                borderRadius: 6,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: (identifier === '9876543214' || identifier.toUpperCase() === 'AMB') ? '#1D4ED8' : '#334155' }}>
-                Ashish Soni (AMB)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Identifier */}
         <View style={styles.inputGroup}>

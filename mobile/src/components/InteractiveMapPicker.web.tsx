@@ -327,7 +327,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       category,
       latitude: selectedLat,
       longitude: selectedLng,
-      address: address.trim() || `${placeName.trim()}, South Delhi`,
+      address: address.trim() || `${placeName.trim()}, Shahdol`,
       phone: phone.trim() || undefined,
     });
   };
@@ -470,7 +470,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             style={styles.textInput}
             value={address}
             onChangeText={setAddress}
-            placeholder="e.g. Ring Road, Saket, South Delhi"
+            placeholder="e.g. Gandhi Chowk, Shahdol, MP"
           />
 
           <Text style={styles.inputLabel}>Contact Phone</Text>

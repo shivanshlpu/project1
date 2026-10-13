@@ -954,13 +954,13 @@ export const SalesmanPortalView: React.FC = () => {
                 <div style={{ fontSize: '16px', fontWeight: 800, color: checkedOut ? '#0052cc' : '#00875a', marginTop: '2px' }}>
                   {checkedOut ? 'COMPLETED (LOGGED OUT)' : 'CHECKED IN (PRESENT)'}
                 </div>
-                <div style={{ fontSize: '11px', color: '#7a869a', marginTop: '4px' }}>Date: Sep 6, 2026 • Territory: South Delhi</div>
+                <div style={{ fontSize: '11px', color: '#7a869a', marginTop: '4px' }}>Date: Sep 6, 2026 • Territory: Shahdol Central</div>
               </div>
 
               {checkedIn && (
                 <div style={{ background: '#e3fcef', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '11px', color: '#006644' }}>
                   <div style={{ fontWeight: 700 }}>Punch-In Verified: 09:15 AM</div>
-                  <div>Coordinates: 28.5245, 77.2066 (Accuracy: ±10m)</div>
+                  <div>Coordinates: 23.2962, 81.3537 (Accuracy: ±10m)</div>
                 </div>
               )}
 

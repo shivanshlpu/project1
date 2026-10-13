@@ -23,6 +23,7 @@ import {
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
 import { StockageWorkflowPanel } from '../components/StockageWorkflowPanel';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface Headquarter {
   id: string;
@@ -398,16 +399,7 @@ export const StockerManagementView: React.FC = () => {
   const [isSubmittingStocker, setIsSubmittingStocker] = useState<boolean>(false);
   const [stockerModalError, setStockerModalError] = useState<string>('');
 
-  const getApiUrl = () => {
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      return 'http://localhost:3000';
-    }
-    return (
-      (import.meta as any).env?.VITE_API_URL ||
-      localStorage.getItem('ahtri_backend_url') ||
-      'http://localhost:3000'
-    );
-  };
+  const getApiUrl = () => getApiBaseUrl();
   const apiUrl = getApiUrl();
 
   const getAuthHeaders = () => {
@@ -3192,7 +3184,7 @@ export const StockerManagementView: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Rewa, Indore, Raipur, Delhi"
+                placeholder="e.g. Shahdol, Kotma, Ambikapur, Bilaspur"
                 value={newHqName}
                 onChange={(e) => setNewHqName(e.target.value)}
                 autoFocus

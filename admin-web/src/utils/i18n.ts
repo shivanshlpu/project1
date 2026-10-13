@@ -142,7 +142,7 @@ export const translations = {
     // Settings: City Pinpoint
     cityPinpointTitle: 'Operating Headquarters & City Pinpoint',
     cityPinpointDesc: 'Search, pinpoint, and inspect any operating city across India or globally. Switch between Street and Satellite views to view city terrain.',
-    searchCityPlaceholder: 'Search city, district, state (e.g. New Delhi, Mumbai, Jaipur, Lucknow)...',
+    searchCityPlaceholder: 'Search city, district, state (e.g. Shahdol, Kotma, Ambikapur, Bilaspur)...',
     pinpointedCity: 'Pinpointed City Location',
     saveCityAsHQ: 'Save Marked City as Operating Zone',
     savedOperatingCities: 'Saved Operating Cities',

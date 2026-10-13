@@ -363,7 +363,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.stockageSubmissionRequests = data.stockageSubmissionRequests;
         }
         if (Array.isArray(data.headquarters) && data.headquarters.length > 0) {
-          this.headquarters = data.headquarters;
+          this.headquarters = data.headquarters.filter(
+            (h: any) =>
+              !h.name?.toLowerCase().includes('delhi') &&
+              !h.id?.toLowerCase().includes('delhi') &&
+              !h.hq_id?.toLowerCase().includes('delhi')
+          );
         }
         if (Array.isArray(data.stockers)) {
           this.stockers = data.stockers;
@@ -891,10 +896,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           potential_score: 88,
           phone: '9822233344',
           clinic: 'Skin Care Centre',
-          address: 'Hauz Khas, New Delhi',
-          latitude: 28.5585,
-          longitude: 77.2028,
-          area_id: 'area-sdelhi-1',
+          address: 'Gandhi Chowk, Shahdol, MP',
+          latitude: 23.2962,
+          longitude: 81.3537,
+          area_id: 'area-shd-07',
           created_by: 'usr-mgr-01',
           assigned_mr_id: 'usr-mr-01',
           assigned_mr_name: 'Amar Dwivedi',

@@ -67,7 +67,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   const [selectedLat, setSelectedLat] = useState<number>(initialLat);
   const [selectedLng, setSelectedLng] = useState<number>(initialLng);
   const [locationName, setLocationName] = useState('');
-  const [address, setAddress] = useState('Ring Road, Saket, South Delhi');
+  const [address, setAddress] = useState('Gandhi Chowk, Shahdol, MP');
   const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER'>('CLINIC');
   const [phone, setPhone] = useState('');
   const [geofenceRadius, setGeofenceRadius] = useState<number>(50); // 50m default
@@ -345,7 +345,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       if (mapInstanceRef.current) mapInstanceRef.current.setView([lat, lng], 16);
     } else {
       setLocationName('');
-      setAddress('Ring Road, Saket, South Delhi');
+      setAddress('Gandhi Chowk, Shahdol, MP');
       setCategory('CLINIC');
       setPhone('');
       setSelectedLat(initialLat);

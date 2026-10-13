@@ -84,8 +84,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-footer">
         <div className="user-profile-mini">
-          <span className="user-name">Anil Kumar</span>
-          <span className="user-role-badge">Area Manager (South Delhi)</span>
+          <span className="user-name">System Administrator</span>
+          <span className="user-role-badge">Central Operations</span>
         </div>
         <button
           style={{

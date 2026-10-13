@@ -515,7 +515,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       category: locData.category,
       created_by_role: 'ADMIN',
       created_by_name: 'System Admin (Owner)',
-      area_name: locData.address.includes('Shahdol') ? 'Shahdol District' : 'Delhi Territory',
+      area_name: locData.address.includes('Kotma') ? 'Kotma District' : locData.address.includes('Ambikapur') ? 'Ambikapur District' : 'Shahdol District',
       visit_count: 0,
     };
 

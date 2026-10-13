@@ -134,6 +134,12 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+const DEFAULT_MRS_FALLBACK = [
+  { id: 'usr-mr-01', name: 'Amar Dwivedi', phone: '9876543212', hq_id: 'HQ-KOT-001', hq_name: 'Kotma' },
+  { id: 'usr-mr-02', name: 'Aman Rathore', phone: '9876543213', hq_id: 'HQ-SHD-001', hq_name: 'Shahdol' },
+  { id: 'usr-mr-03', name: 'Ashish Soni', phone: '9876543214', hq_id: 'HQ-AMB-001', hq_name: 'Ambikapur' },
+];
+
   // --- Monthly Permissions State ---
   const [permissions, setPermissions] = useState<MonthlyPermission[]>([]);
   const [permMonthYear, setPermMonthYear] = useState<string>(() => {
@@ -143,7 +149,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
   const [permHqId, setPermHqId] = useState<string>('ALL');
   const [permStockerId, setPermStockerId] = useState<string>('ALL');
   const [permNotes, setPermNotes] = useState<string>('');
-  const [allMrs, setAllMrs] = useState<Array<{ id: string; name: string; phone?: string; hq_id?: string }>>([]);
+  const [allMrs, setAllMrs] = useState<Array<{ id: string; name: string; phone?: string; hq_id?: string }>>(DEFAULT_MRS_FALLBACK);
   const [selectedMrIds, setSelectedMrIds] = useState<string[]>([]);
   const [permStatusFilter, setPermStatusFilter] = useState<string>('ALL');
 
@@ -184,11 +190,15 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
       const res = await fetch(`${apiUrl}/users?role=MR`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        setAllMrs(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length > 0) {
+          setAllMrs(data);
+          return;
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch MR list', err);
     }
+    setAllMrs((prev) => (prev.length > 0 ? prev : DEFAULT_MRS_FALLBACK));
   };
 
   const fetchPermissions = async () => {
@@ -464,11 +474,20 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
           padding: 6,
           borderRadius: 8,
           border: '1px solid var(--color-border)',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          flexWrap: 'nowrap',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <button
           onClick={() => setSubTab('APPROVALS')}
           style={{
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             padding: '8px 18px',
             borderRadius: 6,
             border: 'none',
@@ -504,6 +523,8 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
         <button
           onClick={() => setSubTab('PERMISSIONS')}
           style={{
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             padding: '8px 18px',
             borderRadius: 6,
             border: 'none',
@@ -528,6 +549,8 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
         <button
           onClick={() => setSubTab('VARIANTS')}
           style={{
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             padding: '8px 18px',
             borderRadius: 6,
             border: 'none',
@@ -1156,13 +1179,20 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
               <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
                 5. ADMIN NOTES (AUDIT TRAIL)
               </label>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
                   type="text"
                   placeholder="e.g. Authorized after monthly telephonic alignment with MR..."
                   value={permNotes}
                   onChange={(e) => setPermNotes(e.target.value)}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5 }}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '9px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--color-border)',
+                    fontSize: 13,
+                  }}
                 />
                 <button
                   type="button"
@@ -1170,13 +1200,19 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                   onClick={handleGrantPermissions}
                   className="btn-enterprise"
                   style={{
-                    padding: '8px 20px',
-                    fontSize: 12.5,
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     background: 'var(--color-brand)',
                     color: '#FFFFFF',
+                    borderRadius: 6,
+                    cursor: selectedMrIds.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: selectedMrIds.length === 0 ? 0.6 : 1,
                   }}
                 >
                   <Send size={14} />

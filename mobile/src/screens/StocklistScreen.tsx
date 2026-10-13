@@ -43,13 +43,6 @@ interface InventoryProductItem {
 }
 
 const DEFAULT_AREAS_BY_HQ: Record<string, string[]> = {
-  'hq-delhi': [
-    'Saket',
-    'Hauz Khas',
-    'Green Park',
-    'South Extension',
-    'Malviya Nagar',
-  ],
   'hq-shahdol': [
     'Shahdol Central',
     'Burhar',
@@ -312,7 +305,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
 
   const [selectedHqId, setSelectedHqId] = useState<string>('HQ-SHD-001');
   const [selectedSubArea, setSelectedSubArea] = useState<string>('ALL');
-  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-delhi'] || []);
+  const [availableAreas, setAvailableAreas] = useState<string[]>(DEFAULT_AREAS_BY_HQ['hq-shahdol'] || []);
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryProductItem[]>([]);

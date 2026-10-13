@@ -334,15 +334,21 @@ export const ApprovalsView: React.FC = () => {
   return (
     <div className="enterprise-panel">
       {/* Header Bar */}
-      <div className="panel-header-bar">
-        <div className="panel-headline">
-          <CheckSquare size={16} color="#0052cc" />
-          <span>Approval Hub (Leave Requests & Suspended Task Approvals)</span>
+      <div className="panel-header-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px', padding: '12px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="panel-headline" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
+            <CheckSquare size={16} color="#0052cc" />
+            <span>Approval Hub (Leave Requests &amp; Suspended Task Approvals)</span>
+          </div>
+          <span className={`status-pill ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}>
+            <span className={`status-dot ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}></span>
+            {totalPendingActionCount} Pending Action
+          </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           {/* Category Filter */}
-          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '2px', borderRadius: '6px' }}>
+          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '2px', borderRadius: '6px', flexWrap: 'wrap', gap: '2px' }}>
             <button
               onClick={() => setFilterType('ALL')}
               style={{
@@ -394,7 +400,7 @@ export const ApprovalsView: React.FC = () => {
           </div>
 
           {/* Status Filter */}
-          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '2px', borderRadius: '6px' }}>
+          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '2px', borderRadius: '6px', flexWrap: 'wrap', gap: '2px' }}>
             <button
               onClick={() => setFilterStatus('PENDING')}
               style={{
@@ -449,11 +455,6 @@ export const ApprovalsView: React.FC = () => {
               Clear All Suspended ({pendingSuspendedCount})
             </button>
           )}
-
-          <span className={`status-pill ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}>
-            <span className={`status-dot ${totalPendingActionCount > 0 ? 'warning' : 'success'}`}></span>
-            {totalPendingActionCount} Pending Action
-          </span>
         </div>
       </div>
 

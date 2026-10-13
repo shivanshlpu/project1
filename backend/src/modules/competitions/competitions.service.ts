@@ -178,8 +178,7 @@ export class CompetitionsService {
           (c.hq_id.includes('shd') && userTerritory.includes('shahdol')) ||
           (c.hq_id.includes('bsp') && userTerritory.includes('bilaspur')) ||
           (c.hq_id.includes('amb') && userTerritory.includes('ambikapur')) ||
-          (c.hq_id.includes('ktm') && userTerritory.includes('kotma')) ||
-          (c.hq_id.includes('del') && userTerritory.includes('delhi'));
+          (c.hq_id.includes('ktm') && userTerritory.includes('kotma'));
         return Boolean(matchesHq);
       }
       return true;

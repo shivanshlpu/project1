@@ -197,7 +197,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         potential_score: 85,
         clinic: data.name,
         address: data.address,
-        area_name: 'South Delhi',
+        area_name: 'Shahdol',
         phone: data.phone || '+91 98000 00000',
         latitude: data.latitude,
         longitude: data.longitude,
@@ -430,7 +430,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Address / Landmark:</Text>
                     <Text style={styles.infoValue}>
-                      {doc.address || doc.area_name || 'South Delhi'}
+                      {doc.address || doc.area_name || 'Shahdol'}
                     </Text>
                   </View>
                   <View style={styles.infoRow}>

@@ -191,7 +191,7 @@ export class LocationsService implements OnModuleInit {
       created_by: creatorId,
       created_by_role: creatorRole,
       created_by_name: creatorName,
-      area_name: 'South Delhi Territory',
+      area_name: 'Shahdol Territory',
       visit_count: 0,
       is_new: creatorRole === 'MR', // Only MR field discoveries trigger owner alerts; admin assignments/marks do not popup on dashboard
       created_at: new Date().toISOString(),
@@ -212,7 +212,7 @@ export class LocationsService implements OnModuleInit {
       address: newLocation.address,
       latitude: newLocation.latitude,
       longitude: newLocation.longitude,
-      area_id: dto.area_id || 'area-sdelhi-1',
+      area_id: dto.area_id || 'area-shd-07',
       created_by: creatorId,
       created_by_role: creatorRole,
       created_by_name: creatorName,

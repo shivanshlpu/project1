@@ -28,10 +28,10 @@ describe('Doctors Master (Node 6 DoD Verification)', () => {
         potential_score: 91,
         phone: '9877766554',
         clinic: 'Skin Care Centre',
-        address: 'Hauz Khas, New Delhi',
-        latitude: 28.5494,
-        longitude: 77.2001,
-        area_id: 'area-sdelhi-1',
+        address: 'Gandhi Chowk, Shahdol, MP',
+        latitude: 23.2962,
+        longitude: 81.3537,
+        area_id: 'area-shd-07',
       },
       'usr-mgr-01',
     );
@@ -39,12 +39,12 @@ describe('Doctors Master (Node 6 DoD Verification)', () => {
     expect(doc.id).toBeDefined();
     expect(doc.class).toBe('A');
     expect(doc.potential_score).toBe(91);
-    expect(doc.latitude).toBe(28.5494);
+    expect(doc.latitude).toBe(23.2962);
   });
 
   it('should filter doctors by territory area and class', async () => {
     const classADocs = await service.getDoctors({
-      area_id: 'area-sdelhi-1',
+      area_id: 'area-shd-07',
       class: 'A',
     });
 
