@@ -35,14 +35,10 @@ interface Headquarter {
 }
 
 const DEFAULT_HQS: Headquarter[] = [
-  { id: 'HQ-SHD-001', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
-  { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
-  { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
-  { id: 'HQ-KOT-001', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
-  { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
-  { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
-  { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
-  { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
+  { id: 'HQ-SHD-001', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh', isHeadquarters: true },
+  { id: 'HQ-KOT-001', name: 'Kotma', code: 'HQ-KOT', state: 'Madhya Pradesh', isHeadquarters: true },
+  { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh', isHeadquarters: true },
+  { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh', isHeadquarters: true },
 ];
 
 export const matchesHqId = (sHq: string, targetHq: string): boolean => {
@@ -169,66 +165,63 @@ const NON_HQ_NAMES = new Set([
 const getMergedHqs = (): Headquarter[] => {
   const map = new Map<string, Headquarter>();
 
-  // 1. Check if operating cities are configured in Settings (authoritative source)
+  // 1. Always seed the 4 canonical baseline headquarters
+  for (const hq of DEFAULT_HQS) {
+    const key = (hq.name || '').toLowerCase().trim();
+    if (key && !NON_HQ_NAMES.has(key)) {
+      map.set(key, { ...hq });
+    }
+  }
+
+  // 2. Merge from Settings > HQ & Territory Manager (ahtri_inventory_hqs)
+  try {
+    const saved = localStorage.getItem('ahtri_inventory_hqs');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item && item.name) {
+            const key = item.name.toLowerCase().trim();
+            if (NON_HQ_NAMES.has(key)) continue;
+            const existing = map.get(key);
+            map.set(key, {
+              id: item.hq_id || item.id || existing?.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+              name: item.name.trim(),
+              code: item.code || item.hq_code || existing?.code || `HQ-${item.name.substring(0, 3).toUpperCase()}`,
+              state: item.state || existing?.state || '',
+              isHeadquarters: true,
+            });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // 3. Merge from Settings > Operating Cities & Branches (ahtri_operating_cities)
   try {
     const savedCities = localStorage.getItem('ahtri_operating_cities');
     if (savedCities) {
       const parsed = JSON.parse(savedCities);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         for (const c of parsed) {
           const name = c.cityName || c.name;
           if (name) {
             const key = name.toLowerCase().trim();
             if (NON_HQ_NAMES.has(key)) continue;
-            const isHq = !!c.isHeadquarters || c.branchType === 'HEADQUARTERS';
-            map.set(key, {
-              id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
-              name: name.trim(),
-              code: `HQ-${name.substring(0, 3).toUpperCase()}`,
-              state: c.state || '',
-              isHeadquarters: isHq,
-            });
+            if (!map.has(key)) {
+              map.set(key, {
+                id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+                name: name.trim(),
+                code: `HQ-${name.substring(0, 3).toUpperCase()}`,
+                state: c.state || '',
+                isHeadquarters: !!c.isHeadquarters || c.branchType === 'HEADQUARTERS',
+              });
+            }
           }
-        }
-        if (map.size > 0) {
-          return Array.from(map.values());
         }
       }
     }
   } catch {}
-
-  // 2. Fall back to ahtri_inventory_hqs if operating cities not set
-  try {
-    const saved = localStorage.getItem('ahtri_inventory_hqs');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        for (const item of parsed) {
-          if (item && item.name) {
-            const key = item.name.toLowerCase().trim();
-            if (NON_HQ_NAMES.has(key)) continue;
-            map.set(key, {
-              id: item.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
-              name: item.name.trim(),
-              code: item.code || `HQ-${item.name.substring(0, 3).toUpperCase()}`,
-              state: item.state || '',
-              isHeadquarters: !!item.isHeadquarters,
-            });
-          }
-        }
-        if (map.size > 0) {
-          return Array.from(map.values());
-        }
-      }
-    }
-  } catch {}
-
-  // 3. Fallback only if no settings exist at all
-  if (!localStorage.getItem('ahtri_operating_cities') && !localStorage.getItem('ahtri_inventory_hqs')) {
-    for (const hq of DEFAULT_HQS) {
-      map.set(hq.name.toLowerCase().trim(), { ...hq });
-    }
-  }
 
   return Array.from(map.values());
 };
@@ -363,16 +356,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   }, [selectedHqId]);
 
-  // HQ Modals state
-  const [isAddHqModalOpen, setIsAddHqModalOpen] = useState<boolean>(false);
-  const [isEditHqModalOpen, setIsEditHqModalOpen] = useState<boolean>(false);
-  const [editingHq, setEditingHq] = useState<Headquarter | null>(null);
-  const [newHqName, setNewHqName] = useState<string>('');
-  const [newHqCode, setNewHqCode] = useState<string>('');
-  const [newHqState, setNewHqState] = useState<string>('');
-  const [editHqName, setEditHqName] = useState<string>('');
-  const [editHqCode, setEditHqCode] = useState<string>('');
-  const [editHqState, setEditHqState] = useState<string>('');
+
 
   // Stockers state
   const [stockers, setStockers] = useState<StockerItem[]>([]);
@@ -513,69 +497,90 @@ export const StockerManagementView: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          // If operating cities is configured in Settings, that is the authoritative list
-          const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
-          let operatingNames: Set<string> | null = null;
-          if (savedCitiesRaw) {
-            try {
-              const parsed = JSON.parse(savedCitiesRaw);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                operatingNames = new Set(
-                  parsed.map((c: any) => (c.cityName || c.name || '').toLowerCase().trim()).filter(Boolean)
-                );
-              }
-            } catch {}
-          }
+        const map = new Map<string, Headquarter>();
 
-          const map = new Map<string, Headquarter>();
+        // 1. Canonical defaults
+        DEFAULT_HQS.forEach((dh) => {
+          const key = dh.name.toLowerCase().trim();
+          if (!map.has(key)) {
+            map.set(key, { ...dh });
+          }
+        });
+
+        // 2. Backend HQs
+        if (Array.isArray(data)) {
           data.forEach((h: any) => {
+            if (!h || !h.name) return;
             const key = h.name.toLowerCase().trim();
             if (NON_HQ_NAMES.has(key)) return;
-            // Filter out any HQ that was deleted in Settings
-            if (operatingNames && !operatingNames.has(key)) return;
+            const existing = map.get(key);
             map.set(key, {
-              id: h.id,
-              name: h.name,
-              code: h.code || `HQ-${h.name.substring(0, 3).toUpperCase()}`,
-              state: h.state || '',
-              isHeadquarters: h.isHeadquarters || false,
+              id: h.id || existing?.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+              name: h.name.trim(),
+              code: h.code || h.hq_code || existing?.code || `HQ-${h.name.substring(0, 3).toUpperCase()}`,
+              state: h.state || existing?.state || '',
+              isHeadquarters: h.isHeadquarters ?? true,
             });
           });
+        }
 
-          // Also include any active operating cities from Settings that are not yet in backend
-          if (operatingNames && savedCitiesRaw) {
-            try {
-              const parsed = JSON.parse(savedCitiesRaw);
-              if (Array.isArray(parsed)) {
-                parsed.forEach((c: any) => {
-                  const name = c.cityName || c.name;
-                  if (name) {
-                    const key = name.toLowerCase().trim();
-                    if (NON_HQ_NAMES.has(key)) return;
-                    if (!map.has(key)) {
-                      map.set(key, {
-                        id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
-                        name: name.trim(),
-                        code: `HQ-${name.substring(0, 3).toUpperCase()}`,
-                        state: c.state || '',
-                        isHeadquarters: !!c.isHeadquarters || c.branchType === 'HEADQUARTERS',
-                      });
-                    }
+        // 3. Settings > HQ & Territory Manager (ahtri_inventory_hqs)
+        try {
+          const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
+          if (savedHqsRaw) {
+            const parsedHqs = JSON.parse(savedHqsRaw);
+            if (Array.isArray(parsedHqs)) {
+              parsedHqs.forEach((item: any) => {
+                if (item && item.name) {
+                  const key = item.name.toLowerCase().trim();
+                  if (NON_HQ_NAMES.has(key)) return;
+                  const existing = map.get(key);
+                  map.set(key, {
+                    id: item.hq_id || item.id || existing?.id || `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+                    name: item.name.trim(),
+                    code: item.code || item.hq_code || existing?.code || `HQ-${item.name.substring(0, 3).toUpperCase()}`,
+                    state: item.state || existing?.state || '',
+                    isHeadquarters: true,
+                  });
+                }
+              });
+            }
+          }
+        } catch {}
+
+        // 4. Settings > Operating Cities (ahtri_operating_cities)
+        try {
+          const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
+          if (savedCitiesRaw) {
+            const parsed = JSON.parse(savedCitiesRaw);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((c: any) => {
+                const name = c.cityName || c.name;
+                if (name) {
+                  const key = name.toLowerCase().trim();
+                  if (NON_HQ_NAMES.has(key)) return;
+                  if (!map.has(key)) {
+                    map.set(key, {
+                      id: c.id && c.id.startsWith('hq-') ? c.id : `hq-${key.replace(/[^a-z0-9]/g, '-')}`,
+                      name: name.trim(),
+                      code: `HQ-${name.substring(0, 3).toUpperCase()}`,
+                      state: c.state || '',
+                      isHeadquarters: !!c.isHeadquarters || c.branchType === 'HEADQUARTERS',
+                    });
                   }
-                });
-              }
-            } catch {}
+                }
+              });
+            }
           }
+        } catch {}
 
-          const merged = Array.from(map.values());
-          if (merged.length > 0) {
-            setHqs(merged);
-            try {
-              localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(merged));
-            } catch {}
-            return;
-          }
+        const merged = Array.from(map.values());
+        if (merged.length > 0) {
+          setHqs(merged);
+          try {
+            localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(merged));
+          } catch {}
+          return;
         }
       }
     } catch {}
@@ -599,7 +604,7 @@ export const StockerManagementView: React.FC = () => {
   }, [apiUrl]);
 
   useEffect(() => {
-    if (hqs.length > 0 && !hqs.some((h) => h.id === selectedHqId)) {
+    if (hqs.length > 0 && !hqs.some((h) => h.id === selectedHqId || matchesHqId(h.id, selectedHqId))) {
       setSelectedHqId(hqs[0].id);
       setNewStockerHqId(hqs[0].id);
     }
@@ -767,163 +772,7 @@ export const StockerManagementView: React.FC = () => {
     if (activeTab === 'AUDIT') fetchAuditLogs();
   }, [activeTab, selectedHqId, selectedStockerId, monthlyFilterMonth]);
 
-  // === HQ CRUD HANDLERS ===
-  const handleAddHq = async () => {
-    if (!newHqName.trim()) {
-      alert('Please enter Headquarters name.');
-      return;
-    }
-    const name = newHqName.trim();
-    const code = (newHqCode.trim() || `HQ-${name.substring(0, 3).toUpperCase()}`).toUpperCase();
-    const state = newHqState.trim() || 'Madhya Pradesh';
-    let createdId = `hq-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
-    try {
-      const res = await fetch(`${apiUrl}/inventory/hqs`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ name, code, state }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.id) createdId = data.id;
-      }
-    } catch {}
-
-    const newHqObj: Headquarter = { id: createdId, name, code, state };
-    const updated = [...hqs.filter((h) => h.name.toLowerCase() !== name.toLowerCase()), newHqObj];
-    setHqs(updated);
-    setSelectedHqId(createdId);
-    setNewStockerHqId(createdId);
-    try {
-      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
-      const citiesRaw = localStorage.getItem('ahtri_operating_cities');
-      const cities = citiesRaw ? JSON.parse(citiesRaw) : [];
-      if (!cities.some((c: any) => (c.cityName || c.name || '').toLowerCase() === name.toLowerCase())) {
-        cities.push({
-          id: `city-${Date.now()}`,
-          cityName: name,
-          state,
-          country: 'India',
-          latitude: 23.29,
-          longitude: 81.35,
-          radiusKm: 25,
-          isHeadquarters: false,
-          branchType: 'HEADQUARTERS',
-        });
-        localStorage.setItem('ahtri_operating_cities', JSON.stringify(cities));
-      }
-    } catch {}
-
-    setIsAddHqModalOpen(false);
-    setNewHqName('');
-    setNewHqCode('');
-    setNewHqState('');
-  };
-
-  const handleOpenEditHq = (hq: Headquarter) => {
-    setEditingHq(hq);
-    setEditHqName(hq.name);
-    setEditHqCode(hq.code || `HQ-${hq.name.substring(0, 3).toUpperCase()}`);
-    setEditHqState(hq.state || '');
-    setIsEditHqModalOpen(true);
-  };
-
-  const handleSaveEditHq = async () => {
-    if (!editingHq || !editHqName.trim()) return;
-    const name = editHqName.trim();
-    const code = (editHqCode.trim() || `HQ-${name.substring(0, 3).toUpperCase()}`).toUpperCase();
-    const state = editHqState.trim();
-
-    try {
-      await fetch(`${apiUrl}/inventory/hqs/${editingHq.id}`, {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ name, code, state }),
-      });
-    } catch {}
-
-    const updated = hqs.map((h) => (h.id === editingHq.id ? { ...h, name, code, state } : h));
-    setHqs(updated);
-    try {
-      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
-
-      // Also update in ahtri_operating_cities
-      const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
-      if (savedCitiesRaw) {
-        const cities = JSON.parse(savedCitiesRaw);
-        if (Array.isArray(cities)) {
-          const updatedCities = cities.map((c: any) => {
-            const cName = (c.cityName || c.name || '').toLowerCase().trim();
-            if (cName === editingHq.name.toLowerCase().trim()) {
-              return { ...c, cityName: name, name, state };
-            }
-            return c;
-          });
-          localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedCities));
-        }
-      }
-      window.dispatchEvent(new Event('ahtri_hq_updated'));
-    } catch {}
-
-    setIsEditHqModalOpen(false);
-    setEditingHq(null);
-  };
-
-  const handleDeleteHq = async (hqId: string) => {
-    const target = hqs.find((h) => h.id === hqId);
-    if (!target) return;
-    if (hqs.length <= 1) {
-      showCenteredNotice({
-        title: 'Action Restricted',
-        message: 'At least one headquarters must remain configured.',
-        type: 'warning',
-      });
-      return;
-    }
-    const ok = await showConfirmModal({
-      title: `Delete Headquarters "${target.name}"`,
-      message: `Are you sure you want to delete headquarters "${target.name}"?\n\nStockers under this HQ will also be removed.`,
-      isDestructive: true,
-      confirmText: 'Yes, Delete HQ',
-      cancelText: 'Cancel',
-    });
-    if (!ok) {
-      return;
-    }
-
-    try {
-      await fetch(`${apiUrl}/inventory/hqs/${hqId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-    } catch {}
-
-    const updated = hqs.filter((h) => h.id !== hqId);
-    setHqs(updated);
-    try {
-      localStorage.setItem('ahtri_inventory_hqs', JSON.stringify(updated));
-
-      // Also remove from ahtri_operating_cities
-      const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
-      if (savedCitiesRaw) {
-        const cities = JSON.parse(savedCitiesRaw);
-        if (Array.isArray(cities)) {
-          const filteredCities = cities.filter((c: any) => {
-            const cName = (c.cityName || c.name || '').toLowerCase().trim();
-            return cName !== target.name.toLowerCase().trim();
-          });
-          localStorage.setItem('ahtri_operating_cities', JSON.stringify(filteredCities));
-        }
-      }
-      window.dispatchEvent(new Event('ahtri_hq_updated'));
-    } catch {}
-
-    if (selectedHqId === hqId && updated.length > 0) {
-      setSelectedHqId(updated[0].id);
-      setNewStockerHqId(updated[0].id);
-    }
-  };
 
   // === STOCKER CRUD HANDLERS ===
   const handleAddStocker = async (e?: React.FormEvent) => {
@@ -1325,7 +1174,7 @@ export const StockerManagementView: React.FC = () => {
   };
 
   const selectedStocker = stockers.find((s) => s.id === selectedStockerId);
-  const selectedHq = hqs.find((h) => h.id === selectedHqId);
+  const selectedHq = hqs.find((h) => h.id === selectedHqId || matchesHqId(h.id, selectedHqId));
 
   return (
     <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -1581,46 +1430,14 @@ export const StockerManagementView: React.FC = () => {
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   1. Select Headquarters (HQ):
                 </span>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {selectedHq && (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditHq(selectedHq)}
-                        className="btn-enterprise secondary"
-                        style={{ padding: '3px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        title="Edit selected Headquarters"
-                      >
-                        <Edit2 size={12} />
-                        <span>Edit HQ</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteHq(selectedHq.id)}
-                        className="btn-enterprise secondary"
-                        style={{ padding: '3px 8px', fontSize: 11, color: '#DC2626', borderColor: '#FECACA', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        title="Delete selected Headquarters"
-                      >
-                        <Trash2 size={12} />
-                        <span>Delete HQ</span>
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setIsAddHqModalOpen(true)}
-                    className="btn-enterprise"
-                    style={{ padding: '4px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--color-brand)', color: '#FFFFFF' }}
-                  >
-                    <Plus size={13} />
-                    <span>Add HQ</span>
-                  </button>
-                </div>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  Configured centrally in Settings
+                </span>
               </div>
 
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {hqs.map((hq) => {
-                  const isSelected = selectedHqId === hq.id;
+                  const isSelected = selectedHqId === hq.id || matchesHqId(selectedHqId, hq.id);
                   return (
                     <button
                       key={hq.id}
@@ -3260,208 +3077,7 @@ export const StockerManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Add Headquarters */}
-      {isAddHqModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16,
-          }}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAddHq();
-            }}
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 10,
-              width: '100%',
-              maxWidth: 440,
-              padding: 20,
-              boxShadow: 'var(--shadow-lg)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Building size={16} color="var(--color-brand)" />
-                <span>Add New Headquarters (HQ)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddHqModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                HEADQUARTERS / CITY NAME *
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Shahdol, Kotma, Ambikapur, Bilaspur"
-                value={newHqName}
-                onChange={(e) => setNewHqName(e.target.value)}
-                autoFocus
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  HQ CODE (OPTIONAL)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. HQ-REW"
-                  value={newHqCode}
-                  onChange={(e) => setNewHqCode(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  STATE
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Madhya Pradesh"
-                  value={newHqState}
-                  onChange={(e) => setNewHqState(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn-enterprise secondary"
-                onClick={() => setIsAddHqModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-enterprise"
-              >
-                Add Headquarters
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL: Edit Headquarters */}
-      {isEditHqModalOpen && editingHq && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16,
-          }}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSaveEditHq();
-            }}
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 10,
-              width: '100%',
-              maxWidth: 440,
-              padding: 20,
-              boxShadow: 'var(--shadow-lg)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Edit2 size={16} color="var(--color-brand)" />
-                <span>Edit Headquarters ({editingHq.name})</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEditHqModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                HEADQUARTERS NAME *
-              </label>
-              <input
-                type="text"
-                value={editHqName}
-                onChange={(e) => setEditHqName(e.target.value)}
-                autoFocus
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  HQ CODE
-                </label>
-                <input
-                  type="text"
-                  value={editHqCode}
-                  onChange={(e) => setEditHqCode(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  STATE
-                </label>
-                <input
-                  type="text"
-                  value={editHqState}
-                  onChange={(e) => setEditHqState(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn-enterprise secondary"
-                onClick={() => setIsEditHqModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-enterprise"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* MODAL: Add Stocker under HQ (§10) */}
       {isAddStockerModalOpen && (
