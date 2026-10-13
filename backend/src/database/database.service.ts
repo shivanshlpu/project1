@@ -155,6 +155,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         monthlyStockagePermissions: this.monthlyStockagePermissions,
         stockageSubmissionRequests: this.stockageSubmissionRequests,
         medicinePackagingVariants: this.medicinePackagingVariants,
+        competitions: this.competitions,
+        rewardClaims: this.rewardClaims,
         users: this.users.map((u) => ({
           id: u.id,
           name: u.name,
@@ -382,6 +384,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.medicinePackagingVariants) && data.medicinePackagingVariants.length > 0) {
           this.medicinePackagingVariants = data.medicinePackagingVariants;
         }
+        if (Array.isArray(data.competitions)) {
+          this.competitions = data.competitions;
+        }
+        if (Array.isArray(data.rewardClaims)) {
+          this.rewardClaims = data.rewardClaims;
+        }
         console.log(
           `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.monthlyStockagePermissions.length} stockage permissions, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
         );
@@ -473,30 +481,46 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
-          // Sync medicines with Supabase
+          // Sync medicines with Supabase - only update or initialize, do not resurrect deleted ones
           const { data: remoteMeds, error: medsErr } = await client
             .from('medicines')
             .select('*')
             .order('id', { ascending: true });
           if (!medsErr && remoteMeds && remoteMeds.length > 0) {
-            console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
-            this.medicines = remoteMeds.map((rm: any) => ({
-              id: rm.id,
-              name: rm.name,
-              code: rm.sku || rm.code || rm.id,
-              unit: rm.pack_size || rm.unit || 'Units',
-              base_price:
-                rm.unit_price !== undefined && rm.unit_price !== null
-                  ? Number(rm.unit_price)
-                  : null,
-              low_stock_threshold: 15,
-              status: rm.is_active === false ? 'INACTIVE' : 'ACTIVE',
-              created_at: rm.created_at || new Date().toISOString(),
-            }));
+            if (this.medicines.length === 0) {
+              console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
+              this.medicines = remoteMeds.map((rm: any) => ({
+                id: rm.id,
+                name: rm.name,
+                code: rm.sku || rm.code || rm.id,
+                unit: rm.pack_size || rm.unit || 'Units',
+                base_price:
+                  rm.unit_price !== undefined && rm.unit_price !== null
+                    ? Number(rm.unit_price)
+                    : null,
+                low_stock_threshold: 15,
+                status: rm.is_active === false ? 'INACTIVE' : 'ACTIVE',
+                created_at: rm.created_at || new Date().toISOString(),
+              }));
+            } else {
+              // Update existing medicines without resurrecting locally deleted ones
+              for (const rm of remoteMeds) {
+                const existing = this.medicines.find((m) => m.id === rm.id);
+                if (existing) {
+                  if (rm.unit_price !== undefined && rm.unit_price !== null) {
+                    existing.base_price = Number(rm.unit_price);
+                    (existing as any).pts = Number(rm.unit_price);
+                  }
+                  if (rm.is_active === false) existing.status = 'INACTIVE';
+                }
+              }
+            }
           }
 
-          // Purge legacy dummy clinics & legacy dummy MR IDs from Supabase if present
+          // Purge stale HQs, stockers, dummy clinics & dummy MRs from Supabase permanently
           try {
+            await client.from('headquarters').delete().in('id', ['hq-delhi', 'hq-anuppur', 'hq-umaria']);
+            await client.from('stockers').delete().in('id', ['stk-anp-01', 'stk-shd-03', 'stk-shd-04']);
             await client.from('doctors').delete().in('id', ['doc-01', 'doc-02', 'doc-03', 'doc-04', 'doc-05']);
             await client.from('tasks').delete().in('assigned_mr_id', ['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
             await client.from('attendance').delete().in('user_id', ['usr-mr-rahul', 'usr-mr-vikram', 'usr-mr-pooja']);
@@ -709,6 +733,145 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       }, { onConflict: 'id' });
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync attendance ${att.id}:`, err?.message);
+    }
+  }
+
+  public async syncHeadquarterToSupabase(hq: Headquarter) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('headquarters').upsert({
+        id: hq.id,
+        name: hq.name,
+        state: hq.state || 'Madhya Pradesh',
+        is_active: hq.status !== 'INACTIVE',
+        created_at: hq.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (hq.legacy_id && hq.legacy_id !== hq.id) {
+        await client.from('headquarters').upsert({
+          id: hq.legacy_id,
+          name: hq.name,
+          state: hq.state || 'Madhya Pradesh',
+          is_active: hq.status !== 'INACTIVE',
+          created_at: hq.created_at || new Date().toISOString(),
+        }, { onConflict: 'id' });
+      }
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync HQ ${hq.id}:`, err?.message);
+    }
+  }
+
+  public async deleteHeadquarterFromSupabase(id: string, legacyId?: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      const ids = [id];
+      if (legacyId && legacyId !== id) ids.push(legacyId);
+      await client.from('stockers').delete().in('hq_id', ids);
+      await client.from('headquarters').delete().in('id', ids);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete HQ ${id} from Supabase:`, err?.message);
+    }
+  }
+
+  public async syncStockerToSupabase(stocker: Stocker) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('stockers').upsert({
+        id: stocker.id,
+        name: stocker.name,
+        hq_id: stocker.hq_id,
+        address: stocker.address || '',
+        phone: stocker.phone || '',
+        is_active: stocker.status !== 'INACTIVE',
+        created_at: stocker.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync stocker ${stocker.id}:`, err?.message);
+    }
+  }
+
+  public async deleteStockerFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('stockers').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete stocker ${id} from Supabase:`, err?.message);
+    }
+  }
+
+  public async syncMedicineToSupabase(med: Medicine) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('medicines').upsert({
+        id: med.id,
+        name: med.name,
+        sku: med.code || med.sku || med.id,
+        composition: med.composition || null,
+        category: med.category || null,
+        pack_size: med.packing || med.unit || 'Units',
+        unit_price: med.pts ?? med.base_price ?? null,
+        mrp: med.mrp ?? null,
+        is_active: med.status !== 'INACTIVE',
+        created_at: med.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync medicine ${med.id}:`, err?.message);
+    }
+  }
+
+  public async deleteMedicineFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('medicines').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete medicine ${id} from Supabase:`, err?.message);
+    }
+  }
+
+  public async syncCompetitionToSupabase(comp: Competition) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('competitions').upsert({
+        id: comp.id,
+        title: comp.name,
+        description: comp.description || '',
+        target_hq_id: comp.hq_id,
+        target_hq_name: comp.hq_name,
+        target_product_id: comp.medicine_id,
+        target_product_name: comp.medicine_name,
+        target_units: comp.target_quantity || 0,
+        reward_amount: comp.reward_amount || 0,
+        start_date: comp.start_date,
+        end_date: comp.end_date,
+        status: comp.status || 'ACTIVE',
+        created_at: comp.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Notice syncing competition ${comp.id}:`, err?.message);
+    }
+  }
+
+  public async deleteCompetitionFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('competitions').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Notice deleting competition ${id}:`, err?.message);
     }
   }
 

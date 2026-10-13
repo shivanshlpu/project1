@@ -55,6 +55,7 @@ export class CompetitionsService {
 
     this.db.competitions.push(competition);
     this.db.persistToDisk();
+    this.db.syncCompetitionToSupabase(competition).catch(() => null);
 
     // Broadcast incentive notification ONLY to MRs in this target HQ/Zone (§1.8)
     const mrs = this.db.users.filter(
@@ -105,6 +106,7 @@ export class CompetitionsService {
     }
 
     this.db.persistToDisk();
+    this.db.syncCompetitionToSupabase(comp).catch(() => null);
     return comp;
   }
 
@@ -113,6 +115,7 @@ export class CompetitionsService {
     if (idx === -1) throw new NotFoundException('Competition not found');
     this.db.competitions.splice(idx, 1);
     this.db.persistToDisk();
+    this.db.deleteCompetitionFromSupabase(id).catch(() => null);
     return { success: true, message: 'Competition deleted successfully' };
   }
 

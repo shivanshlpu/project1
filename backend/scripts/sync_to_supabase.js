@@ -173,14 +173,17 @@ async function main() {
     else console.warn(`   Notice on user ${user.email}: ${error.message}`);
   }
 
-  // 4. Sync Headquarters
+  // 4. Sync Headquarters (4 Authentic Core HQs, Purging Obsolete Ones)
   console.log('⏳ Syncing headquarters...');
+  await supabase.from('headquarters').delete().in('id', ['hq-delhi', 'hq-anuppur', 'hq-umaria']);
   const defaultHqs = [
+    { id: 'HQ-SHD-001', name: 'Shahdol', state: 'Madhya Pradesh', is_active: true },
+    { id: 'HQ-KOT-001', name: 'Kotma', state: 'Madhya Pradesh', is_active: true },
+    { id: 'HQ-AMB-001', name: 'Ambikapur', state: 'Chhattisgarh', is_active: true },
+    { id: 'HQ-BSP-001', name: 'Bilaspur', state: 'Chhattisgarh', is_active: true },
     { id: 'hq-kotma', name: 'Kotma', state: 'Madhya Pradesh', is_active: true },
     { id: 'hq-shahdol', name: 'Shahdol', state: 'Madhya Pradesh', is_active: true },
     { id: 'hq-ambikapur', name: 'Ambikapur', state: 'Chhattisgarh', is_active: true },
-    { id: 'hq-anuppur', name: 'Anuppur', state: 'Madhya Pradesh', is_active: true },
-    { id: 'hq-umaria', name: 'Umaria', state: 'Madhya Pradesh', is_active: true },
     { id: 'hq-bilaspur', name: 'Bilaspur', state: 'Chhattisgarh', is_active: true },
   ];
   for (const hq of defaultHqs) {
@@ -188,14 +191,14 @@ async function main() {
     if (!error) results.headquarters++;
   }
 
-  // 5. Sync Stockers
+  // 5. Sync Stockers (4 Authentic Medical Agency Stockers)
   console.log('⏳ Syncing stockers...');
+  await supabase.from('stockers').delete().in('id', ['stk-anp-01', 'stk-shd-03', 'stk-shd-04']);
   const defaultStockers = [
-    { id: 'stk-shd-01', name: 'Central Pharma Stockist - Shahdol', hq_id: 'hq-shahdol', address: 'Station Road, Shahdol', phone: '9893012345', is_active: true },
-    { id: 'stk-shd-02', name: 'Apex Medical Agencies - Shahdol', hq_id: 'hq-shahdol', address: 'Hospital Chowk, Shahdol', phone: '9893012346', is_active: true },
-    { id: 'stk-shd-03', name: 'Vindhya Drug House - Shahdol', hq_id: 'hq-shahdol', address: 'Kotma Road, Shahdol', phone: '9893012347', is_active: true },
-    { id: 'stk-shd-04', name: 'Shree Ram Pharma Distributors - Shahdol', hq_id: 'hq-shahdol', address: 'Gandhi Chowk, Shahdol', phone: '9893012348', is_active: true },
-    { id: 'stk-anp-01', name: 'Vindhya Medico Stockists - Anuppur', hq_id: 'hq-anuppur', address: 'Main Market, Anuppur', phone: '9893054321', is_active: true },
+    { id: 'stk-shd-01', name: 'Tara Pharmacy', hq_id: 'HQ-SHD-001', address: 'Shahdol, MP', phone: '', is_active: true },
+    { id: 'stk-shd-02', name: 'Parth Medical Agency', hq_id: 'HQ-SHD-001', address: 'Shahdol, MP', phone: '', is_active: true },
+    { id: 'stk-ktm-01', name: 'Triyash Medical Agency', hq_id: 'HQ-KOT-001', address: 'Kotma, MP', phone: '', is_active: true },
+    { id: 'stk-amb-01', name: 'Kismira Medical Agency', hq_id: 'HQ-AMB-001', address: 'Ambikapur, CG', phone: '', is_active: true },
   ];
   for (const stk of defaultStockers) {
     const { error } = await supabase.from('stockers').upsert(stk, { onConflict: 'id' });

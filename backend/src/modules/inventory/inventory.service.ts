@@ -90,6 +90,7 @@ export class InventoryService {
 
     this.db.headquarters.push(hq);
     this.db.persistToDisk();
+    this.db.syncHeadquarterToSupabase(hq).catch(() => null);
     return hq;
   }
 
@@ -136,6 +137,7 @@ export class InventoryService {
     if (dto.status) hq.status = dto.status;
 
     this.db.persistToDisk();
+    this.db.syncHeadquarterToSupabase(hq).catch(() => null);
     return hq;
   }
 
@@ -149,6 +151,7 @@ export class InventoryService {
     this.db.hqAreas = this.db.hqAreas.filter((a) => a.hq_id !== hq.id && a.hq_id !== hq.hq_id);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.hq_id !== hq.id && inv.hq_id !== hq.hq_id);
     this.db.persistToDisk();
+    this.db.deleteHeadquarterFromSupabase(hq.id, hq.legacy_id).catch(() => null);
     return { success: true, message: 'Headquarter deleted successfully' };
   }
 
@@ -283,6 +286,7 @@ export class InventoryService {
     }
 
     this.db.persistToDisk();
+    this.db.syncStockerToSupabase(stocker).catch(() => null);
     return stocker;
   }
 
@@ -298,6 +302,7 @@ export class InventoryService {
     if (dto.status) stocker.status = dto.status;
 
     this.db.persistToDisk();
+    this.db.syncStockerToSupabase(stocker).catch(() => null);
     return stocker;
   }
 
@@ -308,6 +313,7 @@ export class InventoryService {
     this.db.stockers.splice(index, 1);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.stocker_id !== id);
     this.db.persistToDisk();
+    this.db.deleteStockerFromSupabase(id).catch(() => null);
     return { success: true, message: 'Stocker deleted successfully' };
   }
 
@@ -444,6 +450,7 @@ export class InventoryService {
     }
 
     this.db.persistToDisk();
+    this.db.syncMedicineToSupabase(med).catch(() => null);
 
     return {
       ...med,
@@ -491,6 +498,7 @@ export class InventoryService {
     med.updated_at = new Date().toISOString();
 
     this.db.persistToDisk();
+    this.db.syncMedicineToSupabase(med).catch(() => null);
     return med;
   }
 
@@ -502,6 +510,7 @@ export class InventoryService {
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.medicine_id !== id);
     this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
     this.db.persistToDisk();
+    this.db.deleteMedicineFromSupabase(id).catch(() => null);
     return { success: true, message: 'Medicine deleted successfully' };
   }
 

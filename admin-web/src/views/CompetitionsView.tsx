@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface CompetitionItem {
   id: string;
@@ -73,6 +74,33 @@ interface RewardClaimItem {
   notes?: string;
 }
 
+const DEFAULT_COMP_HQS: Array<{ id: string; name: string }> = [
+  { id: 'HQ-SHD-001', name: 'Shahdol' },
+  { id: 'HQ-KOT-001', name: 'Kotma' },
+  { id: 'HQ-AMB-001', name: 'Ambikapur' },
+  { id: 'HQ-BSP-001', name: 'Bilaspur' },
+];
+
+const DEFAULT_COMP_MEDICINES: Array<{ id: string; name: string }> = [
+  { id: 'med-01', name: 'AHTRI -S' },
+  { id: 'med-02', name: 'AHTRI -A A2Z' },
+  { id: 'med-03', name: 'AHTYME' },
+  { id: 'med-04', name: 'ATHRIMOX CV 625' },
+  { id: 'med-05', name: 'AHTRI -P' },
+  { id: 'med-06', name: 'TRIPAN DSR' },
+  { id: 'med-07', name: 'AHTRI SP' },
+  { id: 'med-08', name: 'TRIZOLE OC' },
+  { id: 'med-09', name: 'TRIZOLE 200' },
+  { id: 'med-10', name: 'AHTRI K27' },
+  { id: 'med-11', name: 'TRIDIC GEL' },
+  { id: 'med-12', name: 'AHTRI STRETCH MARK CREAM' },
+  { id: 'med-13', name: 'AHTRI 5G SYP' },
+  { id: 'med-14', name: 'TRIRAB DSR' },
+  { id: 'med-15', name: 'AHTRIMOX CV SUSPENSION' },
+  { id: 'med-16', name: 'MAFTRI P' },
+  { id: 'med-17', name: 'AHTRI 9G' },
+];
+
 export const CompetitionsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CAMPAIGNS' | 'CLAIMS'>('CAMPAIGNS');
   const [competitions, setCompetitions] = useState<CompetitionItem[]>([]);
@@ -81,17 +109,35 @@ export const CompetitionsView: React.FC = () => {
   const [claims, setClaims] = useState<RewardClaimItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Master options
-  const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>([]);
-  const [medicines, setMedicines] = useState<Array<{ id: string; name: string }>>([]);
+  // Master options with persistent storage & resilient fallback
+  const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_inventory_hqs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((h: any) => ({ id: h.id, name: h.name }));
+      }
+    } catch {}
+    return DEFAULT_COMP_HQS;
+  });
+  const [medicines, setMedicines] = useState<Array<{ id: string; name: string }>>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_inventory_medicines');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((m: any) => ({ id: m.id, name: m.name }));
+      }
+    } catch {}
+    return DEFAULT_COMP_MEDICINES;
+  });
 
   // Create Modal state (§27)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [compName, setCompName] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('2026-09-01');
   const [endDate, setEndDate] = useState<string>('2026-09-30');
-  const [compHqId, setCompHqId] = useState<string>('hq-shahdol');
-  const [compMedicineId, setCompMedicineId] = useState<string>('');
+  const [compHqId, setCompHqId] = useState<string>('HQ-SHD-001');
+  const [compMedicineId, setCompMedicineId] = useState<string>('med-01');
   const [compTargetQty, setCompTargetQty] = useState<string>('100');
   const [compRewardAmount, setCompRewardAmount] = useState<string>('2000');
   const [compDesc, setCompDesc] = useState<string>('Sell 100 units during competition period to claim ₹2,000 cash reward.');
@@ -223,7 +269,7 @@ export const CompetitionsView: React.FC = () => {
     });
   };
 
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = getApiBaseUrl();
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -243,13 +289,16 @@ export const CompetitionsView: React.FC = () => {
         ]);
         if (hqRes.ok) {
           const data = await hqRes.json();
-          if (Array.isArray(data)) setHqs(data);
+          if (Array.isArray(data) && data.length > 0) {
+            setHqs(data.map((h: any) => ({ id: h.id, name: h.name })));
+            setCompHqId((prev) => prev || data[0].id);
+          }
         }
         if (medRes.ok) {
           const data = await medRes.json();
-          if (Array.isArray(data)) {
-            setMedicines(data);
-            if (data.length > 0) setCompMedicineId(data[0].id);
+          if (Array.isArray(data) && data.length > 0) {
+            setMedicines(data.map((m: any) => ({ id: m.id, name: m.name })));
+            setCompMedicineId((prev) => prev || data[0].id);
           }
         }
       } catch {}
@@ -1004,7 +1053,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setCompHqId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {hqs.map((hq) => (
+                  {(hqs.length > 0 ? hqs : DEFAULT_COMP_HQS).map((hq) => (
                     <option key={hq.id} value={hq.id}>{hq.name}</option>
                   ))}
                 </select>
@@ -1019,7 +1068,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setCompMedicineId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {medicines.map((m) => (
+                  {(medicines.length > 0 ? medicines : DEFAULT_COMP_MEDICINES).map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
@@ -1171,7 +1220,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setEditCompHqId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {hqs.map((hq) => (
+                  {(hqs.length > 0 ? hqs : DEFAULT_COMP_HQS).map((hq) => (
                     <option key={hq.id} value={hq.id}>
                       {hq.name}
                     </option>
@@ -1189,7 +1238,7 @@ export const CompetitionsView: React.FC = () => {
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
                   <option value="">-- All Products in HQ --</option>
-                  {medicines.map((m) => (
+                  {(medicines.length > 0 ? medicines : DEFAULT_COMP_MEDICINES).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>

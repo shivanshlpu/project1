@@ -455,6 +455,8 @@ export interface Medicine {
   id: string;
   name: string;
   code: string;
+  sku?: string;
+  composition?: string;
   category?: string;
   unit: string;
   packing?: string;

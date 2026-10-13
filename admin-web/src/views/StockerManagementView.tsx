@@ -34,10 +34,73 @@ interface Headquarter {
 }
 
 const DEFAULT_HQS: Headquarter[] = [
+  { id: 'HQ-SHD-001', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
+  { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
+  { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
+  { id: 'HQ-KOT-001', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
   { id: 'hq-shahdol', name: 'Shahdol', code: 'HQ-SHD', state: 'Madhya Pradesh' },
   { id: 'hq-ambikapur', name: 'Ambikapur', code: 'HQ-AMB', state: 'Chhattisgarh' },
   { id: 'hq-bilaspur', name: 'Bilaspur', code: 'HQ-BSP', state: 'Chhattisgarh' },
   { id: 'hq-kotma', name: 'Kotma', code: 'HQ-KTM', state: 'Madhya Pradesh' },
+];
+
+export const matchesHqId = (sHq: string, targetHq: string): boolean => {
+  if (!sHq || !targetHq) return false;
+  const s = sHq.toLowerCase().trim();
+  const t = targetHq.toLowerCase().trim();
+  if (s === t) return true;
+  if ((s.includes('shd') || s.includes('shahdol')) && (t.includes('shd') || t.includes('shahdol'))) return true;
+  if ((s.includes('kot') || s.includes('ktm') || s.includes('kotma')) && (t.includes('kot') || t.includes('ktm') || t.includes('kotma'))) return true;
+  if ((s.includes('amb') || s.includes('ambikapur')) && (t.includes('amb') || t.includes('ambikapur'))) return true;
+  if ((s.includes('bsp') || s.includes('bilaspur')) && (t.includes('bsp') || t.includes('bilaspur'))) return true;
+  return false;
+};
+
+export const DEFAULT_AUTHENTIC_STOCKERS: StockerItem[] = [
+  {
+    id: 'stk-shd-01',
+    hq_id: 'HQ-SHD-001',
+    hq_name: 'Shahdol',
+    name: 'Tara Pharmacy',
+    sub_area: 'Shahdol Central',
+    contact_person: '',
+    phone: '',
+    address: 'Shahdol, MP',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'stk-shd-02',
+    hq_id: 'HQ-SHD-001',
+    hq_name: 'Shahdol',
+    name: 'Parth Medical Agency',
+    sub_area: 'Shahdol Central',
+    contact_person: '',
+    phone: '',
+    address: 'Shahdol, MP',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'stk-ktm-01',
+    hq_id: 'HQ-KOT-001',
+    hq_name: 'Kotma',
+    name: 'Triyash Medical Agency',
+    sub_area: 'Kotma Town',
+    contact_person: '',
+    phone: '',
+    address: 'Kotma, MP',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'stk-amb-01',
+    hq_id: 'HQ-AMB-001',
+    hq_name: 'Ambikapur',
+    name: 'Kismira Medical Agency',
+    sub_area: 'Ambikapur Central',
+    contact_person: '',
+    phone: '',
+    address: 'Ambikapur, CG',
+    status: 'ACTIVE',
+  },
 ];
 
 export const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
@@ -520,44 +583,48 @@ export const StockerManagementView: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           setStockers(data);
           // Sync localStorage for this HQ so stale deleted stockers are purged
           try {
             const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
             const otherStockers = savedStkRaw
-              ? (JSON.parse(savedStkRaw) as StockerItem[]).filter((s) => s.hq_id !== selectedHqId)
+              ? (JSON.parse(savedStkRaw) as StockerItem[]).filter((s) => !matchesHqId(s.hq_id, selectedHqId))
               : [];
             localStorage.setItem('ahtri_inventory_stockers', JSON.stringify([...otherStockers, ...data]));
           } catch {}
-          if (data.length > 0) {
-            setSelectedStockerId((prev) => (data.some((m) => m.id === prev) ? prev : data[0].id));
-          } else {
-            setSelectedStockerId('');
-            setInventory([]);
-          }
+          setSelectedStockerId((prev) => (data.some((m) => m.id === prev) ? prev : data[0].id));
           return;
         }
       }
     } catch {}
 
-    // Fallback to localStorage only if offline/network failure
+    // Fallback 1: check localStorage with normalized HQ matching
     try {
       const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
       if (savedStkRaw) {
         const allSaved = JSON.parse(savedStkRaw);
         if (Array.isArray(allSaved)) {
-          const localForHq = allSaved.filter((s: any) => s.hq_id === selectedHqId);
-          setStockers(localForHq);
+          const localForHq = allSaved.filter((s: any) => matchesHqId(s.hq_id, selectedHqId));
           if (localForHq.length > 0) {
+            setStockers(localForHq);
             setSelectedStockerId((prev) => (localForHq.some((m) => m.id === prev) ? prev : localForHq[0].id));
-          } else {
-            setSelectedStockerId('');
-            setInventory([]);
+            return;
           }
         }
       }
     } catch {}
+
+    // Fallback 2: Default authentic stockers for this HQ
+    const fallbackForHq = DEFAULT_AUTHENTIC_STOCKERS.filter((s) => matchesHqId(s.hq_id, selectedHqId));
+    if (fallbackForHq.length > 0) {
+      setStockers(fallbackForHq);
+      setSelectedStockerId((prev) => (fallbackForHq.some((m) => m.id === prev) ? prev : fallbackForHq[0].id));
+    } else {
+      setStockers([]);
+      setSelectedStockerId('');
+      setInventory([]);
+    }
   };
 
   useEffect(() => {
