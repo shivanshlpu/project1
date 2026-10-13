@@ -258,7 +258,23 @@ ON CONFLICT (id) DO UPDATE SET
 -- 8. AUTHORITATIVE PACKAGING VARIANTS
 INSERT INTO public.medicine_packaging_variants (id, medicine_id, size, unit, display_name, pts_rate, mrp, is_active)
 VALUES
-
+('var-med-01-200ml', 'med-01', 200, 'ML', '200 ML Bottle', 38.40, 195.00, true),
+('var-med-02-200ml', 'med-02', 200, 'ML', '200 ML Bottle', 36.80, 185.00, true),
+('var-med-03-200ml', 'med-03', 200, 'ML', '200 ML Bottle', 36.80, 184.00, true),
+('var-med-04-10x1x10', 'med-04', 10, 'strips', '10*1*10 Strip Box', 68.00, 182.00, true),
+('var-med-05-20x10', 'med-05', 20, 'strips', '20*10 Tablets', 12.00, 84.00, true),
+('var-med-06-10x10', 'med-06', 10, 'strips', '10*10 Capsule Strip Box', 20.80, 138.00, true),
+('var-med-07-10x10', 'med-07', 10, 'strips', '10*10 Strip Box', 19.80, 120.00, true),
+('var-med-08-30gm', 'med-08', 30, 'GM', '30 GM Tube', 37.80, 95.00, true),
+('var-med-09-10x10', 'med-09', 10, 'strips', '10*10 Capsule Strip Box', 64.20, 245.00, true),
+('var-med-10-10x1x10', 'med-10', 10, 'strips', '10*1*10 Strip Box', 38.20, 285.00, true),
+('var-med-11-30gm', 'med-11', 30, 'GM', '30 GM Tube', 55.20, 110.00, true),
+('var-med-12-50gm', 'med-12', 50, 'GM', '50 GM Tube', 357.37, 599.00, true),
+('var-med-13-200ml', 'med-13', 200, 'ML', '200 ML Bottle', 157.00, 235.00, true),
+('var-med-14-10x10', 'med-14', 10, 'strips', '10*10 Capsule Strip Box', 80.46, 120.00, true),
+('var-med-15-30ml', 'med-15', 30, 'ML', '30 ML Bottle', 42.00, 65.00, true),
+('var-med-16-60ml', 'med-16', 60, 'ML', '60 ML Bottle', 63.70, 95.00, true),
+('var-med-17-200ml', 'med-17', 200, 'ML', '200 ML Bottle', 147.50, 220.00, true)
 ON CONFLICT (id) DO UPDATE SET
   medicine_id = EXCLUDED.medicine_id,
   size = EXCLUDED.size,
