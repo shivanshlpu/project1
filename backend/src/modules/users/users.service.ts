@@ -104,6 +104,29 @@ export class UsersService {
     }
 
     this.db.users.push(newUser);
+
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('users').upsert({
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            phone: newUser.phone,
+            password_hash: newUser.password_hash,
+            role: newUser.role,
+            status: newUser.status,
+            biometric_enabled: newUser.biometric_enabled,
+            created_at: newUser.created_at,
+            updated_at: newUser.created_at,
+          }, { onConflict: 'id' });
+        } catch (sbErr: any) {
+          console.warn('[UsersService] Failed to insert user into Supabase:', sbErr?.message);
+        }
+      }
+    }
+
     const { password_hash: _, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
   }
@@ -135,20 +158,47 @@ export class UsersService {
 
     if (dto.password && dto.password.trim()) {
       user.password_hash = await bcrypt.hash(dto.password.trim(), 10);
-      if (this.db.supabase?.isConnected) {
+    }
+
+    // Keep in-memory admin aliases synchronized if admin profile changed
+    if (user.id === 'usr-admin-01' || user.id === 'usr-admin-owner') {
+      for (const otherAdmin of this.db.users) {
+        if (otherAdmin.id === 'usr-admin-01' || otherAdmin.id === 'usr-admin-owner') {
+          otherAdmin.name = user.name;
+          otherAdmin.phone = user.phone;
+          otherAdmin.email = user.email;
+          if (user.password_hash) otherAdmin.password_hash = user.password_hash;
+        }
+      }
+    }
+
+    // Always synchronize updated user properties to Supabase
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
         try {
-          await this.db.supabase.upsertUser({
-            id: user.id,
-            email: user.email,
-            password_hash: user.password_hash,
+          const updatePayload: any = {
             name: user.name,
             phone: user.phone,
+            email: user.email,
             role: user.role,
             status: user.status,
-            biometric_enabled: user.biometric_enabled,
-          });
-        } catch (sbErr) {
-          console.warn('[UsersService] Failed to sync updated password to Supabase:', sbErr);
+            updated_at: new Date().toISOString(),
+          };
+          if (user.password_hash) updatePayload.password_hash = user.password_hash;
+          if (user.biometric_enabled !== undefined) updatePayload.biometric_enabled = user.biometric_enabled;
+
+          const { error: upErr } = await client.from('users').update(updatePayload).eq('id', user.id);
+          if (user.email) {
+            await client.from('users').update(updatePayload).eq('email', user.email);
+          }
+          if (upErr) {
+            console.warn(`[UsersService] Failed to sync updated user ${user.id} to Supabase:`, upErr.message);
+          } else {
+            console.log(`[UsersService] Synced updated user ${user.id} (${user.name}) to Supabase successfully.`);
+          }
+        } catch (sbErr: any) {
+          console.warn('[UsersService] Supabase user sync error:', sbErr?.message);
         }
       }
     }
@@ -166,6 +216,19 @@ export class UsersService {
     }
 
     const deletedUser = this.db.users.splice(userIndex, 1)[0];
+
+    // Delete directly from Supabase
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('users').delete().eq('id', id);
+          console.log(`[UsersService] Deleted user ${id} from Supabase.`);
+        } catch (sbErr: any) {
+          console.warn('[UsersService] Supabase delete user error:', sbErr?.message);
+        }
+      }
+    }
 
     // Cascade delete all associated data for this user across all in-memory collections
     this.db.tasks = this.db.tasks.filter((t) => t.assigned_mr_id !== id && t.created_by !== id);

@@ -80,6 +80,18 @@ export class ApprovalsService {
       if (leave) {
         leave.status = dto.status;
         leave.approved_by = approverUser?.id || 'admin';
+        if (this.db.supabase?.isConnected) {
+          const client = this.db.supabase.getClient();
+          if (client) {
+            Promise.resolve(
+              client.from('leave_requests').update({
+                status: dto.status,
+                approved_by: leave.approved_by,
+                decided_at: new Date().toISOString(),
+              }).eq('id', leave.id)
+            ).catch(() => {});
+          }
+        }
         this.db.persistToDisk();
         return {
           message: `Leave decided: ${dto.status}`,
@@ -122,6 +134,18 @@ export class ApprovalsService {
         if (leave) {
           leave.status = dto.status;
           leave.approved_by = approverUser.id;
+          if (this.db.supabase?.isConnected) {
+            const client = this.db.supabase.getClient();
+            if (client) {
+              Promise.resolve(
+                client.from('leave_requests').update({
+                  status: dto.status,
+                  approved_by: approverUser.id,
+                  decided_at: new Date().toISOString(),
+                }).eq('id', leave.id)
+              ).catch(() => {});
+            }
+          }
         }
         break;
       }
@@ -194,6 +218,30 @@ export class ApprovalsService {
       await this.registerApproval('LEAVE', leave.id, mrId);
     }
     this.db.persistToDisk();
+
+    // Sync leave request to Supabase
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('leave_requests').upsert({
+            id: leave.id,
+            user_id: leave.mr_id,
+            leave_type: leave.category,
+            from_date: leave.start_date,
+            to_date: leave.end_date,
+            total_days: this.calculateDays(leave.start_date, leave.end_date),
+            reason: leave.reason,
+            status: leave.status,
+            approved_by: leave.approved_by || null,
+            created_at: leave.created_at,
+          }, { onConflict: 'id' });
+          console.log(`[ApprovalsService] Synced leave request ${leave.id} to Supabase.`);
+        } catch (e: any) {
+          console.warn('[ApprovalsService] Failed to sync leave request to Supabase:', e?.message);
+        }
+      }
+    }
 
     return { message: 'Leave request submitted successfully', leave };
   }
@@ -294,6 +342,33 @@ export class ApprovalsService {
     quota.updated_at = new Date().toISOString();
 
     this.db.persistToDisk();
+
+    // Persist to Supabase dynamically so changes survive pushes & redeployments
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('leave_requests').upsert({
+            id: `quota-${mrId}`,
+            user_id: mrId,
+            leave_type: 'QUOTA_CONFIG',
+            from_date: '2026-01-01',
+            to_date: '2026-12-31',
+            total_days: (quota.casual_total || 0) + (quota.sick_total || 0) + (quota.earned_total || 0),
+            reason: JSON.stringify({
+              casual_total: quota.casual_total,
+              sick_total: quota.sick_total,
+              earned_total: quota.earned_total,
+            }),
+            status: 'APPROVED',
+            created_at: quota.updated_at,
+          }, { onConflict: 'id' });
+          console.log(`[ApprovalsService] Synced leave quota for MR ${mrId} to Supabase.`);
+        } catch (e: any) {
+          console.warn('[ApprovalsService] Failed to sync leave quota to Supabase:', e?.message);
+        }
+      }
+    }
 
     try {
       const notif: Notification = {

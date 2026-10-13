@@ -14,8 +14,10 @@ import {
   RefreshCw,
   CornerDownRight,
   Upload,
+  Compass,
 } from 'lucide-react';
 import { showConfirmModal } from './CenteredModalNotice';
+import { findKnownCityCoordinates } from '../utils/savedLocationsStore';
 
 export interface HeadquarterItem {
   id: string;
@@ -25,6 +27,8 @@ export interface HeadquarterItem {
   status: 'ACTIVE' | 'INACTIVE';
   hq_id?: string;
   hq_code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SubAreaItem {
@@ -147,11 +151,76 @@ export const HqTerritoryManager: React.FC = () => {
   const [newHqName, setNewHqName] = useState('');
   const [newHqCode, setNewHqCode] = useState('');
   const [newHqState, setNewHqState] = useState('');
+  const [newHqLat, setNewHqLat] = useState<string>('');
+  const [newHqLng, setNewHqLng] = useState<string>('');
+  const [isDetectingNewCoords, setIsDetectingNewCoords] = useState(false);
 
   const [editingHq, setEditingHq] = useState<HeadquarterItem | null>(null);
   const [editHqName, setEditHqName] = useState('');
   const [editHqCode, setEditHqCode] = useState('');
   const [editHqState, setEditHqState] = useState('');
+  const [editHqLat, setEditHqLat] = useState<string>('');
+  const [editHqLng, setEditHqLng] = useState<string>('');
+  const [isDetectingEditCoords, setIsDetectingEditCoords] = useState(false);
+
+  const detectCoordinates = async (cityName: string, target: 'new' | 'edit') => {
+    if (!cityName.trim()) return;
+    const clean = cityName.trim();
+    if (target === 'new') setIsDetectingNewCoords(true);
+    else setIsDetectingEditCoords(true);
+
+    try {
+      // 1. Instant local index lookup
+      const local = findKnownCityCoordinates(clean);
+      if (local) {
+        if (target === 'new') {
+          setNewHqLat(local.lat.toFixed(4));
+          setNewHqLng(local.lng.toFixed(4));
+        } else {
+          setEditHqLat(local.lat.toFixed(4));
+          setEditHqLng(local.lng.toFixed(4));
+        }
+        showNotice('success', `Coordinates resolved for "${clean}": [${local.lat.toFixed(4)}, ${local.lng.toFixed(4)}]`);
+        return;
+      }
+
+      // 2. Fallback to OpenStreetMap Nominatim
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean + ', India')}&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            if (target === 'new') {
+              setNewHqLat(lat.toFixed(4));
+              setNewHqLng(lon.toFixed(4));
+            } else {
+              setEditHqLat(lat.toFixed(4));
+              setEditHqLng(lon.toFixed(4));
+            }
+            showNotice('success', `Online geocoding matched "${clean}": [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+            return;
+          }
+        }
+      }
+      showNotice('error', `Could not auto-detect GPS for "${clean}". Please enter coordinates manually.`);
+    } catch {
+      showNotice('error', `Geocoding lookup failed. Please enter coordinates manually.`);
+    } finally {
+      if (target === 'new') setIsDetectingNewCoords(false);
+      else setIsDetectingEditCoords(false);
+    }
+  };
+
+  const handleNewHqNameChange = (val: string) => {
+    setNewHqName(val);
+    const local = findKnownCityCoordinates(val);
+    if (local) {
+      setNewHqLat(local.lat.toFixed(4));
+      setNewHqLng(local.lng.toFixed(4));
+    }
+  };
 
   // Sub-Area Form States
   const [newAreaName, setNewAreaName] = useState('');
@@ -194,24 +263,34 @@ export const HqTerritoryManager: React.FC = () => {
       const resHqs = await fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() });
       if (resHqs.ok) {
         const dataHqs = await resHqs.json();
-          const map = new Map<string, HeadquarterItem>();
-          dataHqs.forEach((h: any) => {
-            const hId = h.hq_id || h.id;
-            const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
-            map.set(hId, {
-              id: hId,
-              name: h.name,
-              code: hCode,
-              state: h.state || '',
-              status: h.status || 'ACTIVE',
-              hq_id: h.hq_id || hId,
-              hq_code: h.hq_code || hCode,
-            });
+        const map = new Map<string, HeadquarterItem>();
+        hqs.forEach((h) => {
+          const normKey = (h.name || '').toLowerCase().trim();
+          if (normKey) map.set(normKey, h);
+        });
+        dataHqs.forEach((h: any) => {
+          const normKey = (h.name || '').toLowerCase().trim();
+          if (!normKey) return;
+          const hId = h.hq_id || h.id;
+          const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
+          const existing = map.get(normKey);
+          const fallbackCoords = findKnownCityCoordinates(h.name) || { lat: 23.2953, lng: 81.3586 };
+          map.set(normKey, {
+            id: hId,
+            name: h.name,
+            code: hCode,
+            state: h.state || existing?.state || '',
+            status: h.status || 'ACTIVE',
+            hq_id: h.hq_id || hId,
+            hq_code: h.hq_code || hCode,
+            latitude: existing?.latitude ?? fallbackCoords.lat,
+            longitude: existing?.longitude ?? fallbackCoords.lng,
           });
-          const mergedHqs = Array.from(map.values());
-          if (mergedHqs.length > 0) {
-            persistHqs(mergedHqs);
-          }
+        });
+        const mergedHqs = Array.from(map.values());
+        if (mergedHqs.length > 0) {
+          persistHqs(mergedHqs);
+        }
       }
 
       // 2. Fetch Areas
@@ -293,44 +372,61 @@ export const HqTerritoryManager: React.FC = () => {
     const state = newHqState.trim() || 'Madhya Pradesh';
     const id = `hq-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
+    // Resolve accurate geographic coordinates (not hardcoded Shahdol!)
+    const resolvedCoords = (newHqLat && newHqLng && !isNaN(Number(newHqLat)) && !isNaN(Number(newHqLng)))
+      ? { lat: Number(newHqLat), lng: Number(newHqLng) }
+      : (findKnownCityCoordinates(name) || { lat: 23.2953, lng: 81.3586 });
+
     try {
       await fetch(`${apiUrl}/inventory/hqs`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ name, code, state }),
+        body: JSON.stringify({ name, code, state, latitude: resolvedCoords.lat, longitude: resolvedCoords.lng }),
       });
     } catch {}
 
-    const newHqObj: HeadquarterItem = { id, name, code, state, status: 'ACTIVE' };
-    const updated = [...hqs.filter((h) => h.id !== id), newHqObj];
+    const newHqObj: HeadquarterItem = {
+      id,
+      name,
+      code,
+      state,
+      status: 'ACTIVE',
+      latitude: resolvedCoords.lat,
+      longitude: resolvedCoords.lng,
+    };
+    // Deduplicate by id and name
+    const updated = [...hqs.filter((h) => h.id !== id && h.name.toLowerCase().trim() !== name.toLowerCase().trim()), newHqObj];
     persistHqs(updated);
     setSelectedHqId(id);
 
-    // Sync with operating cities
+    // Sync with operating cities with genuine coordinates and no duplicate name entries
     try {
       const citiesRaw = localStorage.getItem('ahtri_operating_cities');
       const cities = citiesRaw ? JSON.parse(citiesRaw) : [];
-      if (!cities.some((c: any) => (c.cityName || '').toLowerCase() === name.toLowerCase())) {
-        cities.push({
-          id: `city-${Date.now()}`,
-          cityName: name,
-          state,
-          country: 'India',
-          latitude: 23.29,
-          longitude: 81.35,
-          radiusKm: 25,
-          isHeadquarters: false,
-          branchType: 'HEADQUARTERS',
-        });
-        localStorage.setItem('ahtri_operating_cities', JSON.stringify(cities));
-      }
+      const filteredCities = Array.isArray(cities)
+        ? cities.filter((c: any) => (c.cityName || c.name || '').toLowerCase().trim() !== name.toLowerCase().trim())
+        : [];
+      filteredCities.push({
+        id: `city-${Date.now()}`,
+        cityName: name,
+        state,
+        country: 'India',
+        latitude: resolvedCoords.lat,
+        longitude: resolvedCoords.lng,
+        radiusKm: 25,
+        isHeadquarters: false,
+        branchType: 'HEADQUARTERS',
+      });
+      localStorage.setItem('ahtri_operating_cities', JSON.stringify(filteredCities));
     } catch {}
 
     setIsAddHqModalOpen(false);
     setNewHqName('');
     setNewHqCode('');
     setNewHqState('');
-    showNotice('success', `Headquarters "${name}" created successfully!`);
+    setNewHqLat('');
+    setNewHqLng('');
+    showNotice('success', `Headquarters "${name}" created at coordinates [${resolvedCoords.lat.toFixed(4)}, ${resolvedCoords.lng.toFixed(4)}]!`);
   };
 
   const handleOpenEditHq = (hq: HeadquarterItem) => {
@@ -338,6 +434,11 @@ export const HqTerritoryManager: React.FC = () => {
     setEditHqName(hq.name);
     setEditHqCode(hq.code);
     setEditHqState(hq.state);
+    const defaultCoords = findKnownCityCoordinates(hq.name);
+    const lat = typeof hq.latitude === 'number' ? hq.latitude : (defaultCoords?.lat ?? 23.2953);
+    const lng = typeof hq.longitude === 'number' ? hq.longitude : (defaultCoords?.lng ?? 81.3586);
+    setEditHqLat(lat.toFixed(4));
+    setEditHqLng(lng.toFixed(4));
   };
 
   const handleSaveEditHq = async (e: React.FormEvent) => {
@@ -347,16 +448,21 @@ export const HqTerritoryManager: React.FC = () => {
     const name = editHqName.trim();
     const code = (editHqCode.trim() || `HQ-${name.substring(0, 3).toUpperCase()}`).toUpperCase();
     const state = editHqState.trim();
+    const resolvedCoords = (editHqLat && editHqLng && !isNaN(Number(editHqLat)) && !isNaN(Number(editHqLng)))
+      ? { lat: Number(editHqLat), lng: Number(editHqLng) }
+      : (findKnownCityCoordinates(name) || { lat: 23.2953, lng: 81.3586 });
 
     try {
       await fetch(`${apiUrl}/inventory/hqs/${editingHq.id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ name, code, state }),
+        body: JSON.stringify({ name, code, state, latitude: resolvedCoords.lat, longitude: resolvedCoords.lng }),
       });
     } catch {}
 
-    const updated = hqs.map((h) => (h.id === editingHq.id ? { ...h, name, code, state } : h));
+    const updated = hqs.map((h) =>
+      h.id === editingHq.id ? { ...h, name, code, state, latitude: resolvedCoords.lat, longitude: resolvedCoords.lng } : h
+    );
     persistHqs(updated);
 
     // Sync with operating cities
@@ -367,8 +473,8 @@ export const HqTerritoryManager: React.FC = () => {
         if (Array.isArray(cities)) {
           const updatedCities = cities.map((c: any) => {
             const cName = (c.cityName || c.name || '').toLowerCase().trim();
-            if (cName === editingHq.name.toLowerCase().trim()) {
-              return { ...c, cityName: name, name, state };
+            if (cName === editingHq.name.toLowerCase().trim() || cName === name.toLowerCase().trim()) {
+              return { ...c, cityName: name, name, state, latitude: resolvedCoords.lat, longitude: resolvedCoords.lng };
             }
             return c;
           });
@@ -1201,8 +1307,8 @@ export const HqTerritoryManager: React.FC = () => {
                 <input
                   type="text"
                   value={newHqName}
-                  onChange={(e) => setNewHqName(e.target.value)}
-                  placeholder="e.g. Shahdol, Ambikapur, Bilaspur..."
+                  onChange={(e) => handleNewHqNameChange(e.target.value)}
+                  placeholder="e.g. Shahdol, Ambikapur, Bilaspur, Rewa..."
                   required
                   style={{
                     width: '100%',
@@ -1254,6 +1360,70 @@ export const HqTerritoryManager: React.FC = () => {
                     boxSizing: 'border-box',
                   }}
                 />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155' }}>
+                    Geographic Coordinates (Lat / Lng)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => detectCoordinates(newHqName, 'new')}
+                    disabled={isDetectingNewCoords || !newHqName.trim()}
+                    style={{
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE',
+                      color: '#1D4ED8',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: newHqName.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Compass size={12} />
+                    <span>{isDetectingNewCoords ? 'Detecting...' : 'Auto-Detect Location'}</span>
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <input
+                    type="number"
+                    step="any"
+                    value={newHqLat}
+                    onChange={(e) => setNewHqLat(e.target.value)}
+                    placeholder="Latitude (e.g. 24.5362)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    value={newHqLng}
+                    onChange={(e) => setNewHqLng(e.target.value)}
+                    placeholder="Longitude (e.g. 81.3037)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '3px' }}>
+                  Recognizes specific region GPS so the HQ map and task pins mark the true area, not defaulting to Shahdol.
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
@@ -1384,6 +1554,67 @@ export const HqTerritoryManager: React.FC = () => {
                     boxSizing: 'border-box',
                   }}
                 />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155' }}>
+                    Geographic Coordinates (Lat / Lng)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => detectCoordinates(editHqName, 'edit')}
+                    disabled={isDetectingEditCoords || !editHqName.trim()}
+                    style={{
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE',
+                      color: '#1D4ED8',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: editHqName.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Compass size={12} />
+                    <span>{isDetectingEditCoords ? 'Detecting...' : 'Auto-Detect Location'}</span>
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editHqLat}
+                    onChange={(e) => setEditHqLat(e.target.value)}
+                    placeholder="Latitude (e.g. 23.2035)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    value={editHqLng}
+                    onChange={(e) => setEditHqLng(e.target.value)}
+                    placeholder="Longitude (e.g. 81.9669)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>

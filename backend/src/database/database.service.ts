@@ -475,6 +475,106 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             });
           }
 
+          // Authoritative sync: load existing users from Supabase so edits persist across server redeploys
+          const { data: remoteUsers, error: uErr } = await client.from('users').select('*');
+          if (!uErr && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteUsers.length} users from Supabase.`);
+            for (const ru of remoteUsers) {
+              const matchedIndices: number[] = [];
+              this.users.forEach((u, i) => {
+                if (u.id === ru.id || (ru.email && u.email.toLowerCase() === ru.email.toLowerCase())) {
+                  matchedIndices.push(i);
+                }
+              });
+
+              if (matchedIndices.length > 0) {
+                for (const idx of matchedIndices) {
+                  this.users[idx] = {
+                    ...this.users[idx],
+                    name: ru.name || this.users[idx].name,
+                    phone: ru.phone || this.users[idx].phone,
+                    email: ru.email || this.users[idx].email,
+                    password_hash: ru.password_hash || this.users[idx].password_hash,
+                    role: ru.role || this.users[idx].role,
+                    status: ru.status || this.users[idx].status,
+                    biometric_enabled: ru.biometric_enabled ?? this.users[idx].biometric_enabled,
+                  };
+                }
+              } else {
+                this.users.push(ru as any);
+              }
+            }
+          }
+
+          // Authoritative sync: load leave requests and quotas from Supabase
+          const { data: remoteLeaves, error: lErr } = await client.from('leave_requests').select('*');
+          if (!lErr && Array.isArray(remoteLeaves) && remoteLeaves.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteLeaves.length} leave records from Supabase.`);
+            for (const rl of remoteLeaves) {
+              if (rl.leave_type === 'QUOTA_CONFIG') {
+                try {
+                  const quotaConfig = JSON.parse(rl.reason || '{}');
+                  const mrId = rl.user_id;
+                  const idx = this.leaveQuotas.findIndex((q) => q.mr_id === mrId);
+                  const newQuota: LeaveQuota = {
+                    mr_id: mrId,
+                    casual_total: Number(quotaConfig.casual_total ?? 12),
+                    sick_total: Number(quotaConfig.sick_total ?? 10),
+                    earned_total: Number(quotaConfig.earned_total ?? 15),
+                    updated_at: rl.created_at || new Date().toISOString(),
+                  };
+                  if (idx >= 0) {
+                    this.leaveQuotas[idx] = newQuota;
+                  } else {
+                    this.leaveQuotas.push(newQuota);
+                  }
+                } catch {}
+              } else {
+                const leaveReq: LeaveRequest = {
+                  id: rl.id,
+                  mr_id: rl.user_id,
+                  category: rl.leave_type as any,
+                  start_date: rl.from_date,
+                  end_date: rl.to_date,
+                  reason: rl.reason || '',
+                  status: rl.status || 'PENDING',
+                  approved_by: rl.approved_by,
+                  created_at: rl.created_at || new Date().toISOString(),
+                };
+                const idx = this.leaveRequests.findIndex((l) => l.id === rl.id);
+                if (idx >= 0) {
+                  this.leaveRequests[idx] = leaveReq;
+                } else {
+                  this.leaveRequests.push(leaveReq);
+                }
+              }
+            }
+          }
+
+          // Authoritative sync: load headquarters from Supabase
+          const { data: remoteHqs, error: hqErr } = await client.from('headquarters').select('*');
+          if (!hqErr && Array.isArray(remoteHqs) && remoteHqs.length > 0) {
+            console.log(`[DatabaseService] Synced ${remoteHqs.length} headquarters from Supabase.`);
+            for (const rh of remoteHqs) {
+              const idx = this.headquarters.findIndex((h) => h.id === rh.id || h.name.toLowerCase() === rh.name.toLowerCase());
+              const cleanHq: Headquarter = {
+                id: rh.id,
+                hq_id: rh.id,
+                name: rh.name,
+                code: rh.id.replace('HQ-', '').replace('-001', ''),
+                hq_code: rh.id.replace('HQ-', '').replace('-001', ''),
+                state: rh.state || '',
+                status: rh.is_active ? 'ACTIVE' : 'INACTIVE',
+                created_at: rh.created_at || new Date().toISOString(),
+              };
+              if (idx >= 0) {
+                this.headquarters[idx] = { ...this.headquarters[idx], ...cleanHq };
+              } else {
+                this.headquarters.push(cleanHq);
+              }
+            }
+          }
+
           // Sync tasks with Supabase
           const { data: remoteTasks, error: taskErr } = await client.from('tasks').select('*');
           if (!taskErr && remoteTasks && remoteTasks.length > 0) {
@@ -515,17 +615,6 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           } else if (this.attendance.length > 0) {
             for (const att of this.attendance) {
               await this.syncAttendanceToSupabase(att);
-            }
-          }
-
-          // Sync users credentials from Supabase
-          const { data: remoteUsers, error: usersErr } = await client.from('users').select('*');
-          if (!usersErr && remoteUsers && remoteUsers.length > 0) {
-            for (const ru of remoteUsers) {
-              const u = this.users.find((usr) => usr.id === ru.id || usr.email.toLowerCase() === ru.email?.toLowerCase());
-              if (u && ru.password_hash) {
-                u.password_hash = ru.password_hash;
-              }
             }
           }
 

@@ -1031,16 +1031,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   // Update MR Password
-  const handleSaveMrPassword = (mrId: string) => {
+  const handleSaveMrPassword = async (mrId: string) => {
     if (!tempMrPassword.trim()) {
       alert('Password cannot be empty');
       return;
     }
-    setMrList(mrList.map((m) => (m.id === mrId ? { ...m, password: tempMrPassword } : m)));
-    setEditingMrPasswordId(null);
-    setTempMrPassword('');
-    setPasswordNotice({ type: 'success', message: 'Representative password updated. You can share credentials with the member.' });
-    setTimeout(() => setPasswordNotice(null), 3500);
+    const newPwd = tempMrPassword.trim();
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    const apiUrl = getApiBaseUrl();
+
+    try {
+      const res = await fetch(`${apiUrl}/users/${mrId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ password: newPwd }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Failed to save password to database');
+      }
+
+      setMrList(mrList.map((m) => (m.id === mrId ? { ...m, password: newPwd } : m)));
+      setEditingMrPasswordId(null);
+      setTempMrPassword('');
+      setPasswordNotice({ type: 'success', message: 'Representative password saved to database. You can share credentials with the member.' });
+      setTimeout(() => setPasswordNotice(null), 3500);
+    } catch (err: any) {
+      setPasswordNotice({ type: 'error', message: `Update failed: ${err.message || 'Server error'}` });
+    }
   };
 
   const handleCopyMrCredentials = (mr: any) => {

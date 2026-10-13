@@ -32,8 +32,45 @@ export class LocationsService implements OnModuleInit {
 
   constructor(private readonly db: DatabaseService) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.seedDefaultLocations();
+    await this.syncFromSupabase();
+  }
+
+  private async syncFromSupabase() {
+    if (!this.db.supabase?.isConnected) return;
+    const client = this.db.supabase.getClient();
+    if (!client) return;
+    try {
+      const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        this.locations = data.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          clinic: d.name,
+          doctor_name: d.contact_person || '',
+          qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
+          specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
+          class: 'A',
+          potential_score: 85,
+          phone: d.contact_phone || 'N/A',
+          address: d.address,
+          latitude: Number(d.latitude),
+          longitude: Number(d.longitude),
+          category: d.category || 'CLINIC',
+          created_by: d.created_by || 'usr-admin-01',
+          created_by_role: 'ADMIN',
+          created_by_name: 'System Admin (Owner)',
+          area_name: 'Territory',
+          visit_count: 0,
+          is_new: false,
+          created_at: d.created_at || new Date().toISOString(),
+        }));
+        console.log(`[LocationsService] Loaded ${this.locations.length} live saved locations from Supabase.`);
+      }
+    } catch (err: any) {
+      console.warn('[LocationsService] Supabase sync notice:', err?.message);
+    }
   }
 
   private seedDefaultLocations() {
@@ -146,12 +183,45 @@ export class LocationsService implements OnModuleInit {
         area_name: 'Kotma HQ Territory',
         visit_count: 4,
         is_new: false,
-        created_at: new Date(Date.now() - 86400000).toISOString(),
+        created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
       },
     ];
   }
 
   async getAllLocations(): Promise<SavedLocation[]> {
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            this.locations = data.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              clinic: d.name,
+              doctor_name: d.contact_person || '',
+              qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
+              specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
+              class: 'A',
+              potential_score: 85,
+              phone: d.contact_phone || 'N/A',
+              address: d.address,
+              latitude: Number(d.latitude),
+              longitude: Number(d.longitude),
+              category: d.category || 'CLINIC',
+              created_by: d.created_by || 'usr-admin-01',
+              created_by_role: 'ADMIN',
+              created_by_name: 'System Admin (Owner)',
+              area_name: 'Territory',
+              visit_count: 0,
+              is_new: false,
+              created_at: d.created_at || new Date().toISOString(),
+            }));
+            return this.locations;
+          }
+        } catch {}
+      }
+    }
     return this.locations;
   }
 
@@ -191,15 +261,40 @@ export class LocationsService implements OnModuleInit {
       created_by: creatorId,
       created_by_role: creatorRole,
       created_by_name: creatorName,
-      area_name: 'Shahdol Territory',
+      area_name: 'Territory',
       visit_count: 0,
-      is_new: creatorRole === 'MR', // Only MR field discoveries trigger owner alerts; admin assignments/marks do not popup on dashboard
+      is_new: creatorRole === 'MR',
       created_at: new Date().toISOString(),
     };
 
     this.locations.unshift(newLocation);
 
-    // Also register in DatabaseService doctors list so other modules can access it
+    // Sync to Supabase saved_locations table
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('saved_locations').upsert({
+            id: newLocation.id,
+            name: newLocation.clinic || newLocation.name,
+            address: newLocation.address || '',
+            latitude: newLocation.latitude,
+            longitude: newLocation.longitude,
+            geofence_radius_m: 50,
+            category: newLocation.category,
+            contact_person: newLocation.doctor_name || '',
+            contact_phone: newLocation.phone || '',
+            created_by: creatorId,
+            created_at: newLocation.created_at,
+            updated_at: newLocation.created_at,
+          });
+        } catch (sbErr: any) {
+          console.warn('[LocationsService] Failed to insert into Supabase:', sbErr?.message);
+        }
+      }
+    }
+
+    // Also register in DatabaseService doctors list
     this.db.doctors.unshift({
       id: newLocation.id,
       name: newLocation.name,
@@ -220,7 +315,6 @@ export class LocationsService implements OnModuleInit {
       created_at: newLocation.created_at,
     });
 
-    // Create a central notification record for owner only when an MR discovers a facility
     if (creatorRole === 'MR') {
       this.db.notifications.unshift({
         id: uuidv4(),
@@ -269,7 +363,27 @@ export class LocationsService implements OnModuleInit {
     if (dto.longitude !== undefined) loc.longitude = dto.longitude;
     if (dto.class !== undefined) loc.class = dto.class as any;
 
-    // Sync with DatabaseService doctors list
+    // Sync to Supabase
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('saved_locations').update({
+            name: loc.clinic || loc.name,
+            address: loc.address,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            category: loc.category,
+            contact_person: loc.doctor_name,
+            contact_phone: loc.phone,
+            updated_at: new Date().toISOString(),
+          }).eq('id', id);
+        } catch (sbErr: any) {
+          console.warn('[LocationsService] Failed to update in Supabase:', sbErr?.message);
+        }
+      }
+    }
+
     const doc = this.db.doctors.find((d) => d.id === id);
     if (doc) {
       if (dto.name !== undefined) doc.name = dto.name;
@@ -289,14 +403,30 @@ export class LocationsService implements OnModuleInit {
 
   async deleteLocation(id: string): Promise<{ success: boolean; message: string; id: string }> {
     const locIndex = this.locations.findIndex((l) => l.id === id);
-    if (locIndex === -1) {
-      throw new NotFoundException(`Location ${id} not found`);
+    if (locIndex !== -1) {
+      this.locations.splice(locIndex, 1);
     }
-    this.locations.splice(locIndex, 1);
 
     const docIndex = this.db.doctors.findIndex((d) => d.id === id);
     if (docIndex !== -1) {
       this.db.doctors.splice(docIndex, 1);
+    }
+
+    // Delete directly from Supabase saved_locations table
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          const { error } = await client.from('saved_locations').delete().eq('id', id);
+          if (error) {
+            console.warn(`[LocationsService] Supabase delete error for ${id}:`, error.message);
+          } else {
+            console.log(`[LocationsService] Deleted location ${id} from Supabase.`);
+          }
+        } catch (sbErr: any) {
+          console.warn('[LocationsService] Supabase delete exception:', sbErr?.message);
+        }
+      }
     }
 
     return { success: true, message: `Location ${id} deleted successfully`, id };

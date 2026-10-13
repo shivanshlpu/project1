@@ -214,10 +214,37 @@ export const KNOWN_HQ_COORDINATES: Record<string, { lat: number; lng: number; ra
   'baikunthpur': { lat: 23.2754, lng: 82.5542, radiusKm: 25.0 },
   'surajpur': { lat: 23.2192, lng: 82.8631, radiusKm: 25.0 },
   'rewa': { lat: 24.5362, lng: 81.3037, radiusKm: 30.0 },
+  'satna': { lat: 24.6005, lng: 80.8322, radiusKm: 30.0 },
   'jabalpur': { lat: 23.1815, lng: 79.9864, radiusKm: 30.0 },
+  'umaria': { lat: 23.5243, lng: 80.8354, radiusKm: 25.0 },
+  'dindori': { lat: 22.9515, lng: 81.0827, radiusKm: 25.0 },
+  'mandla': { lat: 22.5982, lng: 80.3712, radiusKm: 25.0 },
+  'katni': { lat: 23.8343, lng: 80.3980, radiusKm: 25.0 },
+  'chhindwara': { lat: 22.0574, lng: 78.9382, radiusKm: 30.0 },
+  'seoni': { lat: 22.0869, lng: 79.5435, radiusKm: 25.0 },
+  'bhopal': { lat: 23.2599, lng: 77.4126, radiusKm: 35.0 },
+  'indore': { lat: 22.7196, lng: 75.8577, radiusKm: 35.0 },
+  'gwalior': { lat: 26.2183, lng: 78.1828, radiusKm: 35.0 },
+  'ujjain': { lat: 23.1765, lng: 75.7885, radiusKm: 30.0 },
+  'sagar': { lat: 23.8388, lng: 78.7378, radiusKm: 30.0 },
   'raipur': { lat: 21.2514, lng: 81.6296, radiusKm: 35.0 },
   'durg': { lat: 21.1904, lng: 81.2849, radiusKm: 30.0 },
+  'bhilai': { lat: 21.2167, lng: 81.4333, radiusKm: 30.0 },
+  'korba': { lat: 22.3595, lng: 82.7501, radiusKm: 30.0 },
+  'raigarh': { lat: 21.8974, lng: 83.3950, radiusKm: 30.0 },
+  'rajnandgaon': { lat: 21.0971, lng: 81.0335, radiusKm: 30.0 },
+  'jagdalpur': { lat: 19.0732, lng: 82.0298, radiusKm: 30.0 },
 };
+
+export function findKnownCityCoordinates(cityName: string): { lat: number; lng: number } | null {
+  const norm = (cityName || '').toLowerCase().trim().replace(/^(hq-|zone-)/, '').replace(/\s*hq$/, '');
+  for (const [key, val] of Object.entries(KNOWN_HQ_COORDINATES)) {
+    if (norm === key || norm.includes(key) || key.includes(norm)) {
+      return { lat: val.lat, lng: val.lng };
+    }
+  }
+  return null;
+}
 
 export const DEFAULT_MANAGED_AREAS_MAP: Record<string, string[]> = {
   'kotma': ['Kotma Town', 'Anuppur', 'Jaithari', 'Bijuri', 'Rajendragram', 'Bhalumuda', 'Marwahi', 'Kelhari', 'Janakpur'],
@@ -342,19 +369,42 @@ export function getOperatingZones(): TerritoryZone[] {
       return n.includes('delhi') || n.includes('mumbai') || n.includes('jaipur') || n.includes('chandigarh');
     };
 
+    // Consistent key generator to prevent duplicate entries across all aliases and codes
+    const getZoneKey = (item: any) => {
+      const name = (item.name || item.cityName || '').toLowerCase().trim();
+      const cleanName = name.replace(/^(hq-|zone-)/, '').replace(/\s*hq$/, '').trim();
+      if (cleanName) {
+        if (cleanName === 'shd' || cleanName.includes('shahdol')) return 'shahdol';
+        if (cleanName === 'kot' || cleanName.includes('kotma')) return 'kotma';
+        if (cleanName === 'amb' || cleanName.includes('ambikapur')) return 'ambikapur';
+        if (cleanName === 'bsp' || cleanName.includes('bilaspur')) return 'bilaspur';
+        return cleanName;
+      }
+      const rawCode = (item.code || item.hq_code || item.id || '').toLowerCase().trim().replace(/^(hq-|zone-)/, '').replace(/-001$/, '').replace(/\s*hq$/, '').trim();
+      if (rawCode === 'shd' || rawCode.includes('shahdol')) return 'shahdol';
+      if (rawCode === 'kot' || rawCode.includes('kotma')) return 'kotma';
+      if (rawCode === 'amb' || rawCode.includes('ambikapur')) return 'ambikapur';
+      if (rawCode === 'bsp' || rawCode.includes('bilaspur')) return 'bilaspur';
+      return rawCode;
+    };
+
     // 1. Gather all unique HQs and operating branches
     const zoneMap = new Map<string, any>();
 
     // Start with default 4 standard headquarters
     DEFAULT_TERRITORY_ZONES.forEach((dz) => {
-      const key = dz.code.toLowerCase();
+      const key = getZoneKey(dz);
       zoneMap.set(key, {
         id: dz.id.replace('zone-', ''),
-        name: dz.name.replace(' HQ', ''),
+        name: dz.name.replace(/\s*HQ$/i, '').trim(),
         code: dz.code,
         state: dz.code === 'KOT' || dz.code === 'SHD' ? 'Madhya Pradesh' : 'Chhattisgarh',
         branchType: 'HEADQUARTERS',
         color: dz.color,
+        latitude: dz.latitude,
+        longitude: dz.longitude,
+        radiusKm: dz.radiusKm,
+        subAreas: dz.subAreas,
       });
     });
 
@@ -362,13 +412,13 @@ export function getOperatingZones(): TerritoryZone[] {
     if (Array.isArray(hqs)) {
       hqs.forEach((h: any) => {
         if (!h || !h.name || isExcluded(h.name)) return;
-        const key = (h.code || h.hq_code || h.name).toLowerCase().trim();
+        const key = getZoneKey(h);
         const existing = zoneMap.get(key) || {};
         zoneMap.set(key, {
           ...existing,
           ...h,
           id: h.hq_id || h.id || existing.id,
-          name: h.name,
+          name: h.name.replace(/\s*HQ$/i, '').trim(),
           code: h.code || h.hq_code || existing.code,
         });
       });
@@ -378,26 +428,30 @@ export function getOperatingZones(): TerritoryZone[] {
     if (Array.isArray(operatingCities)) {
       operatingCities.forEach((c: any) => {
         if (!c || !c.cityName || isExcluded(c.cityName)) return;
-        const key = (c.cityName || c.name).toLowerCase().trim();
-        const existingMatchKey = Array.from(zoneMap.keys()).find(
-          (k) => k === key || k.includes(key) || key.includes(k)
-        );
-        const targetKey = existingMatchKey || key;
-        const existing = zoneMap.get(targetKey) || {};
-        zoneMap.set(targetKey, {
+        const key = getZoneKey({ name: c.cityName });
+        const existing = zoneMap.get(key) || {};
+        zoneMap.set(key, {
           ...existing,
           id: existing.id || c.id,
-          name: existing.name || c.cityName,
+          name: existing.name || c.cityName.replace(/\s*HQ$/i, '').trim(),
           code: existing.code || `HQ-${c.cityName.substring(0, 3).toUpperCase()}`,
-          latitude: c.latitude,
-          longitude: c.longitude,
-          radiusKm: c.radiusKm || 25,
-          branchType: c.branchType || (c.isHeadquarters ? 'HEADQUARTERS' : 'SUB_CITY_BRANCH'),
+          latitude: typeof c.latitude === 'number' ? c.latitude : existing.latitude,
+          longitude: typeof c.longitude === 'number' ? c.longitude : existing.longitude,
+          radiusKm: c.radiusKm || existing.radiusKm || 25,
+          branchType: c.branchType || existing.branchType || (c.isHeadquarters ? 'HEADQUARTERS' : 'SUB_CITY_BRANCH'),
         });
       });
     }
 
-    const effectiveHqs = Array.from(zoneMap.values());
+    // Deduplicate strictly by normalized zone key to ensure zero duplicate entries
+    const seenZoneKeys = new Set<string>();
+    const effectiveHqs = Array.from(zoneMap.values()).filter((hq: any) => {
+      const k = getZoneKey(hq);
+      if (seenZoneKeys.has(k)) return false;
+      seenZoneKeys.add(k);
+      return true;
+    });
+
     const colors = ['#059669', '#1A3C6E', '#0891B2', '#D97706', '#7C3AED', '#DB2777', '#2563EB'];
 
     return effectiveHqs.map((hq: any, idx: number) => {
@@ -444,21 +498,17 @@ export function getOperatingZones(): TerritoryZone[] {
 export function getStoredSavedLocations(): DoctorItem[] {
   try {
     const raw = localStorage.getItem('ahtri_saved_locations');
-    let list: DoctorItem[] = [];
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        list = parsed;
+        return parsed;
       }
     }
-    // Guarantee that the 5 authentic points-of-care across all HQs are present
-    const map = new Map<string, DoctorItem>();
-    INITIAL_SAVED_LOCATIONS.forEach((l) => map.set(l.id, l));
-    list.forEach((l) => map.set(l.id, l));
-    const merged = Array.from(map.values());
-    return merged;
-  } catch {}
-  return INITIAL_SAVED_LOCATIONS;
+    // Only return initial defaults if storage was never initialized
+    return INITIAL_SAVED_LOCATIONS;
+  } catch {
+    return [];
+  }
 }
 
 export function persistSavedLocations(locs: DoctorItem[]) {
@@ -491,14 +541,9 @@ export async function syncSavedLocationsWithBackend(): Promise<DoctorItem[]> {
     });
     if (res.ok) {
       const data: DoctorItem[] = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        // Merge with existing local so newly created or authentic points are preserved
-        const map = new Map<string, DoctorItem>();
-        INITIAL_SAVED_LOCATIONS.forEach((l) => map.set(l.id, l));
-        data.forEach((l) => map.set(l.id, l));
-        const merged = Array.from(map.values());
-        persistSavedLocations(merged);
-        return merged;
+      if (Array.isArray(data)) {
+        persistSavedLocations(data);
+        return data;
       }
     }
   } catch {}
