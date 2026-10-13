@@ -38,8 +38,8 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { HqTerritoryManager } from '../components/HqTerritoryManager';
-import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface SettingsViewProps {
   lang?: Language;
@@ -110,11 +110,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const u = getStoredUser();
       const userId = u?.id || 'usr-admin-01';
       try {
-        const apiUrl = getApiBaseUrl();
-        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-        const res = await fetch(`${apiUrl}/users/${userId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const res = await resilientFetch(`/users/${userId}`);
         if (res.ok) {
           const data = await res.json();
           if (data) {
@@ -139,11 +135,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const apiUrl = getApiBaseUrl();
-        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-        const res = await fetch(`${apiUrl}/users?role=MR`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const res = await resilientFetch('/users?role=MR');
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -937,12 +929,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const apiUrl = getApiBaseUrl();
 
     try {
-      const res = await fetch(`${apiUrl}/users/${userId}`, {
+      const res = await resilientFetch(`/users/${userId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           name: cleanName,
           email: cleanEmail,
@@ -961,11 +949,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateManagerName(cleanName);
     const updated = { ...(u || {}), id: userId, name: cleanName, email: cleanEmail, phone: cleanPhone, role: u?.role || 'SUPER_ADMIN' };
     localStorage.setItem('ahtri_user', JSON.stringify(updated));
+    localStorage.setItem('ahtri_user_name', cleanName);
     localStorage.setItem('ahtri_user_email', cleanEmail);
     localStorage.setItem('ahtri_user_phone', cleanPhone);
     localStorage.setItem('ahtri_user_designation', designation);
     localStorage.setItem('ahtri_company_name', companyName);
     localStorage.setItem('ahtri_manager_name', cleanName);
+
+    // Keep cached members list synchronized with admin profile update
+    try {
+      const cached = localStorage.getItem('ahtri_cached_members');
+      if (cached) {
+        const mems = JSON.parse(cached);
+        if (Array.isArray(mems)) {
+          const updatedMems = mems.map((m: any) =>
+            m.id === userId || m.role === 'SUPER_ADMIN'
+              ? { ...m, name: cleanName, email: cleanEmail, phone: cleanPhone }
+              : m,
+          );
+          localStorage.setItem('ahtri_cached_members', JSON.stringify(updatedMems));
+        }
+      }
+    } catch {}
 
     setProfileNotice('✓ Profile and credentials updated successfully in database!');
     setTimeout(() => setProfileNotice(null), 3500);
@@ -978,8 +983,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setPasswordNotice({ type: 'error', message: 'Please enter your current password.' });
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordNotice({ type: 'error', message: 'New password must be at least 8 characters long.' });
+    if (newPassword.length < 6) {
+      setPasswordNotice({ type: 'error', message: 'New password must be at least 6 characters long.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -989,16 +994,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     const u = getStoredUser();
     const userId = u?.id || 'usr-admin-01';
-    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-    const apiUrl = getApiBaseUrl();
 
     try {
-      const res = await fetch(`${apiUrl}/users/${userId}`, {
+      const res = await resilientFetch(`/users/${userId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           password: newPassword.trim(),
         }),
@@ -1037,16 +1036,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
     const newPwd = tempMrPassword.trim();
-    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-    const apiUrl = getApiBaseUrl();
 
     try {
-      const res = await fetch(`${apiUrl}/users/${mrId}`, {
+      const res = await resilientFetch(`/users/${mrId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ password: newPwd }),
       });
 

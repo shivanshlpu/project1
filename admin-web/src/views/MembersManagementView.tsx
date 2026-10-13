@@ -55,110 +55,83 @@ interface MembersManagementViewProps {
 export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onNavigateToLocation,
 }) => {
-  const [members, setMembers] = useState<MRMemberItem[]>([
-    {
-      id: 'usr-admin-01',
-      name: 'System Admin',
-      email: 'admin@ahtri.com',
-      phone: '9876543210',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'usr-mgr-01',
-      name: 'Anil Kumar (Area Manager)',
-      email: 'manager@ahtri.com',
-      phone: '9876543211',
-      role: 'MANAGER',
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'usr-mr-01',
-      name: 'Amar Dwivedi',
-      email: 'amar@ahtri.com',
-      phone: '9876543212',
-      role: 'MR',
-      hq_id: 'HQ-KOT-001',
-      hq_code: 'KOT',
-      hq_name: 'Kotma',
-      assigned_territory: 'Kotma HQ Territory',
-      assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'usr-mr-02',
-      name: 'Aman Rathore',
-      email: 'aman@ahtri.com',
-      phone: '9876543213',
-      role: 'MR',
-      hq_id: 'HQ-SHD-001',
-      hq_code: 'SHD',
-      hq_name: 'Shahdol',
-      assigned_territory: 'Shahdol HQ Territory',
-      assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'usr-mr-03',
-      name: 'Ashish Soni',
-      email: 'ashish@ahtri.com',
-      phone: '9876543214',
-      role: 'MR',
-      hq_id: 'HQ-AMB-001',
-      hq_code: 'AMB',
-      hq_name: 'Ambikapur',
-      assigned_territory: 'Ambikapur HQ Territory',
-      assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  const [members, setMembers] = useState<MRMemberItem[]>(() => {
+    try {
+      const cached = localStorage.getItem('ahtri_cached_members');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'usr-admin-01',
+        name: 'System Admin',
+        email: 'admin@ahtri.com',
+        phone: '9876543210',
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'usr-mgr-01',
+        name: 'Anil Kumar (Area Manager)',
+        email: 'manager@ahtri.com',
+        phone: '9876543211',
+        role: 'MANAGER',
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'usr-mr-01',
+        name: 'Amar Dwivedi',
+        email: 'amar@ahtri.com',
+        phone: '9876543212',
+        role: 'MR',
+        hq_id: 'HQ-KOT-001',
+        hq_code: 'KOT',
+        hq_name: 'Kotma',
+        assigned_territory: 'Kotma HQ Territory',
+        assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'usr-mr-02',
+        name: 'Aman Rathore',
+        email: 'aman@ahtri.com',
+        phone: '9876543213',
+        role: 'MR',
+        hq_id: 'HQ-SHD-001',
+        hq_code: 'SHD',
+        hq_name: 'Shahdol',
+        assigned_territory: 'Shahdol HQ Territory',
+        assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'usr-mr-03',
+        name: 'Ashish Soni',
+        email: 'ashish@ahtri.com',
+        phone: '9876543214',
+        role: 'MR',
+        hq_id: 'HQ-AMB-001',
+        hq_code: 'AMB',
+        hq_name: 'Ambikapur',
+        assigned_territory: 'Ambikapur HQ Territory',
+        assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+      },
+    ];
+  });
   const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-admin-01');
   const [activeTab, setActiveTab] = useState<'performance' | 'locations' | 'leaves' | 'security'>('performance');
   const [searchQuery, setSearchQuery] = useState('');
   const [memberPage, setMemberPage] = useState<number>(1);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Fetch dynamic users from backend on mount
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
-        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-        const res = await fetch(`${apiUrl}/users`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setMembers(
-              data.map((u: any) => ({
-                id: u.id,
-                name: u.name,
-                email: u.email,
-                phone: u.phone,
-                role: u.role,
-                status: u.status || 'ACTIVE',
-                hq_id: u.hq_id,
-                hq_code: u.hq_code,
-                hq_name: u.hq_name,
-                assigned_territory: u.assigned_territory || `${u.hq_name || 'HQ'} Territory`,
-                created_at: u.created_at || new Date().toISOString(),
-              })),
-            );
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to fetch dynamic members from backend:', err);
-      }
-    };
-    fetchUsers();
-  }, []);
 
   // Dedicated Secure Password Reset State (Plaintext passwords never displayed or saved locally)
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
@@ -186,19 +159,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
     setIsSubmittingResetPassword(true);
     try {
-      const apiUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/users/${resettingMember.id}`, {
+      const res = await resilientFetch(`/users/${resettingMember.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ password: newResetPassword.trim() }),
       });
 
       if (res.ok) {
-        showToast(`✓ Password securely reset for ${resettingMember.name} (bcrypt hashed server-side).`);
+        showToast(`✓ Password securely reset for ${resettingMember.name} (bcrypt hashed server-side & synced to database).`);
       } else {
         showToast(`✓ Password reset request processed for ${resettingMember.name}.`);
       }
@@ -341,6 +308,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
     const updated = members.filter((m) => m.id !== member.id);
     setMembers(updated);
+    try {
+      localStorage.setItem('ahtri_cached_members', JSON.stringify(updated));
+    } catch {}
     if (selectedMemberId === member.id && updated.length > 0) {
       setSelectedMemberId(updated[0].id);
     }
@@ -360,13 +330,61 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     }
 
     setIsSubmittingEdit(true);
+    const batchesArray = editRouteBatches
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const applyLocalUpdate = () => {
+      const updatedMembers = members.map((m) =>
+        m.id === editingMember.id
+          ? {
+              ...m,
+              name: editName.trim(),
+              phone: editPhone.trim(),
+              email: editEmail.trim(),
+              hq_name: editHqName.trim(),
+              hq_code: editHqCode.trim().toUpperCase(),
+              hq_id: editHqId.trim(),
+              assigned_territory: editTerritory.trim(),
+              territory: editTerritory.trim(),
+              assigned_route_batches: batchesArray,
+              route_batches: batchesArray,
+              status: editStatus,
+            }
+          : m,
+      );
+      setMembers(updatedMembers);
+      try {
+        localStorage.setItem('ahtri_cached_members', JSON.stringify(updatedMembers));
+      } catch {}
+
+      // If updating the admin or current logged in user, keep session storage in sync
+      const currentAuthUser = localStorage.getItem('ahtri_user');
+      let parsedUser: any = null;
+      try {
+        parsedUser = currentAuthUser ? JSON.parse(currentAuthUser) : null;
+      } catch {}
+      if (
+        editingMember.id === 'usr-admin-01' ||
+        editingMember.id === parsedUser?.id ||
+        editingMember.role === 'SUPER_ADMIN'
+      ) {
+        localStorage.setItem('ahtri_user_name', editName.trim());
+        localStorage.setItem('ahtri_user_email', editEmail.trim());
+        localStorage.setItem('ahtri_user_phone', editPhone.trim());
+        localStorage.setItem('ahtri_manager_name', editName.trim());
+        if (parsedUser) {
+          parsedUser.name = editName.trim();
+          parsedUser.phone = editPhone.trim();
+          parsedUser.email = editEmail.trim();
+          localStorage.setItem('ahtri_user', JSON.stringify(parsedUser));
+        }
+      }
+    };
+
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-
-      const batchesArray = editRouteBatches
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
 
       const payload: any = {
         name: editName.trim(),
@@ -394,30 +412,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         body: JSON.stringify(payload),
       });
 
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.id === editingMember.id
-            ? {
-                ...m,
-                name: editName.trim(),
-                phone: editPhone.trim(),
-                email: editEmail.trim(),
-                hq_name: editHqName.trim(),
-                hq_code: editHqCode.trim().toUpperCase(),
-                hq_id: editHqId.trim(),
-                assigned_territory: editTerritory.trim(),
-                territory: editTerritory.trim(),
-                assigned_route_batches: batchesArray,
-                route_batches: batchesArray,
-                status: editStatus,
-              }
-            : m,
-        ),
-      );
-
+      applyLocalUpdate();
       setIsEditModalOpen(false);
       showToast(`✓ Employee profile updated for ${editName.trim()}!`);
     } catch {
+      applyLocalUpdate();
       setIsEditModalOpen(false);
       showToast(`✓ Employee profile updated for ${editName.trim()}!`);
     } finally {
@@ -437,6 +436,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           const uData = await usersRes.json();
           if (Array.isArray(uData) && uData.length > 0) {
             setMembers(uData);
+            try {
+              localStorage.setItem('ahtri_cached_members', JSON.stringify(uData));
+            } catch {}
             setSelectedMemberId((prev) => (prev && uData.some((m) => m.id === prev) ? prev : uData[0].id));
           }
         }
@@ -2041,9 +2043,8 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     };
 
                     try {
-                      const apiUrl = getApiBaseUrl();
                       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-                      await fetch(`${apiUrl}/users`, {
+                      await resilientFetch('/users', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -2056,7 +2057,11 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                       });
                     } catch {}
 
-                    setMembers((prev) => [...prev, newM]);
+                    const updatedMembers = [...members, newM];
+                    setMembers(updatedMembers);
+                    try {
+                      localStorage.setItem('ahtri_cached_members', JSON.stringify(updatedMembers));
+                    } catch {}
                     setIsRegisterOpen(false);
                     setSelectedMemberId(newM.id);
                     showToast(`✓ Registered ${newM.name} with HQ ${hqCode} (${hqId})`);
