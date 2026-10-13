@@ -186,8 +186,12 @@ interface MedicineItem {
   code?: string;
   product_code: string;
   unit: string;
+  packing?: string;
   base_price?: number | null;
+  pts?: number;
   pts_rate?: number;
+  ptr?: number;
+  ptr_rate?: number;
   mrp?: number;
   packaging_variants?: any[];
   status?: string;
@@ -365,8 +369,11 @@ export const StockerManagementView: React.FC = () => {
   const [isAddMedicineModalOpen, setIsAddMedicineModalOpen] = useState<boolean>(false);
   const [newMedName, setNewMedName] = useState<string>('');
   const [newMedCode, setNewMedCode] = useState<string>('');
-  const [newMedUnit, setNewMedUnit] = useState<string>('Strip of 10');
-  const [newMedPrice, setNewMedPrice] = useState<string>('150');
+  const [newMedPacking, setNewMedPacking] = useState<string>('200 ML');
+  const [newMedUnit, setNewMedUnit] = useState<string>('200 ML');
+  const [newMedPts, setNewMedPts] = useState<string>('');
+  const [newMedPtr, setNewMedPtr] = useState<string>('');
+  const [newMedMrp, setNewMedMrp] = useState<string>('');
   const [newMedThreshold, setNewMedThreshold] = useState<string>('15');
 
   // Edit Medicine Modal state
@@ -374,8 +381,11 @@ export const StockerManagementView: React.FC = () => {
   const [editingMedicine, setEditingMedicine] = useState<MedicineItem | null>(null);
   const [editMedName, setEditMedName] = useState<string>('');
   const [editMedCode, setEditMedCode] = useState<string>('');
-  const [editMedUnit, setEditMedUnit] = useState<string>('Strip of 10');
-  const [editMedPrice, setEditMedPrice] = useState<string>('150');
+  const [editMedPacking, setEditMedPacking] = useState<string>('200 ML');
+  const [editMedUnit, setEditMedUnit] = useState<string>('200 ML');
+  const [editMedPts, setEditMedPts] = useState<string>('');
+  const [editMedPtr, setEditMedPtr] = useState<string>('');
+  const [editMedMrp, setEditMedMrp] = useState<string>('');
   const [editMedThreshold, setEditMedThreshold] = useState<string>('15');
   const [editMedStatus, setEditMedStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
@@ -512,17 +522,6 @@ export const StockerManagementView: React.FC = () => {
   const fetchStockers = async () => {
     if (!selectedHqId) return;
 
-    let localForHq: StockerItem[] = [];
-    try {
-      const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
-      if (savedStkRaw) {
-        const allSaved = JSON.parse(savedStkRaw);
-        if (Array.isArray(allSaved)) {
-          localForHq = allSaved.filter((s: any) => s.hq_id === selectedHqId);
-        }
-      }
-    } catch {}
-
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers?hq_id=${selectedHqId}`, {
         headers: getAuthHeaders(),
@@ -530,13 +529,17 @@ export const StockerManagementView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const map = new Map<string, StockerItem>();
-          localForHq.forEach((s) => map.set(s.id, s));
-          data.forEach((s: any) => map.set(s.id, s));
-          const merged = Array.from(map.values());
-          setStockers(merged);
-          if (merged.length > 0) {
-            setSelectedStockerId((prev) => (merged.some((m) => m.id === prev) ? prev : merged[0].id));
+          setStockers(data);
+          // Sync localStorage for this HQ so stale deleted stockers are purged
+          try {
+            const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+            const otherStockers = savedStkRaw
+              ? (JSON.parse(savedStkRaw) as StockerItem[]).filter((s) => s.hq_id !== selectedHqId)
+              : [];
+            localStorage.setItem('ahtri_inventory_stockers', JSON.stringify([...otherStockers, ...data]));
+          } catch {}
+          if (data.length > 0) {
+            setSelectedStockerId((prev) => (data.some((m) => m.id === prev) ? prev : data[0].id));
           } else {
             setSelectedStockerId('');
             setInventory([]);
@@ -546,10 +549,23 @@ export const StockerManagementView: React.FC = () => {
       }
     } catch {}
 
-    if (localForHq.length > 0) {
-      setStockers(localForHq);
-      setSelectedStockerId((prev) => (localForHq.some((m) => m.id === prev) ? prev : localForHq[0].id));
-    }
+    // Fallback to localStorage only if offline/network failure
+    try {
+      const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+      if (savedStkRaw) {
+        const allSaved = JSON.parse(savedStkRaw);
+        if (Array.isArray(allSaved)) {
+          const localForHq = allSaved.filter((s: any) => s.hq_id === selectedHqId);
+          setStockers(localForHq);
+          if (localForHq.length > 0) {
+            setSelectedStockerId((prev) => (localForHq.some((m) => m.id === prev) ? prev : localForHq[0].id));
+          } else {
+            setSelectedStockerId('');
+            setInventory([]);
+          }
+        }
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -956,6 +972,14 @@ export const StockerManagementView: React.FC = () => {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
+        try {
+          const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
+          if (savedStkRaw) {
+            const list: StockerItem[] = JSON.parse(savedStkRaw);
+            const filtered = list.filter((s) => s.id !== stockerId);
+            localStorage.setItem('ahtri_inventory_stockers', JSON.stringify(filtered));
+          }
+        } catch {}
         if (selectedStockerId === stockerId) {
           setSelectedStockerId('');
           setInventory([]);
@@ -972,6 +996,10 @@ export const StockerManagementView: React.FC = () => {
       return;
     }
     const code = (newMedCode.trim() || `MED-${Date.now().toString().slice(-4)}`).toUpperCase();
+    const packing = (newMedPacking.trim() || newMedUnit.trim() || 'Units');
+    const ptsNum = newMedPts.trim() !== '' ? parseFloat(newMedPts) : null;
+    const ptrNum = newMedPtr.trim() !== '' ? parseFloat(newMedPtr) : null;
+    const mrpNum = newMedMrp.trim() !== '' ? parseFloat(newMedMrp) : null;
     try {
       const res = await fetch(`${apiUrl}/inventory/medicines`, {
         method: 'POST',
@@ -980,9 +1008,15 @@ export const StockerManagementView: React.FC = () => {
           name: newMedName.trim(),
           code: code,
           product_code: code,
-          unit: newMedUnit.trim(),
-          base_price: newMedPrice.trim() !== '' ? parseFloat(newMedPrice) : null,
-          low_stock_threshold: parseInt(newMedThreshold) || 10,
+          packing: packing,
+          unit: packing,
+          pts: ptsNum ?? undefined,
+          pts_rate: ptsNum ?? undefined,
+          base_price: ptsNum ?? undefined,
+          ptr: ptrNum ?? undefined,
+          ptr_rate: ptrNum ?? undefined,
+          mrp: mrpNum ?? undefined,
+          low_stock_threshold: parseInt(newMedThreshold) || 15,
         }),
       });
       if (res.ok) {
@@ -990,6 +1024,10 @@ export const StockerManagementView: React.FC = () => {
         setIsAddMedicineModalOpen(false);
         setNewMedName('');
         setNewMedCode('');
+        setNewMedPacking('200 ML');
+        setNewMedPts('');
+        setNewMedPtr('');
+        setNewMedMrp('');
         await fetchMedicines();
         if (saved && saved.id) {
           setSelectedMedicineId(saved.id);
@@ -1010,15 +1048,23 @@ export const StockerManagementView: React.FC = () => {
     setEditingMedicine(med);
     setEditMedName(med.name);
     setEditMedCode(med.product_code || med.code || '');
-    setEditMedUnit(med.unit || 'Strip of 10');
-    setEditMedPrice(med.base_price != null ? String(med.base_price) : '');
-    setEditMedThreshold(String(med.low_stock_threshold || 10));
+    const pack = med.packing || med.unit || '';
+    setEditMedPacking(pack);
+    setEditMedUnit(pack);
+    setEditMedPts(med.pts != null ? String(med.pts) : (med.pts_rate != null ? String(med.pts_rate) : (med.base_price != null ? String(med.base_price) : '')));
+    setEditMedPtr(med.ptr != null ? String(med.ptr) : (med.ptr_rate != null ? String(med.ptr_rate) : ''));
+    setEditMedMrp(med.mrp != null ? String(med.mrp) : '');
+    setEditMedThreshold(String(med.low_stock_threshold || 15));
     setEditMedStatus(med.is_active ? 'ACTIVE' : 'INACTIVE');
     setIsEditMedicineModalOpen(true);
   };
 
   const handleSaveEditMedicine = async () => {
     if (!editingMedicine || !editMedName.trim()) return;
+    const packing = (editMedPacking.trim() || editMedUnit.trim() || 'Units');
+    const ptsNum = editMedPts.trim() !== '' ? parseFloat(editMedPts) : null;
+    const ptrNum = editMedPtr.trim() !== '' ? parseFloat(editMedPtr) : null;
+    const mrpNum = editMedMrp.trim() !== '' ? parseFloat(editMedMrp) : null;
     try {
       const res = await fetch(`${apiUrl}/inventory/medicines/${editingMedicine.id}`, {
         method: 'PATCH',
@@ -1026,8 +1072,15 @@ export const StockerManagementView: React.FC = () => {
         body: JSON.stringify({
           name: editMedName.trim(),
           code: (editMedCode.trim() || editingMedicine.code || '').toUpperCase(),
-          unit: editMedUnit.trim(),
-          base_price: editMedPrice.trim() !== '' ? parseFloat(editMedPrice) : null,
+          packing: packing,
+          unit: packing,
+          pts: ptsNum ?? undefined,
+          pts_rate: ptsNum ?? undefined,
+          base_price: ptsNum ?? undefined,
+          ptr: ptrNum ?? undefined,
+          ptr_rate: ptrNum ?? undefined,
+          mrp: mrpNum ?? undefined,
+          low_stock_threshold: parseInt(editMedThreshold) || 15,
           status: editMedStatus,
         }),
       });
@@ -2082,8 +2135,12 @@ export const StockerManagementView: React.FC = () => {
                         <div style={{ fontSize: 13, fontWeight: 800, color: '#065F46' }}>
                           💊 {med?.name}
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#047857', marginTop: 2 }}>
-                          SKU: <strong>{med?.product_code || med?.code}</strong> • Unit: <strong>{med?.unit}</strong> • Fixed Price: <strong>{med?.base_price != null ? `₹${med.base_price}` : '— (No Price)'}</strong>
+                        <div style={{ fontSize: 11.5, color: '#047857', marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <span>SKU: <strong>{med?.product_code || med?.code}</strong></span>
+                          <span>• Packing: <strong>{med?.packing || med?.unit}</strong></span>
+                          <span>• PTS: <strong style={{ color: '#047857' }}>₹{med?.pts ?? med?.pts_rate ?? med?.base_price ?? '—'}</strong></span>
+                          <span>• PTR: <strong style={{ color: '#1D4ED8' }}>₹{med?.ptr ?? med?.ptr_rate ?? '—'}</strong></span>
+                          <span>• MRP: <strong>₹{med?.mrp ?? '—'}</strong></span>
                         </div>
                       </div>
 
@@ -2678,13 +2735,14 @@ export const StockerManagementView: React.FC = () => {
             <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medicine Name</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>SKU Code</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Packaging Unit</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Medicine / Product</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Packing</th>
                   <th style={{ padding: '10px 14px', fontWeight: 800, color: '#047857' }}>PTS Rate (₹)</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#2563EB' }}>PTR Rate (₹)</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>MRP (₹)</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Low Stock Threshold</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Catalog Status</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>SKU Code</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Threshold</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Status</th>
                   <th style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -2694,17 +2752,20 @@ export const StockerManagementView: React.FC = () => {
                     <td style={{ padding: '11px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>
                       💊 {med.name}
                     </td>
-                    <td style={{ padding: '11px 14px', fontFamily: 'monospace', color: '#64748B' }}>
-                      {med.product_code}
-                    </td>
-                    <td style={{ padding: '11px 14px', color: '#334155' }}>
-                      {med.unit}
+                    <td style={{ padding: '11px 14px', fontWeight: 600, color: '#334155' }}>
+                      {med.packing || med.unit || '—'}
                     </td>
                     <td style={{ padding: '11px 14px', fontWeight: 800, color: '#047857' }}>
-                      ₹{Number(med.pts_rate || med.base_price || 0).toFixed(2)}
+                      ₹{Number(med.pts != null ? med.pts : (med.pts_rate != null ? med.pts_rate : (med.base_price || 0))).toFixed(2)}
                     </td>
-                    <td style={{ padding: '11px 14px', fontWeight: 600, color: '#64748B' }}>
+                    <td style={{ padding: '11px 14px', fontWeight: 700, color: '#2563EB' }}>
+                      {med.ptr != null ? `₹${Number(med.ptr).toFixed(2)}` : (med.ptr_rate != null ? `₹${Number(med.ptr_rate).toFixed(2)}` : '—')}
+                    </td>
+                    <td style={{ padding: '11px 14px', fontWeight: 700, color: '#475569' }}>
                       {med.mrp != null ? `₹${Number(med.mrp).toFixed(2)}` : '—'}
+                    </td>
+                    <td style={{ padding: '11px 14px', fontFamily: 'monospace', color: '#64748B' }}>
+                      {med.product_code || med.code}
                     </td>
                     <td style={{ padding: '11px 14px', color: '#64748B' }}>
                       {med.low_stock_threshold} units
@@ -3620,7 +3681,7 @@ export const StockerManagementView: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. AHTRI-S (200 ML)"
+                placeholder="e.g. AHTRI-S"
                 value={newMedName}
                 onChange={(e) => setNewMedName(e.target.value)}
                 autoFocus
@@ -3631,57 +3692,89 @@ export const StockerManagementView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  PACKING (e.g. 200 ML, 10*10) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 200 ML or 10*10"
+                  value={newMedPacking}
+                  onChange={(e) => {
+                    setNewMedPacking(e.target.value);
+                    setNewMedUnit(e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
                   PRODUCT CODE / SKU
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. MED-CF50"
+                  placeholder="e.g. MED-AHTRI-S"
                   value={newMedCode}
                   onChange={(e) => setNewMedCode(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
                 />
               </div>
+            </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  PACKAGING UNIT
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#047857', display: 'block', marginBottom: 4 }}>
+                  PTS RATE (₹) *
                 </label>
                 <input
-                  type="text"
-                  placeholder="e.g. Strip of 10"
-                  value={newMedUnit}
-                  onChange={(e) => setNewMedUnit(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 38.40"
+                  value={newMedPts}
+                  onChange={(e) => setNewMedPts(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #059669', fontSize: 12, fontWeight: 600 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', display: 'block', marginBottom: 4 }}>
+                  PTR RATE (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 48.00"
+                  value={newMedPtr}
+                  onChange={(e) => setNewMedPtr(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #3B82F6', fontSize: 12, fontWeight: 600 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  MRP (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 195.00"
+                  value={newMedMrp}
+                  onChange={(e) => setNewMedMrp(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12, fontWeight: 600 }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  BASE PRICE (₹) (Optional)
-                </label>
-                <input
-                  type="number"
-                  placeholder="Leave blank if no price"
-                  value={newMedPrice}
-                  onChange={(e) => setNewMedPrice(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  LOW STOCK THRESHOLD
-                </label>
-                <input
-                  type="number"
-                  placeholder="15"
-                  value={newMedThreshold}
-                  onChange={(e) => setNewMedThreshold(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
-                />
-              </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                LOW STOCK THRESHOLD
+              </label>
+              <input
+                type="number"
+                placeholder="15"
+                value={newMedThreshold}
+                onChange={(e) => setNewMedThreshold(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -3761,6 +3854,21 @@ export const StockerManagementView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+                  PACKING (e.g. 200 ML, 10*10) *
+                </label>
+                <input
+                  type="text"
+                  value={editMedPacking}
+                  onChange={(e) => {
+                    setEditMedPacking(e.target.value);
+                    setEditMedUnit(e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
                   PRODUCT CODE / SKU
                 </label>
                 <input
@@ -3770,16 +3878,45 @@ export const StockerManagementView: React.FC = () => {
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
                 />
               </div>
+            </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  PACKAGING UNIT
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#047857', display: 'block', marginBottom: 4 }}>
+                  PTS RATE (₹)
                 </label>
                 <input
-                  type="text"
-                  value={editMedUnit}
-                  onChange={(e) => setEditMedUnit(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
+                  type="number"
+                  step="0.01"
+                  value={editMedPts}
+                  onChange={(e) => setEditMedPts(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #059669', fontSize: 12, fontWeight: 600 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', display: 'block', marginBottom: 4 }}>
+                  PTR RATE (₹)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editMedPtr}
+                  onChange={(e) => setEditMedPtr(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #3B82F6', fontSize: 12, fontWeight: 600 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  MRP (₹)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editMedMrp}
+                  onChange={(e) => setEditMedMrp(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12, fontWeight: 600 }}
                 />
               </div>
             </div>
@@ -3787,13 +3924,12 @@ export const StockerManagementView: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                  BASE PRICE (₹) (Optional)
+                  LOW STOCK THRESHOLD
                 </label>
                 <input
                   type="number"
-                  placeholder="Leave blank if no price"
-                  value={editMedPrice}
-                  onChange={(e) => setEditMedPrice(e.target.value)}
+                  value={editMedThreshold}
+                  onChange={(e) => setEditMedThreshold(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12 }}
                 />
               </div>

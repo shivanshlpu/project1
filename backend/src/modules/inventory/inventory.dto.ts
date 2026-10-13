@@ -137,8 +137,12 @@ export class CreateMedicineDto {
   product_code?: string;
 
   @IsString()
-  @IsNotEmpty()
-  unit: string;
+  @IsOptional()
+  unit?: string;
+
+  @IsString()
+  @IsOptional()
+  packing?: string;
 
   @IsNumber()
   @Min(0)
@@ -149,6 +153,21 @@ export class CreateMedicineDto {
   @Min(0)
   @IsOptional()
   pts_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  pts?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr_rate?: number;
 
   @IsNumber()
   @Min(0)
@@ -180,6 +199,10 @@ export class UpdateMedicineDto {
   @IsOptional()
   unit?: string;
 
+  @IsString()
+  @IsOptional()
+  packing?: string;
+
   @IsNumber()
   @Min(0)
   @IsOptional()
@@ -193,11 +216,30 @@ export class UpdateMedicineDto {
   @IsNumber()
   @Min(0)
   @IsOptional()
+  pts?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
   mrp?: number;
 
   @IsString()
   @IsOptional()
   category?: string;
+
+  @IsNumber()
+  @IsOptional()
+  low_stock_threshold?: number;
 
   @IsEnum(['ACTIVE', 'INACTIVE'])
   @IsOptional()
@@ -345,11 +387,16 @@ export class CreatePackagingVariantDto {
 
   @IsString()
   @IsOptional()
-  display_name?: string;
+  packing?: string;
 
   @IsNumber()
   @Min(0)
   pts_rate: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr_rate?: number;
 
   @IsNumber()
   @Min(0)
@@ -390,10 +437,19 @@ export class UpdatePackagingVariantDto {
   @IsOptional()
   display_name?: string;
 
+  @IsString()
+  @IsOptional()
+  packing?: string;
+
   @IsNumber()
   @Min(0)
   @IsOptional()
   pts_rate?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ptr_rate?: number;
 
   @IsNumber()
   @Min(0)

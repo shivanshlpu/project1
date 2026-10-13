@@ -440,7 +440,9 @@ export interface MedicinePackagingVariant {
   unit?: string;
   display_label?: string; // e.g. "200 ml", "30 gm", "10*1*10"
   display_name?: string;
+  packing?: string;
   pts_rate: number; // Price to Stockist (authoritative order price)
+  ptr_rate?: number; // Price to Retailer
   mrp: number; // Maximum Retail Price (doctor reference)
   status: 'ACTIVE' | 'INACTIVE';
   is_active?: boolean;
@@ -454,8 +456,12 @@ export interface Medicine {
   code: string;
   category?: string;
   unit: string;
+  packing?: string;
   base_price?: number | null; // legacy price or primary PTS rate
   pts_rate?: number; // Primary PTS rate
+  pts?: number;
+  ptr?: number; // Primary PTR (Price to Retailer)
+  ptr_rate?: number;
   mrp?: number; // Primary MRP
   packaging_variants?: MedicinePackagingVariant[];
   low_stock_threshold?: number;

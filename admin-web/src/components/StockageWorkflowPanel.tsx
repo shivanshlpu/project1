@@ -55,6 +55,7 @@ interface PackagingVariant {
   unit: string;
   display_name: string;
   pts_rate: number;
+  ptr_rate?: number;
   mrp: number;
   is_active: boolean;
   created_at?: string;
@@ -162,6 +163,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
   const [newVarSize, setNewVarSize] = useState<string>('60');
   const [newVarUnit, setNewVarUnit] = useState<string>('ml');
   const [newVarPts, setNewVarPts] = useState<string>('75');
+  const [newVarPtr, setNewVarPtr] = useState<string>('85');
   const [newVarMrp, setNewVarMrp] = useState<string>('110');
 
   // Load Initial Data
@@ -364,6 +366,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
     }
     const sizeNum = parseFloat(newVarSize);
     const ptsNum = parseFloat(newVarPts);
+    const ptrNum = parseFloat(newVarPtr);
     const mrpNum = parseFloat(newVarMrp);
 
     if (isNaN(sizeNum) || sizeNum <= 0) {
@@ -388,6 +391,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
           size: sizeNum,
           unit: newVarUnit.trim(),
           pts_rate: ptsNum,
+          ptr_rate: !isNaN(ptrNum) ? ptrNum : undefined,
           mrp: mrpNum,
           is_active: true,
         }),
@@ -1416,6 +1420,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700 }}>Package Variant</th>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700 }}>Size &amp; Unit</th>
                     <th style={{ padding: '10px 14px', color: '#047857', fontWeight: 800, textAlign: 'right' }}>Authoritative PTS (₹)</th>
+                    <th style={{ padding: '10px 14px', color: '#2563EB', fontWeight: 700, textAlign: 'right' }}>PTR Rate (₹)</th>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700, textAlign: 'right' }}>MRP (₹)</th>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700 }}>Status</th>
                   </tr>
@@ -1423,7 +1428,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                 <tbody>
                   {variants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '30px 14px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic' }}>
+                      <td colSpan={7} style={{ padding: '30px 14px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic' }}>
                         No packaging variants configured yet.
                       </td>
                     </tr>
@@ -1443,6 +1448,9 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                           </td>
                           <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 800, color: '#047857' }}>
                             ₹{Number(v.pts_rate).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 700, color: '#2563EB' }}>
+                            {v.ptr_rate != null ? `₹${Number(v.ptr_rate).toFixed(2)}` : '—'}
                           </td>
                           <td style={{ padding: '11px 14px', textAlign: 'right', color: '#64748B' }}>
                             ₹{Number(v.mrp).toFixed(2)}
@@ -1554,10 +1562,10 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={{ fontSize: 11.5, fontWeight: 700, color: '#047857', display: 'block', marginBottom: 4 }}>
-                        PTS RATE (₹) - AUTHORITATIVE
+                        PTS RATE (₹) *
                       </label>
                       <input
                         type="number"
@@ -1569,8 +1577,21 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                       />
                     </div>
                     <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#2563EB', display: 'block', marginBottom: 4 }}>
+                        PTR RATE (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 85.00"
+                        value={newVarPtr}
+                        onChange={(e) => setNewVarPtr(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1.5px solid #3B82F6', fontSize: 13, fontWeight: 700 }}
+                      />
+                    </div>
+                    <div>
                       <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                        MRP (₹) - REFERENCE ONLY
+                        MRP (₹) *
                       </label>
                       <input
                         type="number"

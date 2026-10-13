@@ -172,6 +172,7 @@ export class InventoryService {
       created_at: new Date().toISOString(),
     };
     this.db.hqAreas.push(area);
+    this.db.persistToDisk();
     return area;
   }
 
@@ -185,6 +186,7 @@ export class InventoryService {
       area.hq_id = dto.hq_id;
     }
     if (dto.status) area.status = dto.status;
+    this.db.persistToDisk();
     return area;
   }
 
@@ -192,6 +194,7 @@ export class InventoryService {
     const index = this.db.hqAreas.findIndex((a) => a.id === id);
     if (index === -1) throw new NotFoundException('Area not found');
     this.db.hqAreas.splice(index, 1);
+    this.db.persistToDisk();
     return { success: true, message: 'Area deleted successfully' };
   }
 
@@ -222,7 +225,7 @@ export class InventoryService {
         });
       }
     }
-
+    this.db.persistToDisk();
     return this.db.hqAreas.filter((a) => a.hq_id === dto.hq_id && a.status === 'ACTIVE');
   }
 
@@ -279,6 +282,7 @@ export class InventoryService {
       });
     }
 
+    this.db.persistToDisk();
     return stocker;
   }
 
@@ -293,6 +297,7 @@ export class InventoryService {
     if (dto.address !== undefined) stocker.address = dto.address;
     if (dto.status) stocker.status = dto.status;
 
+    this.db.persistToDisk();
     return stocker;
   }
 
@@ -302,6 +307,7 @@ export class InventoryService {
 
     this.db.stockers.splice(index, 1);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.stocker_id !== id);
+    this.db.persistToDisk();
     return { success: true, message: 'Stocker deleted successfully' };
   }
 
@@ -327,11 +333,22 @@ export class InventoryService {
         ? m.packaging_variants
         : this.db.medicinePackagingVariants.filter((v) => v.medicine_id === m.id);
 
+      const pts = m.pts ?? m.pts_rate ?? m.base_price ?? 0;
+      const ptr = m.ptr ?? m.ptr_rate ?? 0;
+      const mrp = m.mrp ?? 0;
+      const packing = m.packing || m.unit;
+
       return {
         ...m,
         product_code: m.code,
-        pts_rate: m.pts_rate ?? m.base_price ?? 0,
-        mrp: m.mrp ?? (m.pts_rate ? Number((m.pts_rate * 1.45).toFixed(2)) : 0),
+        unit: m.unit || packing,
+        packing: packing,
+        pts: pts,
+        pts_rate: pts,
+        base_price: pts,
+        ptr: ptr,
+        ptr_rate: ptr,
+        mrp: mrp,
         packaging_variants: variants,
         is_active: m.status === 'ACTIVE',
         low_stock_threshold: m.low_stock_threshold || 10,
@@ -343,6 +360,7 @@ export class InventoryService {
     const rawCode = dto.code || dto.product_code || `MED-${Math.random().toString(36).substring(2, 6)}`;
     const code = rawCode.toUpperCase();
     const threshold = Number(dto.low_stock_threshold) || 10;
+    const packing = dto.packing || dto.unit || 'Units';
 
     const basePrice =
       dto.base_price !== undefined && dto.base_price !== null && (dto.base_price as any) !== ''
@@ -350,7 +368,8 @@ export class InventoryService {
         : null;
 
     const medId = `med-${uuidv4().substring(0, 8)}`;
-    const ptsRate = dto.pts_rate !== undefined ? Number(dto.pts_rate) : (basePrice || 0);
+    const ptsRate = dto.pts !== undefined ? Number(dto.pts) : (dto.pts_rate !== undefined ? Number(dto.pts_rate) : (basePrice || 0));
+    const ptrRate = dto.ptr !== undefined ? Number(dto.ptr) : (dto.ptr_rate !== undefined ? Number(dto.ptr_rate) : 0);
     const mrp = dto.mrp !== undefined ? Number(dto.mrp) : ptsRate ? Number((ptsRate * 1.45).toFixed(2)) : 0;
 
     const variants: MedicinePackagingVariant[] = [];
@@ -363,22 +382,26 @@ export class InventoryService {
           package_size: Number(v.package_size) || 1,
           package_unit: v.package_unit || 'units',
           display_label: v.display_label || `${v.package_size} ${v.package_unit}`,
+          packing: v.packing || v.display_label || `${v.package_size} ${v.package_unit}`,
           pts_rate: Number(v.pts_rate) || ptsRate,
+          ptr_rate: v.ptr_rate !== undefined ? Number(v.ptr_rate) : ptrRate,
           mrp: Number(v.mrp) || mrp,
           status: v.status || 'ACTIVE',
           created_at: new Date().toISOString(),
         });
       }
     } else {
-      // Default single variant matching unit
+      // Default single variant matching unit/packing
       variants.push({
         id: `var-${medId}-default`,
         medicine_id: medId,
-        variant_name: dto.unit || 'Standard Pack',
+        variant_name: packing || 'Standard Pack',
         package_size: 1,
-        package_unit: dto.unit || 'units',
-        display_label: dto.unit || 'Units',
+        package_unit: packing || 'units',
+        display_label: packing || 'Units',
+        packing: packing,
         pts_rate: ptsRate,
+        ptr_rate: ptrRate,
         mrp: mrp,
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
@@ -390,9 +413,13 @@ export class InventoryService {
       name: dto.name.trim(),
       code,
       category: dto.category || 'General',
-      unit: dto.unit || 'Units',
+      unit: dto.unit || packing,
+      packing: packing,
       base_price: ptsRate,
+      pts: ptsRate,
       pts_rate: ptsRate,
+      ptr: ptrRate,
+      ptr_rate: ptrRate,
       mrp: mrp,
       packaging_variants: variants,
       low_stock_threshold: threshold,
@@ -416,6 +443,8 @@ export class InventoryService {
       });
     }
 
+    this.db.persistToDisk();
+
     return {
       ...med,
       product_code: med.code,
@@ -430,16 +459,29 @@ export class InventoryService {
     if (dto.name) med.name = dto.name;
     if (dto.code) med.code = dto.code.toUpperCase();
     if (dto.unit) med.unit = dto.unit;
+    if (dto.packing) {
+      med.packing = dto.packing;
+      if (!dto.unit) med.unit = dto.packing;
+    }
     if (dto.category) med.category = dto.category;
-    if (dto.pts_rate !== undefined) {
-      med.pts_rate = Number(dto.pts_rate);
-      med.base_price = med.pts_rate;
+    if (dto.pts !== undefined || dto.pts_rate !== undefined) {
+      const p = dto.pts !== undefined ? Number(dto.pts) : Number(dto.pts_rate);
+      med.pts = p;
+      med.pts_rate = p;
+      med.base_price = p;
     } else if (dto.base_price !== undefined) {
       med.base_price =
         dto.base_price !== null && (dto.base_price as any) !== '' ? Number(dto.base_price) : null;
-      med.pts_rate = med.base_price || 0;
+      med.pts = med.base_price || 0;
+      med.pts_rate = med.pts;
+    }
+    if (dto.ptr !== undefined || dto.ptr_rate !== undefined) {
+      const p = dto.ptr !== undefined ? Number(dto.ptr) : Number(dto.ptr_rate);
+      med.ptr = p;
+      med.ptr_rate = p;
     }
     if (dto.mrp !== undefined) med.mrp = Number(dto.mrp);
+    if (dto.low_stock_threshold !== undefined) med.low_stock_threshold = Number(dto.low_stock_threshold);
     if (dto.status) med.status = dto.status;
     if (dto.packaging_variants && Array.isArray(dto.packaging_variants)) {
       med.packaging_variants = dto.packaging_variants;
@@ -448,6 +490,7 @@ export class InventoryService {
     }
     med.updated_at = new Date().toISOString();
 
+    this.db.persistToDisk();
     return med;
   }
 
@@ -458,6 +501,7 @@ export class InventoryService {
     this.db.medicines.splice(index, 1);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.medicine_id !== id);
     this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
+    this.db.persistToDisk();
     return { success: true, message: 'Medicine deleted successfully' };
   }
 
@@ -479,7 +523,9 @@ export class InventoryService {
       package_size: Number(dto.package_size),
       package_unit: dto.package_unit.trim(),
       display_label: dto.display_label || `${dto.package_size} ${dto.package_unit.trim()}`,
+      packing: dto.packing || dto.display_label || `${dto.package_size} ${dto.package_unit.trim()}`,
       pts_rate: Number(dto.pts_rate),
+      ptr_rate: dto.ptr_rate !== undefined ? Number(dto.ptr_rate) : undefined,
       mrp: Number(dto.mrp),
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
@@ -488,6 +534,7 @@ export class InventoryService {
     if (!med.packaging_variants) med.packaging_variants = [];
     med.packaging_variants.push(variant);
     this.db.medicinePackagingVariants.push(variant);
+    this.db.persistToDisk();
     return variant;
   }
 
@@ -499,9 +546,12 @@ export class InventoryService {
     if (dto.package_unit !== undefined) variant.package_unit = dto.package_unit.trim();
     if (dto.variant_name !== undefined) variant.variant_name = dto.variant_name;
     if (dto.display_label !== undefined) variant.display_label = dto.display_label;
+    if (dto.packing !== undefined) variant.packing = dto.packing;
     if (dto.pts_rate !== undefined) variant.pts_rate = Number(dto.pts_rate);
+    if (dto.ptr_rate !== undefined) variant.ptr_rate = Number(dto.ptr_rate);
     if (dto.mrp !== undefined) variant.mrp = Number(dto.mrp);
     if (dto.status !== undefined) variant.status = dto.status;
+    if (dto.is_active !== undefined) variant.is_active = dto.is_active;
     variant.updated_at = new Date().toISOString();
 
     const med = this.db.medicines.find((m) => m.id === variant.medicine_id);
@@ -510,6 +560,7 @@ export class InventoryService {
       if (idx >= 0) med.packaging_variants[idx] = variant;
     }
 
+    this.db.persistToDisk();
     return variant;
   }
 
@@ -523,6 +574,7 @@ export class InventoryService {
     if (med && med.packaging_variants) {
       med.packaging_variants = med.packaging_variants.filter((v) => v.id !== id);
     }
+    this.db.persistToDisk();
     return { success: true, message: 'Packaging variant deleted successfully' };
   }
 
