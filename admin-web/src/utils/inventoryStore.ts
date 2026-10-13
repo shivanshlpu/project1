@@ -17,15 +17,15 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-01',
     name: 'AHTRI-S',
-    code: 'AHTRI-S',
+    code: 'AHT-001',
     quantity: 50,
     unit: '200 ML',
     status: 'Available',
   },
   {
     id: 'med-02',
-    name: 'AHTRI-A A2Z',
-    code: 'AHTRI-A-A2Z',
+    name: 'AHTRI-A2Z',
+    code: 'AHT-002',
     quantity: 30,
     unit: '200 ML',
     status: 'Available',
@@ -33,7 +33,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-03',
     name: 'AHTYME',
-    code: 'AHTYME',
+    code: 'AHT-003',
     quantity: 15,
     unit: '200 ML',
     status: 'Low Stock',
@@ -41,7 +41,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-04',
     name: 'ATHRIMOX CV 625',
-    code: 'ATHRIMOX-CV-625',
+    code: 'AHT-004',
     quantity: 70,
     unit: '10*1*10',
     status: 'Available',
@@ -49,7 +49,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-05',
     name: 'AHTRI-P',
-    code: 'AHTRI-P',
+    code: 'AHT-005',
     quantity: 75,
     unit: '20*10',
     status: 'Available',
@@ -57,7 +57,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-06',
     name: 'TRIPAN DSR',
-    code: 'TRIPAN-DSR',
+    code: 'AHT-006',
     quantity: 80,
     unit: '10*10',
     status: 'Available',
@@ -65,7 +65,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-07',
     name: 'AHTRI SP',
-    code: 'AHTRI-SP',
+    code: 'AHT-007',
     quantity: 85,
     unit: '10*10',
     status: 'Available',
@@ -73,7 +73,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-08',
     name: 'TRIZOLE OC',
-    code: 'TRIZOLE-OC',
+    code: 'AHT-008',
     quantity: 90,
     unit: '30 GM',
     status: 'Available',
@@ -81,7 +81,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-09',
     name: 'TRIZOLE 200',
-    code: 'TRIZOLE-200',
+    code: 'AHT-009',
     quantity: 95,
     unit: '10*10',
     status: 'Available',
@@ -89,7 +89,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-10',
     name: 'AHTRI K27',
-    code: 'AHTRI-K27',
+    code: 'AHT-010',
     quantity: 100,
     unit: '10*1*10',
     status: 'Available',
@@ -97,7 +97,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-11',
     name: 'TRIDIC GEL',
-    code: 'TRIDIC-GEL',
+    code: 'AHT-011',
     quantity: 105,
     unit: '30 GM',
     status: 'Available',
@@ -105,7 +105,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-12',
     name: 'AHTRI STRETCH MARK CREAM',
-    code: 'AHTRI-SMC',
+    code: 'AHT-012',
     quantity: 110,
     unit: '50 GM',
     status: 'Available',
@@ -113,7 +113,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-13',
     name: 'AHTRI 5G SYP',
-    code: 'AHTRI-5G-SYP',
+    code: 'AHT-013',
     quantity: 115,
     unit: '200 ML',
     status: 'Available',
@@ -121,7 +121,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-14',
     name: 'TRIRAB DSR',
-    code: 'TRIRAB-DSR',
+    code: 'AHT-014',
     quantity: 120,
     unit: '10*10',
     status: 'Available',
@@ -129,7 +129,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-15',
     name: 'AHTRIMOX CV SUSPENSION',
-    code: 'AHTRIMOX-CV-SUSP',
+    code: 'AHT-015',
     quantity: 125,
     unit: '30 ML',
     status: 'Available',
@@ -137,7 +137,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-16',
     name: 'MAFTRI P',
-    code: 'MAFTRI-P',
+    code: 'AHT-016',
     quantity: 130,
     unit: '60 ML',
     status: 'Available',
@@ -145,7 +145,7 @@ export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
   {
     id: 'med-17',
     name: 'AHTRI 9G',
-    code: 'AHTRI-9G',
+    code: 'AHT-017',
     quantity: 135,
     unit: '200 ML',
     status: 'Available',

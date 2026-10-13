@@ -379,7 +379,55 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.hqAreas = data.hqAreas;
         }
         if (Array.isArray(data.medicines) && data.medicines.length > 0) {
+          // Harmonize with authoritative seed list to guarantee official AHT product codes and categories
+          for (const sm of this.medicines) {
+            const diskMed = data.medicines.find((dm: any) => dm.id === sm.id);
+            if (diskMed) {
+              Object.assign(diskMed, {
+                code: sm.code,
+                product_code: sm.product_code,
+                sku: sm.sku,
+                name: sm.name,
+                packing: sm.packing,
+                unit: sm.unit,
+                category: sm.category,
+                composition: sm.composition,
+                pts: sm.pts,
+                pts_rate: sm.pts_rate,
+                ptr: sm.ptr,
+                ptr_rate: sm.ptr_rate,
+                mrp: sm.mrp,
+                is_active: sm.is_active,
+                status: sm.status,
+                packaging_variants: sm.packaging_variants,
+              });
+            }
+          }
           this.medicines = data.medicines;
+        }
+        if (Array.isArray(data.stockerInventory)) {
+          this.stockerInventory = data.stockerInventory;
+          for (const stk of this.stockers) {
+            for (const med of this.medicines) {
+              const exists = this.stockerInventory.find(
+                (inv) => inv.stocker_id === stk.id && inv.medicine_id === med.id,
+              );
+              if (!exists) {
+                const variant = med.packaging_variants?.[0];
+                this.stockerInventory.push({
+                  id: `inv-${stk.id}-${med.id}`,
+                  hq_id: stk.hq_id,
+                  stocker_id: stk.id,
+                  medicine_id: med.id,
+                  variant_id: variant?.id,
+                  packaging_display: med.packing || med.unit,
+                  quantity: 0,
+                  low_stock_threshold: 15,
+                  updated_at: new Date().toISOString(),
+                });
+              }
+            }
+          }
         }
         if (Array.isArray(data.medicinePackagingVariants) && data.medicinePackagingVariants.length > 0) {
           this.medicinePackagingVariants = data.medicinePackagingVariants;
@@ -1341,13 +1389,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     // 13. Route Batches seeded in Section 11.1 above (19 authentic batches)
 
 
-    // 14. Seed Medicines Master (§11) - Authoritative 17 AHTRI Medicine Catalog with Structured Packaging & PTS/MRP Rates
+    // 14. Seed Medicines Master (§11) - Authoritative 17 AHTRI Medicine Catalog with Structured Packaging & PTS/PTR/MRP Rates
     const seedMedicinesList: Medicine[] = [
       {
         id: 'med-01',
-        name: 'AHTRI -S',
-        code: 'AHTRI-S',
+        name: 'AHTRI-S',
+        code: 'AHT-001',
+        product_code: 'AHT-001',
+        sku: 'AHT-001',
         category: 'Liquid / Syrup',
+        composition: 'Ayurvedic Digestive Tonic & Alkalizer 200ml',
         unit: '200 ML',
         packing: '200 ML',
         base_price: 38.40,
@@ -1357,6 +1408,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 48.00,
         mrp: 195.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1378,9 +1430,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       },
       {
         id: 'med-02',
-        name: 'AHTRI- A2Z',
-        code: 'AHTRI-A2Z',
+        name: 'AHTRI-A2Z',
+        code: 'AHT-002',
+        product_code: 'AHT-002',
+        sku: 'AHT-002',
         category: 'Liquid / Syrup',
+        composition: 'Multivitamin, Multimineral & Antioxidant Syrup 200ml',
         unit: '200 ML',
         packing: '200 ML',
         base_price: 36.80,
@@ -1390,6 +1445,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 46.00,
         mrp: 185.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1412,8 +1468,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-03',
         name: 'AHTYME',
-        code: 'AHTYME',
+        code: 'AHT-003',
+        product_code: 'AHT-003',
+        sku: 'AHT-003',
         category: 'Liquid / Syrup',
+        composition: 'Fungal Diastase & Pepsin Digestive Enzyme Syrup 200ml',
         unit: '200 ML',
         packing: '200 ML',
         base_price: 36.80,
@@ -1423,6 +1482,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 46.00,
         mrp: 184.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1445,8 +1505,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-04',
         name: 'ATHRIMOX CV 625',
-        code: 'ATHRIMOX-CV-625',
+        code: 'AHT-004',
+        product_code: 'AHT-004',
+        sku: 'AHT-004',
         category: 'Tablet / Antibiotic',
+        composition: 'Amoxicillin 500mg + Potassium Clavulanate 125mg Tablets',
         unit: '10*1*10',
         packing: '10*1*10',
         base_price: 68.00,
@@ -1456,6 +1519,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 85.00,
         mrp: 182.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1477,9 +1541,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       },
       {
         id: 'med-05',
-        name: 'AHTRI - P',
-        code: 'AHTRI-P',
+        name: 'AHTRI-P',
+        code: 'AHT-005',
+        product_code: 'AHT-005',
+        sku: 'AHT-005',
         category: 'Tablet / Analgesic',
+        composition: 'Aceclofenac 100mg + Paracetamol 325mg Tablets',
         unit: '20*10',
         packing: '20*10',
         base_price: 12.00,
@@ -1489,6 +1556,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 15.00,
         mrp: 84.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1511,8 +1579,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-06',
         name: 'TRIPAN DSR',
-        code: 'TRIPAN-DSR',
+        code: 'AHT-006',
+        product_code: 'AHT-006',
+        sku: 'AHT-006',
         category: 'Capsule / Gastro',
+        composition: 'Pantoprazole Sodium 40mg + Domperidone 30mg SR Capsules',
         unit: '10*10',
         packing: '10*10',
         base_price: 20.80,
@@ -1522,6 +1593,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 26.00,
         mrp: 138.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1544,8 +1616,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-07',
         name: 'AHTRI SP',
-        code: 'AHTRI-SP',
+        code: 'AHT-007',
+        product_code: 'AHT-007',
+        sku: 'AHT-007',
         category: 'Tablet / NSAID',
+        composition: 'Aceclofenac 100mg + Paracetamol 325mg + Serratiopeptidase 15mg Tablets',
         unit: '10*10',
         packing: '10*10',
         base_price: 19.80,
@@ -1555,6 +1630,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 25.00,
         mrp: 120.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1577,8 +1653,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-08',
         name: 'TRIZOLE OC',
-        code: 'TRIZOLE-OC',
+        code: 'AHT-008',
+        product_code: 'AHT-008',
+        sku: 'AHT-008',
         category: 'Ointment / Topical',
+        composition: 'Ofloxacin, Ornidazole, Itraconazole & Clobetasol Propionate Cream 30g',
         unit: '30 GM',
         packing: '30 GM',
         base_price: 37.80,
@@ -1588,6 +1667,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 46.00,
         mrp: 95.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1610,8 +1690,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-09',
         name: 'TRIZOLE 200',
-        code: 'TRIZOLE-200',
+        code: 'AHT-009',
+        product_code: 'AHT-009',
+        sku: 'AHT-009',
         category: 'Capsule / Antifungal',
+        composition: 'Itraconazole 200mg Capsules',
         unit: '10*10',
         packing: '10*10',
         base_price: 64.20,
@@ -1621,6 +1704,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 77.00,
         mrp: 245.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1643,8 +1727,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-10',
         name: 'AHTRI K27',
-        code: 'AHTRI-K27',
+        code: 'AHT-010',
+        product_code: 'AHT-010',
+        sku: 'AHT-010',
         category: 'Tablet / Supplement',
+        composition: 'Calcium Carbonate, Calcitriol & Vitamin K2-7 Softgel Tablets',
         unit: '10*1*10',
         packing: '10*1*10',
         base_price: 38.20,
@@ -1654,6 +1741,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 46.00,
         mrp: 285.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1676,10 +1764,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-11',
         name: 'TRIDIC GEL',
-        code: 'TRIDIC-GEL',
+        code: 'AHT-011',
+        product_code: 'AHT-011',
+        sku: 'AHT-011',
         category: 'Gel / Topical',
-        unit: '30GM',
-        packing: '30GM',
+        composition: 'Diclofenac Diethylamine, Virgin Linseed Oil, Methyl Salicylate & Menthol Gel 30g',
+        unit: '30 GM',
+        packing: '30 GM',
         base_price: 55.20,
         pts: 55.20,
         pts_rate: 55.20,
@@ -1687,17 +1778,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 62.00,
         mrp: 110.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
           {
             id: 'var-med-11-30gm',
             medicine_id: 'med-11',
-            variant_name: '30GM Tube',
+            variant_name: '30 GM Tube',
             package_size: 30,
             package_unit: 'GM',
-            display_label: '30GM',
-            packing: '30GM',
+            display_label: '30 GM',
+            packing: '30 GM',
             pts_rate: 55.20,
             ptr_rate: 62.00,
             mrp: 110.00,
@@ -1709,8 +1801,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-12',
         name: 'AHTRI STRETCH MARK CREAM',
-        code: 'AHTRI-STRETCH-MARK-CREAM',
+        code: 'AHT-012',
+        product_code: 'AHT-012',
+        sku: 'AHT-012',
         category: 'Cream / Skincare',
+        composition: 'Advanced Anti-Stretch Mark & Skin Repair Cream 50g',
         unit: '50 GM',
         packing: '50 GM',
         base_price: 357.37,
@@ -1720,6 +1815,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 400.00,
         mrp: 599.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1742,10 +1838,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-13',
         name: 'AHTRI 5G SYP',
-        code: 'AHTRI-5G-SYP',
+        code: 'AHT-013',
+        product_code: 'AHT-013',
+        sku: 'AHT-013',
         category: 'Syrup / Tonic',
-        unit: '200ML',
-        packing: '200ML',
+        composition: 'Ginseng, Ginkgo Biloba, Green Tea, Grape Seed & Ginger Extract Syrup 200ml',
+        unit: '200 ML',
+        packing: '200 ML',
         base_price: 157.00,
         pts: 157.00,
         pts_rate: 157.00,
@@ -1753,17 +1852,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 175.84,
         mrp: 235.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
           {
             id: 'var-med-13-200ml',
             medicine_id: 'med-13',
-            variant_name: '200ML Bottle',
+            variant_name: '200 ML Bottle',
             package_size: 200,
             package_unit: 'ML',
-            display_label: '200ML',
-            packing: '200ML',
+            display_label: '200 ML',
+            packing: '200 ML',
             pts_rate: 157.00,
             ptr_rate: 175.84,
             mrp: 235.00,
@@ -1775,8 +1875,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-14',
         name: 'TRIRAB DSR',
-        code: 'TRIRAB-DSR',
+        code: 'AHT-014',
+        product_code: 'AHT-014',
+        sku: 'AHT-014',
         category: 'Capsule / Gastro',
+        composition: 'Rabeprazole Sodium 20mg + Domperidone 30mg SR Capsules',
         unit: '10*10',
         packing: '10*10',
         base_price: 80.46,
@@ -1786,6 +1889,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 89.60,
         mrp: 120.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1808,8 +1912,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-15',
         name: 'AHTRIMOX CV SUSPENSION',
-        code: 'AHTRIMOX-CV-SUSP',
+        code: 'AHT-015',
+        product_code: 'AHT-015',
+        sku: 'AHT-015',
         category: 'Suspension / Paediatric',
+        composition: 'Amoxicillin 200mg + Potassium Clavulanate 28.5mg Oral Suspension with Sterile Water 30ml',
         unit: '30 ML',
         packing: '30 ML',
         base_price: 42.00,
@@ -1819,6 +1926,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 47.00,
         mrp: 65.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1841,10 +1949,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-16',
         name: 'MAFTRI P',
-        code: 'MAFTRI-P',
+        code: 'AHT-016',
+        product_code: 'AHT-016',
+        sku: 'AHT-016',
         category: 'Suspension / Paediatric',
-        unit: '60ML',
-        packing: '60ML',
+        composition: 'Mefenamic Acid 50mg + Paracetamol 125mg Suspension 60ml',
+        unit: '60 ML',
+        packing: '60 ML',
         base_price: 63.70,
         pts: 63.70,
         pts_rate: 63.70,
@@ -1852,17 +1963,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 72.00,
         mrp: 95.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
           {
             id: 'var-med-16-60ml',
             medicine_id: 'med-16',
-            variant_name: '60ML Bottle',
+            variant_name: '60 ML Bottle',
             package_size: 60,
             package_unit: 'ML',
-            display_label: '60ML',
-            packing: '60ML',
+            display_label: '60 ML',
+            packing: '60 ML',
             pts_rate: 63.70,
             ptr_rate: 72.00,
             mrp: 95.00,
@@ -1874,8 +1986,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       {
         id: 'med-17',
         name: 'AHTRI 9G',
-        code: 'AHTRI-9G',
+        code: 'AHT-017',
+        product_code: 'AHT-017',
+        sku: 'AHT-017',
         category: 'Syrup / Tonic',
+        composition: 'Advanced 9G Herbal Vitality & Immunity Booster Syrup 200ml',
         unit: '200 ML',
         packing: '200 ML',
         base_price: 147.50,
@@ -1885,6 +2000,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ptr_rate: 164.00,
         mrp: 220.00,
         status: 'ACTIVE',
+        is_active: true,
         low_stock_threshold: 15,
         created_at: new Date().toISOString(),
         packaging_variants: [
@@ -1905,19 +2021,22 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         ],
       },
     ];
-    if (this.medicines.length === 0) {
-      this.medicines = seedMedicinesList;
-      this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []);
-    }
 
-    // 14. Stocker Inventory - Clean Initial Inventory Records for every Stocker & Listed Medicine
+    this.medicines = seedMedicinesList;
+    this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []);
+
+    // 14. Stocker Inventory - Initial Inventory Records for every Stocker & Listed Medicine (all quantity = 0)
+    this.stockerInventory = [];
     for (const stk of this.stockers) {
       for (const med of this.medicines) {
+        const variant = med.packaging_variants?.[0];
         this.stockerInventory.push({
           id: `inv-${stk.id}-${med.id}`,
           hq_id: stk.hq_id,
           stocker_id: stk.id,
           medicine_id: med.id,
+          variant_id: variant?.id,
+          packaging_display: med.packing || med.unit,
           quantity: 0,
           low_stock_threshold: 15,
           updated_at: new Date().toISOString(),

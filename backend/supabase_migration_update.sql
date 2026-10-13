@@ -204,3 +204,142 @@ ON CONFLICT (batch_code) DO UPDATE SET
   standard_reimbursement_rate = EXCLUDED.standard_reimbursement_rate,
   status = EXCLUDED.status,
   updated_at = NOW();
+
+-- ==============================================================================
+-- 6. STOCKER INVENTORY MASTER TABLE (68 INITIAL RECORDS, QUANTITY = 0)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.stocker_inventory (
+  id VARCHAR(64) PRIMARY KEY,
+  hq_id VARCHAR(64) NOT NULL,
+  stocker_id VARCHAR(64) NOT NULL,
+  medicine_id VARCHAR(64) NOT NULL,
+  variant_id VARCHAR(64),
+  packaging_display VARCHAR(100),
+  quantity NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  low_stock_threshold NUMERIC(10, 2) NOT NULL DEFAULT 15,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.stocker_inventory ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Service role full access on stocker_inventory" ON public.stocker_inventory;
+CREATE POLICY "Service role full access on stocker_inventory" ON public.stocker_inventory FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public read on stocker_inventory" ON public.stocker_inventory;
+CREATE POLICY "Public read on stocker_inventory" ON public.stocker_inventory FOR SELECT TO anon, authenticated USING (true);
+
+-- 7. AUTHORITATIVE MEDICINES CATALOG (AHT-001 TO AHT-017)
+INSERT INTO public.medicines (id, name, sku, pack_size, category, unit_price, mrp, is_active)
+VALUES
+('med-01', 'AHTRI-S', 'AHT-001', '200 ML', 'Liquid / Syrup', 38.4, 195, true),
+('med-02', 'AHTRI-A2Z', 'AHT-002', '200 ML', 'Liquid / Syrup', 36.8, 185, true),
+('med-03', 'AHTYME', 'AHT-003', '200 ML', 'Liquid / Syrup', 36.8, 184, true),
+('med-04', 'ATHRIMOX CV 625', 'AHT-004', '10*1*10', 'Tablet / Antibiotic', 68, 182, true),
+('med-05', 'AHTRI-P', 'AHT-005', '20*10', 'Tablet / Analgesic', 12, 84, true),
+('med-06', 'TRIPAN DSR', 'AHT-006', '10*10', 'Capsule / Gastro', 20.8, 138, true),
+('med-07', 'AHTRI SP', 'AHT-007', '10*10', 'Tablet / NSAID', 19.8, 120, true),
+('med-08', 'TRIZOLE OC', 'AHT-008', '30 GM', 'Ointment / Topical', 37.8, 95, true),
+('med-09', 'TRIZOLE 200', 'AHT-009', '10*10', 'Capsule / Antifungal', 64.2, 245, true),
+('med-10', 'AHTRI K27', 'AHT-010', '10*1*10', 'Tablet / Supplement', 38.2, 285, true),
+('med-11', 'TRIDIC GEL', 'AHT-011', '30 GM', 'Gel / Topical', 55.2, 110, true),
+('med-12', 'AHTRI STRETCH MARK CREAM', 'AHT-012', '50 GM', 'Cream / Skincare', 357.37, 599, true),
+('med-13', 'AHTRI 5G SYP', 'AHT-013', '200 ML', 'Syrup / Tonic', 157, 235, true),
+('med-14', 'TRIRAB DSR', 'AHT-014', '10*10', 'Capsule / Gastro', 80.46, 120, true),
+('med-15', 'AHTRIMOX CV SUSPENSION', 'AHT-015', '30 ML', 'Suspension / Paediatric', 42, 65, true),
+('med-16', 'MAFTRI P', 'AHT-016', '60 ML', 'Suspension / Paediatric', 63.7, 95, true),
+('med-17', 'AHTRI 9G', 'AHT-017', '200 ML', 'Syrup / Tonic', 147.5, 220, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  sku = EXCLUDED.sku,
+  pack_size = EXCLUDED.pack_size,
+  category = EXCLUDED.category,
+  unit_price = EXCLUDED.unit_price,
+  mrp = EXCLUDED.mrp,
+  is_active = EXCLUDED.is_active;
+
+-- 8. AUTHORITATIVE PACKAGING VARIANTS
+INSERT INTO public.medicine_packaging_variants (id, medicine_id, size, unit, display_name, pts_rate, mrp, is_active)
+VALUES
+
+ON CONFLICT (id) DO UPDATE SET
+  medicine_id = EXCLUDED.medicine_id,
+  size = EXCLUDED.size,
+  unit = EXCLUDED.unit,
+  display_name = EXCLUDED.display_name,
+  pts_rate = EXCLUDED.pts_rate,
+  mrp = EXCLUDED.mrp,
+  is_active = EXCLUDED.is_active;
+
+-- 9. SEED 68 INITIAL STOCKER INVENTORY RECORDS (ALL QUANTITY = 0)
+INSERT INTO public.stocker_inventory (id, hq_id, stocker_id, medicine_id, variant_id, packaging_display, quantity, low_stock_threshold)
+VALUES
+('inv-stk-shd-01-med-01', 'HQ-SHD-001', 'stk-shd-01', 'med-01', '', '200 ML', 0, 15),
+('inv-stk-shd-01-med-02', 'HQ-SHD-001', 'stk-shd-01', 'med-02', '', '200 ML', 0, 15),
+('inv-stk-shd-01-med-03', 'HQ-SHD-001', 'stk-shd-01', 'med-03', '', '200 ML', 0, 15),
+('inv-stk-shd-01-med-04', 'HQ-SHD-001', 'stk-shd-01', 'med-04', '', '10*1*10', 0, 15),
+('inv-stk-shd-01-med-05', 'HQ-SHD-001', 'stk-shd-01', 'med-05', '', '20*10', 0, 15),
+('inv-stk-shd-01-med-06', 'HQ-SHD-001', 'stk-shd-01', 'med-06', '', '10*10', 0, 15),
+('inv-stk-shd-01-med-07', 'HQ-SHD-001', 'stk-shd-01', 'med-07', '', '10*10', 0, 15),
+('inv-stk-shd-01-med-08', 'HQ-SHD-001', 'stk-shd-01', 'med-08', '', '30 GM', 0, 15),
+('inv-stk-shd-01-med-09', 'HQ-SHD-001', 'stk-shd-01', 'med-09', '', '10*10', 0, 15),
+('inv-stk-shd-01-med-10', 'HQ-SHD-001', 'stk-shd-01', 'med-10', '', '10*1*10', 0, 15),
+('inv-stk-shd-01-med-11', 'HQ-SHD-001', 'stk-shd-01', 'med-11', '', '30 GM', 0, 15),
+('inv-stk-shd-01-med-12', 'HQ-SHD-001', 'stk-shd-01', 'med-12', '', '50 GM', 0, 15),
+('inv-stk-shd-01-med-13', 'HQ-SHD-001', 'stk-shd-01', 'med-13', '', '200 ML', 0, 15),
+('inv-stk-shd-01-med-14', 'HQ-SHD-001', 'stk-shd-01', 'med-14', '', '10*10', 0, 15),
+('inv-stk-shd-01-med-15', 'HQ-SHD-001', 'stk-shd-01', 'med-15', '', '30 ML', 0, 15),
+('inv-stk-shd-01-med-16', 'HQ-SHD-001', 'stk-shd-01', 'med-16', '', '60 ML', 0, 15),
+('inv-stk-shd-01-med-17', 'HQ-SHD-001', 'stk-shd-01', 'med-17', '', '200 ML', 0, 15),
+('inv-stk-shd-02-med-01', 'HQ-SHD-001', 'stk-shd-02', 'med-01', '', '200 ML', 0, 15),
+('inv-stk-shd-02-med-02', 'HQ-SHD-001', 'stk-shd-02', 'med-02', '', '200 ML', 0, 15),
+('inv-stk-shd-02-med-03', 'HQ-SHD-001', 'stk-shd-02', 'med-03', '', '200 ML', 0, 15),
+('inv-stk-shd-02-med-04', 'HQ-SHD-001', 'stk-shd-02', 'med-04', '', '10*1*10', 0, 15),
+('inv-stk-shd-02-med-05', 'HQ-SHD-001', 'stk-shd-02', 'med-05', '', '20*10', 0, 15),
+('inv-stk-shd-02-med-06', 'HQ-SHD-001', 'stk-shd-02', 'med-06', '', '10*10', 0, 15),
+('inv-stk-shd-02-med-07', 'HQ-SHD-001', 'stk-shd-02', 'med-07', '', '10*10', 0, 15),
+('inv-stk-shd-02-med-08', 'HQ-SHD-001', 'stk-shd-02', 'med-08', '', '30 GM', 0, 15),
+('inv-stk-shd-02-med-09', 'HQ-SHD-001', 'stk-shd-02', 'med-09', '', '10*10', 0, 15),
+('inv-stk-shd-02-med-10', 'HQ-SHD-001', 'stk-shd-02', 'med-10', '', '10*1*10', 0, 15),
+('inv-stk-shd-02-med-11', 'HQ-SHD-001', 'stk-shd-02', 'med-11', '', '30 GM', 0, 15),
+('inv-stk-shd-02-med-12', 'HQ-SHD-001', 'stk-shd-02', 'med-12', '', '50 GM', 0, 15),
+('inv-stk-shd-02-med-13', 'HQ-SHD-001', 'stk-shd-02', 'med-13', '', '200 ML', 0, 15),
+('inv-stk-shd-02-med-14', 'HQ-SHD-001', 'stk-shd-02', 'med-14', '', '10*10', 0, 15),
+('inv-stk-shd-02-med-15', 'HQ-SHD-001', 'stk-shd-02', 'med-15', '', '30 ML', 0, 15),
+('inv-stk-shd-02-med-16', 'HQ-SHD-001', 'stk-shd-02', 'med-16', '', '60 ML', 0, 15),
+('inv-stk-shd-02-med-17', 'HQ-SHD-001', 'stk-shd-02', 'med-17', '', '200 ML', 0, 15),
+('inv-stk-ktm-01-med-01', 'HQ-KOT-001', 'stk-ktm-01', 'med-01', '', '200 ML', 0, 15),
+('inv-stk-ktm-01-med-02', 'HQ-KOT-001', 'stk-ktm-01', 'med-02', '', '200 ML', 0, 15),
+('inv-stk-ktm-01-med-03', 'HQ-KOT-001', 'stk-ktm-01', 'med-03', '', '200 ML', 0, 15),
+('inv-stk-ktm-01-med-04', 'HQ-KOT-001', 'stk-ktm-01', 'med-04', '', '10*1*10', 0, 15),
+('inv-stk-ktm-01-med-05', 'HQ-KOT-001', 'stk-ktm-01', 'med-05', '', '20*10', 0, 15),
+('inv-stk-ktm-01-med-06', 'HQ-KOT-001', 'stk-ktm-01', 'med-06', '', '10*10', 0, 15),
+('inv-stk-ktm-01-med-07', 'HQ-KOT-001', 'stk-ktm-01', 'med-07', '', '10*10', 0, 15),
+('inv-stk-ktm-01-med-08', 'HQ-KOT-001', 'stk-ktm-01', 'med-08', '', '30 GM', 0, 15),
+('inv-stk-ktm-01-med-09', 'HQ-KOT-001', 'stk-ktm-01', 'med-09', '', '10*10', 0, 15),
+('inv-stk-ktm-01-med-10', 'HQ-KOT-001', 'stk-ktm-01', 'med-10', '', '10*1*10', 0, 15),
+('inv-stk-ktm-01-med-11', 'HQ-KOT-001', 'stk-ktm-01', 'med-11', '', '30 GM', 0, 15),
+('inv-stk-ktm-01-med-12', 'HQ-KOT-001', 'stk-ktm-01', 'med-12', '', '50 GM', 0, 15),
+('inv-stk-ktm-01-med-13', 'HQ-KOT-001', 'stk-ktm-01', 'med-13', '', '200 ML', 0, 15),
+('inv-stk-ktm-01-med-14', 'HQ-KOT-001', 'stk-ktm-01', 'med-14', '', '10*10', 0, 15),
+('inv-stk-ktm-01-med-15', 'HQ-KOT-001', 'stk-ktm-01', 'med-15', '', '30 ML', 0, 15),
+('inv-stk-ktm-01-med-16', 'HQ-KOT-001', 'stk-ktm-01', 'med-16', '', '60 ML', 0, 15),
+('inv-stk-ktm-01-med-17', 'HQ-KOT-001', 'stk-ktm-01', 'med-17', '', '200 ML', 0, 15),
+('inv-stk-amb-01-med-01', 'HQ-AMB-001', 'stk-amb-01', 'med-01', '', '200 ML', 0, 15),
+('inv-stk-amb-01-med-02', 'HQ-AMB-001', 'stk-amb-01', 'med-02', '', '200 ML', 0, 15),
+('inv-stk-amb-01-med-03', 'HQ-AMB-001', 'stk-amb-01', 'med-03', '', '200 ML', 0, 15),
+('inv-stk-amb-01-med-04', 'HQ-AMB-001', 'stk-amb-01', 'med-04', '', '10*1*10', 0, 15),
+('inv-stk-amb-01-med-05', 'HQ-AMB-001', 'stk-amb-01', 'med-05', '', '20*10', 0, 15),
+('inv-stk-amb-01-med-06', 'HQ-AMB-001', 'stk-amb-01', 'med-06', '', '10*10', 0, 15),
+('inv-stk-amb-01-med-07', 'HQ-AMB-001', 'stk-amb-01', 'med-07', '', '10*10', 0, 15),
+('inv-stk-amb-01-med-08', 'HQ-AMB-001', 'stk-amb-01', 'med-08', '', '30 GM', 0, 15),
+('inv-stk-amb-01-med-09', 'HQ-AMB-001', 'stk-amb-01', 'med-09', '', '10*10', 0, 15),
+('inv-stk-amb-01-med-10', 'HQ-AMB-001', 'stk-amb-01', 'med-10', '', '10*1*10', 0, 15),
+('inv-stk-amb-01-med-11', 'HQ-AMB-001', 'stk-amb-01', 'med-11', '', '30 GM', 0, 15),
+('inv-stk-amb-01-med-12', 'HQ-AMB-001', 'stk-amb-01', 'med-12', '', '50 GM', 0, 15),
+('inv-stk-amb-01-med-13', 'HQ-AMB-001', 'stk-amb-01', 'med-13', '', '200 ML', 0, 15),
+('inv-stk-amb-01-med-14', 'HQ-AMB-001', 'stk-amb-01', 'med-14', '', '10*10', 0, 15),
+('inv-stk-amb-01-med-15', 'HQ-AMB-001', 'stk-amb-01', 'med-15', '', '30 ML', 0, 15),
+('inv-stk-amb-01-med-16', 'HQ-AMB-001', 'stk-amb-01', 'med-16', '', '60 ML', 0, 15),
+('inv-stk-amb-01-med-17', 'HQ-AMB-001', 'stk-amb-01', 'med-17', '', '200 ML', 0, 15)
+ON CONFLICT (id) DO UPDATE SET
+  quantity = EXCLUDED.quantity,
+  low_stock_threshold = EXCLUDED.low_stock_threshold,
+  updated_at = NOW();

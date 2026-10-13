@@ -455,6 +455,7 @@ export interface Medicine {
   id: string;
   name: string;
   code: string;
+  product_code?: string;
   sku?: string;
   composition?: string;
   category?: string;
@@ -469,6 +470,7 @@ export interface Medicine {
   packaging_variants?: MedicinePackagingVariant[];
   low_stock_threshold?: number;
   status: 'ACTIVE' | 'INACTIVE';
+  is_active?: boolean;
   created_at: string;
   updated_at?: string;
 }
