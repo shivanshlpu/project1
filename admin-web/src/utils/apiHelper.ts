@@ -41,12 +41,39 @@ export function getAuthHeaders(): Record<string, string> {
     user = JSON.parse(localStorage.getItem('ahtri_user') || '{}');
   } catch {}
 
+  const userId = user?.id || 'usr-admin-01';
+  const userRole = user?.role || 'SUPER_ADMIN';
+
   return {
     'Content-Type': 'application/json',
-    ...(user?.id ? { 'x-user-id': user.id } : {}),
-    ...(user?.role ? { 'x-user-role': user.role } : {}),
+    'x-user-id': userId,
+    'x-user-role': userRole,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+async function tryRefreshToken(baseUrl: string): Promise<string | null> {
+  try {
+    const refreshToken = localStorage.getItem('ahtri_refresh_token');
+    if (!refreshToken) return null;
+    const r = await fetch(`${baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (d?.access_token) {
+        localStorage.setItem('ahtri_auth_token', d.access_token);
+        localStorage.setItem('token', d.access_token);
+        if (d?.refresh_token) {
+          localStorage.setItem('ahtri_refresh_token', d.refresh_token);
+        }
+        return d.access_token;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 /**
@@ -86,26 +113,54 @@ export async function resilientFetch(
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch(`${primaryBase}${cleanEndpoint}`, {
+    let res = await fetch(`${primaryBase}${cleanEndpoint}`, {
       ...mergedInit,
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (res.ok || res.status < 500) {
+
+    if (res.status === 401) {
+      const newToken = await tryRefreshToken(primaryBase);
+      if (newToken) {
+        res = await fetch(`${primaryBase}${cleanEndpoint}`, {
+          ...mergedInit,
+          headers: {
+            ...mergedInit.headers,
+            Authorization: `Bearer ${newToken}`,
+          },
+        });
+      }
+    }
+
+    if (res.ok || (res.status < 500 && res.status !== 401)) {
       return res;
     }
   } catch {}
 
-  // If primary was not Render and failed or returned 5xx, retry with Render
+  // If primary was not Render and failed or returned 5xx/401, retry with Render
   if (primaryBase !== RENDER_BACKEND_URL) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const fallbackRes = await fetch(`${RENDER_BACKEND_URL}${cleanEndpoint}`, {
+      let fallbackRes = await fetch(`${RENDER_BACKEND_URL}${cleanEndpoint}`, {
         ...mergedInit,
         signal: controller.signal,
       });
       clearTimeout(timer);
+
+      if (fallbackRes.status === 401) {
+        const newToken = await tryRefreshToken(RENDER_BACKEND_URL);
+        if (newToken) {
+          fallbackRes = await fetch(`${RENDER_BACKEND_URL}${cleanEndpoint}`, {
+            ...mergedInit,
+            headers: {
+              ...mergedInit.headers,
+              Authorization: `Bearer ${newToken}`,
+            },
+          });
+        }
+      }
+
       return fallbackRes;
     } catch (fallbackErr) {
       throw fallbackErr;

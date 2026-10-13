@@ -265,6 +265,31 @@ export class ApprovalsService {
 
   async getLeaveQuota(mrId: string) {
     let quota = this.db.leaveQuotas.find((q) => q.mr_id === mrId);
+    if (!quota && this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          const { data: remoteRecord } = await client
+            .from('leave_requests')
+            .select('*')
+            .eq('id', `quota-${mrId}`)
+            .single();
+          if (remoteRecord && remoteRecord.reason) {
+            const parsed = JSON.parse(remoteRecord.reason);
+            quota = {
+              mr_id: mrId,
+              casual_total: Number(parsed.casual_total ?? 12),
+              sick_total: Number(parsed.sick_total ?? 10),
+              earned_total: Number(parsed.earned_total ?? 15),
+              updated_at: remoteRecord.created_at || new Date().toISOString(),
+            };
+            this.db.leaveQuotas.push(quota);
+            this.db.persistToDisk();
+          }
+        } catch {}
+      }
+    }
+
     if (!quota) {
       quota = {
         mr_id: mrId,

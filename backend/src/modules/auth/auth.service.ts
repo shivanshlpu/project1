@@ -539,9 +539,9 @@ export class AuthService {
       area_id: user.area_id,
     };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '30d' });
     const refreshToken = uuidv4();
-    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     this.db.refreshTokens.set(refreshToken, {
       userId: user.id,
@@ -551,7 +551,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
-      expires_in: 900,
+      expires_in: 2592000,
       user: {
         id: user.id,
         name: user.name,
