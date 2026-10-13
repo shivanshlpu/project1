@@ -102,7 +102,19 @@ const DEFAULT_COMP_MEDICINES: Array<{ id: string; name: string }> = [
 ];
 
 export const CompetitionsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'CAMPAIGNS' | 'CLAIMS'>('CAMPAIGNS');
+  const [activeTab, setActiveTab] = useState<'CAMPAIGNS' | 'CLAIMS'>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_competition_tab');
+      if (saved === 'CAMPAIGNS' || saved === 'CLAIMS') return saved;
+    } catch {}
+    return 'CAMPAIGNS';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ahtri_competition_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
   const [competitions, setCompetitions] = useState<CompetitionItem[]>([]);
   const [selectedCompId, setSelectedCompId] = useState<string>('');
   const [mrProgressList, setMrProgressList] = useState<MrProgressItem[]>([]);
@@ -117,7 +129,7 @@ export const CompetitionsView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((h: any) => ({ id: h.id, name: h.name }));
       }
-    } catch {}
+    } catch { }
     return DEFAULT_COMP_HQS;
   });
   const [medicines, setMedicines] = useState<Array<{ id: string; name: string }>>(() => {
@@ -127,7 +139,7 @@ export const CompetitionsView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((m: any) => ({ id: m.id, name: m.name }));
       }
-    } catch {}
+    } catch { }
     return DEFAULT_COMP_MEDICINES;
   });
 
@@ -301,7 +313,7 @@ export const CompetitionsView: React.FC = () => {
             setCompMedicineId((prev) => prev || data[0].id);
           }
         }
-      } catch {}
+      } catch { }
     };
     fetchMaster();
   }, [apiUrl]);
@@ -327,7 +339,7 @@ export const CompetitionsView: React.FC = () => {
           }
         }
       }
-    } catch {} finally {
+    } catch { } finally {
       setIsLoading(false);
     }
   };
@@ -353,7 +365,7 @@ export const CompetitionsView: React.FC = () => {
           setClaims(data);
         }
       }
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -434,7 +446,7 @@ export const CompetitionsView: React.FC = () => {
         fetchClaims();
         fetchCompetitions();
       }
-    } catch {}
+    } catch { }
   };
 
   const selectedComp = competitions.find((c) => c.id === selectedCompId);
@@ -774,14 +786,14 @@ export const CompetitionsView: React.FC = () => {
                                   prog.claim_status === 'APPROVED' || prog.claim_status === 'PAID'
                                     ? '#DCFCE7'
                                     : prog.claim_status === 'APPLIED'
-                                    ? '#FEF3C7'
-                                    : '#F8FAFC',
+                                      ? '#FEF3C7'
+                                      : '#F8FAFC',
                                 color:
                                   prog.claim_status === 'APPROVED' || prog.claim_status === 'PAID'
                                     ? '#166534'
                                     : prog.claim_status === 'APPLIED'
-                                    ? '#92400E'
-                                    : '#64748B',
+                                      ? '#92400E'
+                                      : '#64748B',
                               }}
                             >
                               {prog.claim_status}
@@ -885,18 +897,18 @@ export const CompetitionsView: React.FC = () => {
                               cl.status === 'PAID'
                                 ? '#DCFCE7'
                                 : cl.status === 'APPROVED'
-                                ? '#EFF6FF'
-                                : cl.status === 'REJECTED'
-                                ? '#FEE2E2'
-                                : '#FEF3C7',
+                                  ? '#EFF6FF'
+                                  : cl.status === 'REJECTED'
+                                    ? '#FEE2E2'
+                                    : '#FEF3C7',
                             color:
                               cl.status === 'PAID'
                                 ? '#166534'
                                 : cl.status === 'APPROVED'
-                                ? '#1D4ED8'
-                                : cl.status === 'REJECTED'
-                                ? '#991B1B'
-                                : '#92400E',
+                                  ? '#1D4ED8'
+                                  : cl.status === 'REJECTED'
+                                    ? '#991B1B'
+                                    : '#92400E',
                           }}
                         >
                           {cl.status}

@@ -36,6 +36,63 @@ interface AuthUser {
   token: string;
 }
 
+const VALID_MANAGER_TABS: readonly ManagerTab[] = [
+  'overview',
+  'tasks',
+  'submitted_tasks',
+  'orders',
+  'locations',
+  'members',
+  'attendance',
+  'tp',
+  'stockers',
+  'competitions',
+  'approvals',
+  'reports',
+  'ai',
+  'settings',
+] as const;
+
+const isValidManagerTab = (tab: any): tab is ManagerTab => {
+  return typeof tab === 'string' && (VALID_MANAGER_TABS as readonly string[]).includes(tab);
+};
+
+const parseTabFromLocation = (): ManagerTab | null => {
+  try {
+    // 1. Check window.location.hash (e.g. #/stockers, #stockers, #/competitions)
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const cleanHash = window.location.hash.replace(/^#\/?/, '').trim();
+      const tabName = cleanHash.split('?')[0].split('/')[0];
+      if (isValidManagerTab(tabName)) {
+        return tabName;
+      }
+    }
+  } catch {}
+
+  try {
+    // 2. Check window.location.search (?tab=stockers)
+    if (typeof window !== 'undefined' && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam && isValidManagerTab(tabParam)) {
+        return tabParam;
+      }
+    }
+  } catch {}
+
+  try {
+    // 3. Check persistent localStorage
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('ahtri_active_manager_tab') || localStorage.getItem('ahtri_active_tab');
+      if (saved && isValidManagerTab(saved)) {
+        return saved;
+      }
+    }
+  } catch {}
+
+  return null;
+};
+
 export const App: React.FC = () => {
   // Authentication Gate State
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
@@ -51,7 +108,51 @@ export const App: React.FC = () => {
     return null;
   });
 
-  const [managerTab, setManagerTab] = useState<ManagerTab>('overview');
+  // Persistent Manager Tab State (stays on current page across browser reloads)
+  const [managerTab, setManagerTabState] = useState<ManagerTab>(() => {
+    return parseTabFromLocation() || 'overview';
+  });
+
+  const setManagerTab = (nextTab: ManagerTab) => {
+    setManagerTabState(nextTab);
+    try {
+      localStorage.setItem('ahtri_active_manager_tab', nextTab);
+      localStorage.setItem('ahtri_active_tab', nextTab);
+      const targetHash = `#/${nextTab}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    } catch {}
+  };
+
+  // Sync hash changes (back/forward button, direct URL navigation) with state
+  useEffect(() => {
+    try {
+      const currentHash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (!currentHash && managerTab) {
+        window.history.replaceState(null, '', `#/${managerTab}`);
+      }
+    } catch {}
+
+    const handleSyncLocationTab = () => {
+      const parsedTab = parseTabFromLocation();
+      if (parsedTab && parsedTab !== managerTab) {
+        setManagerTabState(parsedTab);
+        try {
+          localStorage.setItem('ahtri_active_manager_tab', parsedTab);
+          localStorage.setItem('ahtri_active_tab', parsedTab);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('hashchange', handleSyncLocationTab);
+    window.addEventListener('popstate', handleSyncLocationTab);
+    return () => {
+      window.removeEventListener('hashchange', handleSyncLocationTab);
+      window.removeEventListener('popstate', handleSyncLocationTab);
+    };
+  }, [managerTab]);
+
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('ahtri_lang') as Language) || 'en';
   });
@@ -321,6 +422,12 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('ahtri_auth_token');
     localStorage.removeItem('ahtri_user');
+    localStorage.removeItem('ahtri_active_manager_tab');
+    localStorage.removeItem('ahtri_active_tab');
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {}
+    setManagerTabState('overview');
     setAuthUser(null);
   };
 

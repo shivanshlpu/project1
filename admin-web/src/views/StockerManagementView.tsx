@@ -314,8 +314,25 @@ interface InventoryAuditItem {
   created_at: string;
 }
 
+const VALID_STOCKER_SUBTABS = ['INVENTORY', 'STOCKAGE_WORKFLOW', 'MONTHLY_INWARD', 'STOCKERS', 'MEDICINES', 'ALERTS', 'AUDIT'] as const;
+type StockerSubTab = typeof VALID_STOCKER_SUBTABS[number];
+
 export const StockerManagementView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'INVENTORY' | 'STOCKAGE_WORKFLOW' | 'MONTHLY_INWARD' | 'STOCKERS' | 'MEDICINES' | 'ALERTS' | 'AUDIT'>('INVENTORY');
+  const [activeTab, setActiveTab] = useState<StockerSubTab>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_stocker_tab');
+      if (saved && (VALID_STOCKER_SUBTABS as readonly string[]).includes(saved)) {
+        return saved as StockerSubTab;
+      }
+    } catch {}
+    return 'INVENTORY';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ahtri_stocker_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   const initialHqs = getMergedHqs();
   const defaultSelectedHq = initialHqs.find((h) => h.isHeadquarters) || initialHqs[0];
@@ -329,7 +346,21 @@ export const StockerManagementView: React.FC = () => {
   const [pdfEndDate, setPdfEndDate] = useState('2026-09-30');
 
   const [hqs, setHqs] = useState<Headquarter[]>(initialHqs);
-  const [selectedHqId, setSelectedHqId] = useState<string>(defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol');
+  const [selectedHqId, setSelectedHqId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_stocker_selected_hq');
+      if (saved) return saved;
+    } catch {}
+    return defaultSelectedHq ? defaultSelectedHq.id : 'hq-shahdol';
+  });
+
+  useEffect(() => {
+    try {
+      if (selectedHqId) {
+        localStorage.setItem('ahtri_stocker_selected_hq', selectedHqId);
+      }
+    } catch {}
+  }, [selectedHqId]);
 
   // HQ Modals state
   const [isAddHqModalOpen, setIsAddHqModalOpen] = useState<boolean>(false);

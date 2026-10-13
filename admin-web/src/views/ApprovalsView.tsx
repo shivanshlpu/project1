@@ -55,8 +55,27 @@ interface SuspendedTaskItem {
 }
 
 export const ApprovalsView: React.FC = () => {
-  const [filterType, setFilterType] = useState<'ALL' | 'LEAVE' | 'SUSPENDED_TASK'>('ALL');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'RESOLVED'>('PENDING');
+  const [filterType, setFilterType] = useState<'ALL' | 'LEAVE' | 'SUSPENDED_TASK'>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_approvals_filter_type');
+      if (saved === 'ALL' || saved === 'LEAVE' || saved === 'SUSPENDED_TASK') return saved;
+    } catch {}
+    return 'ALL';
+  });
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'RESOLVED'>(() => {
+    try {
+      const saved = localStorage.getItem('ahtri_approvals_filter_status');
+      if (saved === 'ALL' || saved === 'PENDING' || saved === 'RESOLVED') return saved;
+    } catch {}
+    return 'PENDING';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ahtri_approvals_filter_type', filterType);
+      localStorage.setItem('ahtri_approvals_filter_status', filterStatus);
+    } catch {}
+  }, [filterType, filterStatus]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unsuspendingId, setUnsuspendingId] = useState<string | null>(null);
 
