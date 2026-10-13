@@ -50,8 +50,8 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   onClose,
   onSaveLocation,
   onAssignTaskHere,
-  initialLat = 28.5245,
-  initialLng = 77.2066,
+  initialLat = 23.2035,
+  initialLng = 81.9669,
   editingLocation = null,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -328,7 +328,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   };
 
-  // Synchronize state when editingLocation changes or modal opens
+  // Synchronize state when editingLocation changes or modal opens or coordinates change
   useEffect(() => {
     if (!isOpen) return;
     if (editingLocation) {
@@ -345,7 +345,6 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       if (mapInstanceRef.current) mapInstanceRef.current.setView([lat, lng], 16);
     } else {
       setLocationName('');
-      setAddress('Gandhi Chowk, Shahdol, MP');
       setCategory('CLINIC');
       setPhone('');
       setSelectedLat(initialLat);
@@ -353,8 +352,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       if (markerRef.current) markerRef.current.setLatLng([initialLat, initialLng]);
       if (circleRef.current) circleRef.current.setLatLng([initialLat, initialLng]);
       if (mapInstanceRef.current) mapInstanceRef.current.setView([initialLat, initialLng], 16);
+      updatePosition(initialLat, initialLng);
     }
-  }, [isOpen, editingLocation]);
+  }, [isOpen, editingLocation, initialLat, initialLng]);
 
   // Update geofence radius visual circle
   useEffect(() => {

@@ -106,7 +106,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   };
 
   // Central handler for selecting a location (card click or pin click)
-    // Handler to switch zone and pan map to that zone
+  // Handler to switch zone and pan map to that zone
   const handleSelectZone = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     if (zoneId === 'all') {
@@ -114,7 +114,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     } else {
       const z = zones.find((item) => item.id === zoneId);
       if (z && mapInstanceRef.current) {
-        mapInstanceRef.current.setView([z.latitude, z.longitude], 13);
+        mapInstanceRef.current.flyTo([z.latitude, z.longitude], 13.5, { duration: 0.8 });
       }
     }
   };
@@ -183,8 +183,19 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     window.addEventListener('ahtri_locations_updated', handleUpdate);
     fetchLocations();
     const interval = setInterval(fetchLocations, 4000);
+
+    const handleHqSync = () => {
+      setZones(getOperatingZones());
+    };
+    window.addEventListener('ahtri_hq_updated', handleHqSync);
+    window.addEventListener('ahtri_areas_updated', handleHqSync);
+    window.addEventListener('storage', handleHqSync);
+
     return () => {
       window.removeEventListener('ahtri_locations_updated', handleUpdate);
+      window.removeEventListener('ahtri_hq_updated', handleHqSync);
+      window.removeEventListener('ahtri_areas_updated', handleHqSync);
+      window.removeEventListener('storage', handleHqSync);
       clearInterval(interval);
     };
   }, []);
@@ -218,10 +229,15 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const getLocationsInZone = (zone: TerritoryZone) => {
     return locations.filter((loc) => {
       const dist = calculateDistanceKm(zone.latitude, zone.longitude, loc.latitude, loc.longitude);
-      const inRadius = dist <= (zone.radiusKm || 5) * 1.5;
-      const zoneKey = zone.name.toLowerCase().split(' ')[0];
-      const inArea = loc.area_name && loc.area_name.toLowerCase().includes(zoneKey);
-      return inRadius || inArea;
+      const inRadius = dist <= Math.max(zone.radiusKm, 25);
+      const zoneKey = zone.name.toLowerCase().replace(' hq', '').trim();
+      const inArea =
+        (loc.area_name && loc.area_name.toLowerCase().includes(zoneKey)) ||
+        (loc.address && loc.address.toLowerCase().includes(zoneKey)) ||
+        (zone.subAreas && zone.subAreas.some((sa) => (loc.address && loc.address.toLowerCase().includes(sa.toLowerCase())) || (loc.area_name && loc.area_name.toLowerCase().includes(sa.toLowerCase()))));
+      if (inRadius) return true;
+      if (dist <= 60 && inArea) return true;
+      return false;
     });
   };
 
@@ -248,11 +264,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
     if (!mapInstanceRef.current) {
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const defaultCenter: [number, number] = zones[0] ? [zones[0].latitude, zones[0].longitude] : [23.2035, 81.9669];
       const map = createOptimizedMap(mapContainerRef.current, {
         zoomControl: false,
         dragging: true,
         touchZoom: true,
-      }).setView([28.535, 77.207], 13);
+      }).setView(defaultCenter, 13);
       mapInstanceRef.current = map;
       map.dragging.enable();
       map.touchZoom.enable();
@@ -619,10 +636,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         {/* All Zones */}
         <button
           type="button"
-          onClick={() => {
-            setSelectedZoneId('all');
-            mapInstanceRef.current?.flyTo([28.535, 77.207], 12);
-          }}
+          onClick={() => handleSelectZone('all')}
           style={{
             padding: '5px 12px',
             borderRadius: '16px',
@@ -647,10 +661,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             <button
               key={zone.id}
               type="button"
-              onClick={() => {
-                setSelectedZoneId(zone.id);
-                mapInstanceRef.current?.flyTo([zone.latitude, zone.longitude], 13.5);
-              }}
+              onClick={() => handleSelectZone(zone.id)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -685,11 +696,11 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         })}
       </div>
 
-      {/* Mobile Quick Jump to Directory List Bar */}
+      {/* Zone Details & Covered Sub-Areas Bar */}
       <div
         style={{
-          background: '#EFF6FF',
-          borderBottom: '1px solid #DBEAFE',
+          background: '#F0F9FF',
+          borderBottom: '1px solid #BAE6FD',
           padding: '8px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -698,10 +709,54 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           gap: '8px',
         }}
       >
-        <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span>📍</span>
-          <span>{filteredLocations.length} Saved Points Plotted Across Map</span>
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: '800', color: '#0369A1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>📍</span>
+            <span>
+              {activeZone ? `${activeZone.name} (${activeZone.radiusKm} km radius)` : `All Territory Zones (${zones.length} Zones Active)`}
+            </span>
+          </span>
+
+          {activeZone?.assignedMr && (
+            <span style={{ fontSize: '11px', background: '#FFFFFF', padding: '2px 8px', borderRadius: '12px', border: '1px solid #BAE6FD', color: '#0284C7', fontWeight: '600' }}>
+              👤 Assigned: {activeZone.assignedMr}
+            </span>
+          )}
+
+          <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
+            • {filteredLocations.length} points plotted
+          </span>
+
+          {activeZone && activeZone.subAreas && activeZone.subAreas.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#0369A1' }}>
+                Covered Cities & Areas:
+              </span>
+              {activeZone.subAreas.slice(0, 8).map((area, aIdx) => (
+                <span
+                  key={aIdx}
+                  style={{
+                    fontSize: '10px',
+                    background: '#FFFFFF',
+                    color: '#0369A1',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    fontWeight: '600',
+                    border: '1px solid #BAE6FD',
+                  }}
+                >
+                  {area}
+                </span>
+              ))}
+              {activeZone.subAreas.length > 8 && (
+                <span style={{ fontSize: '10px', color: '#64748B', fontWeight: '700' }}>
+                  +{activeZone.subAreas.length - 8} more
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={() => {
@@ -1120,6 +1175,8 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       <MapLocationPickerModal
         isOpen={isPickerOpen}
         editingLocation={editingLocation}
+        initialLat={editingLocation ? Number(editingLocation.latitude) : activeZone ? activeZone.latitude : 23.2035}
+        initialLng={editingLocation ? Number(editingLocation.longitude) : activeZone ? activeZone.longitude : 81.9669}
         onClose={() => {
           setIsPickerOpen(false);
           setEditingLocation(null);

@@ -337,10 +337,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const getLocationsInZone = (zone: TerritoryZone) => {
     return savedLocations.filter((loc) => {
       const dist = getDistanceFromLatLngInKm(zone.latitude, zone.longitude, loc.latitude, loc.longitude);
-      const inRadius = dist <= zone.radiusKm;
-      const zoneKey = zone.name.toLowerCase().split(' ')[0];
-      const inArea = loc.area_name && loc.area_name.toLowerCase().includes(zoneKey);
-      return inRadius || inArea;
+      const inRadius = dist <= Math.max(zone.radiusKm, 25);
+      const zoneKey = zone.name.toLowerCase().replace(' hq', '').trim();
+      const inArea =
+        (loc.area_name && loc.area_name.toLowerCase().includes(zoneKey)) ||
+        (loc.address && loc.address.toLowerCase().includes(zoneKey)) ||
+        (zone.subAreas && zone.subAreas.some((sa) => (loc.address && loc.address.toLowerCase().includes(sa.toLowerCase())) || (loc.area_name && loc.area_name.toLowerCase().includes(sa.toLowerCase()))));
+      if (inRadius) return true;
+      if (dist <= 60 && inArea) return true;
+      return false;
     });
   };
 
@@ -348,10 +353,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const getTasksInZone = (zone: TerritoryZone) => {
     return tasks.filter((t) => {
       const dist = getDistanceFromLatLngInKm(zone.latitude, zone.longitude, t.latitude, t.longitude);
-      const inRadius = dist <= zone.radiusKm;
-      const zoneKey = zone.name.toLowerCase().split(' ')[0];
-      const inArea = t.location_name && t.location_name.toLowerCase().includes(zoneKey);
-      return inRadius || inArea;
+      const inRadius = dist <= Math.max(zone.radiusKm, 25);
+      const zoneKey = zone.name.toLowerCase().replace(' hq', '').trim();
+      const inArea =
+        (t.location_name && t.location_name.toLowerCase().includes(zoneKey)) ||
+        (t.title && t.title.toLowerCase().includes(zoneKey)) ||
+        (zone.subAreas && zone.subAreas.some((sa) => (t.location_name && t.location_name.toLowerCase().includes(sa.toLowerCase())) || (t.title && t.title.toLowerCase().includes(sa.toLowerCase()))));
+      if (inRadius) return true;
+      if (dist <= 60 && inArea) return true;
+      return false;
     });
   };
 
@@ -1537,6 +1547,36 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </span>
                     {activeZone && <span>{activeZone.radiusKm} km radius</span>}
                   </div>
+                  {activeZone && activeZone.subAreas && activeZone.subAreas.length > 0 && (
+                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #E2E8F0' }}>
+                      <div style={{ fontSize: '10.5px', fontWeight: '800', color: '#0369A1', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>📍 Covered Cities & Sub-Areas ({activeZone.subAreas.length}):</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {activeZone.subAreas.slice(0, 10).map((sub, sIdx) => (
+                          <span
+                            key={sIdx}
+                            style={{
+                              fontSize: '10px',
+                              background: '#F0F9FF',
+                              color: '#0369A1',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontWeight: '600',
+                              border: '1px solid #BAE6FD',
+                            }}
+                          >
+                            {sub}
+                          </span>
+                        ))}
+                        {activeZone.subAreas.length > 10 && (
+                          <span style={{ fontSize: '10px', color: '#64748B', fontWeight: '700', alignSelf: 'center' }}>
+                            +{activeZone.subAreas.length - 10} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Metric 2: Saved Point-of-Care Locations */}
