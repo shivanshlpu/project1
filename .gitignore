@@ -52,6 +52,7 @@ mobile/wait_and_update_apk.js
 *.cert
 *.crt
 *.keystore
+!mobile/credentials/ahtri-release.keystore
 *.jks
 *.p12
 *.pfx

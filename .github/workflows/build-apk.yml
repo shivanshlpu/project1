@@ -63,18 +63,23 @@ jobs:
       - name: Prebuild Native Android Project
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Generate Release Signing Keystore
-        working-directory: mobile/android/app
+      - name: Configure Permanent Release Signing Keystore
+        working-directory: mobile
         run: |
-          keytool -genkeypair -v \
-            -keystore release.keystore \
-            -alias ahtri-key \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass ahtri123 \
-            -keypass ahtri123 \
-            -dname "CN=AHTRI, OU=Mobile, O=AHTRI Pharma, L=Delhi, S=Delhi, C=IN"
+          if [ -f "credentials/ahtri-release.keystore" ]; then
+            cp credentials/ahtri-release.keystore android/app/release.keystore
+            echo "Using persistent repository release keystore"
+          else
+            keytool -genkeypair -v \
+              -keystore android/app/release.keystore \
+              -alias ahtri-key \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass ahtri123 \
+              -keypass ahtri123 \
+              -dname "CN=AHTRI, OU=Mobile, O=AHTRI Pharma, L=Delhi, S=Delhi, C=IN"
+          fi
 
       - name: Configure Gradle Signing
         working-directory: mobile/android
