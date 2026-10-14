@@ -1,20 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.25",
-  "latestVersionCode": 26,
+  "latestVersion": "1.0.26",
+  "latestVersionCode": 27,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.25/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.26/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-15",
-  "publishedAt": "2026-10-15T00:50:00.000Z",
+  "publishedAt": "2026-10-15T02:00:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Live HQ Inventory Stock Visibility: Medical Representatives can now see real-time depot stock indicators (In Stock, Low Stock, Out of Stock) directly on product chips and order forms",
+    "Fix Submitted Task White Screen: Defensive parsing for task orders, safe date formatting, and guarded image rendering prevent white screens on the completed/history tasks page",
+    "App-Wide ErrorBoundary: Wrap all mobile screens in a graceful error boundary with a reload button so unexpected exceptions never cause blank screens",
+    "Live HQ Inventory Stock Visibility: Medical Representatives can view real-time depot stock indicators directly on product chips and order forms",
     "Dual Out-of-Stock Notification System: When an order contains low or depleted stock at the HQ depot, both the MR and Headquarter Admin receive immediate alert notifications for rapid replenishment",
-    "Admin Order Supervision: Highlights stock shortage warnings and displays item-by-item depot availability directly within the Web Command Center",
-    "Crash-Proof Error Boundary: Comprehensive root error boundaries guarantee that unexpected JavaScript exceptions never cause blank white screens",
     "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
   ]
 }
