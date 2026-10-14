@@ -521,6 +521,8 @@ export default function App() {
                 key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id}
+                currentUserHqName={currentUser.hq_name}
               />
             )}
 

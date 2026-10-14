@@ -778,6 +778,27 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                             Stocker: {ord.stocker_name}
                           </div>
                         )}
+                        {ord.has_stock_warning && (
+                          <div
+                            style={{
+                              marginTop: '5px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              backgroundColor: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FEF2F2' : '#FFFBEB',
+                              border: `1px solid ${ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FCA5A5' : '#FCD34D'}`,
+                              borderRadius: '4px',
+                              padding: '2px 6px',
+                              fontSize: '10.5px',
+                              fontWeight: '700',
+                              color: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#DC2626' : '#B45309',
+                            }}
+                            title={ord.stock_warning_summary}
+                          >
+                            <AlertCircle size={11} />
+                            <span>{ord.stock_warning_type === 'OUT_OF_STOCK' ? 'Out of Stock' : 'Low Stock'}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Ordered Items Preview */}
@@ -1047,6 +1068,26 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                     <span>MR: {ord.mr_name}</span>
                     {ord.stocker_name && <span style={{ color: '#94A3B8' }}>• Stocker: {ord.stocker_name}</span>}
                   </div>
+                  {ord.has_stock_warning && (
+                    <div
+                      style={{
+                        marginTop: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        backgroundColor: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FEF2F2' : '#FFFBEB',
+                        border: `1px solid ${ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FCA5A5' : '#FCD34D'}`,
+                        borderRadius: '4px',
+                        padding: '3px 8px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#DC2626' : '#B45309',
+                      }}
+                    >
+                      <AlertCircle size={12} />
+                      <span>{ord.stock_warning_type === 'OUT_OF_STOCK' ? '⚠️ Product Out of Stock at HQ' : '⚠️ Low Stock at HQ'}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Products & Total Amount */}
@@ -1330,6 +1371,43 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             )}
           </div>
 
+          {/* Stock Shortage Alert Banner if items are low or out of stock at HQ */}
+          {selectedOrderForItems.has_stock_warning && (
+            <div
+              style={{
+                backgroundColor: selectedOrderForItems.stock_warning_type === 'OUT_OF_STOCK' ? '#FEF2F2' : '#FFFBEB',
+                border: `1px solid ${selectedOrderForItems.stock_warning_type === 'OUT_OF_STOCK' ? '#FCA5A5' : '#FDE68A'}`,
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <AlertCircle
+                size={18}
+                color={selectedOrderForItems.stock_warning_type === 'OUT_OF_STOCK' ? '#DC2626' : '#D97706'}
+                style={{ marginTop: '2px', flexShrink: 0 }}
+              />
+              <div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: selectedOrderForItems.stock_warning_type === 'OUT_OF_STOCK' ? '#991B1B' : '#92400E',
+                  }}
+                >
+                  ⚠️ HQ Stock Notice: {selectedOrderForItems.stock_warning_type === 'OUT_OF_STOCK' ? 'Out of Stock' : 'Low Stock'} ({selectedOrderForItems.hq_name})
+                </div>
+                <div style={{ fontSize: '12px', color: '#475569', marginTop: '3px', lineHeight: '1.4' }}>
+                  {selectedOrderForItems.stock_warning_summary ||
+                    'One or more ordered products were punched with insufficient or depleted stock in this HQ depot.'}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Product Item List */}
           <div style={{ marginBottom: '20px' }}>
             <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>
@@ -1340,6 +1418,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                 <thead>
                   <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
                     <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600' }}>Product Name</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '600' }}>HQ Stock Status</th>
                     <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Qty</th>
                     <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Unit Price</th>
                     <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600' }}>Total</th>
@@ -1347,31 +1426,84 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                   </tr>
                 </thead>
                 <tbody>
-                  {(selectedOrderForItems.items || []).map((item, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0F172A' }}>
-                        {item.product_name}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#334155' }}>
-                        {item.quantity}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748B' }}>
-                        ₹{(item.unit_price || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0F8B5A' }}>
-                        ₹{(item.total_amount || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td style={{ padding: '10px 12px', color: '#64748B', fontSize: '12px' }}>
-                        {item.distributor || 'Central Stocker'}
-                      </td>
-                    </tr>
-                  ))}
+                  {(selectedOrderForItems.items || []).map((item, i) => {
+                    const isItemOutOfStock = item.stock_status === 'OUT_OF_STOCK' || item.stock_status === 'INSUFFICIENT_STOCK';
+                    const isItemLowStock = item.stock_status === 'LOW_STOCK';
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0F172A' }}>
+                          {item.product_name}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          {isItemOutOfStock ? (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                backgroundColor: '#FEE2E2',
+                                color: '#DC2626',
+                                border: '1px solid #FCA5A5',
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                              }}
+                            >
+                              🔴 Out of Stock ({item.available_stock ?? 0} avail)
+                            </span>
+                          ) : isItemLowStock ? (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                backgroundColor: '#FEF3C7',
+                                color: '#D97706',
+                                border: '1px solid #FCD34D',
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                              }}
+                            >
+                              🟠 Low Stock ({item.available_stock ?? 0} avail)
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                backgroundColor: '#DCFCE7',
+                                color: '#15803D',
+                                border: '1px solid #86EFAC',
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                              }}
+                            >
+                              🟢 In Stock
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#334155' }}>
+                          {item.quantity}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748B' }}>
+                          ₹{(item.unit_price || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0F8B5A' }}>
+                          ₹{(item.total_amount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#64748B', fontSize: '12px' }}>
+                          {item.distributor || 'Central Stocker'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr style={{ backgroundColor: '#F8FAFC', borderTop: '2px solid #E2E8F0' }}>
                     <td style={{ padding: '10px 12px', fontWeight: '800', color: '#0F172A' }}>
                       Grand Total
                     </td>
+                    <td style={{ padding: '10px 12px' }}></td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: '#0F172A' }}>
                       {selectedOrderForItems.total_units} units
                     </td>

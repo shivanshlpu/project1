@@ -135,6 +135,11 @@ export class InventoryController {
     return this.inventoryService.getMedicines(all === 'true', hqId);
   }
 
+  @Get('hq-stock')
+  async getHqStockOverview(@Query('hq_id') hqId?: string) {
+    return this.inventoryService.getHqStockOverview(hqId);
+  }
+
   @Post('medicines')
   @Roles('SUPER_ADMIN', 'ADMIN')
   async createMedicine(@Body() dto: CreateMedicineDto) {

@@ -1,20 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.24",
-  "latestVersionCode": 25,
+  "latestVersion": "1.0.25",
+  "latestVersionCode": 26,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.24/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.25/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-14",
-  "publishedAt": "2026-10-14T23:30:00.000Z",
+  "releaseDate": "2026-10-15",
+  "publishedAt": "2026-10-15T00:50:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Monthly Tour Plan Entry Removal: Allowed both Admin (Web Dashboard) and Medical Representatives (Mobile App) to remove/delete punched Monthly TP entries with instant sync",
-    "Fixed White Screen on Submitted Task Page: Added robust Error Boundary and guarded JSON parsing for task orders, dates, and tour plan entries",
-    "Persistent Data Retention: Delivery details, assigned tasks, completion status, and Tour Plans are permanently retained across APK updates and server reconnects",
-    "Cloud PostgreSQL Sync: Direct real-time synchronization of monthly tour plans and orders to Supabase cloud storage",
-    "In-Place Update Support: Automated release signing guarantees seamless in-place APK installation without uninstalling or wiping device data"
+    "Live HQ Inventory Stock Visibility: Medical Representatives can now see real-time depot stock indicators (In Stock, Low Stock, Out of Stock) directly on product chips and order forms",
+    "Dual Out-of-Stock Notification System: When an order contains low or depleted stock at the HQ depot, both the MR and Headquarter Admin receive immediate alert notifications for rapid replenishment",
+    "Admin Order Supervision: Highlights stock shortage warnings and displays item-by-item depot availability directly within the Web Command Center",
+    "Crash-Proof Error Boundary: Comprehensive root error boundaries guarantee that unexpected JavaScript exceptions never cause blank white screens",
+    "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
   ]
 }

@@ -35,6 +35,8 @@ export interface MobileTaskItem {
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' | 'ORDER_PENDING' | 'CANCELLED';
+  hq_id?: string;
+  hq_name?: string;
   started_at?: string;
   completed_at?: string;
   duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
@@ -91,14 +93,20 @@ function formatSafeCompletedTime(completedAt?: string): string {
 interface TodayTasksScreenProps {
   currentUserId?: string;
   currentUserName?: string;
+  currentUserHqId?: string;
+  currentUserHqName?: string;
 }
 
 export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   currentUserId = 'usr-mr-02',
   currentUserName = 'Aman Rathore',
+  currentUserHqId = 'hq-shahdol',
+  currentUserHqName = 'Shahdol HQ',
 }) => {
   // All system tasks across MRs
   const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);
+  // Live stock for current MR HQ
+  const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
 
   // Real Hardware Sensor GPS Tracking
   const [deviceCoords, setDeviceCoords] = useState<{
@@ -128,6 +136,33 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       distributor: string;
     }>
   >([]);
+
+  // Fetch live HQ stock for this representative's Headquarter
+  const loadHqStock = async (targetHqId?: string) => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const hq = targetHqId || currentUserHqId || 'hq-shahdol';
+      const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hq)}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, any> = {};
+        (data.medicines || []).forEach((m: any) => {
+          map[m.medicine_name.toLowerCase().trim()] = m;
+          map[m.medicine_id] = m;
+          const short = m.medicine_name.split(' (')[0].toLowerCase().trim();
+          map[short] = m;
+        });
+        setHqStockMap(map);
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  useEffect(() => {
+    loadHqStock(completingTask?.hq_id || currentUserHqId);
+  }, [completingTask?.hq_id, currentUserHqId]);
 
   const handleAddModalOrder = () => {
     const nextIdx = modalOrders.length + 1;
@@ -276,6 +311,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               geofence_radius_m: t.geofence_radius_m || 50,
               priority: t.priority || 'MEDIUM',
               status: t.status,
+              hq_id: t.hq_id,
+              hq_name: t.hq_name,
               started_at: t.started_at,
               completed_at: t.completed_at,
               outcome: t.outcome,
@@ -854,14 +891,43 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     setCompletingTask(null);
     setVisitPhoto(null);
 
-    Alert.alert(
-      'Visit Finalized & Logged! ✓',
-      `Call concluded for ${completingTask.location_name}.\n\n• Duration: ${formatTimer(duration)}\n• Feedback: "${visitOutcome.slice(0, 50)}${visitOutcome.length > 50 ? '...' : ''}"\n• Orders: ${validOrders.length} products (${totalOrderUnits} units • ₹${totalOrderAmount.toLocaleString()})\n\nThis call has been closed and moved to 'Completed & History'.`,
-      [
-        { text: 'Stay on Agenda', style: 'cancel' },
-        { text: 'View in History →', onPress: () => setTaskTab('HISTORY') },
-      ],
-    );
+    // Check if any product is low stock or out of stock at this HQ
+    const effectiveHqTitle = completingTask.hq_name || currentUserHqName || 'HQ';
+    const stockShortages: string[] = [];
+    validOrders.forEach((o) => {
+      const clean = o.product_name.toLowerCase().trim();
+      const short = clean.split(' (')[0];
+      const stock = hqStockMap[clean] || hqStockMap[short];
+      if (stock) {
+        if (stock.is_out_of_stock) {
+          stockShortages.push(`• ${o.product_name}: OUT OF STOCK (0 in ${effectiveHqTitle} stock, ${o.quantity} ordered)`);
+        } else if (stock.available_stock < o.quantity) {
+          stockShortages.push(`• ${o.product_name}: Insufficient Stock (${stock.available_stock} available, ${o.quantity} ordered)`);
+        } else if (stock.is_low_stock) {
+          stockShortages.push(`• ${o.product_name}: LOW STOCK (${stock.available_stock} left in depot)`);
+        }
+      }
+    });
+
+    if (stockShortages.length > 0) {
+      Alert.alert(
+        '⚠️ Order Placed - Stock Alert!',
+        `Call concluded for ${completingTask.location_name}.\n\n• Orders: ${validOrders.length} products (${totalOrderUnits} units • ₹${totalOrderAmount.toLocaleString()})\n\n⚠️ Stock Shortage Notice at ${effectiveHqTitle}:\n${stockShortages.join('\n')}\n\nBoth you and the Admin have received an alert so this stock can be replenished.`,
+        [
+          { text: 'Stay on Agenda', style: 'cancel' },
+          { text: 'View in History →', onPress: () => setTaskTab('HISTORY') },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Visit Finalized & Logged! ✓',
+        `Call concluded for ${completingTask.location_name}.\n\n• Duration: ${formatTimer(duration)}\n• Feedback: "${visitOutcome.slice(0, 50)}${visitOutcome.length > 50 ? '...' : ''}"\n• Orders: ${validOrders.length} products (${totalOrderUnits} units • ₹${totalOrderAmount.toLocaleString()})\n\nThis call has been closed and moved to 'Completed & History'.`,
+        [
+          { text: 'Stay on Agenda', style: 'cancel' },
+          { text: 'View in History →', onPress: () => setTaskTab('HISTORY') },
+        ],
+      );
+    }
   };
 
   return (
@@ -1438,25 +1504,63 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             placeholder="Enter medicine name"
                           />
 
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4, marginBottom: 2 }}>
+                          {/* Live HQ Stock Availability Badge */}
+                          {(() => {
+                            const cleanName = (ord.product_name || '').toLowerCase().trim();
+                            const shortName = cleanName.split(' (')[0];
+                            const stock = hqStockMap[cleanName] || hqStockMap[shortName];
+                            if (!stock) return null;
+                            const effectiveHq = completingTask?.hq_name || currentUserHqName || 'HQ';
+                            if (stock.is_out_of_stock) {
+                              return (
+                                <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
+                                  <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '700' }}>
+                                    🔴 OUT OF STOCK at {effectiveHq} (0 available in depot)
+                                  </Text>
+                                </View>
+                              );
+                            }
+                            if (stock.is_low_stock) {
+                              return (
+                                <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
+                                  <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>
+                                    🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units remaining)
+                                  </Text>
+                                </View>
+                              );
+                            }
+                            return (
+                              <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: '#166534', fontWeight: '700' }}>
+                                  🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units available)
+                                </Text>
+                              </View>
+                            );
+                          })()}
+
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6, marginBottom: 2 }}>
                             {COMPANY_MEDICINES_CHIPS.map((med, mIdx) => {
                               const isSelected = ord.product_name === med.name;
+                              const stock = hqStockMap[med.name.toLowerCase().trim()] || hqStockMap[med.short.toLowerCase().trim()];
+                              const isOut = stock?.is_out_of_stock;
+                              const isLow = stock?.is_low_stock;
+
                               return (
                                 <TouchableOpacity
                                   key={mIdx}
                                   onPress={() => handleSelectMedicineForOrder(ord.id, med.name, med.price)}
                                   style={{
-                                    backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
+                                    backgroundColor: isSelected ? '#1E40AF' : isOut ? '#FEF2F2' : isLow ? '#FFFBEB' : '#F1F5F9',
                                     paddingHorizontal: 8,
                                     paddingVertical: 3.5,
                                     borderRadius: 12,
                                     marginRight: 6,
                                     borderWidth: 1,
-                                    borderColor: isSelected ? '#1E40AF' : '#CBD5E1',
+                                    borderColor: isSelected ? '#1E40AF' : isOut ? '#FCA5A5' : isLow ? '#FCD34D' : '#CBD5E1',
                                   }}
                                 >
-                                  <Text style={{ fontSize: 10, color: isSelected ? '#FFFFFF' : '#1E293B', fontWeight: isSelected ? '700' : '600' }}>
-                                    {med.short} (₹{med.price})
+                                  <Text style={{ fontSize: 10, color: isSelected ? '#FFFFFF' : isOut ? '#DC2626' : isLow ? '#D97706' : '#1E293B', fontWeight: isSelected ? '700' : '600' }}>
+                                    {med.short} (₹{med.price}) {stock ? (isOut ? '• 🔴 Out' : isLow ? `• 🟠 ${stock.available_stock} left` : `• 🟢 ${stock.available_stock}`) : ''}
                                   </Text>
                                 </TouchableOpacity>
                               );

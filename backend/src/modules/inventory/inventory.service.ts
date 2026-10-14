@@ -318,21 +318,215 @@ export class InventoryService {
   }
 
   // === 4. MEDICINES MASTER & PACKAGING VARIANTS ===
+  /**
+   * Helper to resolve HQ object and its assigned stockers
+   */
+  public resolveHqAndStockers(hqIdentifier?: string): { hq?: Headquarter; stockers: Stocker[]; stockerIds: Set<string> } {
+    if (!hqIdentifier || hqIdentifier === 'ALL') {
+      const allStockers = this.db.stockers.filter((s) => s.status !== 'INACTIVE');
+      return {
+        stockers: allStockers,
+        stockerIds: new Set(allStockers.map((s) => s.id)),
+      };
+    }
+
+    const hq = this.db.findHeadquarter(hqIdentifier);
+    const cleanId = hqIdentifier.trim().toLowerCase();
+
+    const stockers = this.db.stockers.filter((s) => {
+      if (s.status === 'INACTIVE') return false;
+      if (hq && (s.hq_id === hq.id || s.hq_id === hq.hq_id || (hq.code && s.hq_id === hq.code))) {
+        return true;
+      }
+      const sHqClean = (s.hq_id || '').toLowerCase();
+      if (sHqClean === cleanId) return true;
+      if (cleanId.includes('shd') || cleanId.includes('shahdol')) return sHqClean.includes('shd') || sHqClean.includes('shahdol');
+      if (cleanId.includes('amb') || cleanId.includes('ambikapur')) return sHqClean.includes('amb');
+      if (cleanId.includes('bsp') || cleanId.includes('bilaspur')) return sHqClean.includes('bsp');
+      if (cleanId.includes('ktm') || cleanId.includes('kotma')) return sHqClean.includes('ktm') || sHqClean.includes('kot');
+      return false;
+    });
+
+    return {
+      hq,
+      stockers,
+      stockerIds: new Set(stockers.map((s) => s.id)),
+    };
+  }
+
+  /**
+   * Get live stock status for all medicines at a specific HQ
+   */
+  async getHqStockOverview(hqIdentifier?: string): Promise<{
+    hq_id: string;
+    hq_name: string;
+    stocker_count: number;
+    medicines: Array<{
+      medicine_id: string;
+      medicine_name: string;
+      medicine_code: string;
+      unit: string;
+      packing: string;
+      pts_rate: number;
+      available_stock: number;
+      low_stock_threshold: number;
+      stock_status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+      is_out_of_stock: boolean;
+      is_low_stock: boolean;
+    }>;
+  }> {
+    const { hq, stockers, stockerIds } = this.resolveHqAndStockers(hqIdentifier);
+    const hqId = hq?.id || hqIdentifier || 'HQ-ALL';
+    const hqName = hq?.name || 'All Headquarters';
+
+    const activeMeds = this.db.medicines.filter((m) => m.status === 'ACTIVE');
+
+    const medicineStockList = activeMeds.map((med) => {
+      const relevantInv = this.db.stockerInventory.filter(
+        (inv) => inv.medicine_id === med.id && (stockerIds.size === 0 || stockerIds.has(inv.stocker_id)),
+      );
+
+      const totalStock = relevantInv.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+      const threshold = med.low_stock_threshold || 10;
+      const isOutOfStock = totalStock <= 0;
+      const isLowStock = totalStock > 0 && totalStock <= threshold;
+      const stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' = isOutOfStock
+        ? 'OUT_OF_STOCK'
+        : isLowStock
+        ? 'LOW_STOCK'
+        : 'IN_STOCK';
+
+      return {
+        medicine_id: med.id,
+        medicine_name: med.name,
+        medicine_code: med.code,
+        unit: med.unit || med.packing || 'Units',
+        packing: med.packing || med.unit || 'Units',
+        pts_rate: med.pts ?? med.pts_rate ?? med.base_price ?? 0,
+        available_stock: totalStock,
+        low_stock_threshold: threshold,
+        stock_status: stockStatus,
+        is_out_of_stock: isOutOfStock,
+        is_low_stock: isLowStock,
+      };
+    });
+
+    return {
+      hq_id: hqId,
+      hq_name: hqName,
+      stocker_count: stockers.length,
+      medicines: medicineStockList,
+    };
+  }
+
+  /**
+   * Check stock availability for an order at a specific HQ
+   * Returns warning flags and item details so MR and Admin can be alerted
+   */
+  async checkOrderStock(
+    hqIdentifier: string,
+    items: Array<{ product_id?: string; product_name: string; quantity: number }>,
+  ): Promise<{
+    has_warning: boolean;
+    warning_type: 'OUT_OF_STOCK' | 'LOW_STOCK' | null;
+    warning_summary: string;
+    hq_id: string;
+    hq_name: string;
+    items: Array<{
+      product_name: string;
+      product_id?: string;
+      requested_quantity: number;
+      available_stock: number;
+      stock_status: 'OUT_OF_STOCK' | 'INSUFFICIENT_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
+      is_out_of_stock: boolean;
+      is_insufficient: boolean;
+      is_low_stock: boolean;
+      message: string;
+    }>;
+  }> {
+    const { hq, stockers, stockerIds } = this.resolveHqAndStockers(hqIdentifier);
+    const hqName = hq?.name || hqIdentifier || 'Assigned HQ';
+
+    let hasOutOfStock = false;
+    let hasLowStock = false;
+    const warningItems: string[] = [];
+
+    const detailedItems = items.map((item) => {
+      const cleanName = (item.product_name || '').toLowerCase().trim();
+      const med = this.db.medicines.find(
+        (m) =>
+          (item.product_id && m.id === item.product_id) ||
+          m.name.toLowerCase().trim() === cleanName ||
+          cleanName.startsWith(m.name.toLowerCase().trim()) ||
+          m.name.toLowerCase().trim().startsWith(cleanName),
+      );
+
+      const requestedQty = Math.max(1, parseInt(String(item.quantity), 10) || 1);
+      let availableStock = 0;
+      let threshold = med?.low_stock_threshold || 10;
+
+      if (med) {
+        const invList = this.db.stockerInventory.filter(
+          (inv) => inv.medicine_id === med.id && (stockerIds.size === 0 || stockerIds.has(inv.stocker_id)),
+        );
+        availableStock = invList.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+      }
+
+      const isZeroStock = availableStock <= 0;
+      const isInsufficient = !isZeroStock && availableStock < requestedQty;
+      const isLowStock = !isZeroStock && !isInsufficient && (availableStock <= threshold || (availableStock - requestedQty) <= threshold);
+
+      let status: 'OUT_OF_STOCK' | 'INSUFFICIENT_STOCK' | 'LOW_STOCK' | 'IN_STOCK' = 'IN_STOCK';
+      let msg = `${item.product_name}: In Stock (${availableStock} available at ${hqName})`;
+
+      if (isZeroStock) {
+        status = 'OUT_OF_STOCK';
+        hasOutOfStock = true;
+        msg = `${item.product_name}: OUT OF STOCK (0 in ${hqName} stock, ${requestedQty} ordered)`;
+        warningItems.push(`${item.product_name} (0 in stock, ${requestedQty} ordered)`);
+      } else if (isInsufficient) {
+        status = 'INSUFFICIENT_STOCK';
+        hasOutOfStock = true;
+        msg = `${item.product_name}: Insufficient Stock (${availableStock} in ${hqName} stock, ${requestedQty} ordered)`;
+        warningItems.push(`${item.product_name} (${availableStock} available, ${requestedQty} ordered)`);
+      } else if (isLowStock) {
+        status = 'LOW_STOCK';
+        hasLowStock = true;
+        msg = `${item.product_name}: Low Stock (${availableStock} in ${hqName} stock, leaves ${availableStock - requestedQty})`;
+        warningItems.push(`${item.product_name} (Low stock: ${availableStock} left)`);
+      }
+
+      return {
+        product_name: item.product_name,
+        product_id: med?.id || item.product_id,
+        requested_quantity: requestedQty,
+        available_stock: availableStock,
+        stock_status: status,
+        is_out_of_stock: isZeroStock || isInsufficient,
+        is_insufficient: isInsufficient,
+        is_low_stock: isLowStock,
+        message: msg,
+      };
+    });
+
+    const hasWarning = hasOutOfStock || hasLowStock;
+    const warningType = hasOutOfStock ? 'OUT_OF_STOCK' : hasLowStock ? 'LOW_STOCK' : null;
+    const warningSummary = warningItems.join(', ');
+
+    return {
+      has_warning: hasWarning,
+      warning_type: warningType,
+      warning_summary: warningSummary,
+      hq_id: hq?.id || hqIdentifier,
+      hq_name: hqName,
+      items: detailedItems,
+    };
+  }
+
   async getMedicines(includeInactive = false, hqId?: string): Promise<any[]> {
     let list = includeInactive ? this.db.medicines : this.db.medicines.filter((m) => m.status === 'ACTIVE');
 
-    // Strict HQ-Stockist Relationship (§1.4)
-    // Only medicines available in the selected HQ's stocker(s) are visible
-    if (hqId && hqId !== 'ALL') {
-      const hqStockers = this.db.stockers.filter((s) => s.hq_id === hqId);
-      const stockerIds = new Set(hqStockers.map((s) => s.id));
-      const validMedicineIds = new Set(
-        this.db.stockerInventory
-          .filter((inv) => stockerIds.has(inv.stocker_id) && inv.quantity > 0)
-          .map((inv) => inv.medicine_id),
-      );
-      list = list.filter((m) => validMedicineIds.has(m.id));
-    }
+    const { stockerIds, hq } = this.resolveHqAndStockers(hqId);
 
     return list.map((m) => {
       const variants = (m.packaging_variants && m.packaging_variants.length > 0)
@@ -343,6 +537,22 @@ export class InventoryService {
       const ptr = m.ptr ?? m.ptr_rate ?? 0;
       const mrp = m.mrp ?? 0;
       const packing = m.packing || m.unit;
+
+      let availableStock: number | undefined = undefined;
+      let stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | undefined = undefined;
+      let isOutOfStock: boolean | undefined = undefined;
+      let isLowStock: boolean | undefined = undefined;
+
+      if (hqId && hqId !== 'ALL') {
+        const invList = this.db.stockerInventory.filter(
+          (inv) => inv.medicine_id === m.id && (stockerIds.size === 0 || stockerIds.has(inv.stocker_id)),
+        );
+        availableStock = invList.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+        const threshold = m.low_stock_threshold || 10;
+        isOutOfStock = availableStock <= 0;
+        isLowStock = availableStock > 0 && availableStock <= threshold;
+        stockStatus = isOutOfStock ? 'OUT_OF_STOCK' : isLowStock ? 'LOW_STOCK' : 'IN_STOCK';
+      }
 
       return {
         ...m,
@@ -358,6 +568,12 @@ export class InventoryService {
         packaging_variants: variants,
         is_active: m.status === 'ACTIVE',
         low_stock_threshold: m.low_stock_threshold || 10,
+        hq_id: hq?.id || hqId,
+        hq_name: hq?.name,
+        available_stock: availableStock,
+        stock_status: stockStatus,
+        is_out_of_stock: isOutOfStock,
+        is_low_stock: isLowStock,
       };
     });
   }

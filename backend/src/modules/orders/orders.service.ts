@@ -232,6 +232,18 @@ export class OrdersService {
       ? this.db.stockers.find((s) => s.id === dto.stocker_id)
       : this.db.stockers.find((s) => this.normalizeHq(s.hq_id) === this.normalizeHq(effectiveHqId)) || this.db.stockers[0];
 
+    const stockCheck = await this.inventoryService.checkOrderStock(effectiveHqId, validItems);
+
+    // Decorate valid items with HQ stock status
+    const itemsWithStock = validItems.map((item) => {
+      const match = stockCheck.items.find((si) => si.product_name === item.product_name);
+      return {
+        ...item,
+        stock_status: match?.stock_status || 'IN_STOCK',
+        available_stock: match?.available_stock ?? 0,
+      };
+    });
+
     const totalUnits = validItems.reduce((acc, i) => acc + i.quantity, 0);
     const totalAmount = validItems.reduce((acc, i) => acc + i.total_amount, 0);
 
@@ -249,12 +261,16 @@ export class OrdersService {
       hq_name: hqName,
       stocker_id: stocker?.id || 'stk-shd-01',
       stocker_name: stocker?.name || 'Central Stocker',
-      items: validItems,
+      items: itemsWithStock,
       total_units: totalUnits,
       total_amount: totalAmount,
       delivery_status: 'PENDING',
       hq_accepted: false,
       inventory_deducted: false, // Must not deduct until delivery is complete and HQ accepts
+      has_stock_warning: stockCheck.has_warning,
+      stock_warning_type: stockCheck.warning_type,
+      stock_warning_summary: stockCheck.warning_summary,
+      item_stock_details: stockCheck.items,
       delivery_notes: dto.notes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -265,7 +281,7 @@ export class OrdersService {
       const task = this.db.tasks.find((t) => t.id === dto.task_id);
       if (task) {
         task.order_id = newOrder.id;
-        task.orders = validItems;
+        task.orders = itemsWithStock;
         task.delivery_status = 'PENDING';
         task.hq_accepted = false;
         task.inventory_deducted = false;
@@ -284,6 +300,58 @@ export class OrdersService {
         { orderId: newOrder.id, type: 'NEW_ORDER' },
       );
     });
+
+    // Dual Alert: if products are low on stock or out of stock at this HQ, alert BOTH Admin and MR immediately!
+    if (stockCheck.has_warning) {
+      const isOut = stockCheck.warning_type === 'OUT_OF_STOCK';
+      const adminTitle = isOut
+        ? `⚠️ Out of Stock Alert: ${hqName}`
+        : `⚠️ Low Stock Alert: ${hqName}`;
+      const adminMsg = `${user.name} booked order #${orderNum} for ${newOrder.customer_name}, but item(s) are ${isOut ? 'OUT OF STOCK' : 'LOW STOCK'} at ${hqName}: ${stockCheck.warning_summary}. Replenishment required!`;
+
+      // 1. Alert Admins
+      admins.forEach((admin) => {
+        this.notificationsService.sendPushNotification(
+          admin.id,
+          adminTitle,
+          adminMsg,
+          { orderId: newOrder.id, hqId: effectiveHqId, type: 'STOCK_ALERT' },
+        );
+        this.db.notifications.unshift({
+          id: `notif-${uuidv4().substring(0, 8)}`,
+          user_id: admin.id,
+          title: adminTitle,
+          body: adminMsg,
+          type: 'STOCK_ALERT' as any,
+          data_json: { orderId: newOrder.id, hqId: effectiveHqId, summary: stockCheck.warning_summary },
+          read_at: undefined,
+          created_at: new Date().toISOString(),
+        });
+      });
+
+      // 2. Alert MR
+      const mrTitle = isOut
+        ? `⚠️ Order Received (Out of Stock Notice)`
+        : `⚠️ Order Received (Low Stock Notice)`;
+      const mrMsg = `Order #${orderNum} recorded for ${newOrder.customer_name}. Notice: ${stockCheck.warning_summary} at ${hqName}. Admin has been alerted for stock replenishment.`;
+
+      this.notificationsService.sendPushNotification(
+        user.id,
+        mrTitle,
+        mrMsg,
+        { orderId: newOrder.id, hqId: effectiveHqId, type: 'STOCK_ALERT' },
+      );
+      this.db.notifications.unshift({
+        id: `notif-${uuidv4().substring(0, 8)}`,
+        user_id: user.id,
+        title: mrTitle,
+        body: mrMsg,
+        type: 'STOCK_ALERT' as any,
+        data_json: { orderId: newOrder.id, hqId: effectiveHqId, summary: stockCheck.warning_summary },
+        read_at: undefined,
+        created_at: new Date().toISOString(),
+      });
+    }
 
     return newOrder;
   }
@@ -340,6 +408,18 @@ export class OrdersService {
       ? this.db.stockers.find((s) => s.id === task.stocker_id)
       : this.db.stockers.find((s) => this.normalizeHq(s.hq_id) === this.normalizeHq(effectiveHqId)) || this.db.stockers[0];
 
+    const stockCheck = await this.inventoryService.checkOrderStock(effectiveHqId, validItems);
+
+    // Decorate valid items with HQ stock status
+    const itemsWithStock = validItems.map((item) => {
+      const match = stockCheck.items.find((si) => si.product_name === item.product_name);
+      return {
+        ...item,
+        stock_status: match?.stock_status || 'IN_STOCK',
+        available_stock: match?.available_stock ?? 0,
+      };
+    });
+
     const totalUnits = validItems.reduce((acc, i) => acc + i.quantity, 0);
     const totalAmount = validItems.reduce((acc, i) => acc + i.total_amount, 0);
 
@@ -357,12 +437,16 @@ export class OrdersService {
       hq_name: hqName,
       stocker_id: stocker?.id || 'stk-shd-01',
       stocker_name: stocker?.name || 'Central Stocker',
-      items: validItems,
+      items: itemsWithStock,
       total_units: totalUnits,
       total_amount: totalAmount,
       delivery_status: 'PENDING',
       hq_accepted: false,
       inventory_deducted: false,
+      has_stock_warning: stockCheck.has_warning,
+      stock_warning_type: stockCheck.warning_type,
+      stock_warning_summary: stockCheck.warning_summary,
+      item_stock_details: stockCheck.items,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -373,6 +457,62 @@ export class OrdersService {
     task.inventory_deducted = false;
 
     await this.db.persistOrder(newOrder);
+
+    // Dual Alert: if products are low on stock or out of stock at this HQ, alert BOTH Admin and MR immediately!
+    if (stockCheck.has_warning) {
+      const isOut = stockCheck.warning_type === 'OUT_OF_STOCK';
+      const adminTitle = isOut
+        ? `⚠️ Out of Stock Alert: ${hqName}`
+        : `⚠️ Low Stock Alert: ${hqName}`;
+      const mrDisplayName = mr?.name || 'Field Representative';
+      const adminMsg = `${mrDisplayName} booked order #${orderNum} for ${newOrder.customer_name}, but item(s) are ${isOut ? 'OUT OF STOCK' : 'LOW STOCK'} at ${hqName}: ${stockCheck.warning_summary}. Replenishment required!`;
+
+      // 1. Alert Admins
+      const admins = this.db.users.filter((u) => ['SUPER_ADMIN', 'ADMIN'].includes(u.role) && !u.deleted_at);
+      admins.forEach((admin) => {
+        this.notificationsService.sendPushNotification(
+          admin.id,
+          adminTitle,
+          adminMsg,
+          { orderId: newOrder.id, hqId: effectiveHqId, type: 'STOCK_ALERT' },
+        );
+        this.db.notifications.unshift({
+          id: `notif-${uuidv4().substring(0, 8)}`,
+          user_id: admin.id,
+          title: adminTitle,
+          body: adminMsg,
+          type: 'STOCK_ALERT' as any,
+          data_json: { orderId: newOrder.id, hqId: effectiveHqId, summary: stockCheck.warning_summary },
+          read_at: undefined,
+          created_at: new Date().toISOString(),
+        });
+      });
+
+      // 2. Alert MR
+      const mrUserId = mr?.id || userId;
+      const mrTitle = isOut
+        ? `⚠️ Order Received (Out of Stock Notice)`
+        : `⚠️ Order Received (Low Stock Notice)`;
+      const mrMsg = `Order #${orderNum} recorded for ${newOrder.customer_name}. Notice: ${stockCheck.warning_summary} at ${hqName}. Admin has been alerted for stock replenishment.`;
+
+      this.notificationsService.sendPushNotification(
+        mrUserId,
+        mrTitle,
+        mrMsg,
+        { orderId: newOrder.id, hqId: effectiveHqId, type: 'STOCK_ALERT' },
+      );
+      this.db.notifications.unshift({
+        id: `notif-${uuidv4().substring(0, 8)}`,
+        user_id: mrUserId,
+        title: mrTitle,
+        body: mrMsg,
+        type: 'STOCK_ALERT' as any,
+        data_json: { orderId: newOrder.id, hqId: effectiveHqId, summary: stockCheck.warning_summary },
+        read_at: undefined,
+        created_at: new Date().toISOString(),
+      });
+    }
+
     return newOrder;
   }
 

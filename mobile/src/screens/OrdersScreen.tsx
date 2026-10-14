@@ -24,6 +24,8 @@ export interface OrderItem {
   unit_price: number;
   total_amount: number;
   distributor?: string;
+  stock_status?: string;
+  available_stock?: number;
 }
 
 export interface MobileOrder {
@@ -50,6 +52,10 @@ export interface MobileOrder {
   accepted_by_user_id?: string;
   inventory_deducted: boolean;
   inventory_deducted_at?: string;
+  has_stock_warning?: boolean;
+  stock_warning_type?: 'OUT_OF_STOCK' | 'LOW_STOCK' | null;
+  stock_warning_summary?: string;
+  item_stock_details?: any[];
   created_at: string;
   updated_at: string;
 }
@@ -103,8 +109,35 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
   const [newOrderItems, setNewOrderItems] = useState<
     Array<{ id: string; product_name: string; quantity: string; unit_price: string }>
   >([
-    { id: '1', product_name: 'Cefixime 200mg Tablets', quantity: '10', unit_price: '120' },
+    { id: '1', product_name: 'AHTRI-S (200 ML)', quantity: '10', unit_price: '38.40' },
   ]);
+
+  // Live HQ Stock Map
+  const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
+
+  const loadHqStock = useCallback(async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders(currentUserId);
+      const hq = currentUserHqId || 'hq-shahdol';
+      const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hq)}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, any> = {};
+        (data.medicines || []).forEach((m: any) => {
+          map[m.medicine_name.toLowerCase().trim()] = m;
+          map[m.medicine_id] = m;
+          const short = m.medicine_name.split(' (')[0].toLowerCase().trim();
+          map[short] = m;
+        });
+        setHqStockMap(map);
+      }
+    } catch {}
+  }, [currentUserHqId, currentUserId]);
+
+  useEffect(() => {
+    loadHqStock();
+  }, [loadHqStock]);
 
   // Load persistent orders from cache immediately on mount
   useEffect(() => {
@@ -307,13 +340,20 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
         setNewCustomerName('');
         setNewLocationName('');
         setNewOrderItems([
-          { id: '1', product_name: 'Cefixime 200mg Tablets', quantity: '10', unit_price: '120' },
+          { id: '1', product_name: 'AHTRI-S (200 ML)', quantity: '10', unit_price: '38.40' },
         ]);
 
-        Alert.alert(
-          'Order Created! 📦',
-          `Order #${created.order_number} for ${created.customer_name} created successfully!\n\n• Delivery Status: PENDING\n• Inventory: NOT deducted directly\n\nYou can mark it as delivered once handed over to the client.`,
-        );
+        if (created.has_stock_warning) {
+          Alert.alert(
+            '⚠️ Order Created with Stock Notice!',
+            `Order #${created.order_number} for ${created.customer_name} created successfully!\n\n• Delivery Status: PENDING\n\n⚠️ Stock Shortage Notice at ${created.hq_name || currentUserHqName}:\n${created.stock_warning_summary || 'Product(s) out of stock or low in depot'}\n\nBoth you and the Admin have received an alert for replenishment.`,
+          );
+        } else {
+          Alert.alert(
+            'Order Created! 📦',
+            `Order #${created.order_number} for ${created.customer_name} created successfully!\n\n• Delivery Status: PENDING\n• Inventory: NOT deducted directly\n\nYou can mark it as delivered once handed over to the client.`,
+          );
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         Alert.alert('Creation Failed', err.message || 'Could not create order.');
@@ -508,13 +548,53 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
                   </View>
                 </View>
 
+                {/* Stock Shortage Badge if order has items out of stock / low at HQ */}
+                {ord.has_stock_warning && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FEE2E2' : '#FEF3C7',
+                      borderWidth: 1,
+                      borderColor: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#FCA5A5' : '#FCD34D',
+                      borderRadius: 6,
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: ord.stock_warning_type === 'OUT_OF_STOCK' ? '#991B1B' : '#92400E',
+                      }}
+                    >
+                      {ord.stock_warning_type === 'OUT_OF_STOCK' ? '⚠️ Product Out of Stock at HQ' : '⚠️ Low Stock at HQ'}
+                    </Text>
+                    {ord.stock_warning_summary ? (
+                      <Text
+                        style={{
+                          fontSize: 10.5,
+                          color: '#475569',
+                          marginLeft: 6,
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        • {ord.stock_warning_summary}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+
                 {/* Customer / Location */}
                 <View style={styles.customerBox}>
                   <Text style={styles.customerName}>{ord.customer_name}</Text>
                   {ord.location_name && (
                     <Text style={styles.customerLocation}>📍 {ord.location_name}</Text>
                   )}
-                  <Text style={styles.mrTag}>By: {ord.mr_name}</Text>
+                  <Text style={styles.mrTag}>By: {ord.mr_name} • {ord.hq_name}</Text>
                 </View>
 
                 {/* What has been ordered (Itemized list) */}
@@ -731,22 +811,39 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
               ))}
 
               {/* Quick Preset Buttons */}
-              <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Quick Add Popular Medicines:</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Quick Add Popular Medicines ({currentUserHqName}):</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                {COMMON_PRODUCTS.slice(0, 5).map((p, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={styles.presetChip}
-                    onPress={() => {
-                      setNewOrderItems((prev) => [
-                        ...prev,
-                        { id: String(Date.now() + i), product_name: p.name, quantity: '10', unit_price: String(p.price) },
-                      ]);
-                    }}
-                  >
-                    <Text style={styles.presetChipText}>+ {p.name.split(' ')[0]}</Text>
-                  </TouchableOpacity>
-                ))}
+                {COMMON_PRODUCTS.slice(0, 8).map((p, i) => {
+                  const clean = p.name.toLowerCase().trim();
+                  const short = clean.split(' (')[0];
+                  const stock = hqStockMap[clean] || hqStockMap[short];
+                  const isOut = stock?.is_out_of_stock;
+                  const isLow = stock?.is_low_stock;
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        styles.presetChip,
+                        isOut ? { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' } : isLow ? { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' } : {},
+                      ]}
+                      onPress={() => {
+                        setNewOrderItems((prev) => [
+                          ...prev,
+                          { id: String(Date.now() + i), product_name: p.name, quantity: '10', unit_price: String(p.price) },
+                        ]);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.presetChipText,
+                          isOut ? { color: '#DC2626' } : isLow ? { color: '#B45309' } : {},
+                        ]}
+                      >
+                        + {p.name.split(' ')[0]} {stock ? (isOut ? '• 🔴 Out' : isLow ? `• 🟠 ${stock.available_stock}` : `• 🟢 ${stock.available_stock}`) : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
 
               {/* Total calculation */}

@@ -167,6 +167,8 @@ export interface OrderProductItem {
   unit_price: number;
   total_amount: number;
   distributor?: string;
+  stock_status?: string;
+  available_stock?: number;
 }
 
 export interface OrderItemRecord {
@@ -193,6 +195,10 @@ export interface OrderItemRecord {
   accepted_by_user_id?: string;
   inventory_deducted: boolean;
   inventory_deducted_at?: string;
+  has_stock_warning?: boolean;
+  stock_warning_type?: 'OUT_OF_STOCK' | 'LOW_STOCK' | null;
+  stock_warning_summary?: string;
+  item_stock_details?: any[];
   created_at: string;
   updated_at: string;
 }
