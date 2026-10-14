@@ -152,6 +152,18 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
     }
   };
 
+function normalizeTaskOrders(raw: any) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p;
+    } catch {}
+  }
+  return [];
+}
+
   // Fetch completed tasks from API and local storage (§2.5)
   const fetchCompletedTasks = useCallback(async () => {
     const combinedMap = new Map<string, CompletedTask>();
@@ -164,7 +176,7 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         if (Array.isArray(localList)) {
           for (const item of localList) {
             if (item && item.id) {
-              combinedMap.set(item.id, item);
+              combinedMap.set(item.id, { ...item, orders: normalizeTaskOrders(item.orders) });
             }
           }
         }
@@ -182,9 +194,9 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         const data = await res.json();
         if (Array.isArray(data)) {
           data
-            .filter((t: any) => t.status === 'COMPLETED')
+            .filter((t: any) => t && t.status === 'COMPLETED')
             .forEach((t: any) => {
-              combinedMap.set(t.id, t);
+              if (t.id) combinedMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
             });
         }
       }
@@ -199,9 +211,9 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         const data = await res.json();
         if (Array.isArray(data)) {
           data
-            .filter((t: any) => t.status === 'COMPLETED')
+            .filter((t: any) => t && t.status === 'COMPLETED')
             .forEach((t: any) => {
-              combinedMap.set(t.id, t);
+              if (t.id) combinedMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
             });
         }
       }
@@ -278,7 +290,8 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
   const groupedTasks = React.useMemo(() => {
     const groups: Record<string, CompletedTask[]> = {};
     filteredTasks.forEach(task => {
-      const dateKey = task.completed_at ? task.completed_at.substring(0, 10) : task.date;
+      if (!task) return;
+      const dateKey = (task.completed_at ? task.completed_at.substring(0, 10) : task.date) || 'Undated';
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(task);
     });
@@ -288,9 +301,9 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
 
   // Summary stats
   const totalTasks = filteredTasks.length;
-  const totalDuration = filteredTasks.reduce((sum, t) => sum + (t.duration_seconds || 0), 0);
+  const totalDuration = filteredTasks.reduce((sum, t) => sum + (Number(t?.duration_seconds) || 0), 0);
   const avgDuration = totalTasks > 0 ? Math.round(totalDuration / totalTasks) : 0;
-  const totalOrders = filteredTasks.reduce((sum, t) => sum + (t.orders?.length || 0), 0);
+  const totalOrders = filteredTasks.reduce((sum, t) => sum + (Array.isArray(t?.orders) ? t.orders.length : 0), 0);
 
   const handleFilterPress = (mode: FilterMode) => {
     if (mode === 'custom') {
@@ -625,7 +638,7 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
                 )}
 
                 {/* Orders */}
-                {selectedTask.orders && selectedTask.orders.length > 0 && (
+                {Array.isArray(selectedTask.orders) && selectedTask.orders.length > 0 && (
                   <View style={styles.detailOrdersSection}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <Text style={styles.detailSectionTitle}>🛒 Orders Placed ({selectedTask.orders.length})</Text>
@@ -653,9 +666,9 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
 
                     {selectedTask.orders.map((order, idx) => (
                       <View key={idx} style={styles.orderItem}>
-                        <Text style={styles.orderName}>{order.product_name}</Text>
+                        <Text style={styles.orderName}>{order.product_name || 'Product'}</Text>
                         <Text style={styles.orderDetails}>
-                          Qty: {order.quantity} • ₹{order.total_amount?.toLocaleString('en-IN') || '0'}
+                          Qty: {Number(order.quantity) || 1} • ₹{Number(order.total_amount)?.toLocaleString('en-IN') || '0'}
                         </Text>
                       </View>
                     ))}

@@ -207,6 +207,30 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+// Safely parse tour plan entries array regardless of whether Supabase returned raw JSON string or parsed array
+const parseSafeTpEntries = (entries: any): any[] => {
+  if (Array.isArray(entries)) return entries;
+  if (typeof entries === 'string') {
+    try {
+      const parsed = JSON.parse(entries);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  return [];
+};
+
+// Normalize tour plan entries across array of plans
+const normalizeTourPlans = (plans: any[]): any[] => {
+  if (!Array.isArray(plans)) return [];
+  return plans.map((p) => {
+    if (!p) return p;
+    return {
+      ...p,
+      entries: parseSafeTpEntries(p.entries),
+    };
+  });
+};
+
 export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   currentUserId = 'usr-mr-02',
   currentUserName = 'Aman Rathore',
@@ -691,7 +715,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setSubmittedPlans(parsed);
+            setSubmittedPlans(normalizeTourPlans(parsed));
           }
         }
       } catch {}
@@ -732,11 +756,12 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               new Date(b.submitted_at || b.created_at || 0).getTime() -
               new Date(a.submitted_at || a.created_at || 0).getTime(),
           );
-          setSubmittedPlans(merged);
-          if (merged.length > 0) {
+          const normalized = normalizeTourPlans(merged);
+          setSubmittedPlans(normalized);
+          if (normalized.length > 0) {
             await AsyncStorage.setItem(
               `@ahtri_tp_cache_${currentUserId}`,
-              JSON.stringify(merged),
+              JSON.stringify(normalized),
             ).catch(() => {});
           }
         }
@@ -748,7 +773,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setSubmittedPlans(parsed);
+            setSubmittedPlans(normalizeTourPlans(parsed));
           }
         }
       } catch {}
@@ -1102,7 +1127,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setIsSavingEdit(true);
     const targetHq = hqs.find((h) => h.id === editHqId) || { id: editHqId, name: editingEntry.hq_name };
 
-    const updatedEntries = (editingPlan.entries || []).map((e: any) => {
+    const currentEntries = parseSafeTpEntries(editingPlan.entries);
+    const updatedEntries = currentEntries.map((e: any) => {
       if (e.id === editingEntry.id) {
         return {
           ...e,
@@ -1648,7 +1674,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
                   {/* Punched Visits Table */}
                   <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
-                    {(plan.entries || []).map((e: any, i: number) => (
+                    {parseSafeTpEntries(plan.entries).map((e: any, i: number) => (
                       <View key={e.id || i} style={styles.subItemRow}>
                         <View style={{ width: 85 }}>
                           <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>

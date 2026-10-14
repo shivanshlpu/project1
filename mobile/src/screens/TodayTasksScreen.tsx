@@ -65,6 +65,29 @@ const COMPANY_MEDICINES_CHIPS = [
   { name: 'AHTRI 9G (200 ML)', short: 'AHTRI 9G', price: 147.50 },
 ];
 
+function parseSafeOrders(rawOrders: any): any[] {
+  if (!rawOrders) return [];
+  if (Array.isArray(rawOrders)) return rawOrders;
+  if (typeof rawOrders === 'string') {
+    try {
+      const parsed = JSON.parse(rawOrders);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  return [];
+}
+
+function formatSafeCompletedTime(completedAt?: string): string {
+  if (!completedAt) return '';
+  try {
+    const d = new Date(completedAt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
 interface TodayTasksScreenProps {
   currentUserId?: string;
   currentUserName?: string;
@@ -389,13 +412,15 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     let totalSecs = 0;
 
     filteredHistoryTasks.forEach((t) => {
-      totalSecs += t.duration_seconds || 0;
-      if (t.orders && Array.isArray(t.orders)) {
-        t.orders.forEach((o) => {
-          totalRevenue += o.total_amount || 0;
-          totalUnits += o.quantity || 0;
-        });
-      }
+      totalSecs += Number(t.duration_seconds) || 0;
+      const orders = parseSafeOrders(t.orders);
+      orders.forEach((o) => {
+        const qty = Number(o?.quantity) || 0;
+        const price = Number(o?.unit_price) || 0;
+        const amt = Number(o?.total_amount) || (qty * price);
+        totalRevenue += isNaN(amt) ? 0 : amt;
+        totalUnits += isNaN(qty) ? 0 : qty;
+      });
     });
 
     return { totalCalls, totalRevenue, totalUnits, totalSecs };
@@ -1171,17 +1196,25 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             </View>
           ) : (
             filteredHistoryTasks.map((task) => {
-              if (isCancelledTask(task.status)) return null;
-              const orderTotal = task.orders ? task.orders.reduce((sum, o) => sum + (o.total_amount || 0), 0) : 0;
-              const orderUnits = task.orders ? task.orders.reduce((sum, o) => sum + (o.quantity || 0), 0) : 0;
+              if (!task || isCancelledTask(task.status)) return null;
+              const safeOrders = parseSafeOrders(task.orders);
+              const orderTotal = safeOrders.reduce((sum, o) => {
+                const total = Number(o?.total_amount) || (Number(o?.quantity) || 0) * (Number(o?.unit_price) || 0);
+                return sum + (isNaN(total) ? 0 : total);
+              }, 0);
+              const orderUnits = safeOrders.reduce((sum, o) => {
+                const q = Number(o?.quantity) || 0;
+                return sum + (isNaN(q) ? 0 : q);
+              }, 0);
               const visitFormattedDate = formatDateDDMMYYYY(task.date || task.completed_at || '');
+              const timeFormatted = formatSafeCompletedTime(task.completed_at);
 
               return (
                 <View key={task.id} style={[styles.taskCard, styles.historyCard]}>
                   {/* History Header Row */}
                   <View style={styles.taskHeaderRow}>
                     <Text style={[styles.taskTime, { color: '#166534', fontWeight: '700' }]}>
-                      ✓ COMPLETED {visitFormattedDate ? `• ${visitFormattedDate}` : ''} {task.completed_at ? `(${new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                      ✓ COMPLETED {visitFormattedDate ? `• ${visitFormattedDate}` : ''} {timeFormatted ? `(${timeFormatted})` : ''}
                     </Text>
                     <View style={styles.badgeCompleted}>
                       <Text style={[styles.badgeText, { color: '#166534' }]}>
@@ -1190,14 +1223,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                     </View>
                   </View>
 
-                  <Text style={styles.taskTitle}>{task.title}</Text>
-                  <Text style={styles.locationName}>{task.location_name}</Text>
-                  <Text style={styles.addressText}>{task.address}</Text>
+                  <Text style={styles.taskTitle}>{task.title || 'Untitled Call'}</Text>
+                  <Text style={styles.locationName}>{task.location_name || 'Designated Clinic'}</Text>
+                  <Text style={styles.addressText}>{task.address || ''}</Text>
 
                   {/* Detailing Details & Duration */}
                   <View style={styles.historyMetaBox}>
                     <Text style={styles.historyMetaText}>
-                      ⏱ Detailing Duration: <Text style={{ fontWeight: '700', color: '#0F172A' }}>{formatTimer(task.duration_seconds || 0)}</Text>
+                      ⏱ Detailing Duration: <Text style={{ fontWeight: '700', color: '#0F172A' }}>{formatTimer(Number(task.duration_seconds) || 0)}</Text>
                     </Text>
                     {task.outcome ? (
                       <Text style={[styles.historyMetaText, { marginTop: 3 }]}>
@@ -1214,7 +1247,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                       </Text>
                       {orderTotal > 0 ? (
                         <Text style={styles.historyOrdersTotalBadge}>
-                          ₹{orderTotal.toLocaleString()} ({orderUnits} units)
+                          ₹{orderTotal.toLocaleString('en-IN')} ({orderUnits} units)
                         </Text>
                       ) : (
                         <Text style={{ fontSize: 10.5, color: '#64748B', fontWeight: '600' }}>
@@ -1223,23 +1256,28 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                       )}
                     </View>
 
-                    {task.orders && task.orders.length > 0 ? (
-                      task.orders.map((ord, idx) => (
-                        <View key={idx} style={styles.historyOrderItem}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.historyOrderProductName}>{ord.product_name}</Text>
-                            <Text style={styles.historyOrderDistributor}>
-                              Distributor: {ord.distributor || 'MedPlus Saket'}
-                            </Text>
+                    {safeOrders.length > 0 ? (
+                      safeOrders.map((ord, idx) => {
+                        const unitPrice = Number(ord?.unit_price) || 0;
+                        const qty = Number(ord?.quantity) || 1;
+                        const totalAmt = Number(ord?.total_amount) || (qty * unitPrice);
+                        return (
+                          <View key={idx} style={styles.historyOrderItem}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.historyOrderProductName}>{ord?.product_name || 'Medicine'}</Text>
+                              <Text style={styles.historyOrderDistributor}>
+                                Distributor: {ord?.distributor || 'Central Stocker'}
+                              </Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={styles.historyOrderAmount}>₹{totalAmt.toLocaleString('en-IN')}</Text>
+                              <Text style={styles.historyOrderQty}>
+                                {qty} units @ ₹{unitPrice}
+                              </Text>
+                            </View>
                           </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={styles.historyOrderAmount}>₹{ord.total_amount.toLocaleString()}</Text>
-                            <Text style={styles.historyOrderQty}>
-                              {ord.quantity} units @ ₹{ord.unit_price}
-                            </Text>
-                          </View>
-                        </View>
-                      ))
+                        );
+                      })
                     ) : (
                       <Text style={styles.noOrdersText}>
                         No commercial booking logged for this call (Doctor consultation & product sampling concluded).
@@ -1248,9 +1286,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                   </View>
 
                   {/* On-Site Visit Proof Photo Thumbnail */}
-                  {task.visit_photo && (
+                  {typeof task.visit_photo === 'string' && task.visit_photo.trim().length > 10 && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, padding: 8, backgroundColor: '#F0FDF4', borderRadius: 8, borderWidth: 1, borderColor: '#BBF7D0' }}>
-                      <Image source={{ uri: task.visit_photo }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1.5, borderColor: '#16A34A' }} />
+                      <Image source={{ uri: task.visit_photo.trim() }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1.5, borderColor: '#16A34A' }} />
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ On-Site Proof Photo Verified</Text>
                         <Text style={{ fontSize: 9.5, color: '#15803D' }}>Geotagged &amp; Transmitted to Admin</Text>

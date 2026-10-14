@@ -52,6 +52,7 @@ import { ServerStatusPill } from './components/ServerStatusPill';
 import { ApiConfig } from './services/apiConfig';
 import { NotificationService } from './services/notificationService';
 import { HeadsUpNotificationBanner } from './components/HeadsUpNotificationBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import * as Notifications from 'expo-notifications';
 
 const SESSION_KEY = '@ahtri_mobile_session';
@@ -511,8 +512,9 @@ export default function App() {
             onManualSync={handleManualSync}
           />
 
-          {/* Main Screen Router */}
+          {/* Main Screen Router with Error Boundary */}
           <View style={styles.screenContainer}>
+            <ErrorBoundary fallbackTitle="Screen Error" onReset={() => setCurrentTab('tasks')}>
             {/* Tasks Tab */}
             {currentTab === 'tasks' && (
               <TodayTasksScreen
@@ -721,6 +723,7 @@ export default function App() {
                 </View>
               </ScrollView>
             )}
+            </ErrorBoundary>
           </View>
 
           {/* In-App Auto-Update Modal */}
