@@ -1,20 +1,19 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.21",
-  "latestVersionCode": 22,
+  "latestVersion": "1.0.22",
+  "latestVersionCode": 23,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.21/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.22/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-14",
-  "publishedAt": "2026-10-14T09:50:00.000Z",
+  "publishedAt": "2026-10-14T17:59:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "High-Accuracy GPS Engine: Replaced coarse cell-tower fallbacks with progressive satellite convergence (sub-25m precision)",
-    "Continuous GPS Hardware Warming: Active background satellite stream prevents cold-start location lock delays on task start",
-    "Adaptive Geofencing & DOP: Dynamically accounts for indoor signal attenuation and structural interference",
-    "On-Site Weak Signal Override: Field representatives are never blocked when cellular data is weak at clinic facilities",
-    "Real-Time Satellite Quality Badges: Live satellite signal status (Satellite, Good, Indoor) displayed during task verification"
+    "Persistent Data Retention: Delivery details, assigned tasks, completion status, and Tour Plans are permanently retained across APK updates and server reconnects",
+    "Cloud PostgreSQL Sync: Direct real-time synchronization of monthly tour plans and orders to Supabase cloud storage",
+    "Offline Storage Hardening: Integrated native AsyncStorage for resilient local caching across all task and tour plan workflows",
+    "In-Place Update Support: Automated release signing guarantees seamless in-place APK installation without uninstalling or wiping device data"
   ]
 }
