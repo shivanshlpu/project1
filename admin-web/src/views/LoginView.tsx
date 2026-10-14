@@ -161,7 +161,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           </div>
           <div className="login-brand-title">
             <h2>AHTRI BIOTECH</h2>
-            <span>Field Force Automation Command Center</span>
+            <span>Field Force Automation</span>
           </div>
         </div>
 

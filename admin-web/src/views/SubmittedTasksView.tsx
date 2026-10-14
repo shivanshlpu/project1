@@ -485,7 +485,7 @@ export const SubmittedTasksView: React.FC = () => {
         </div>
 
         <div class="footer">
-          <div>AHTRI BIOTECH PVT LTD • Field Force Automation Command Center</div>
+          <div>AHTRI BIOTECH PVT LTD • Field Force Automation</div>
           <div>Official Compliance Record • Digitally Signed &amp; Timestamped</div>
         </div>
 

@@ -23,7 +23,7 @@ export interface AppVersionData {
 }
 
 const defaultAppVersion: AppVersionData = {
-  appName: 'AHTRI FFA Mobile',
+  appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
   latestVersion: process.env.LATEST_APP_VERSION || '1.0.23',
   latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '24', 10),

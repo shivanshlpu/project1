@@ -40,8 +40,8 @@
     "web": {
       "bundler": "metro",
       "shortName": "AHTRI FFA",
-      "name": "AHTRI Field Force Automation",
-      "description": "AHTRI BIOTECH Field Force Automation Mobile App",
+      "name": "AHTRI FFA",
+      "description": "AHTRI FFA Mobile App",
       "backgroundColor": "#0B2545",
       "themeColor": "#0B2545",
       "display": "standalone",

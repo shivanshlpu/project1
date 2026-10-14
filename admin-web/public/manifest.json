@@ -1,7 +1,7 @@
 {
-  "name": "AHTRI Field Force Automation Command Center",
+  "name": "AHTRI FFA",
   "short_name": "AHTRI FFA",
-  "description": "Enterprise Field Force Automation and MR Tracking Command Center",
+  "description": "AHTRI Field Force Automation",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B2545",
