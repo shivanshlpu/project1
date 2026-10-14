@@ -32,7 +32,7 @@
       "delivered_at": "2026-10-08T00:32:30.580Z",
       "delivered_by_user_id": "usr-mr-03",
       "accepted_at": "2026-10-08T00:32:30.585Z",
-      "accepted_by_user_id": "usr-admin-shivansh",
+      "accepted_by_user_id": "usr-admin-01",
       "inventory_deducted_at": "2026-10-08T00:32:30.585Z"
     },
     {
@@ -66,7 +66,7 @@
       "delivered_at": "2026-10-08T00:17:47.202Z",
       "delivered_by_user_id": "usr-mr-03",
       "accepted_at": "2026-10-08T00:17:47.209Z",
-      "accepted_by_user_id": "usr-admin-shivansh",
+      "accepted_by_user_id": "usr-admin-01",
       "inventory_deducted_at": "2026-10-08T00:17:47.210Z"
     },
     {
@@ -240,7 +240,7 @@
     },
     {
       "id": "mtp-15152933",
-      "mr_id": "usr-admin-shivansh",
+      "mr_id": "usr-admin-01",
       "mr_name": "Shivansh Tiwari",
       "month": "2026-10",
       "status": "SUBMITTED",
@@ -272,56 +272,6 @@
           "reimbursement_amount": 275,
           "reimbursement_status": "PENDING",
           "calculation_basis": "ROUND_TRIP_BATCH"
-        },
-        {
-          "id": "tp-item-03cef0d5",
-          "date": "16-10-2026",
-          "hq_id": "HQ-SHD-001",
-          "hq_name": "Shahdol",
-          "planned_area": "Jaisinghnagar",
-          "work_type": "Doctor Visit",
-          "planned_kol_drs": "Dr. S. K. Mishra",
-          "planned_activity": "Chemist detailing",
-          "route_batch_code": "DIRECT_AREA",
-          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
-          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
-          "route_stops": [
-            "Shahdol",
-            "Jaisinghnagar"
-          ],
-          "is_round_trip": true,
-          "one_way_distance_km": 60,
-          "round_trip_distance_km": 120,
-          "distance_km": 120,
-          "reimbursement_rate": 2.5,
-          "reimbursement_amount": 300,
-          "reimbursement_status": "PENDING",
-          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
-        },
-        {
-          "id": "tp-item-074a163c",
-          "date": "17-10-2026",
-          "hq_id": "HQ-SHD-001",
-          "hq_name": "Shahdol",
-          "planned_area": "Beohari",
-          "work_type": "Order Collection",
-          "planned_kol_drs": "Beohari Central Pharmacy",
-          "planned_activity": "Stock check",
-          "route_batch_code": "DIRECT_AREA",
-          "route_batch_name": "Beohari (Center to Boundary Direct)",
-          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
-          "route_stops": [
-            "Shahdol",
-            "Beohari"
-          ],
-          "is_round_trip": true,
-          "one_way_distance_km": 78,
-          "round_trip_distance_km": 156,
-          "distance_km": 156,
-          "reimbursement_rate": 2.5,
-          "reimbursement_amount": 390,
-          "reimbursement_status": "PENDING",
-          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
         }
       ],
       "submitted_at": "2026-10-07T23:21:58.905Z",
@@ -361,56 +311,6 @@
           "reimbursement_amount": 275,
           "reimbursement_status": "PENDING",
           "calculation_basis": "ROUND_TRIP_BATCH"
-        },
-        {
-          "id": "tp-item-ce15a17c",
-          "date": "16-10-2026",
-          "hq_id": "HQ-SHD-001",
-          "hq_name": "Shahdol",
-          "planned_area": "Jaisinghnagar",
-          "work_type": "Doctor Visit",
-          "planned_kol_drs": "Dr. S. K. Mishra",
-          "planned_activity": "Chemist detailing",
-          "route_batch_code": "DIRECT_AREA",
-          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
-          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
-          "route_stops": [
-            "Shahdol",
-            "Jaisinghnagar"
-          ],
-          "is_round_trip": true,
-          "one_way_distance_km": 60,
-          "round_trip_distance_km": 120,
-          "distance_km": 120,
-          "reimbursement_rate": 2.5,
-          "reimbursement_amount": 300,
-          "reimbursement_status": "PENDING",
-          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
-        },
-        {
-          "id": "tp-item-43f0663d",
-          "date": "17-10-2026",
-          "hq_id": "HQ-SHD-001",
-          "hq_name": "Shahdol",
-          "planned_area": "Beohari",
-          "work_type": "Order Collection",
-          "planned_kol_drs": "Beohari Central Pharmacy",
-          "planned_activity": "Stock check",
-          "route_batch_code": "DIRECT_AREA",
-          "route_batch_name": "Beohari (Center to Boundary Direct)",
-          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
-          "route_stops": [
-            "Shahdol",
-            "Beohari"
-          ],
-          "is_round_trip": true,
-          "one_way_distance_km": 78,
-          "round_trip_distance_km": 156,
-          "distance_km": 156,
-          "reimbursement_rate": 2.5,
-          "reimbursement_amount": 390,
-          "reimbursement_status": "PENDING",
-          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
         },
         {
           "id": "tp-item-242176e7",

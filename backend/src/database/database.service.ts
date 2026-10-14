@@ -1132,9 +1132,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
+
+      let effectiveMrId = plan.mr_id;
+      if (effectiveMrId === 'usr-admin-shivansh' || (this.users.length > 0 && !this.users.some((u) => u.id === effectiveMrId))) {
+        const found = this.users.find((u) => u.id === 'usr-admin-01' || u.name?.toLowerCase().includes('shivansh'));
+        if (found) effectiveMrId = found.id;
+      }
+
       await client.from('monthly_tour_plans').upsert({
         id: plan.id,
-        mr_id: plan.mr_id,
+        mr_id: effectiveMrId,
         mr_name: plan.mr_name,
         month: plan.month,
         status: plan.status || 'SUBMITTED',

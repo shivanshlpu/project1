@@ -32,7 +32,7 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
-import { getApiBaseUrl } from '../utils/apiHelper';
+import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { showConfirmModal } from '../components/CenteredModalNotice';
 
 export interface MonthlyTpItem {
@@ -528,9 +528,8 @@ export const MonthlyTpView: React.FC = () => {
       localStorage.setItem('ahtri_reimbursement_rate', String(newRate));
       setGlobalRate(newRate);
 
-      await fetch(`${apiUrl}/territories/route-batches/settings/rate`, {
+      await resilientFetch('/territories/route-batches/settings/rate', {
         method: 'PATCH',
-        headers: getAuthHeaders(),
         body: JSON.stringify({ rate: newRate }),
       }).catch(() => {});
 
@@ -582,8 +581,8 @@ export const MonthlyTpView: React.FC = () => {
     const fetchMetadata = async () => {
       try {
         const [usersRes, hqsRes] = await Promise.all([
-          fetch(`${apiUrl}/users`, { headers: getAuthHeaders() }),
-          fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() }),
+          resilientFetch('/users'),
+          resilientFetch('/inventory/hqs'),
         ]);
         if (usersRes.ok) {
           const uData = await usersRes.json();
@@ -606,9 +605,7 @@ export const MonthlyTpView: React.FC = () => {
   const fetchRouteBatches = async () => {
     setIsBatchesLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/territories/route-batches`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await resilientFetch('/territories/route-batches');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -642,13 +639,9 @@ export const MonthlyTpView: React.FC = () => {
       if (selectedWorkType !== 'ALL') query += `&work_type=${encodeURIComponent(selectedWorkType)}`;
       if (selectedStatus !== 'ALL') query += `&status=${selectedStatus}`;
 
-      let res = await fetch(`${apiUrl}/tour-plans/admin${query}`, {
-        headers: getAuthHeaders(),
-      });
+      let res = await resilientFetch(`/tour-plans/admin${query}`);
       if (!res.ok) {
-        res = await fetch(`${apiUrl}/tour-plans/admin-list${query}`, {
-          headers: getAuthHeaders(),
-        });
+        res = await resilientFetch(`/tour-plans/admin-list${query}`);
       }
 
       if (res.ok) {
@@ -781,9 +774,8 @@ export const MonthlyTpView: React.FC = () => {
   ) => {
     setProcessingTpId(item.entry_id || item.id);
     try {
-      const res = await fetch(`${apiUrl}/tour-plans/${item.tp_id}/entries/${item.entry_id}/reimbursement`, {
+      const res = await resilientFetch(`/tour-plans/${item.tp_id}/entries/${item.entry_id}/reimbursement`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           status: newStatus,
           remarks: remarks || `Reimbursement ${newStatus.toLowerCase()} by Admin`,
@@ -837,9 +829,8 @@ export const MonthlyTpView: React.FC = () => {
 
     setProcessingTpId(entryId);
     try {
-      const res = await fetch(`${apiUrl}/tour-plans/${planId}/entries/${entryId}`, {
+      const res = await resilientFetch(`/tour-plans/${planId}/entries/${entryId}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
       });
       if (res.ok) {
         setPlans((prev) => prev.filter((p) => (p.entry_id || p.id) !== entryId));
@@ -872,9 +863,8 @@ export const MonthlyTpView: React.FC = () => {
   const handleUpdateStatus = async (tpId: string, newStatus: 'APPROVED' | 'REJECTED') => {
     setProcessingTpId(tpId);
     try {
-      const res = await fetch(`${apiUrl}/tour-plans/${tpId}/status`, {
+      const res = await resilientFetch(`/tour-plans/${tpId}/status`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           status: newStatus,
           remarks: `Updated by Admin on ${new Date().toLocaleDateString()}`,
@@ -968,15 +958,13 @@ export const MonthlyTpView: React.FC = () => {
     try {
       let res;
       if (editingBatch) {
-        res = await fetch(`${apiUrl}/territories/route-batches/${editingBatch.id}`, {
+        res = await resilientFetch(`/territories/route-batches/${editingBatch.id}`, {
           method: 'PATCH',
-          headers: getAuthHeaders(),
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${apiUrl}/territories/route-batches`, {
+        res = await resilientFetch('/territories/route-batches', {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: JSON.stringify(payload),
         });
       }
@@ -1003,9 +991,8 @@ export const MonthlyTpView: React.FC = () => {
   const handleToggleBatchStatus = async (batch: RouteBatchItem) => {
     const nextStatus = batch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
-      const res = await fetch(`${apiUrl}/territories/route-batches/${batch.id}`, {
+      const res = await resilientFetch(`/territories/route-batches/${batch.id}`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
         body: JSON.stringify({ status: nextStatus }),
       });
       if (res.ok) {
@@ -1035,9 +1022,8 @@ export const MonthlyTpView: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`${apiUrl}/territories/route-batches/${batch.id}`, {
+      const res = await resilientFetch(`/territories/route-batches/${batch.id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
       });
       if (res.ok) {
         setRouteBatches((prev) => prev.filter((b) => b.id !== batch.id));
