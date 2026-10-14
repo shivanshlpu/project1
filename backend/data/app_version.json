@@ -1,19 +1,20 @@
 {
   "appName": "AHTRI FFA Mobile",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.19",
-  "latestVersionCode": 20,
+  "latestVersion": "1.0.20",
+  "latestVersionCode": 21,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.19/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.20/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-13",
-  "publishedAt": "2026-10-13T05:15:00.000Z",
+  "releaseDate": "2026-10-14",
+  "publishedAt": "2026-10-14T08:30:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Updated Login Gateway: Admin-assigned credentials entry with mandatory 6-digit OTP verification",
-    "Master Route-Batch Selection: Fully configured 19 master batches across Kotma, Shahdol, and Ambikapur with intelligent sub-stop route matching",
-    "Stockage Management & Monthly Upload Permissions: Isolated multi-HQ inventory with real-time stock deduplication",
-    "Authoritative 17 AHTRI Medicine Catalog with Structured Packaging Variants & PTS/MRP Pricing"
+    "Location & Clinic Attribution: Marked locations and registered doctors correctly attribute to the MR name instead of unassigned or admin",
+    "Delivery & Inventory Workflow: Resolved overlapping elements on the orders screen; stock deductions strictly applied on delivery and restored on revert",
+    "Monthly Tour Plan (TP): Added interactive Route Batch changing modal directly within the Edit Tour Plan screen",
+    "HQ-Isolated Stockage: Scope storage strictly to assigned headquarters with actual stock counts and PTS/PTR/MRP rates",
+    "Stockage Permission & Submissions: Streamlined monthly upload permissions and bulk submission workflow for field representatives"
   ]
 }

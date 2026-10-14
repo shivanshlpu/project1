@@ -328,6 +328,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.users) && data.users.length > 0) {
           data.users.forEach((savedU: any) => {
+            if (savedU.id === 'usr-mgr-01' || savedU.id === 'usr-admin-owner' || savedU.name?.includes('Area Manager')) {
+              return;
+            }
             const idx = this.users.findIndex((u) => u.id === savedU.id);
             if (idx >= 0) {
               this.users[idx] = { ...this.users[idx], ...savedU };
@@ -335,6 +338,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               this.users.push(savedU);
             }
           });
+          this.users = this.users.filter(
+            (u) => u.id !== 'usr-mgr-01' && u.id !== 'usr-admin-owner' && !u.name?.includes('Area Manager')
+          );
         }
         if (Array.isArray(data.userCredentials)) {
           data.userCredentials.forEach((cred: any) => {
@@ -468,38 +474,28 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       this.persistToDisk();
     }
 
-    if (this.supabase && this.supabase.isConnected) {
-      try {
-        const client = this.supabase.getClient();
-        if (client) {
-          const adminUser = this.users.find((u) => u.role === 'SUPER_ADMIN') || this.users[0];
-          if (adminUser) {
-            await this.supabase.upsertUser({
-              id: adminUser.id,
-              name: adminUser.name,
-              email: adminUser.email,
-              phone: adminUser.phone,
-              password_hash: adminUser.password_hash,
-              role: adminUser.role,
-              status: adminUser.status,
-              biometric_enabled: adminUser.biometric_enabled,
-            });
-          }
+    if (this.supabase) {
+      if (!this.supabase.isConnected) {
+        await this.supabase.initializeClient();
+      }
 
-          // Authoritative sync: load existing users from Supabase so edits persist across server redeploys
-          const { data: remoteUsers, error: uErr } = await client.from('users').select('*');
-          if (!uErr && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-            console.log(`[DatabaseService] Synced ${remoteUsers.length} users from Supabase.`);
-            for (const ru of remoteUsers) {
-              const matchedIndices: number[] = [];
-              this.users.forEach((u, i) => {
-                if (u.id === ru.id || (ru.email && u.email.toLowerCase() === ru.email.toLowerCase())) {
-                  matchedIndices.push(i);
-                }
-              });
+      if (this.supabase.isConnected) {
+        try {
+          const client = this.supabase.getClient();
+          if (client) {
+            // Authoritative sync: load existing users from Supabase so edits persist across server redeploys
+            const { data: remoteUsers, error: uErr } = await client.from('users').select('*');
+            if (!uErr && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteUsers.length} users from Supabase.`);
 
-              if (matchedIndices.length > 0) {
-                for (const idx of matchedIndices) {
+              // Supabase is authoritative: remove any users not in Supabase (e.g. deleted Area Manager or duplicate admin)
+              const remoteUserIds = new Set(remoteUsers.map((u) => u.id));
+              // Retain only users that exist in Supabase (or our primary super admin)
+              this.users = this.users.filter((u) => remoteUserIds.has(u.id) || u.id === 'usr-admin-01');
+
+              for (const ru of remoteUsers) {
+                const idx = this.users.findIndex((u) => u.id === ru.id);
+                if (idx >= 0) {
                   this.users[idx] = {
                     ...this.users[idx],
                     name: ru.name || this.users[idx].name,
@@ -509,15 +505,34 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     role: ru.role || this.users[idx].role,
                     status: ru.status || this.users[idx].status,
                     biometric_enabled: ru.biometric_enabled ?? this.users[idx].biometric_enabled,
+                    device_id: ru.device_id ?? this.users[idx].device_id,
+                    device_model: ru.device_model ?? this.users[idx].device_model,
+                    device_bound_at: ru.device_bound_at ?? this.users[idx].device_bound_at,
                   };
+                } else {
+                  this.users.push(ru as any);
                 }
-              } else {
-                this.users.push(ru as any);
               }
-            }
-          }
 
-          // Authoritative sync: load leave requests and quotas from Supabase
+              // Ensure super admin is in Supabase
+              const adminUser = this.users.find((u) => u.id === 'usr-admin-01' || u.role === 'SUPER_ADMIN');
+              if (adminUser) {
+                await this.supabase.upsertUser({
+                  id: adminUser.id,
+                  name: adminUser.name,
+                  email: adminUser.email,
+                  phone: adminUser.phone,
+                  password_hash: adminUser.password_hash,
+                  role: adminUser.role,
+                  status: adminUser.status,
+                  biometric_enabled: adminUser.biometric_enabled,
+                });
+              }
+
+              this.persistToDisk();
+            }
+
+            // Authoritative sync: load leave requests and quotas from Supabase
           const { data: remoteLeaves, error: lErr } = await client.from('leave_requests').select('*');
           if (!lErr && Array.isArray(remoteLeaves) && remoteLeaves.length > 0) {
             console.log(`[DatabaseService] Synced ${remoteLeaves.length} leave records from Supabase.`);
@@ -678,6 +693,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         console.warn('[DatabaseService] Supabase onModuleInit notice:', err?.message);
       }
     }
+  }
 
     // Purge any legacy dummy records loaded from old disk stores in non-test mode
     if (process.env.NODE_ENV !== 'test') {
@@ -1055,19 +1071,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     const amanPasswordHash = '$2a$10$GxSnC0d70j7BW/HI5KwwUu.jE/AASG4BAbIjV/8fBRZZpELmVIEV2';
     const ashishPasswordHash = '$2a$10$ElYv/1rGCurbbZsjgZh8lOcDLSY9ZNMfieLB0PwrIFfn8Gn008hwa';
 
-    // Primary Super Admin: Configurable via ADMIN_EMAIL/ADMIN_PHONE environment variables or database updates
-    const adminOwner: User = {
-      id: 'usr-admin-owner',
-      name: process.env.ADMIN_NAME || 'Shivansh',
-      phone: process.env.ADMIN_PHONE || '9009149694',
-      email: process.env.ADMIN_EMAIL || 'shivanshti10@gmail.com',
-      password_hash: adminPasswordHash,
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
-      biometric_enabled: false,
-      created_at: new Date().toISOString(),
-    };
-
+    // Single Super Admin: Configurable via ADMIN_EMAIL/ADMIN_PHONE environment variables or database updates
     const superAdmin: User = {
       id: 'usr-admin-01',
       name: process.env.ADMIN_NAME || 'Shivansh',
@@ -1080,27 +1084,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       created_at: new Date().toISOString(),
     };
 
-    const manager: User = {
-      id: 'usr-mgr-01',
-      name: 'Anil Kumar (Area Manager)',
-      phone: '9876543211',
-      email: 'manager@ahtri.com',
-      password_hash: defaultPasswordHash,
-      role: 'MANAGER',
-      zone_id: zoneId,
-      region_id: regionId,
-      area_id: areaShahdolId,
-      status: 'ACTIVE',
-      biometric_enabled: false,
-      created_at: new Date().toISOString(),
-    };
-
-    // 1. MR: Amar Dwivedi | HQ: Kotma | HQ Code: KOT | HQ ID: HQ-KOT-001 | Default Pwd: AmarDwivediKOT
+    // 1. MR: Amar Dwivedi | HQ: Kotma | HQ Code: KOT | HQ ID: HQ-KOT-001
     const mr1: User = {
       id: 'usr-mr-01',
       name: 'Amar Dwivedi',
-      phone: '9876543212',
-      email: 'amar@ahtri.com',
+      phone: '9399604625',
+      email: 'amarkotma478@gmail.com',
       password_hash: amarPasswordHash,
       role: 'MR',
       zone_id: zoneId,
@@ -1113,18 +1102,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       assigned_territory: 'Kotma HQ Territory',
       route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
       assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
-      manager_id: manager.id,
+      manager_id: undefined,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
-    // 2. MR: Aman Rathore | HQ: Shahdol | HQ Code: SHD | HQ ID: HQ-SHD-001 | Default Pwd: AmanRathoreSHD
+    // 2. MR: Aman Rathore | HQ: Shahdol | HQ Code: SHD | HQ ID: HQ-SHD-001
     const mr2: User = {
       id: 'usr-mr-02',
       name: 'Aman Rathore',
-      phone: '9876543213',
-      email: 'aman@ahtri.com',
+      phone: '6261654453',
+      email: 'amanrathour4453@gmail.com',
       password_hash: amanPasswordHash,
       role: 'MR',
       zone_id: zoneId,
@@ -1137,18 +1126,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       assigned_territory: 'Shahdol HQ Territory',
       route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
       assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
-      manager_id: manager.id,
+      manager_id: undefined,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
-    // 3. MR: Ashish Soni | HQ: Ambikapur | HQ Code: AMB | HQ ID: HQ-AMB-001 | Default Pwd: AshishSoniAMB
+    // 3. MR: Ashish Soni | HQ: Ambikapur | HQ Code: AMB | HQ ID: HQ-AMB-001
     const mr3: User = {
       id: 'usr-mr-03',
       name: 'Ashish Soni',
-      phone: '9876543214',
-      email: 'ashish@ahtri.com',
+      phone: '9343052283',
+      email: 'ashish103020@gmail.com',
       password_hash: ashishPasswordHash,
       role: 'MR',
       zone_id: zoneId,
@@ -1161,13 +1150,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       assigned_territory: 'Ambikapur HQ Territory',
       route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
       assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
-      manager_id: manager.id,
+      manager_id: undefined,
       status: 'ACTIVE',
       biometric_enabled: true,
       created_at: new Date().toISOString(),
     };
 
-    this.users.push(adminOwner, superAdmin, manager, mr1, mr2, mr3);
+    this.users.push(superAdmin, mr1, mr2, mr3);
 
     // Territory links
     this.territories.push(
@@ -1193,7 +1182,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           latitude: 28.5245,
           longitude: 77.2066,
           area_id: 'area-ktm-1',
-          created_by: 'usr-mgr-01',
+          created_by: 'usr-admin-01',
           assigned_mr_id: 'usr-mr-01',
           assigned_mr_name: 'Amar Dwivedi',
           created_at: new Date().toISOString(),
@@ -1211,7 +1200,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           latitude: 23.2962,
           longitude: 81.3537,
           area_id: 'area-shd-07',
-          created_by: 'usr-mgr-01',
+          created_by: 'usr-admin-01',
           assigned_mr_id: 'usr-mr-01',
           assigned_mr_name: 'Amar Dwivedi',
           created_at: new Date().toISOString(),
@@ -1224,7 +1213,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           description: 'Product sampling and order booking',
           assigned_mr_id: 'usr-mr-01',
           assigned_mr_name: 'Amar Dwivedi',
-          created_by: 'usr-mgr-01',
+          created_by: 'usr-admin-01',
           date: today,
           time: '10:00:00',
           location_name: 'City Heart Clinic',

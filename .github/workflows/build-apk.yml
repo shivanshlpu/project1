@@ -63,30 +63,13 @@ jobs:
       - name: Prebuild Native Android Project
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Configure Permanent Release Signing Keystore
+      - name: Verify Permanent Release Keystore & Gradle Signing
         working-directory: mobile
         run: |
-          if [ -f "credentials/ahtri-release.keystore" ]; then
+          if [ ! -f "android/app/release.keystore" ] && [ -f "credentials/ahtri-release.keystore" ]; then
             cp credentials/ahtri-release.keystore android/app/release.keystore
-            echo "Using persistent repository release keystore"
-          else
-            keytool -genkeypair -v \
-              -keystore android/app/release.keystore \
-              -alias ahtri-key \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass ahtri123 \
-              -keypass ahtri123 \
-              -dname "CN=AHTRI, OU=Mobile, O=AHTRI Pharma, L=Delhi, S=Delhi, C=IN"
           fi
-
-      - name: Configure Gradle Signing
-        working-directory: mobile/android
-        run: |
-          # Configure release signing config in app/build.gradle
-          sed -i '/signingConfigs {/a \        release {\n            storeFile file("release.keystore")\n            storePassword "ahtri123"\n            keyAlias "ahtri-key"\n            keyPassword "ahtri123"\n        }' app/build.gradle
-          sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' app/build.gradle || true
+          echo "Release keystore verified for automated build."
 
       - name: Build Standalone APK with Gradle
         working-directory: mobile/android

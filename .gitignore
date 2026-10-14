@@ -59,6 +59,8 @@ mobile/wait_and_update_apk.js
 
 # Expo & Mobile Build Artifacts
 .expo/
+mobile/android/
+mobile/ios/
 *.apk
 *.p8
 *.mobileprovision

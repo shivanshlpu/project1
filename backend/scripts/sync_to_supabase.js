@@ -114,32 +114,23 @@ async function main() {
 
   // 3. Sync Users
   console.log('⏳ Syncing users...');
+  await supabase.from('users').delete().in('id', ['usr-mgr-01', 'usr-admin-owner']);
   const defaultUsers = [
     {
       id: 'usr-admin-01',
-      name: process.env.ADMIN_NAME || 'System Admin',
-      email: process.env.ADMIN_EMAIL || 'admin@ahtri.com',
-      phone: process.env.ADMIN_PHONE || '9876543210',
+      name: process.env.ADMIN_NAME || 'Shivansh',
+      email: process.env.ADMIN_EMAIL || 'shivanshti10@gmail.com',
+      phone: process.env.ADMIN_PHONE || '9009149694',
       password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
       biometric_enabled: false,
     },
     {
-      id: 'usr-mgr-01',
-      name: 'Anil Kumar (Area Manager)',
-      email: 'manager@ahtri.com',
-      phone: '9876543211',
-      password_hash: '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG',
-      role: 'MANAGER',
-      status: 'ACTIVE',
-      biometric_enabled: false,
-    },
-    {
       id: 'usr-mr-01',
       name: 'Amar Dwivedi',
-      email: 'amar@ahtri.com',
-      phone: '9876543212',
+      email: 'amarkotma478@gmail.com',
+      phone: '9399604625',
       password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
@@ -148,8 +139,8 @@ async function main() {
     {
       id: 'usr-mr-02',
       name: 'Aman Rathore',
-      email: 'aman@ahtri.com',
-      phone: '9876543213',
+      email: 'amanrathour4453@gmail.com',
+      phone: '6261654453',
       password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
@@ -158,8 +149,8 @@ async function main() {
     {
       id: 'usr-mr-03',
       name: 'Ashish Soni',
-      email: 'ashish@ahtri.com',
-      phone: '9876543214',
+      email: 'ashish103020@gmail.com',
+      phone: '9343052283',
       password_hash: '$2a$10$tZ922R4kS2xK65.o8b/jPec6kU1.Vq2t6Q1lP8uO3fPZtC2WdYq8i',
       role: 'MR',
       status: 'ACTIVE',
@@ -259,7 +250,7 @@ async function main() {
       title: 'Dr. Rajesh Sharma Clinic Detailing',
       description: 'Present AHTRI-S scheme and distribute product samples.',
       assigned_mr_id: 'usr-mr-01',
-      created_by: 'usr-mgr-01',
+      created_by: 'usr-admin-01',
       date: '2026-10-05',
       time: '10:30:00',
       latitude: 28.5245,
@@ -273,7 +264,7 @@ async function main() {
       title: 'Dr. Priya Verma Evening Visit',
       description: 'Follow-up on pediatric antibiotic suspension samples.',
       assigned_mr_id: 'usr-mr-01',
-      created_by: 'usr-mgr-01',
+      created_by: 'usr-admin-01',
       date: '2026-10-05',
       time: '17:00:00',
       latitude: 28.5585,

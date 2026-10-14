@@ -63,6 +63,29 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
+  const handleLaunchInstaller = async () => {
+    try {
+      const res = await AppUpdateService.launchApkInstaller();
+      if (!res.success) {
+        Alert.alert(
+          'Installation Prompt',
+          res.error || 'If your phone blocks installations from this source, enable "Allow from this source" in settings.',
+          [
+            { text: 'Settings', onPress: () => AppUpdateService.openInstallUnknownSourcesSettings() },
+            { text: 'Browser Download', onPress: () => AppUpdateService.openBrowserDownload(updateInfo.downloadUrl) },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Installation Error', err?.message || 'Could not launch package installer');
+    }
+  };
+
+  const handleOpenBrowserFallback = async () => {
+    await AppUpdateService.openBrowserDownload(updateInfo.downloadUrl);
+  };
+
   const handleDismiss = async () => {
     if (updateInfo?.latestVersion) {
       await AppUpdateService.markVersionDismissed(updateInfo.latestVersion);
@@ -96,14 +119,14 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               {downloadState === 'DOWNLOADING'
                 ? 'Downloading Update...'
                 : downloadState === 'READY_TO_INSTALL'
-                ? 'Update Downloaded!'
+                ? 'Ready to Install!'
                 : 'New Update Available'}
             </Text>
             <Text style={styles.headerSubtitle}>
               {downloadState === 'DOWNLOADING'
                 ? 'Downloading package directly inside app'
                 : downloadState === 'READY_TO_INSTALL'
-                ? 'Installation package is ready on your device'
+                ? 'Package downloaded. Launch installer below.'
                 : 'A newer version is available for download'}
             </Text>
           </View>
@@ -137,20 +160,41 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               </View>
 
               <Text style={styles.progressStatusNotice}>
-                Please keep the app open. Android installer will prompt automatically.
+                Please keep the app open. Android installer will prompt automatically once finished.
               </Text>
             </View>
           ) : downloadState === 'READY_TO_INSTALL' ? (
             <View style={styles.readyCard}>
-              <Text style={styles.readyHeading}>Download Completed!</Text>
+              <Text style={styles.readyHeading}>Update File Ready!</Text>
               <Text style={styles.readyText}>
-                The update has been downloaded. If the installer did not launch automatically, tap below.
+                The update package is ready on your device. Tap below to launch the Android installer.
               </Text>
-              <TouchableOpacity style={styles.reinstallBtn} onPress={handleStartInAppUpdate}>
-                <Text style={styles.reinstallBtnText}>Open Installer</Text>
+
+              {/* Installer Action Button */}
+              <TouchableOpacity style={styles.primaryInstallBtn} onPress={handleLaunchInstaller}>
+                <Text style={styles.primaryInstallBtnText}>📲 Open Android Installer</Text>
               </TouchableOpacity>
+
+              {/* Helper Links Row */}
+              <View style={styles.installerHelpRow}>
+                <TouchableOpacity
+                  style={styles.helpLinkBtn}
+                  onPress={() => AppUpdateService.openInstallUnknownSourcesSettings()}
+                >
+                  <Text style={styles.helpLinkText}>⚙️ App Permissions</Text>
+                </TouchableOpacity>
+                <Text style={styles.helpLinkDivider}>•</Text>
+                <TouchableOpacity style={styles.helpLinkBtn} onPress={handleOpenBrowserFallback}>
+                  <Text style={styles.helpLinkText}>🌐 Browser Download</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.unknownSourcesNote}>
+                Note: If prompted, allow "Install unknown apps" for AHTRI FFA to proceed.
+              </Text>
+
               <TouchableOpacity style={styles.doneBtn} onPress={handleDismiss}>
-                <Text style={styles.doneBtnText}>Done / Close</Text>
+                <Text style={styles.doneBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -175,6 +219,12 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               {downloadState === 'ERROR' && (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorText}>⚠️ {errorMessage || 'Download error. Please try again.'}</Text>
+                  <TouchableOpacity
+                    style={styles.errorFallbackBtn}
+                    onPress={handleOpenBrowserFallback}
+                  >
+                    <Text style={styles.errorFallbackText}>🌐 Download via Browser Instead</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </>
@@ -195,7 +245,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                   onPress={handleStartInAppUpdate}
                 >
                   <Text style={styles.updateBtnText}>
-                    {downloadState === 'ERROR' ? 'Retry Download' : 'Download Update'}
+                    {downloadState === 'ERROR' ? 'Retry In-App Update' : 'Download & Install'}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -429,18 +479,69 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginBottom: 14,
   },
-  reinstallBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+  primaryInstallBtn: {
+    width: '100%',
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    backgroundColor: '#0F8B5A',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0F8B5A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
   },
-  reinstallBtnText: {
+  primaryInstallBtnText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  installerHelpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    gap: 8,
+  },
+  helpLinkBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  helpLinkText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: '#2563EB',
+  },
+  helpLinkDivider: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  unknownSourcesNote: {
+    fontSize: 10.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 8,
+  },
+  errorFallbackBtn: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    alignSelf: 'flex-start',
+  },
+  errorFallbackText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   actionsRow: {
     flexDirection: 'row',

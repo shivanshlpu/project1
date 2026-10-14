@@ -60,33 +60,29 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       const cached = localStorage.getItem('ahtri_cached_members');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const clean = parsed.filter(
+            (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
+          );
+          if (clean.length > 0) return clean;
+        }
       }
     } catch {}
     return [
       {
         id: 'usr-admin-01',
-        name: 'System Admin',
-        email: 'admin@ahtri.com',
-        phone: '9876543210',
+        name: 'Shivansh',
+        email: 'shivanshti10@gmail.com',
+        phone: '9009149694',
         role: 'SUPER_ADMIN',
-        status: 'ACTIVE',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'usr-mgr-01',
-        name: 'Anil Kumar (Area Manager)',
-        email: 'manager@ahtri.com',
-        phone: '9876543211',
-        role: 'MANAGER',
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
       },
       {
         id: 'usr-mr-01',
         name: 'Amar Dwivedi',
-        email: 'amar@ahtri.com',
-        phone: '9876543212',
+        email: 'amarkotma478@gmail.com',
+        phone: '9399604625',
         role: 'MR',
         hq_id: 'HQ-KOT-001',
         hq_code: 'KOT',
@@ -99,8 +95,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       {
         id: 'usr-mr-02',
         name: 'Aman Rathore',
-        email: 'aman@ahtri.com',
-        phone: '9876543213',
+        email: 'amanrathour4453@gmail.com',
+        phone: '6261654453',
         role: 'MR',
         hq_id: 'HQ-SHD-001',
         hq_code: 'SHD',
@@ -113,8 +109,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       {
         id: 'usr-mr-03',
         name: 'Ashish Soni',
-        email: 'ashish@ahtri.com',
-        phone: '9876543214',
+        email: 'ashish103020@gmail.com',
+        phone: '9343052283',
         role: 'MR',
         hq_id: 'HQ-AMB-001',
         hq_code: 'AMB',
@@ -435,11 +431,14 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         if (usersRes.ok) {
           const uData = await usersRes.json();
           if (Array.isArray(uData) && uData.length > 0) {
-            setMembers(uData);
+            const cleanData = uData.filter(
+              (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
+            );
+            setMembers(cleanData);
             try {
-              localStorage.setItem('ahtri_cached_members', JSON.stringify(uData));
+              localStorage.setItem('ahtri_cached_members', JSON.stringify(cleanData));
             } catch {}
-            setSelectedMemberId((prev) => (prev && uData.some((m) => m.id === prev) ? prev : uData[0].id));
+            setSelectedMemberId((prev) => (prev && cleanData.some((m: any) => m.id === prev) ? prev : cleanData[0]?.id));
           }
         }
       } catch {}

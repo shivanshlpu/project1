@@ -1,12 +1,14 @@
 {
   "name": "ahtri-ffa-mobile",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "Medical Representative (MR) Mobile Application for AHTRI Field Force Automation",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "prebuild:android": "expo prebuild --platform android --no-install",
+    "build:apk": "expo prebuild --platform android --no-install && cd android && gradlew assembleRelease",
     "test": "jest"
   },
   "dependencies": {

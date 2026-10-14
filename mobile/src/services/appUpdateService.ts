@@ -40,11 +40,11 @@ export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void
 export const CURRENT_APP_VERSION =
   Constants.expoConfig?.version ||
   (Constants as any).manifest2?.extra?.expoClient?.version ||
-  '1.0.16';
+  '1.0.20';
 
 export const CURRENT_APP_VERSION_CODE =
   Constants.expoConfig?.android?.versionCode ||
-  17;
+  21;
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',
@@ -245,9 +245,9 @@ export const AppUpdateService = {
         return { success: true };
       }
 
-      // Native Android / iOS: In-App Download via FileSystem
+      // Native Android / iOS: In-App Download via DocumentDirectory (persistent and accessible across package manager)
       const targetFileName = 'ahtri-ffa-update.apk';
-      const fileUri = `${FileSystem.cacheDirectory}${targetFileName}`;
+      const fileUri = `${FileSystem.documentDirectory}${targetFileName}`;
 
       // Clean up previous temporary update file if exists
       const existing = await FileSystem.getInfoAsync(fileUri);
@@ -281,26 +281,91 @@ export const AppUpdateService = {
         throw new Error('Download failed to produce a valid APK file.');
       }
 
+      // Verify downloaded file size is non-empty
+      const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+      if (!fileInfo.exists || ('size' in fileInfo && fileInfo.size < 1000000)) {
+        throw new Error('Downloaded APK appears corrupted or truncated. Please retry.');
+      }
+
       // Immediately launch Android OS Native Package Installer
       if (Platform.OS === 'android') {
-        const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-          type: 'application/vnd.android.package-archive',
-        });
-        return { success: true };
+        const installRes = await this.launchApkInstaller(downloadResult.uri);
+        return installRes;
       }
 
       return { success: true };
     } catch (err: any) {
       console.error('In-app download & install error:', err);
-      try {
-        await Linking.openURL(downloadUrl);
-        return { success: true };
-      } catch (fallbackErr: any) {
-        return { success: false, error: err?.message || 'Could not complete in-app update' };
+      return { success: false, error: err?.message || 'Could not complete in-app update' };
+    }
+  },
+
+  /**
+   * Directly launch Android OS Native Package Installer for downloaded APK.
+   * Uses FLAG_GRANT_READ_URI_PERMISSION (1) and FLAG_ACTIVITY_NEW_TASK (268435456).
+   */
+  async launchApkInstaller(fileUri?: string): Promise<{ success: boolean; error?: string }> {
+    if (Platform.OS !== 'android') {
+      return { success: true };
+    }
+
+    try {
+      const targetUri = fileUri || `${FileSystem.documentDirectory}ahtri-ffa-update.apk`;
+      const fileInfo = await FileSystem.getInfoAsync(targetUri);
+      if (!fileInfo.exists) {
+        return { success: false, error: 'Update file not found on device. Please download again.' };
       }
+
+      const contentUri = await FileSystem.getContentUriAsync(targetUri);
+      // FLAG_GRANT_READ_URI_PERMISSION (1) | FLAG_ACTIVITY_NEW_TASK (0x10000000 / 268435456) = 268435457
+      const flags = 1 | 268435456;
+
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags,
+        type: 'application/vnd.android.package-archive',
+      });
+
+      return { success: true };
+    } catch (err: any) {
+      console.warn('[launchApkInstaller] Failed to open installer intent:', err);
+      return {
+        success: false,
+        error: err?.message || 'Android package installer could not be launched automatically.',
+      };
+    }
+  },
+
+  /**
+   * Open Android App Details / Unknown Sources Settings if user needs to grant permission
+   */
+  async openInstallUnknownSourcesSettings(): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    try {
+      await IntentLauncher.startActivityAsync('android.settings.MANAGE_UNKNOWN_APP_SOURCES', {
+        data: 'package:com.ahtri.ffa',
+      });
+    } catch {
+      try {
+        await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', {
+          data: 'package:com.ahtri.ffa',
+        });
+      } catch (err) {
+        console.warn('Could not open app settings:', err);
+      }
+    }
+  },
+
+  /**
+   * Fallback: direct download in mobile browser
+   */
+  async openBrowserDownload(downloadUrl: string): Promise<boolean> {
+    try {
+      await Linking.openURL(downloadUrl);
+      return true;
+    } catch (err) {
+      console.error('Browser download fallback failed:', err);
+      return false;
     }
   },
 
@@ -312,3 +377,4 @@ export const AppUpdateService = {
     return res.success;
   },
 };
+

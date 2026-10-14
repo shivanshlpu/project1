@@ -166,8 +166,8 @@ export const DEFAULT_TERRITORY_ZONES: TerritoryZone[] = [
     name: 'Bilaspur HQ',
     code: 'BSP',
     branchType: 'HEADQUARTERS',
-    assignedMr: 'Distributed Field Force',
-    assignedMrId: 'usr-mgr-01',
+    assignedMr: 'Field Force Team',
+    assignedMrId: 'usr-admin-01',
     latitude: 22.0797,
     longitude: 82.1409,
     radiusKm: 30.0,
@@ -470,7 +470,7 @@ export function getOperatingZones(): TerritoryZone[] {
           ? { name: 'Ashish Soni', id: 'usr-mr-03' }
           : normCode === 'SHD' || normName.includes('shahdol')
           ? { name: 'Aman Rathore', id: 'usr-mr-02' }
-          : { name: 'Distributed Field Force', id: 'usr-mgr-01' };
+          : { name: 'Distributed Field Force', id: 'usr-admin-01' };
 
       return {
         id: `zone-${hqId}`,

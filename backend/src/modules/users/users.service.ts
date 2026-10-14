@@ -173,25 +173,26 @@ export class UsersService {
     }
 
     // Always synchronize updated user properties to Supabase
-    if (this.db.supabase?.isConnected) {
+    if (this.db.supabase) {
+      if (!this.db.supabase.isConnected) {
+        await this.db.supabase.initializeClient();
+      }
       const client = this.db.supabase.getClient();
       if (client) {
         try {
           const updatePayload: any = {
+            id: user.id,
             name: user.name,
             phone: user.phone,
             email: user.email,
             role: user.role,
-            status: user.status,
+            status: user.status === 'INACTIVE' ? 'SUSPENDED' : (user.status || 'ACTIVE'),
             updated_at: new Date().toISOString(),
           };
           if (user.password_hash) updatePayload.password_hash = user.password_hash;
           if (user.biometric_enabled !== undefined) updatePayload.biometric_enabled = user.biometric_enabled;
 
-          const { error: upErr } = await client.from('users').update(updatePayload).eq('id', user.id);
-          if (user.email) {
-            await client.from('users').update(updatePayload).eq('email', user.email);
-          }
+          const { error: upErr } = await client.from('users').upsert(updatePayload, { onConflict: 'id' });
           if (upErr) {
             console.warn(`[UsersService] Failed to sync updated user ${user.id} to Supabase:`, upErr.message);
           } else {
@@ -203,7 +204,7 @@ export class UsersService {
       }
     }
 
-    this.db.persistToDisk();
+    await this.db.flushToDisk();
 
     const { password_hash: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
@@ -215,15 +216,30 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    const deletedUser = this.db.users.splice(userIndex, 1)[0];
+    const deletedUser = this.db.users[userIndex];
+    this.db.users = this.db.users.filter((u) => u.id !== id);
+
+    // Reset manager reference if this user was a manager
+    for (const u of this.db.users) {
+      if (u.manager_id === id) {
+        u.manager_id = undefined;
+      }
+    }
 
     // Delete directly from Supabase
-    if (this.db.supabase?.isConnected) {
+    if (this.db.supabase) {
+      if (!this.db.supabase.isConnected) {
+        await this.db.supabase.initializeClient();
+      }
       const client = this.db.supabase.getClient();
       if (client) {
         try {
-          await client.from('users').delete().eq('id', id);
-          console.log(`[UsersService] Deleted user ${id} from Supabase.`);
+          const { error: delErr } = await client.from('users').delete().eq('id', id);
+          if (delErr) {
+            console.warn(`[UsersService] Supabase delete warning for ${id}:`, delErr.message);
+          } else {
+            console.log(`[UsersService] Permanently deleted user ${id} from Supabase.`);
+          }
         } catch (sbErr: any) {
           console.warn('[UsersService] Supabase delete user error:', sbErr?.message);
         }
