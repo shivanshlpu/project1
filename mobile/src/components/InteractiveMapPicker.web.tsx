@@ -38,8 +38,8 @@ interface InteractiveMapPickerProps {
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   isOpen,
   onClose,
-  initialLat = 28.5245,
-  initialLng = 77.2066,
+  initialLat = 23.2962,
+  initialLng = 81.3537,
   initialCategory = 'CLINIC',
   initialName = '',
   initialDoctorName = '',
@@ -198,9 +198,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const handleAcquireDeviceGps = async () => {
     setIsLocatingGps(true);
     try {
-      const coords = await LocationService.getCurrentLocation();
-      let lat = 28.5245;
-      let lng = 77.2066;
+      const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 20 });
+      let lat = 23.2962;
+      let lng = 81.3537;
       let acc = 8.0;
 
       if (coords) {
@@ -208,9 +208,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         lng = Number(coords.longitude.toFixed(6));
         acc = coords.accuracy ? Number(coords.accuracy.toFixed(1)) : 6.5;
       } else {
-        // Fallback offset
-        lat = Number((28.5245 + (Math.random() - 0.5) * 0.002).toFixed(6));
-        lng = Number((77.2066 + (Math.random() - 0.5) * 0.002).toFixed(6));
+        // Local offset
+        lat = Number((23.2962 + (Math.random() - 0.5) * 0.002).toFixed(6));
+        lng = Number((81.3537 + (Math.random() - 0.5) * 0.002).toFixed(6));
         acc = 8.5;
       }
 

@@ -8,6 +8,14 @@ export interface LocationCoords {
   is_mocked?: boolean;
 }
 
+export type AccuracyGrade = 'HIGH' | 'GOOD' | 'MODERATE' | 'COARSE';
+
+// In-memory hot GPS state to prevent cold-start satellite delays
+let _latestCoords: LocationCoords | null = null;
+let _bestRecentCoords: LocationCoords | null = null;
+let _watchSubscription: Location.LocationSubscription | null = null;
+const _listeners = new Set<(coords: LocationCoords) => void>();
+
 export const LocationService = {
   /**
    * Request foreground GPS location permissions from user
@@ -17,13 +25,13 @@ export const LocationService = {
       const { status } = await Location.requestForegroundPermissionsAsync();
       return status === 'granted';
     } catch (error) {
-      console.warn('Location permission request failed:', error);
+      console.warn('[LocationService] Permission request failed:', error);
       return false;
     }
   },
 
   /**
-   * Ensure hardware GPS & Google Network Location services are enabled
+   * Ensure hardware GPS & Google High Accuracy Location services are enabled
    */
   async ensureLocationServices(): Promise<boolean> {
     try {
@@ -32,7 +40,7 @@ export const LocationService = {
         try {
           await Location.enableNetworkProviderAsync();
         } catch {
-          // Ignore if user dismisses or platform unsupported
+          // User dismissed or platform doesn't support dialog
         }
       }
       return true;
@@ -42,78 +50,317 @@ export const LocationService = {
   },
 
   /**
-   * Retrieve current device GPS coordinates with indoor fallback and mock detection
+   * Start continuous active GPS watching with satellite convergence.
+   * Keeps phone GPS sensor warm and provides real-time fixes with zero lag.
    */
-  async getCurrentLocation(): Promise<LocationCoords | null> {
+  async startWatching(onUpdate?: (coords: LocationCoords) => void): Promise<() => void> {
+    if (onUpdate) {
+      _listeners.add(onUpdate);
+      if (_latestCoords) {
+        onUpdate(_latestCoords);
+      }
+    }
+
+    if (!_watchSubscription) {
+      try {
+        const hasPermission = await this.requestPermissions();
+        if (hasPermission) {
+          await this.ensureLocationServices();
+
+          _watchSubscription = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.BestForNavigation,
+              timeInterval: 1500,
+              distanceInterval: 1,
+            },
+            (location) => {
+              if (location && location.coords) {
+                const isMocked = !!(
+                  location.mocked ||
+                  (location.coords as any).isMocked ||
+                  (location.coords as any).mocked
+                );
+
+                const coords: LocationCoords = {
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                  accuracy: location.coords.accuracy,
+                  timestamp: location.timestamp,
+                  is_mocked: isMocked,
+                };
+
+                _latestCoords = coords;
+
+                // Retain best fix seen in recent memory
+                if (
+                  !_bestRecentCoords ||
+                  (coords.accuracy !== null &&
+                    coords.accuracy !== undefined &&
+                    (_bestRecentCoords.accuracy === null ||
+                      _bestRecentCoords.accuracy === undefined ||
+                      coords.accuracy <= _bestRecentCoords.accuracy))
+                ) {
+                  _bestRecentCoords = coords;
+                }
+
+                _listeners.forEach((listener) => {
+                  try {
+                    listener(coords);
+                  } catch (e) {
+                    console.warn('[LocationService] Listener error:', e);
+                  }
+                });
+              }
+            },
+          );
+        }
+      } catch (err) {
+        console.warn('[LocationService] Failed to start active GPS watcher:', err);
+      }
+    }
+
+    return () => {
+      if (onUpdate) {
+        _listeners.delete(onUpdate);
+      }
+      if (_listeners.size === 0 && _watchSubscription) {
+        _watchSubscription.remove();
+        _watchSubscription = null;
+      }
+    };
+  },
+
+  /**
+   * Stop active GPS watching completely
+   */
+  stopWatching() {
+    if (_watchSubscription) {
+      _watchSubscription.remove();
+      _watchSubscription = null;
+    }
+    _listeners.clear();
+  },
+
+  /**
+   * Retrieve high-precision device GPS coordinates with progressive satellite convergence.
+   * Eliminates the 100m+ cell tower error by allowing hardware GPS sufficient time to lock satellites.
+   */
+  async getCurrentLocation(options?: {
+    timeoutMs?: number;
+    targetAccuracy?: number;
+    maxAgeMs?: number;
+  }): Promise<LocationCoords | null> {
+    const timeoutMs = options?.timeoutMs ?? 12000;
+    const targetAccuracy = options?.targetAccuracy ?? 25; // meters
+    const maxAgeMs = options?.maxAgeMs ?? 15000; // 15 seconds
+
+    // 1. Fast path: check if warm GPS watcher already holds a fresh, high-precision fix
+    const now = Date.now();
+    if (_latestCoords && _latestCoords.timestamp && now - _latestCoords.timestamp < maxAgeMs) {
+      if (
+        _latestCoords.accuracy !== null &&
+        _latestCoords.accuracy !== undefined &&
+        _latestCoords.accuracy <= targetAccuracy
+      ) {
+        return _latestCoords;
+      }
+    }
+
+    if (_bestRecentCoords && _bestRecentCoords.timestamp && now - _bestRecentCoords.timestamp < maxAgeMs) {
+      if (
+        _bestRecentCoords.accuracy !== null &&
+        _bestRecentCoords.accuracy !== undefined &&
+        _bestRecentCoords.accuracy <= targetAccuracy
+      ) {
+        return _bestRecentCoords;
+      }
+    }
+
     try {
       const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        return null;
-      }
+      if (!hasPermission) return null;
 
       await this.ensureLocationServices();
 
-      // 1. First attempt: High-accuracy GPS with 6s timeout race
-      const highAccuracyPromise = Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
+      // 2. High-precision progressive convergence loop:
+      // Poll satellite receiver until accuracy reaches target or timeout is reached.
+      let bestFix: LocationCoords | null = _latestCoords || _bestRecentCoords || null;
+
+      const convergencePromise = new Promise<LocationCoords | null>(async (resolve) => {
+        let isResolved = false;
+        let tempWatcher: Location.LocationSubscription | null = null;
+
+        const cleanup = () => {
+          if (tempWatcher) {
+            tempWatcher.remove();
+            tempWatcher = null;
+          }
+        };
+
+        const timer = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            resolve(bestFix);
+          }
+        }, timeoutMs);
+
+        try {
+          tempWatcher = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.BestForNavigation,
+              timeInterval: 1000,
+              distanceInterval: 0.5,
+            },
+            (pos) => {
+              if (pos && pos.coords) {
+                const isMocked = !!(
+                  pos.mocked ||
+                  (pos.coords as any).isMocked ||
+                  (pos.coords as any).mocked
+                );
+                const fix: LocationCoords = {
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                  accuracy: pos.coords.accuracy,
+                  timestamp: pos.timestamp,
+                  is_mocked: isMocked,
+                };
+
+                _latestCoords = fix;
+
+                if (
+                  !bestFix ||
+                  (fix.accuracy !== null &&
+                    fix.accuracy !== undefined &&
+                    (bestFix.accuracy === null ||
+                      bestFix.accuracy === undefined ||
+                      fix.accuracy <= bestFix.accuracy))
+                ) {
+                  bestFix = fix;
+                  _bestRecentCoords = fix;
+                }
+
+                // If accuracy reached target (e.g. <= 25m), resolve immediately!
+                if (fix.accuracy !== null && fix.accuracy !== undefined && fix.accuracy <= targetAccuracy) {
+                  if (!isResolved) {
+                    isResolved = true;
+                    clearTimeout(timer);
+                    cleanup();
+                    resolve(fix);
+                  }
+                }
+              }
+            },
+          );
+        } catch {
+          // If watcher fails, fallback to one-shot Highest accuracy
+          try {
+            const oneShot = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Highest,
+            });
+            if (oneShot && oneShot.coords) {
+              const fix: LocationCoords = {
+                latitude: oneShot.coords.latitude,
+                longitude: oneShot.coords.longitude,
+                accuracy: oneShot.coords.accuracy,
+                timestamp: oneShot.timestamp,
+                is_mocked: !!(oneShot.mocked || (oneShot.coords as any).isMocked),
+              };
+              bestFix = fix;
+            }
+          } catch {}
+
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timer);
+            cleanup();
+            resolve(bestFix);
+          }
+        }
       });
 
-      const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), 6000)
-      );
+      const result = await convergencePromise;
+      if (result) return result;
 
-      const highResult: any = await Promise.race([highAccuracyPromise, timeoutPromise]);
-      if (highResult && highResult.coords) {
-        const isMocked = !!(highResult.mocked || highResult.coords.isMocked || highResult.coords.mocked);
-        return {
-          latitude: highResult.coords.latitude,
-          longitude: highResult.coords.longitude,
-          accuracy: highResult.coords.accuracy,
-          timestamp: highResult.timestamp,
-          is_mocked: isMocked,
-        };
-      }
-
-      // 2. Second attempt: Balanced indoor accuracy (Google Fused Provider using Wi-Fi + Cell towers)
-      const balancedResult: any = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      // 3. Fallback: High accuracy single position
+      const fallbackPos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
       });
 
-      if (balancedResult && balancedResult.coords) {
-        const isMocked = !!(balancedResult.mocked || balancedResult.coords.isMocked || balancedResult.coords.mocked);
+      if (fallbackPos && fallbackPos.coords) {
         return {
-          latitude: balancedResult.coords.latitude,
-          longitude: balancedResult.coords.longitude,
-          accuracy: balancedResult.coords.accuracy,
-          timestamp: balancedResult.timestamp,
-          is_mocked: isMocked,
+          latitude: fallbackPos.coords.latitude,
+          longitude: fallbackPos.coords.longitude,
+          accuracy: fallbackPos.coords.accuracy,
+          timestamp: fallbackPos.timestamp,
+          is_mocked: !!(fallbackPos.mocked || (fallbackPos.coords as any).isMocked),
         };
       }
-    } catch (error) {
-      console.warn('Current GPS location retrieval fallback:', error);
+    } catch (err) {
+      console.warn('[LocationService] GPS convergence notice:', err);
     }
 
-    // 3. Fallback: Last known recent position (within 10 minutes)
+    // 4. Last resort: last known recent position if within 5 minutes
     try {
-      const lastKnown: any = await Location.getLastKnownPositionAsync();
+      const lastKnown = await Location.getLastKnownPositionAsync();
       if (lastKnown && lastKnown.coords) {
-        const isRecent = Date.now() - (lastKnown.timestamp || 0) < 10 * 60 * 1000;
+        const isRecent = Date.now() - (lastKnown.timestamp || 0) < 5 * 60 * 1000;
         if (isRecent) {
-          const isMocked = !!(lastKnown.mocked || lastKnown.coords.isMocked || lastKnown.coords.mocked);
           return {
             latitude: lastKnown.coords.latitude,
             longitude: lastKnown.coords.longitude,
             accuracy: lastKnown.coords.accuracy,
             timestamp: lastKnown.timestamp,
-            is_mocked: isMocked,
+            is_mocked: !!(lastKnown.mocked || (lastKnown.coords as any).isMocked),
           };
         }
       }
-    } catch {
-      // Fallback exhausted
-    }
+    } catch {}
 
-    return null;
+    return _bestRecentCoords || _latestCoords || null;
+  },
+
+  /**
+   * Determine categorical accuracy rating for UI feedback
+   */
+  getAccuracyGrade(accuracyMeters?: number | null): {
+    grade: AccuracyGrade;
+    label: string;
+    color: string;
+    badgeText: string;
+  } {
+    const acc = typeof accuracyMeters === 'number' ? accuracyMeters : 999;
+    if (acc <= 15) {
+      return {
+        grade: 'HIGH',
+        label: 'High Precision GPS',
+        color: '#10B981',
+        badgeText: `±${Math.round(acc)}m (Satellite)`,
+      };
+    }
+    if (acc <= 40) {
+      return {
+        grade: 'GOOD',
+        label: 'Good GPS Fix',
+        color: '#0EA5E9',
+        badgeText: `±${Math.round(acc)}m (Good)`,
+      };
+    }
+    if (acc <= 80) {
+      return {
+        grade: 'MODERATE',
+        label: 'Indoor / Dense Area',
+        color: '#F59E0B',
+        badgeText: `±${Math.round(acc)}m (Indoor)`,
+      };
+    }
+    return {
+      grade: 'COARSE',
+      label: 'Weak Signal / Cell Tower',
+      color: '#EF4444',
+      badgeText: `±${Math.round(acc)}m (Weak)`,
+    };
   },
 
   /**
@@ -123,7 +370,7 @@ export const LocationService = {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3; // Earth radius in meters
     const phi1 = (lat1 * Math.PI) / 180;
@@ -133,32 +380,48 @@ export const LocationService = {
 
     const a =
       Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-      Math.cos(phi1) * Math.cos(phi2) *
-      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      Math.cos(phi1) *
+        Math.cos(phi2) *
+        Math.sin(deltaLambda / 2) *
+        Math.sin(deltaLambda / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Math.round(R * c);
   },
 
   /**
-   * Determine if current position is within designated geofence radius
+   * Calculate dynamic effective geofence radius that incorporates sensor accuracy error margin.
+   * Solves indoor false-rejections when the user is physically inside a clinic.
+   */
+  calculateEffectiveGeofence(baseRadiusMeters?: number, accuracyMeters?: number | null): number {
+    const base = Math.max(baseRadiusMeters || 50, 100);
+    const accBuffer = Math.min(Math.max(accuracyMeters || 10, 0), 120);
+    return Math.round(base + accBuffer);
+  },
+
+  /**
+   * Determine if current position is within designated geofence radius with error margin
    */
   isWithinGeofence(
     currentLat: number,
     currentLon: number,
     targetLat: number,
     targetLon: number,
-    radiusMeters: number
-  ): { isInside: boolean; distanceMeters: number } {
+    baseRadiusMeters: number,
+    accuracyMeters?: number | null,
+  ): { isInside: boolean; distanceMeters: number; effectiveRadius: number } {
     const distanceMeters = this.calculateDistanceMeters(
       currentLat,
       currentLon,
       targetLat,
-      targetLon
+      targetLon,
     );
+    const effectiveRadius = this.calculateEffectiveGeofence(baseRadiusMeters, accuracyMeters);
     return {
-      isInside: distanceMeters <= radiusMeters,
+      isInside: distanceMeters <= effectiveRadius,
       distanceMeters,
+      effectiveRadius,
     };
   },
 };
+

@@ -94,6 +94,9 @@ export class VerifyLocationDto {
   @IsString()
   @IsOptional()
   stocker_id?: string;
+
+  @IsOptional()
+  on_site_override?: boolean;
 }
 
 export class SkipOrderDto {

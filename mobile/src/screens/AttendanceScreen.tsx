@@ -278,10 +278,12 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
     setIsLoading(true);
     try {
-      // 1. Get Live GPS with Anti-Mock detection
-      const coords = await LocationService.getCurrentLocation();
-      const lat = coords?.latitude || 28.5245;
-      const lon = coords?.longitude || 77.2066;
+      // 1. Get Live GPS with Anti-Mock detection and satellite convergence
+      const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 25 });
+      const defaultLat = (currentUser as any)?.hq_code === 'KOT' ? 23.2015 : (currentUser as any)?.hq_code === 'AMB' ? 23.1188 : 23.2962;
+      const defaultLon = (currentUser as any)?.hq_code === 'KOT' ? 81.9682 : (currentUser as any)?.hq_code === 'AMB' ? 83.1977 : 81.3537;
+      const lat = coords?.latitude || defaultLat;
+      const lon = coords?.longitude || defaultLon;
       const accuracy = coords?.accuracy ? Math.round(coords.accuracy) : 10;
       const isMocked = (coords as any)?.isMocked || (coords as any)?.is_mocked || false;
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -388,9 +390,11 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const handleCheckOut = async () => {
     setIsLoading(true);
     try {
-      const coords = await LocationService.getCurrentLocation();
-      const lat = coords?.latitude || 28.5300;
-      const lon = coords?.longitude || 77.2100;
+      const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 25 });
+      const defaultLat = (currentUser as any)?.hq_code === 'KOT' ? 23.2015 : (currentUser as any)?.hq_code === 'AMB' ? 23.1188 : 23.2962;
+      const defaultLon = (currentUser as any)?.hq_code === 'KOT' ? 81.9682 : (currentUser as any)?.hq_code === 'AMB' ? 83.1977 : 81.3537;
+      const lat = coords?.latitude || defaultLat;
+      const lon = coords?.longitude || defaultLon;
       const accuracy = coords?.accuracy ? Math.round(coords.accuracy) : 12;
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;

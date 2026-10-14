@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { sqliteQueue } from '../services/sqliteQueue';
+import { LocationService } from '../services/locationService';
 
 export interface OrderItem {
   id: string;
@@ -134,6 +135,10 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
       distributor: o.distributor,
     }));
 
+    const currentLoc = await LocationService.getCurrentLocation();
+    const startLat = currentLoc?.latitude || 23.2962;
+    const startLng = currentLoc?.longitude || 81.3537;
+
     await sqliteQueue.enqueueDraft('visit_drafts', {
       doctor_id: 'doc-01',
       start_time: new Date().toISOString(),
@@ -144,8 +149,8 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
       order: formattedOrders[0] || null, // Backward compatibility
       total_order_value: grandTotal,
       total_units: totalUnits,
-      start_lat: 28.5245,
-      start_lng: 77.2066,
+      start_lat: startLat,
+      start_lng: startLng,
     });
 
     Alert.alert(

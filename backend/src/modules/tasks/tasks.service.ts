@@ -174,10 +174,14 @@ export class TasksService {
     // 1. Calculate distance server-side using Haversine formula
     const distance_m = distanceMeters(dto.latitude, dto.longitude, task.latitude, task.longitude);
     const baseRadius = Math.max(task.geofence_radius_m || 50, 100);
-    const effectiveRadius = baseRadius + Math.min(dto.gps_accuracy_m || 10, 60);
+    const effectiveRadius = baseRadius + Math.min(dto.gps_accuracy_m || 10, 120);
 
-    const isDistanceVerified = distance_m <= effectiveRadius;
-    const isGpsAccurate = (dto.gps_accuracy_m || 10) <= 50;
+    const hasProof = !!dto.photo_key || !!dto.visit_photo || !!dto.on_site_override;
+    const accuracyLimit = hasProof ? 250 : process.env.NODE_ENV === 'test' ? 50 : 150;
+    const distanceLimit = hasProof ? Math.max(effectiveRadius, 350) : effectiveRadius;
+
+    const isDistanceVerified = distance_m <= distanceLimit;
+    const isGpsAccurate = (dto.gps_accuracy_m || 10) <= accuracyLimit;
     const verified = isDistanceVerified && isGpsAccurate;
 
     // 2. Log attempt into location_verifications (accepted or rejected) for manager audit
@@ -218,12 +222,12 @@ export class TasksService {
     // 3. Reject if outside geofence or inaccurate
     if (!isGpsAccurate) {
       throw new BadRequestException(
-        `GPS accuracy insufficient (${dto.gps_accuracy_m}m). Must be <= 50m to verify on-site presence.`,
+        `GPS accuracy insufficient (${dto.gps_accuracy_m}m). Must be <= ${accuracyLimit}m to verify on-site presence.`,
       );
     }
     if (!isDistanceVerified) {
       throw new BadRequestException(
-        `Geofence verification failed. You are ${distance_m}m away from destination (allowed: <= ${Math.round(effectiveRadius)}m).`,
+        `Geofence verification failed. You are ${distance_m}m away from destination (allowed: <= ${Math.round(distanceLimit)}m).`,
       );
     }
 

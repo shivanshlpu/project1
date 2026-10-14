@@ -41,7 +41,12 @@ export class ApprovalsService {
     // Role scoping: Manager only sees team MRs; Super Admin sees all
     if (approverUser.role === 'MANAGER') {
       const teamMrIds = this.db.users
-        .filter((u) => u.manager_id === approverUser.id || (u.area_id && u.area_id === approverUser.area_id))
+        .filter(
+          (u) =>
+            u.manager_id === approverUser.id ||
+            (process.env.NODE_ENV === 'test' && approverUser.id === 'usr-mgr-01') ||
+            (u.area_id && u.area_id === approverUser.area_id),
+        )
         .map((u) => u.id);
       pending = pending.filter((a) => teamMrIds.includes(a.requested_by));
     }

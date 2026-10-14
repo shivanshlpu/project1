@@ -261,8 +261,8 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       <InteractiveMapPicker
         isOpen={true}
         onClose={() => setIsMapPickerOpen(false)}
-        initialLat={targetDoctorForMap?.latitude || 28.5245}
-        initialLng={targetDoctorForMap?.longitude || 77.2066}
+        initialLat={targetDoctorForMap?.latitude || 23.2962}
+        initialLng={targetDoctorForMap?.longitude || 81.3537}
         initialCategory={targetDoctorForMap?.category || 'CLINIC'}
         initialName={targetDoctorForMap?.clinic || ''}
         initialDoctorName={targetDoctorForMap?.name || ''}

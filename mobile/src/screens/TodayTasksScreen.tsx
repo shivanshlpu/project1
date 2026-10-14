@@ -369,7 +369,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const handleReadLiveGPS = async (silent = false) => {
     setIsReadingGps(true);
     try {
-      const coords = await LocationService.getCurrentLocation();
+      const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 25 });
       if (coords) {
         const accuracy = coords.accuracy ? Math.round(coords.accuracy) : 10;
         setDeviceCoords({
@@ -377,13 +377,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           longitude: coords.longitude,
           accuracy,
         });
+        const grade = LocationService.getAccuracyGrade(accuracy);
         setLiveGpsInfo(
-          `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)} (±${accuracy}m)`,
+          `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)} (${grade.badgeText})`,
         );
         if (!silent) {
           Alert.alert(
             'GPS Sensor Synced',
-            `Current Device GPS:\nLat: ${coords.latitude.toFixed(5)}\nLng: ${coords.longitude.toFixed(5)}\nAccuracy: ±${accuracy}m`,
+            `Current Device GPS:\nLat: ${coords.latitude.toFixed(5)}\nLng: ${coords.longitude.toFixed(5)}\nAccuracy: ±${accuracy}m (${grade.label})`,
           );
         }
       } else if (!silent) {
@@ -401,11 +402,29 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     }
   };
 
-  // Auto-acquire GPS on mount and periodically every 15s
+  // Continuous active GPS watching with satellite convergence on screen mount
   useEffect(() => {
-    handleReadLiveGPS(true);
-    const gpsInterval = setInterval(() => handleReadLiveGPS(true), 15000);
-    return () => clearInterval(gpsInterval);
+    let unsubscribe: (() => void) | null = null;
+    LocationService.startWatching((coords) => {
+      const accuracy = coords.accuracy ? Math.round(coords.accuracy) : 10;
+      setDeviceCoords({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy,
+      });
+      const grade = LocationService.getAccuracyGrade(accuracy);
+      setLiveGpsInfo(
+        `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)} (${grade.badgeText})`,
+      );
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Live Timer for In-Progress Detailing Visit
@@ -467,7 +486,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     });
   };
 
-  // Start Task (Automatic Geofence Enforced + Instant Detailing Workspace Transition)
+  // Start Task (Automatic Geofence Enforced + Adaptive Weak-Signal Tolerance + Instant Workspace Transition)
   const handleStartTask = async (task: MobileTaskItem) => {
     if (task.status === 'SUSPENDED') {
       Alert.alert(
@@ -477,10 +496,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return;
     }
 
-    // 1. Ensure we have fresh, live GPS coordinates
+    // 1. Ensure we have fresh, live GPS coordinates (or perform convergence lock if accuracy is coarse)
     let currentCoords = deviceCoords;
-    if (!currentCoords) {
-      const fresh = await LocationService.getCurrentLocation();
+    if (!currentCoords || (currentCoords.accuracy && currentCoords.accuracy > 40)) {
+      setIsReadingGps(true);
+      const fresh = await LocationService.getCurrentLocation({ timeoutMs: 8000, targetAccuracy: 25 });
       if (fresh) {
         const acc = fresh.accuracy ? Math.round(fresh.accuracy) : 10;
         currentCoords = {
@@ -489,14 +509,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           accuracy: acc,
         };
         setDeviceCoords(currentCoords);
-        setLiveGpsInfo(`${fresh.latitude.toFixed(4)}, ${fresh.longitude.toFixed(4)} (±${acc}m)`);
+        const grade = LocationService.getAccuracyGrade(acc);
+        setLiveGpsInfo(`${fresh.latitude.toFixed(4)}, ${fresh.longitude.toFixed(4)} (${grade.badgeText})`);
       }
+      setIsReadingGps(false);
     }
 
     if (!currentCoords) {
       Alert.alert(
         'GPS Sensor Syncing',
-        'Acquiring your real-time location coordinates. Please wait a moment...',
+        'Acquiring your real-time location coordinates. Please ensure GPS is enabled...',
       );
       await handleReadLiveGPS(false);
       return;
@@ -510,11 +532,65 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
 
     const accuracy = currentCoords.accuracy || 10;
-    // Effective radius: at least 100m base + GPS accuracy buffer up to 60m for dense clinic structures
     const baseRadius = Math.max(task.geofence_radius_m || 50, 100);
-    const effectiveRadius = baseRadius + Math.min(accuracy, 60);
+    const effectiveRadius = LocationService.calculateEffectiveGeofence(baseRadius, accuracy);
+
+    const proceedWithTask = async (onSiteOverride = false) => {
+      const startTime = new Date().toISOString();
+      const inProgressTask: MobileTaskItem = {
+        ...task,
+        status: 'IN_PROGRESS',
+        started_at: startTime,
+      };
+
+      setAllTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? inProgressTask : t)),
+      );
+
+      // Immediately open Active Detailing & Visit Finalization Workspace!
+      setCompletingTask(inProgressTask);
+
+      // Sync start to backend
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders();
+        await fetch(`${baseUrl}/tasks/${task.id}/start`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            latitude: currentCoords?.latitude || task.latitude,
+            longitude: currentCoords?.longitude || task.longitude,
+            gps_accuracy_m: accuracy,
+            on_site_override: onSiteOverride,
+          }),
+        });
+      } catch {
+        // Offline fallback
+      }
+    };
 
     if (dist > effectiveRadius) {
+      // If user is within reasonable proximity (up to 350m) but indoor drift / weak network causes displacement:
+      if (dist <= 350) {
+        Alert.alert(
+          'Location Calibration Notice',
+          `Current GPS reading is ${formatDistance(dist)} from ${task.location_name} (Accuracy: ±${accuracy}m).\n\nIf you are physically present at the doctor clinic/facility, you can verify your on-site presence now.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Re-sync GPS',
+              onPress: () => handleReadLiveGPS(false),
+            },
+            {
+              text: 'Start Task (I am On-Site)',
+              style: 'default',
+              onPress: () => proceedWithTask(true),
+            },
+          ],
+        );
+        return;
+      }
+
       Alert.alert(
         'Geofence Range Notice',
         `You are currently ${formatDistance(dist)} away from ${task.location_name}.\n\nAllowed range for this facility: ${Math.round(effectiveRadius)}m.\n\nIf you are already inside the clinic, tap "Refresh GPS Location" above to update your phone's sensor.`,
@@ -522,44 +598,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return;
     }
 
-    if (accuracy > 150) {
-      Alert.alert(
-        'GPS Accuracy Weak',
-        `GPS accuracy is ±${accuracy}m. Tap "Refresh GPS Location" to sync a stronger fix.`,
-      );
-      return;
-    }
-
-    const startTime = new Date().toISOString();
-    const inProgressTask: MobileTaskItem = {
-      ...task,
-      status: 'IN_PROGRESS',
-      started_at: startTime,
-    };
-
-    setAllTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? inProgressTask : t)),
-    );
-
-    // Immediately open Active Detailing & Visit Finalization Workspace!
-    setCompletingTask(inProgressTask);
-
-    // Sync start to backend
-    try {
-      const baseUrl = await ApiConfig.getBaseUrl();
-      const headers = await ApiConfig.getAuthHeaders();
-      await fetch(`${baseUrl}/tasks/${task.id}/start`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          latitude: deviceCoords?.latitude || task.latitude,
-          longitude: deviceCoords?.longitude || task.longitude,
-          gps_accuracy_m: accuracy,
-        }),
-      });
-    } catch {
-      // Offline fallback
-    }
+    // Inside geofence: start task directly
+    proceedWithTask(false);
   };
 
   // Open Visit Completion & Immediate Order Sheet
@@ -797,15 +837,22 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           <View style={styles.simBox}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={styles.simHeader}>Automatic GPS &amp; Geofence Sensor</Text>
-              <Text
-                style={{
-                  fontSize: 10.5,
-                  color: deviceCoords ? '#0F8B5A' : '#D97706',
-                  fontWeight: '700',
-                }}
-              >
-                {deviceCoords ? `● GPS Live (±${deviceCoords.accuracy}m)` : '○ Locating...'}
-              </Text>
+              {deviceCoords ? (
+                (() => {
+                  const grade = LocationService.getAccuracyGrade(deviceCoords.accuracy);
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${grade.color}18`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 10.5, color: grade.color, fontWeight: '800' }}>
+                        ● {grade.badgeText}
+                      </Text>
+                    </View>
+                  );
+                })()
+              ) : (
+                <Text style={{ fontSize: 10.5, color: '#D97706', fontWeight: '700' }}>
+                  ○ Acquiring GPS...
+                </Text>
+              )}
             </View>
 
             {deviceCoords ? (

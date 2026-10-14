@@ -25,10 +25,21 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   currentUser,
   onLocationSaved,
 }) => {
+  // Default coordinates based on field territory (Shahdol & Central Division)
+  const defaultCoords =
+    (currentUser as any)?.hq_code === 'KOT'
+      ? { lat: 23.2015, lng: 81.9682 }
+      : (currentUser as any)?.hq_code === 'AMB'
+      ? { lat: 23.1188, lng: 83.1977 }
+      : (currentUser as any)?.hq_code === 'BSP'
+      ? { lat: 22.0797, lng: 82.1409 }
+      : { lat: 23.2962, lng: 81.3537 };
+
   // Current GPS coordinates captured by the phone
-  const [currentLat, setCurrentLat] = useState<number>(28.5325);
-  const [currentLng, setCurrentLng] = useState<number>(77.2115);
-  const [gpsAccuracy, setGpsAccuracy] = useState<number>(9.5); // ±9.5m accuracy
+  const [currentLat, setCurrentLat] = useState<number>(defaultCoords.lat);
+  const [currentLng, setCurrentLng] = useState<number>(defaultCoords.lng);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number>(10.0);
+  const [hasRealGpsLock, setHasRealGpsLock] = useState<boolean>(false);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -43,6 +54,25 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE'>('CLINIC');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Continuous active GPS watching on mount
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    LocationService.startWatching((coords) => {
+      if (coords) {
+        setCurrentLat(Number(coords.latitude.toFixed(6)));
+        setCurrentLng(Number(coords.longitude.toFixed(6)));
+        setGpsAccuracy(coords.accuracy ? Number(coords.accuracy.toFixed(1)) : 8.0);
+        setHasRealGpsLock(true);
+      }
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Fetch assigned doctors from backend
   useEffect(() => {
@@ -68,20 +98,20 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const handleRefreshGps = async () => {
     setIsLocating(true);
     try {
-      const coords = await LocationService.getCurrentLocation();
+      const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 20 });
       if (coords) {
         setCurrentLat(Number(coords.latitude.toFixed(6)));
         setCurrentLng(Number(coords.longitude.toFixed(6)));
         setGpsAccuracy(coords.accuracy ? Number(coords.accuracy.toFixed(1)) : 8.0);
+        setHasRealGpsLock(true);
       } else {
-        // Fallback simulation if indoors without sky view
-        const deltaLat = (Math.random() - 0.5) * 0.002;
-        const deltaLng = (Math.random() - 0.5) * 0.002;
-        setCurrentLat(Number((28.5325 + deltaLat).toFixed(6)));
-        setCurrentLng(Number((77.2115 + deltaLng).toFixed(6)));
+        Alert.alert(
+          'Acquiring Satellite Lock',
+          'Could not lock precision satellite GPS yet. Please ensure Location Permissions and High Accuracy Location are enabled, and hold the device steady.',
+        );
       }
-    } catch {
-      // Fallback
+    } catch (err: any) {
+      Alert.alert('Location Error', err?.message || 'Failed to acquire device GPS.');
     } finally {
       setIsLocating(false);
     }

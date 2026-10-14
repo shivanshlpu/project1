@@ -46,8 +46,8 @@ const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   isOpen,
   onClose,
-  initialLat = 28.5245,
-  initialLng = 77.2066,
+  initialLat = 23.2962,
+  initialLng = 81.3537,
   initialCategory = 'CLINIC',
   initialName = '',
   initialDoctorName = '',
@@ -269,7 +269,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const handleGetCurrentLocation = async () => {
     setIsLocatingGps(true);
     try {
-      const loc = await LocationService.getCurrentLocation();
+      const loc = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 20 });
       if (loc) {
         const lat = Number(loc.latitude.toFixed(6));
         const lng = Number(loc.longitude.toFixed(6));
