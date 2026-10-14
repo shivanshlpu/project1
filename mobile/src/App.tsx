@@ -572,6 +572,8 @@ export default function App() {
                 key={currentUser.id}
                 currentUserId={currentUser.id}
                 currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id || (currentUser as any).area_id}
+                currentUserHqName={currentUser.hq_name || (currentUser as any).area_name}
                 onBack={() => setMoreSubScreen('menu')}
               />
             )}

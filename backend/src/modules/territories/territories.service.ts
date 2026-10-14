@@ -404,4 +404,26 @@ export class TerritoriesService {
     this.db.persistToDisk();
     return { success: true, message: `Route Batch ${removed.batch_code} deleted successfully` };
   }
+
+  async updateStandardRate(rate: number): Promise<{ success: boolean; rate: number; updatedCount: number }> {
+    const numRate = Number(rate);
+    if (isNaN(numRate) || numRate < 0) {
+      throw new BadRequestException('Invalid rate value');
+    }
+
+    if (!this.db.attendanceSettings) {
+      this.db.attendanceSettings = {} as any;
+    }
+    this.db.attendanceSettings.reimbursement_rate_per_km = numRate;
+
+    let count = 0;
+    for (const rb of this.db.routeBatches) {
+      rb.standard_reimbursement_rate = numRate;
+      rb.updated_at = new Date().toISOString();
+      count++;
+    }
+
+    this.db.persistToDisk();
+    return { success: true, rate: numRate, updatedCount: count };
+  }
 }

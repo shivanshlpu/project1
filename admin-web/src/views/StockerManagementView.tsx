@@ -766,7 +766,11 @@ export const StockerManagementView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 'MEDICINES' || activeTab === 'MONTHLY_INWARD') fetchMedicines();
+    fetchMedicines();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'MEDICINES' || activeTab === 'MONTHLY_INWARD' || activeTab === 'STOCKAGE_WORKFLOW') fetchMedicines();
     if (activeTab === 'MONTHLY_INWARD') fetchMonthlyEntries();
     if (activeTab === 'ALERTS') fetchAlerts();
     if (activeTab === 'AUDIT') fetchAuditLogs();
@@ -1183,7 +1187,7 @@ export const StockerManagementView: React.FC = () => {
         <div style={{ minWidth: 260, flex: '1 1 280px' }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Boxes size={20} color="var(--color-brand)" style={{ flexShrink: 0 }} />
-            <span>HQ Stocker &amp; Medicine Inventory</span>
+            <span>HQ Stockage &amp; Medicine Inventory</span>
           </h1>
           <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Multi-HQ isolated inventory, medicine master catalog, real-time stock deduction, and shortage tracking.
@@ -1195,10 +1199,10 @@ export const StockerManagementView: React.FC = () => {
             className="btn-enterprise"
             onClick={() => setIsPdfModalOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-            title="Generate and print Stocker Inventory PDF report"
+            title="Generate and print Stockage Inventory PDF report"
           >
             <Printer size={14} />
-            <span>Print / Inventory PDF</span>
+            <span>Print / Stockage PDF</span>
           </button>
 
           <button
@@ -1255,7 +1259,7 @@ export const StockerManagementView: React.FC = () => {
           }}
         >
           <Layers size={14} />
-          <span>Stocker Inventory</span>
+          <span>Stockage Inventory</span>
         </button>
 
         <button

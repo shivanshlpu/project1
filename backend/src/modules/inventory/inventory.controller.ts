@@ -282,8 +282,10 @@ export class InventoryController {
   async getMrActiveStockagePermission(
     @CurrentUser() user: any,
     @Query('month') month?: string,
+    @Query('month_year') monthYear?: string,
   ) {
-    return this.inventoryService.getMrActiveStockagePermission(user.id, month);
+    const effectiveMonth = month || monthYear;
+    return this.inventoryService.getMrActiveStockagePermission(user.id, effectiveMonth);
   }
 
   // === MR BULK STOCKAGE SUBMISSION & ADMIN APPROVAL (§2, §3, §7) ===

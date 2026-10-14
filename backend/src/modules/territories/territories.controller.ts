@@ -111,6 +111,12 @@ export class TerritoriesController {
     return this.territoriesService.createRouteBatch(dto);
   }
 
+  @Patch('route-batches/settings/rate')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async updateStandardReimbursementRate(@Body() body: { rate: number }) {
+    return this.territoriesService.updateStandardRate(body.rate);
+  }
+
   @Patch('route-batches/:id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async updateRouteBatch(

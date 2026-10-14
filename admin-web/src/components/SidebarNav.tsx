@@ -97,7 +97,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         },
         {
           id: 'stockers',
-          label: t.tabStockers || 'Stocker Management',
+          label: t.tabStockers || 'Stockage Management',
           Icon: Boxes,
         },
         {

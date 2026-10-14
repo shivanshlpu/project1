@@ -430,7 +430,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           }
         }
         if (Array.isArray(data.medicinePackagingVariants) && data.medicinePackagingVariants.length > 0) {
-          this.medicinePackagingVariants = data.medicinePackagingVariants;
+          this.medicinePackagingVariants = data.medicinePackagingVariants.map((v: any) => ({
+            ...v,
+            size: v.size ?? v.package_size,
+            package_size: v.package_size ?? v.size,
+            unit: v.unit ?? v.package_unit,
+            package_unit: v.package_unit ?? v.unit,
+            display_name: v.display_name ?? v.display_label ?? v.variant_name,
+            display_label: v.display_label ?? v.display_name ?? v.variant_name,
+            variant_name: v.variant_name ?? v.display_label ?? v.display_name,
+            status: v.status || (v.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+            is_active: v.is_active !== undefined ? v.is_active : v.status === 'ACTIVE',
+          }));
         }
         if (Array.isArray(data.competitions)) {
           this.competitions = data.competitions;
@@ -2112,7 +2123,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     ];
 
     this.medicines = seedMedicinesList;
-    this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []);
+    this.medicinePackagingVariants = seedMedicinesList.flatMap((m) => m.packaging_variants || []).map((v: any) => ({
+      ...v,
+      size: v.size ?? v.package_size,
+      package_size: v.package_size ?? v.size,
+      unit: v.unit ?? v.package_unit,
+      package_unit: v.package_unit ?? v.unit,
+      display_name: v.display_name ?? v.display_label ?? v.variant_name,
+      display_label: v.display_label ?? v.display_name ?? v.variant_name,
+      variant_name: v.variant_name ?? v.display_label ?? v.display_name,
+      status: v.status || (v.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+      is_active: v.is_active !== undefined ? v.is_active : v.status === 'ACTIVE',
+    }));
 
     // 14. Stocker Inventory - Initial Inventory Records for every Stocker & Listed Medicine (all quantity = 0)
     this.stockerInventory = [];

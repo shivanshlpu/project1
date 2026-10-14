@@ -310,34 +310,35 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.topHeader}>
-        <View style={styles.headerLeft}>
-          {onBack && (
+        <View style={styles.headerNavRow}>
+          {onBack ? (
             <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
               <Text style={styles.backBtnText}>← Back</Text>
             </TouchableOpacity>
-          )}
-          <View>
-            <Text style={styles.headerTitle}>Field Orders & Deliveries</Text>
-            <Text style={styles.headerSubtitle}>
-              {currentUserHqName} • {orders.length} Total Orders
-            </Text>
-          </View>
+          ) : <View />}
+
+          <TouchableOpacity
+            style={styles.newOrderBtn}
+            onPress={() => setShowCreateModal(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newOrderBtnText}>+ New Order</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.newOrderBtn}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.newOrderBtnText}>+ New Order</Text>
-        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Field Orders & Deliveries</Text>
+          <Text style={styles.headerSubtitle}>
+            {currentUserHqName} • {orders.length} Total Orders
+          </Text>
+        </View>
       </View>
 
       {/* Notice Banner explaining the workflow */}
       <View style={styles.infoBanner}>
         <Text style={styles.infoBannerIcon}>💡</Text>
         <Text style={styles.infoBannerText}>
-          Orders are NOT deducted directly from inventory. Mark an order as DELIVERED once handed over. The target HQ will then accept it and inventory counting will start.
+          Stock remains paused until delivered. Deductions from inventory occur only upon successful delivery.
         </Text>
       </View>
 
@@ -763,20 +764,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+  },
+  headerNavRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
+  headerTitleContainer: {
+    marginTop: 2,
   },
   backBtn: {
     backgroundColor: '#F1F5F9',
     paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#CBD5E1',
@@ -787,20 +788,20 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#64748B',
     marginTop: 2,
   },
   newOrderBtn: {
     backgroundColor: '#0284C7',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 8,
     elevation: 2,
   },

@@ -403,10 +403,36 @@ export class OrdersService {
     if (dto.delivery_status === 'DELIVERED') {
       order.delivered_at = new Date().toISOString();
       order.delivered_by_user_id = user.id;
+
+      // Deduct medicine from inventory upon successful delivery
+      if (!order.inventory_deducted && order.items && order.items.length > 0) {
+        await this.inventoryService.deductStockForOrder(
+          order.hq_id,
+          order.stocker_id,
+          order.items,
+          order.id,
+          order.task_id || order.id,
+          user.id,
+        );
+        order.inventory_deducted = true;
+        order.inventory_deducted_at = new Date().toISOString();
+      }
     } else {
       order.delivered_at = undefined;
       order.delivered_by_user_id = undefined;
-      // If delivery is reverted, reset acceptance and counting
+      // If delivery is reverted, restore deducted stock back to inventory
+      if (order.inventory_deducted && order.items && order.items.length > 0) {
+        await this.inventoryService.restoreStockForOrder(
+          order.hq_id,
+          order.stocker_id,
+          order.items,
+          order.id,
+          order.task_id || order.id,
+          user.id,
+        );
+        order.inventory_deducted = false;
+        order.inventory_deducted_at = undefined;
+      }
       order.hq_accepted = false;
       order.accepted_at = undefined;
     }
@@ -420,6 +446,7 @@ export class OrdersService {
       const task = this.db.tasks.find((t) => t.id === order.task_id);
       if (task) {
         task.delivery_status = order.delivery_status;
+        task.inventory_deducted = order.inventory_deducted;
       }
     }
 

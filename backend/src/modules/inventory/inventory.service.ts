@@ -525,18 +525,26 @@ export class InventoryService {
     const med = this.db.medicines.find((m) => m.id === dto.medicine_id);
     if (!med) throw new NotFoundException('Medicine not found');
 
+    const pkgSize = Number(dto.package_size || dto.size || 1);
+    const pkgUnit = (dto.package_unit || dto.unit || 'units').trim();
+    const dispLabel = dto.display_label || dto.display_name || `${pkgSize} ${pkgUnit}`;
+
     const variant: MedicinePackagingVariant = {
       id: `var-${dto.medicine_id}-${uuidv4().substring(0, 6)}`,
       medicine_id: dto.medicine_id,
-      variant_name: dto.variant_name || `${dto.package_size} ${dto.package_unit}`,
-      package_size: Number(dto.package_size),
-      package_unit: dto.package_unit.trim(),
-      display_label: dto.display_label || `${dto.package_size} ${dto.package_unit.trim()}`,
-      packing: dto.packing || dto.display_label || `${dto.package_size} ${dto.package_unit.trim()}`,
+      variant_name: dto.variant_name || dispLabel,
+      package_size: pkgSize,
+      package_unit: pkgUnit,
+      size: pkgSize,
+      unit: pkgUnit,
+      display_label: dispLabel,
+      display_name: dispLabel,
+      packing: dto.packing || dispLabel,
       pts_rate: Number(dto.pts_rate),
       ptr_rate: dto.ptr_rate !== undefined ? Number(dto.ptr_rate) : undefined,
       mrp: Number(dto.mrp),
       status: 'ACTIVE',
+      is_active: true,
       created_at: new Date().toISOString(),
     };
 
@@ -802,6 +810,73 @@ export class InventoryService {
         previous_balance: prevQuantity,
         new_balance: inv.quantity,
         is_shortage: inv.quantity < 0,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * REVERT/RESTORE STOCK DEDUCTION
+   * Restores items back into inventory if an order delivery is reverted or cancelled.
+   */
+  async restoreStockForOrder(
+    hqId: string,
+    stockerId: string,
+    items: Array<{ product_id?: string; product_name: string; quantity: number }>,
+    orderId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<any[]> {
+    const results: any[] = [];
+
+    for (const item of items) {
+      if (!item.quantity || item.quantity <= 0) continue;
+
+      let med = item.product_id
+        ? this.db.medicines.find((m) => m.id === item.product_id)
+        : null;
+
+      if (!med) {
+        med = this.db.medicines.find(
+          (m) => m.name.toLowerCase() === item.product_name.toLowerCase(),
+        );
+      }
+
+      if (!med) continue;
+
+      let inv = this.db.stockerInventory.find(
+        (i) => i.stocker_id === stockerId && i.medicine_id === med!.id,
+      );
+
+      if (!inv) continue;
+
+      const prevQuantity = inv.quantity;
+      inv.quantity += item.quantity;
+      inv.updated_at = new Date().toISOString();
+
+      const tx: InventoryTransaction = {
+        id: `tx-${uuidv4().substring(0, 8)}`,
+        hq_id: hqId,
+        stocker_id: stockerId,
+        medicine_id: med.id,
+        quantity: item.quantity,
+        balance_after: inv.quantity,
+        transaction_type: 'ORDER_RESTORE',
+        order_id: orderId,
+        task_id: taskId,
+        user_id: userId,
+        reason: `Reverted delivery deduction for Order ${orderId} (${item.quantity} units of ${med.name})`,
+        timestamp: new Date().toISOString(),
+      };
+      this.db.inventoryTransactions.push(tx);
+
+      results.push({
+        medicine_id: med.id,
+        medicine_name: med.name,
+        restored: item.quantity,
+        previous_balance: prevQuantity,
+        new_balance: inv.quantity,
       });
     }
 

@@ -503,7 +503,68 @@ export const MonthlyTpView: React.FC = () => {
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [processingTpId, setProcessingTpId] = useState<string | null>(null);
 
+  // Global Reimbursement Rate Settings State
+  const [globalRate, setGlobalRate] = useState<number>(() => {
+    const saved = localStorage.getItem('ahtri_reimbursement_rate');
+    return saved ? parseFloat(saved) || 2.5 : 2.5;
+  });
+  const [isRateSettingsModalOpen, setIsRateSettingsModalOpen] = useState<boolean>(false);
+  const [rateInput, setRateInput] = useState<string>(() => String(localStorage.getItem('ahtri_reimbursement_rate') || '2.5'));
+  const [isSavingRate, setIsSavingRate] = useState<boolean>(false);
+
   const apiUrl = getApiBaseUrl();
+
+  const handleSaveRateSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newRate = parseFloat(rateInput);
+    if (isNaN(newRate) || newRate < 0) {
+      alert('Please enter a valid reimbursement rate per km.');
+      return;
+    }
+
+    setIsSavingRate(true);
+    try {
+      localStorage.setItem('ahtri_reimbursement_rate', String(newRate));
+      setGlobalRate(newRate);
+
+      await fetch(`${apiUrl}/territories/route-batches/settings/rate`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ rate: newRate }),
+      }).catch(() => {});
+
+      // Update local route batches state
+      setRouteBatches((prev) =>
+        prev.map((b) => ({
+          ...b,
+          standard_reimbursement_rate: newRate,
+        }))
+      );
+
+      // Recalculate pending tour plan reimbursement amounts
+      setPlans((prev) =>
+        prev.map((p) => {
+          const dist = p.round_trip_distance_km || p.distance_km || 0;
+          return {
+            ...p,
+            reimbursement_rate: newRate,
+            reimbursement_amount: Math.round(dist * newRate * 100) / 100,
+          };
+        })
+      );
+
+      setIsRateSettingsModalOpen(false);
+      setActionNotice({
+        type: 'success',
+        message: `✓ Reimbursement rate updated to ₹${newRate.toFixed(2)}/km! All route batches and calculations updated.`,
+      });
+      setTimeout(() => setActionNotice(null), 5000);
+    } catch {
+      alert('Error updating reimbursement rate settings.');
+    } finally {
+      setIsSavingRate(false);
+    }
+  };
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -811,7 +872,7 @@ export const MonthlyTpView: React.FC = () => {
         mr_id: batch.mr_id || '',
         route_stops_str: (batch.route_stops || []).join(' → '),
         distance_km: batch.distance_km,
-        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 2.5,
+        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? globalRate,
         status: batch.status,
       });
     } else {
@@ -823,7 +884,7 @@ export const MonthlyTpView: React.FC = () => {
         mr_id: '',
         route_stops_str: '',
         distance_km: 60,
-        standard_reimbursement_rate: 2.5,
+        standard_reimbursement_rate: globalRate,
         status: 'ACTIVE',
       });
     }
@@ -1104,6 +1165,20 @@ export const MonthlyTpView: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-enterprise secondary"
+            onClick={() => {
+              setRateInput(String(globalRate));
+              setIsRateSettingsModalOpen(true);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
+            title="Configure Authoritative Travel Reimbursement Rate Policy"
+          >
+            <Sliders size={14} color="#1A3C6E" />
+            <span>Rate Settings (₹{globalRate.toFixed(2)}/km)</span>
+          </button>
+
           {activeSubTab === 'schedules' ? (
             <>
               <button
@@ -1750,7 +1825,7 @@ export const MonthlyTpView: React.FC = () => {
                         </td>
 
                         <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 600, color: '#0F8B5A' }}>
-                          ₹{(b.standard_reimbursement_rate ?? 2.5).toFixed(2)}
+                          ₹{(b.standard_reimbursement_rate ?? globalRate).toFixed(2)}
                         </td>
 
                         <td style={{ padding: '11px 14px', textAlign: 'center' }}>
@@ -2268,6 +2343,101 @@ export const MonthlyTpView: React.FC = () => {
                 <span>Generate &amp; Print PDF</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RATE SETTINGS */}
+      {isRateSettingsModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 460,
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sliders size={20} color="#1A3C6E" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                  Travel Reimbursement Rate Settings
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRateSettingsModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRateSettings}>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Reimbursement Rate Policy (₹ / KM)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: '#1A3C6E' }}>₹</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    required
+                    value={rateInput}
+                    onChange={(e) => setRateInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 6,
+                      border: '1.5px solid #0284C7',
+                      fontSize: 15,
+                      fontWeight: 800,
+                      color: '#0F172A',
+                    }}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>per km</span>
+                </div>
+                <p style={{ fontSize: 11.5, color: '#64748B', marginTop: 8, lineHeight: 1.5 }}>
+                  This rate is authoritative across all headquarters and circuits. Saving will update the Rate column for all route batches and automatically recompute reimbursement amounts.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn-enterprise secondary"
+                  onClick={() => setIsRateSettingsModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-enterprise"
+                  disabled={isSavingRate}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  {isSavingRate ? <RefreshCw size={14} className="spin" /> : <Check size={15} />}
+                  <span>{isSavingRate ? 'Saving...' : 'Save Rate Settings'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

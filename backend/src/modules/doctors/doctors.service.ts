@@ -31,6 +31,13 @@ export class DoctorsService {
 
   async createDoctor(dto: CreateDoctorDto, createdBy: string) {
     const creator = this.db.users.find((u) => u.id === createdBy);
+    const assignedMrId = dto.assigned_mr_id || (creator?.role === 'MR' ? creator.id : undefined);
+    let assignedMrName = dto.assigned_mr_name;
+    if (!assignedMrName && assignedMrId) {
+      const assignedUser = this.db.users.find((u) => u.id === assignedMrId);
+      assignedMrName = assignedUser ? assignedUser.name : (creator?.name || 'Field Representative');
+    }
+
     const doctor: Doctor = {
       id: `doc-${uuidv4().substring(0, 8)}`,
       name: dto.name,
@@ -47,13 +54,16 @@ export class DoctorsService {
       latitude: dto.latitude,
       longitude: dto.longitude,
       area_id: dto.area_id || 'area-shd-07',
+      assigned_mr_id: assignedMrId,
+      assigned_mr_name: assignedMrName,
       created_by: createdBy,
       created_by_role: creator ? creator.role : 'MR',
-      created_by_name: creator ? creator.name : 'Unknown User',
+      created_by_name: creator ? creator.name : (assignedMrName || 'Field MR'),
       created_at: new Date().toISOString(),
     };
 
     this.db.doctors.push(doctor);
+    this.db.persistToDisk();
     return doctor;
   }
 

@@ -269,6 +269,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   // Edit Modal Route Batch States
   const [editSelectedBatch, setEditSelectedBatch] = useState<RouteBatchSuggestion | null>(null);
   const [editAvailableBatches, setEditAvailableBatches] = useState<RouteBatchSuggestion[]>([]);
+  const [editAllBatches, setEditAllBatches] = useState<RouteBatchSuggestion[]>([]);
   const [isLoadingEditBatches, setIsLoadingEditBatches] = useState<boolean>(false);
 
   // Calendar modal state
@@ -562,6 +563,79 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       setEditSelectedBatch(localMatches[0]);
     }
     setIsLoadingEditBatches(false);
+  };
+
+  const fetchEditAllBatches = async (hqId: string) => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(
+        `${baseUrl}/territories/route-batches?hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        { headers },
+      );
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          const mapped = list.map((b: any) => ({
+            id: b.id,
+            batch_code: b.batch_code,
+            name: b.name,
+            route: b.route_stops && b.route_stops.length > 0 ? b.route_stops.join(' → ') : b.name,
+            route_stops: b.route_stops || b.areas || [],
+            distance_km: b.distance_km || 0,
+            one_way_distance_km: b.distance_km || 0,
+            round_trip_distance_km: (b.distance_km || 0) * 2,
+            is_round_trip: true,
+            hq_id: b.hq_id,
+            hq_name: b.hq_name,
+            reimbursement_rate: b.reimbursement_rate ?? 2.5,
+            reimbursement_amount: b.reimbursement_amount ?? ((b.distance_km || 0) * 2 * 2.5),
+          }));
+          setEditAllBatches(mapped);
+          return;
+        }
+      }
+    } catch {}
+
+    const fallback = getStaticBatchesForHq(hqId, currentUserId);
+    setEditAllBatches(fallback);
+  };
+
+  const handleOpenEditBatchPicker = () => {
+    const batches =
+      editAllBatches.length > 0
+        ? editAllBatches
+        : allHqBatches.length > 0
+        ? allHqBatches
+        : getStaticBatchesForHq(editHqId || selectedHqId, currentUserId);
+
+    setPickerModal({
+      visible: true,
+      title: 'Select / Change Route Batch',
+      options: [
+        {
+          label: '🚫 None / Direct Distance',
+          value: '__none__',
+          sublabel: 'No predefined route batch (center-to-boundary direct distance applies)',
+        },
+        ...batches.map((b) => ({
+          label: `${b.batch_code} (${b.distance_km} km one-way · ${b.distance_km * 2} km round-trip)`,
+          value: b.id,
+          sublabel: b.route || b.name,
+        })),
+      ],
+      selectedValue: editSelectedBatch?.id || '__none__',
+      onSelect: (val) => {
+        if (val === '__none__') {
+          setEditSelectedBatch(null);
+        } else {
+          const found = batches.find((b) => b.id === val);
+          if (found) {
+            setEditSelectedBatch(found);
+          }
+        }
+      },
+    });
   };
 
   // Auto-fetch suggestions when destination (selectedArea) or selectedHqId changes
@@ -947,6 +1021,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
 
     fetchEditBatchSuggestions(entry.planned_area || '', entry.hq_id || selectedHqId);
+    fetchEditAllBatches(entry.hq_id || selectedHqId);
     setIsEditModalOpen(true);
   };
 
@@ -1698,6 +1773,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         setEditHqId(newHq);
                         const areasForHq = getStoredAreasForHq(newHq);
                         setEditArea(areasForHq[0] || 'Main Area');
+                        fetchEditAllBatches(newHq);
                       },
                     })
                   }
@@ -1746,14 +1822,59 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
                 {/* Edit Route Batch Suggestion Card */}
                 <View style={[styles.routeBatchCard, { marginTop: 8 }]}>
-                  <Text style={styles.routeBatchTitle}>🛣️ Route Batch &amp; Travel Distance</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={styles.routeBatchTitle}>🛣️ Route Batch &amp; Travel Distance</Text>
+                    <TouchableOpacity
+                      style={styles.changeBatchBtn}
+                      activeOpacity={0.7}
+                      onPress={handleOpenEditBatchPicker}
+                    >
+                      <Text style={styles.changeBatchBtnText}>🔄 Change Batch</Text>
+                    </TouchableOpacity>
+                  </View>
                   {isLoadingEditBatches && <ActivityIndicator size="small" color="#1A3C6E" />}
 
-                  {editAvailableBatches.length > 0 ? (
-                    <View style={{ marginTop: 4 }}>
+                  {editSelectedBatch ? (
+                    <View style={[styles.activeBatchSummary, { marginTop: 4 }]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.activeBatchSummaryTitle}>
+                          Selected: <Text style={{ fontWeight: '800' }}>{editSelectedBatch.batch_code}</Text>
+                        </Text>
+                        <TouchableOpacity
+                          onPress={handleOpenEditBatchPicker}
+                          style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#E0F2FE', borderRadius: 4 }}
+                        >
+                          <Text style={{ fontSize: 10, color: '#0369A1', fontWeight: '700' }}>Edit ✏️</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#0369A1', marginTop: 2 }}>
+                        {editSelectedBatch.distance_km} km one-way • {editSelectedBatch.distance_km * 2} km round-trip
+                      </Text>
+                      {editSelectedBatch.route ? (
+                        <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 2 }}>
+                          Route: {editSelectedBatch.route}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : (
+                    <View style={{ paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 10.5, color: '#64748B' }}>
+                        No predefined batch for '{editArea}'. Center-to-boundary direct distance applies.
+                      </Text>
+                      <TouchableOpacity
+                        style={{ marginTop: 6, alignSelf: 'flex-start' }}
+                        onPress={handleOpenEditBatchPicker}
+                      >
+                        <Text style={{ fontSize: 11, color: '#0284C7', fontWeight: '700' }}>+ Assign a Route Batch</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {editAvailableBatches.length > 0 && (
+                    <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 6 }}>
                       <Text style={styles.routeBatchSub}>
                         {editAvailableBatches.length === 1
-                          ? `✓ 1 suggested batch for '${editArea}':`
+                          ? `✓ Suggested batch for '${editArea}':`
                           : `✓ ${editAvailableBatches.length} batches match '${editArea}':`}
                       </Text>
                       {editAvailableBatches.map((b) => {
@@ -1761,7 +1882,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         return (
                           <TouchableOpacity
                             key={b.id}
-                            style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
+                            style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected, { marginTop: 4 }]}
                             onPress={() => setEditSelectedBatch(b)}
                           >
                             <View style={styles.batchCardTop}>
@@ -1778,18 +1899,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           </TouchableOpacity>
                         );
                       })}
-                    </View>
-                  ) : (
-                    <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 4 }}>
-                      No predefined batch for '{editArea}'. Center-to-boundary direct distance applies.
-                    </Text>
-                  )}
-
-                  {editSelectedBatch && (
-                    <View style={[styles.activeBatchSummary, { marginTop: 6 }]}>
-                      <Text style={styles.activeBatchSummaryTitle}>
-                        Selected: <Text style={{ fontWeight: '800' }}>{editSelectedBatch.batch_code}</Text> ({editSelectedBatch.distance_km} km one-way • {editSelectedBatch.distance_km * 2} km round-trip)
-                      </Text>
                     </View>
                   )}
                 </View>
@@ -2249,6 +2358,19 @@ const styles = StyleSheet.create({
     borderColor: '#BAE6FD',
   },
   editVisitBtnText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  changeBatchBtn: {
+    backgroundColor: '#E0F2FE',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  changeBatchBtnText: {
     fontSize: 10.5,
     fontWeight: '700',
     color: '#0284C7',

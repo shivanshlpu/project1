@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck,
   Calendar,
@@ -21,6 +21,8 @@ import {
   FileCheck,
   Send,
   Building,
+  Filter,
+  Search,
 } from 'lucide-react';
 import { showConfirmModal } from './CenteredModalNotice';
 
@@ -52,13 +54,19 @@ interface MedicineItem {
 interface PackagingVariant {
   id: string;
   medicine_id: string;
-  size: number;
-  unit: string;
-  display_name: string;
+  variant_name?: string;
+  display_label?: string;
+  display_name?: string;
+  package_size?: number;
+  package_unit?: string;
+  size?: number;
+  unit?: string;
+  packing?: string;
   pts_rate: number;
   ptr_rate?: number;
   mrp: number;
-  is_active: boolean;
+  status?: 'ACTIVE' | 'INACTIVE';
+  is_active?: boolean;
   created_at?: string;
 }
 
@@ -165,6 +173,9 @@ const DEFAULT_MRS_FALLBACK = [
 
   // --- Packaging Variants State ---
   const [variants, setVariants] = useState<PackagingVariant[]>([]);
+  const [internalMedicines, setInternalMedicines] = useState<MedicineItem[]>(medicines || []);
+  const [variantTypeFilter, setVariantTypeFilter] = useState<'ALL' | 'LIQUIDS' | 'TABLETS' | 'OINTMENTS' | 'OTHER'>('ALL');
+  const [variantSearch, setVariantSearch] = useState<string>('');
   const [isAddVariantModalOpen, setIsAddVariantModalOpen] = useState<boolean>(false);
   const [newVarMedId, setNewVarMedId] = useState<string>('');
   const [newVarSize, setNewVarSize] = useState<string>('60');
@@ -179,7 +190,14 @@ const DEFAULT_MRS_FALLBACK = [
     fetchRequests();
     fetchVariants();
     fetchMrs();
+    fetchMedicinesList();
   }, [permMonthYear]);
+
+  useEffect(() => {
+    if (medicines && medicines.length > 0) {
+      setInternalMedicines(medicines);
+    }
+  }, [medicines]);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setStatusMessage({ type, text });
@@ -247,6 +265,106 @@ const DEFAULT_MRS_FALLBACK = [
       console.error('Failed to load packaging variants', err);
     }
   };
+
+  const fetchMedicinesList = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/inventory/medicines?all=true`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setInternalMedicines(data);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch internal medicines list', err);
+    }
+  };
+
+  const getVariantCategory = (v: PackagingVariant): 'LIQUIDS' | 'TABLETS' | 'OINTMENTS' | 'OTHER' => {
+    const unit = (v.package_unit || v.unit || '').toLowerCase();
+    const name = (v.display_label || v.variant_name || v.display_name || v.packing || '').toLowerCase();
+
+    if (
+      unit.includes('ml') ||
+      unit.includes('ltr') ||
+      unit.includes('syrup') ||
+      unit.includes('drop') ||
+      unit.includes('susp') ||
+      name.includes('bottle') ||
+      name.includes('syrup') ||
+      name.includes('suspension') ||
+      name.includes('drop')
+    ) {
+      return 'LIQUIDS';
+    }
+    if (
+      unit.includes('strip') ||
+      unit.includes('tab') ||
+      unit.includes('cap') ||
+      name.includes('tablet') ||
+      name.includes('strip') ||
+      name.includes('capsule') ||
+      name.includes('10*') ||
+      name.includes('20*') ||
+      name.includes('tabs')
+    ) {
+      return 'TABLETS';
+    }
+    if (
+      unit.includes('gm') ||
+      unit.includes('gram') ||
+      unit.includes('tube') ||
+      unit.includes('gel') ||
+      unit.includes('oint') ||
+      unit.includes('cream') ||
+      name.includes('tube') ||
+      name.includes('ointment') ||
+      name.includes('cream') ||
+      name.includes('gel')
+    ) {
+      return 'OINTMENTS';
+    }
+    return 'OTHER';
+  };
+
+  const effectiveMedicines = internalMedicines.length > 0 ? internalMedicines : medicines;
+
+  const categoryCounts = useMemo(() => {
+    const counts = { ALL: variants.length, LIQUIDS: 0, TABLETS: 0, OINTMENTS: 0, OTHER: 0 };
+    variants.forEach((v) => {
+      const cat = getVariantCategory(v);
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [variants]);
+
+  const filteredVariants = useMemo(() => {
+    return variants.filter((v) => {
+      if (variantTypeFilter !== 'ALL') {
+        const cat = getVariantCategory(v);
+        if (cat !== variantTypeFilter) return false;
+      }
+      if (variantSearch.trim()) {
+        const q = variantSearch.toLowerCase().trim();
+        const med = effectiveMedicines.find((m) => m.id === v.medicine_id);
+        const medName = (med?.name || '').toLowerCase();
+        const medCode = (med?.product_code || med?.code || '').toLowerCase();
+        const vName = (v.display_label || v.variant_name || v.display_name || v.packing || '').toLowerCase();
+        const sizeUnit = `${v.package_size ?? v.size ?? ''} ${v.package_unit ?? v.unit ?? ''}`.toLowerCase();
+        return (
+          medName.includes(q) ||
+          medCode.includes(q) ||
+          vName.includes(q) ||
+          sizeUnit.includes(q) ||
+          v.medicine_id.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [variants, variantTypeFilter, variantSearch, effectiveMedicines]);
 
   // Grant Permissions
   const handleGrantPermissions = async () => {
@@ -406,11 +524,18 @@ const DEFAULT_MRS_FALLBACK = [
         headers: getAuthHeaders(),
         body: JSON.stringify({
           medicine_id: newVarMedId,
+          package_size: sizeNum,
+          package_unit: newVarUnit.trim(),
           size: sizeNum,
           unit: newVarUnit.trim(),
+          variant_name: `${sizeNum} ${newVarUnit.trim()}`,
+          display_label: `${sizeNum} ${newVarUnit.trim()}`,
+          display_name: `${sizeNum} ${newVarUnit.trim()}`,
+          packing: `${sizeNum} ${newVarUnit.trim()}`,
           pts_rate: ptsNum,
           ptr_rate: !isNaN(ptrNum) ? ptrNum : undefined,
           mrp: mrpNum,
+          status: 'ACTIVE',
           is_active: true,
         }),
       });
@@ -1410,7 +1535,7 @@ const DEFAULT_MRS_FALLBACK = [
               justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: 10,
+              gap: 12,
             }}
           >
             <div>
@@ -1418,32 +1543,125 @@ const DEFAULT_MRS_FALLBACK = [
                 Medicine Packaging Variants, PTS Rate &amp; MRP Master
               </h3>
               <p style={{ margin: '3px 0 0', fontSize: 11.5, color: '#64748B' }}>
-                Manage packaging options (e.g. 30ml, 60ml, 200ml, 30gm, 10*10), assign PTS and MRP. MR order amounts strictly use PTS: `Order Amount = Qty &times; PTS`.
+                Manage packaging options (e.g. 30ml, 60ml, 200ml, 30gm, 10*10), assign PTS and MRP. MR order amounts strictly use PTS: <code>Order Amount = Qty &times; PTS</code>.
               </p>
             </div>
 
             <button
               type="button"
               onClick={() => {
-                if (medicines.length > 0 && !newVarMedId) {
-                  setNewVarMedId(medicines[0].id);
+                if (effectiveMedicines.length > 0 && !newVarMedId) {
+                  setNewVarMedId(effectiveMedicines[0].id);
                 }
                 setIsAddVariantModalOpen(true);
               }}
               className="btn-enterprise"
               style={{
-                padding: '6px 14px',
-                fontSize: 12,
+                padding: '7px 16px',
+                fontSize: 12.5,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
                 background: 'var(--color-brand)',
                 color: '#FFFFFF',
+                borderRadius: 6,
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
               }}
             >
-              <Plus size={14} />
+              <Plus size={15} />
               <span>Add Packaging Variant</span>
             </button>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
+              background: '#FFFFFF',
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginRight: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <Filter size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+                Type:
+              </span>
+              {[
+                { key: 'ALL', label: `All Packaging (${categoryCounts.ALL})` },
+                { key: 'LIQUIDS', label: `🧪 Liquids & Syrups (${categoryCounts.LIQUIDS})` },
+                { key: 'TABLETS', label: `💊 Tablets & Strips (${categoryCounts.TABLETS})` },
+                { key: 'OINTMENTS', label: `🧴 Ointments & Creams (${categoryCounts.OINTMENTS})` },
+                { key: 'OTHER', label: `📦 Other (${categoryCounts.OTHER})` },
+              ].map((btn) => {
+                const isSelected = variantTypeFilter === btn.key;
+                return (
+                  <button
+                    key={btn.key}
+                    type="button"
+                    onClick={() => setVariantTypeFilter(btn.key as any)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 16,
+                      fontSize: 11.5,
+                      fontWeight: isSelected ? 700 : 500,
+                      border: isSelected ? '1px solid var(--color-brand)' : '1px solid #E2E8F0',
+                      background: isSelected ? 'var(--color-brand-bg, #EEF2FF)' : '#F8FAFC',
+                      color: isSelected ? 'var(--color-brand)' : '#475569',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {btn.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Live Search */}
+            <div style={{ position: 'relative', minWidth: 220 }}>
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+              <input
+                type="text"
+                placeholder="Search variant or medicine..."
+                value={variantSearch}
+                onChange={(e) => setVariantSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '5px 10px 5px 30px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border)',
+                  fontSize: 12,
+                  outline: 'none',
+                }}
+              />
+              {variantSearch && (
+                <button
+                  type="button"
+                  onClick={() => setVariantSearch('')}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94A3B8',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Variants Table */}
@@ -1457,7 +1675,7 @@ const DEFAULT_MRS_FALLBACK = [
             }}
           >
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
+              <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700 }}>Medicine</th>
@@ -1470,25 +1688,69 @@ const DEFAULT_MRS_FALLBACK = [
                   </tr>
                 </thead>
                 <tbody>
-                  {variants.length === 0 ? (
+                  {filteredVariants.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ padding: '30px 14px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic' }}>
-                        No packaging variants configured yet.
+                        {variants.length === 0 ? 'No packaging variants configured yet.' : 'No packaging variants match your search/filter.'}
                       </td>
                     </tr>
                   ) : (
-                    variants.map((v) => {
-                      const med = medicines.find((m) => m.id === v.medicine_id);
+                    filteredVariants.map((v) => {
+                      const med = effectiveMedicines.find((m) => m.id === v.medicine_id);
+                      const displayLabel = v.display_label || v.variant_name || v.display_name || v.packing || 'Standard';
+                      const sizeVal = v.package_size ?? v.size ?? '—';
+                      const unitVal = v.package_unit ?? v.unit ?? '';
+                      const isActive = v.status === 'ACTIVE' || v.is_active === true;
+                      const cat = getVariantCategory(v);
+
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
                           <td style={{ padding: '11px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>
-                            💊 {med?.name || v.medicine_id}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>💊</span>
+                              <div>
+                                <div>{med?.name || v.medicine_id}</div>
+                                {med?.product_code || med?.code ? (
+                                  <span style={{ fontSize: 10.5, color: '#64748B', fontWeight: 500 }}>
+                                    {med.product_code || med.code}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
                           </td>
                           <td style={{ padding: '11px 14px', fontWeight: 600, color: '#0F172A' }}>
-                            {v.display_name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>{displayLabel}</span>
+                              <span
+                                style={{
+                                  fontSize: 9.5,
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  background:
+                                    cat === 'LIQUIDS'
+                                      ? '#E0F2FE'
+                                      : cat === 'TABLETS'
+                                      ? '#EDE9FE'
+                                      : cat === 'OINTMENTS'
+                                      ? '#FEF3C7'
+                                      : '#F1F5F9',
+                                  color:
+                                    cat === 'LIQUIDS'
+                                      ? '#0369A1'
+                                      : cat === 'TABLETS'
+                                      ? '#6D28D9'
+                                      : cat === 'OINTMENTS'
+                                      ? '#B45309'
+                                      : '#475569',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {cat}
+                              </span>
+                            </div>
                           </td>
-                          <td style={{ padding: '11px 14px', color: '#475569' }}>
-                            {v.size} {v.unit}
+                          <td style={{ padding: '11px 14px', color: '#475569', fontWeight: 500 }}>
+                            {sizeVal} {unitVal}
                           </td>
                           <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 800, color: '#047857' }}>
                             ₹{Number(v.pts_rate).toFixed(2)}
@@ -1506,11 +1768,11 @@ const DEFAULT_MRS_FALLBACK = [
                                 borderRadius: 10,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                background: v.is_active ? '#DCFCE7' : '#FEE2E2',
-                                color: v.is_active ? '#166534' : '#991B1B',
+                                background: isActive ? '#DCFCE7' : '#FEE2E2',
+                                color: isActive ? '#166534' : '#991B1B',
                               }}
                             >
-                              {v.is_active ? 'ACTIVE' : 'INACTIVE'}
+                              {isActive ? 'ACTIVE' : 'INACTIVE'}
                             </span>
                           </td>
                         </tr>
@@ -1571,7 +1833,7 @@ const DEFAULT_MRS_FALLBACK = [
                       onChange={(e) => setNewVarMedId(e.target.value)}
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }}
                     >
-                      {medicines.map((m) => (
+                      {effectiveMedicines.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name} ({m.product_code || m.code || m.id})
                         </option>

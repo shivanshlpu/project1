@@ -44,28 +44,35 @@ export class LocationsService implements OnModuleInit {
     try {
       const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
       if (!error && Array.isArray(data) && data.length > 0) {
-        this.locations = data.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          clinic: d.name,
-          doctor_name: d.contact_person || '',
-          qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
-          specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
-          class: 'A',
-          potential_score: 85,
-          phone: d.contact_phone || 'N/A',
-          address: d.address,
-          latitude: Number(d.latitude),
-          longitude: Number(d.longitude),
-          category: d.category || 'CLINIC',
-          created_by: d.created_by || 'usr-admin-01',
-          created_by_role: 'ADMIN',
-          created_by_name: 'System Admin (Owner)',
-          area_name: 'Territory',
-          visit_count: 0,
-          is_new: false,
-          created_at: d.created_at || new Date().toISOString(),
-        }));
+        this.locations = data.map((d: any) => {
+          const user = this.db.users.find((u) => u.id === d.created_by);
+          const isMr = user?.role === 'MR' || (d.created_by && String(d.created_by).includes('mr'));
+          const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
+          const creatorName = user ? `${user.name}${isMr ? ' (Field MR)' : ''}` : (isMr ? 'Field MR' : 'System Admin (Owner)');
+
+          return {
+            id: d.id,
+            name: d.name,
+            clinic: d.name,
+            doctor_name: d.contact_person || '',
+            qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
+            specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
+            class: 'A',
+            potential_score: 85,
+            phone: d.contact_phone || 'N/A',
+            address: d.address,
+            latitude: Number(d.latitude),
+            longitude: Number(d.longitude),
+            category: d.category || 'CLINIC',
+            created_by: d.created_by || 'usr-admin-01',
+            created_by_role: creatorRole,
+            created_by_name: creatorName,
+            area_name: 'Territory',
+            visit_count: 0,
+            is_new: false,
+            created_at: d.created_at || new Date().toISOString(),
+          };
+        });
         console.log(`[LocationsService] Loaded ${this.locations.length} live saved locations from Supabase.`);
       }
     } catch (err: any) {
@@ -230,15 +237,17 @@ export class LocationsService implements OnModuleInit {
   }
 
   async createLocation(dto: CreateLocationDto, authenticatedUser?: any): Promise<SavedLocation> {
-    const creatorRole = authenticatedUser?.role === 'SUPER_ADMIN' || authenticatedUser?.role === 'ADMIN'
-      ? 'ADMIN'
-      : 'MR';
+    const userFromId = dto.mr_id ? this.db.users.find((u) => u.id === dto.mr_id) : null;
+    const creatorUser = authenticatedUser || userFromId;
+    const creatorRole: 'ADMIN' | 'MR' =
+      creatorUser?.role === 'SUPER_ADMIN' || creatorUser?.role === 'ADMIN'
+        ? 'ADMIN'
+        : 'MR';
 
-    const creatorName = authenticatedUser?.name
-      || dto.mr_name
-      || (creatorRole === 'MR' ? 'Amar Dwivedi (Field MR)' : 'System Admin (Owner)');
-
-    const creatorId = authenticatedUser?.id || dto.mr_id || 'usr-mr-01';
+    const creatorId = creatorUser?.id || dto.mr_id || 'usr-mr-02';
+    const creatorName =
+      dto.mr_name ||
+      (creatorUser?.name ? `${creatorUser.name}${creatorRole === 'MR' ? ' (Field MR)' : ''}` : (creatorRole === 'MR' ? 'Field MR' : 'System Admin (Owner)'));
 
     const displayName = dto.doctor_name && dto.doctor_name.trim()
       ? (dto.doctor_name.trim().startsWith('Dr.') ? dto.doctor_name.trim() : `Dr. ${dto.doctor_name.trim()}`)

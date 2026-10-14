@@ -70,7 +70,7 @@ export const SubNav: React.FC<SubNavProps> = ({
     { id: 'members' as ManagerTab, label: t.tabMembers, Icon: Users },
     { id: 'attendance' as ManagerTab, label: t.tabAttendance || 'Attendance & Integrity', Icon: Clock },
     { id: 'tp' as ManagerTab, label: t.tabMonthlyTp || 'Monthly TP', Icon: Calendar },
-    { id: 'stockers' as ManagerTab, label: t.tabStockers || 'Stocker Management', Icon: Boxes },
+    { id: 'stockers' as ManagerTab, label: t.tabStockers || 'Stockage Management', Icon: Boxes },
     { id: 'competitions' as ManagerTab, label: t.tabCompetitions || 'Competitions', Icon: Trophy },
 
     {

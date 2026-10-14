@@ -588,7 +588,7 @@ export interface StockerInventory {
   updated_at: string;
 }
 
-export type InventoryTransactionType = 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN' | 'STOCKAGE_APPROVED_INWARD';
+export type InventoryTransactionType = 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN' | 'STOCKAGE_APPROVED_INWARD' | 'ORDER_RESTORE';
 
 export interface InventoryTransaction {
   id: string;

@@ -68,6 +68,14 @@ export class CreateDoctorDto {
   @IsString()
   @IsOptional()
   area_id?: string;
+
+  @IsString()
+  @IsOptional()
+  assigned_mr_id?: string;
+
+  @IsString()
+  @IsOptional()
+  assigned_mr_name?: string;
 }
 
 export class UpdateDoctorDto {

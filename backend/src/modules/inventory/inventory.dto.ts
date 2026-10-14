@@ -387,6 +387,10 @@ export class CreatePackagingVariantDto {
 
   @IsString()
   @IsOptional()
+  display_name?: string;
+
+  @IsString()
+  @IsOptional()
   packing?: string;
 
   @IsNumber()
