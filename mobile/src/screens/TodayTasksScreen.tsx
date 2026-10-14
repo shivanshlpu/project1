@@ -164,31 +164,33 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   // Completed history date filter
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('ALL');
 
-  // Load persistent completed tasks from AsyncStorage on mount and scrub any cancelled tasks
+  // Load persistent all tasks and completed tasks from AsyncStorage on mount
   useEffect(() => {
-    AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`)
-      .then((raw) => {
-        if (raw) {
-          const savedCompleted: MobileTaskItem[] = JSON.parse(raw);
-          if (Array.isArray(savedCompleted) && savedCompleted.length > 0) {
-            const nonCancelled = savedCompleted.filter((sc) => !isCancelledTask(sc.status));
-            if (nonCancelled.length !== savedCompleted.length) {
-              AsyncStorage.setItem(
-                `@ahtri_completed_tasks_${currentUserId}`,
-                JSON.stringify(nonCancelled)
-              ).catch(() => {});
-            }
-            setAllTasks((prev) => {
-              const map = new Map(prev.filter((t) => !isCancelledTask(t.status)).map((t) => [t.id, t]));
-              nonCancelled.forEach((sc) => {
-                map.set(sc.id, sc);
-              });
-              return Array.from(map.values());
-            });
-          }
+    (async () => {
+      try {
+        let cachedAll: MobileTaskItem[] = [];
+        const rawAll = await AsyncStorage.getItem(`@ahtri_all_tasks_cache_${currentUserId}`);
+        if (rawAll) {
+          const parsed = JSON.parse(rawAll);
+          if (Array.isArray(parsed)) cachedAll = parsed.filter((t) => !isCancelledTask(t.status));
         }
-      })
-      .catch(() => {});
+
+        let cachedCompleted: MobileTaskItem[] = [];
+        const rawCompleted = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
+        if (rawCompleted) {
+          const parsed = JSON.parse(rawCompleted);
+          if (Array.isArray(parsed)) cachedCompleted = parsed.filter((t) => !isCancelledTask(t.status));
+        }
+
+        const map = new Map<string, MobileTaskItem>();
+        cachedAll.forEach((t) => map.set(t.id, t));
+        cachedCompleted.forEach((t) => map.set(t.id, t));
+
+        if (map.size > 0) {
+          setAllTasks(Array.from(map.values()));
+        }
+      } catch {}
+    })();
   }, [currentUserId]);
 
   // Load persistent seen task IDs from AsyncStorage on mount
@@ -231,19 +233,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             (t: any) => !isCancelledTask(t.status) && !t.deleted_at
           );
 
-          // Active valid IDs from backend: any task cancelled or deleted on backend must not remain in storage
-          const serverTaskIds = new Set(activeBackendTasks.map((t: any) => t.id));
-          const cleanedLocallyCompleted = locallyCompleted.filter(
-            (lc) => serverTaskIds.has(lc.id) && !isCancelledTask(lc.status)
-          );
-          if (cleanedLocallyCompleted.length !== locallyCompleted.length) {
-            await AsyncStorage.setItem(
-              `@ahtri_completed_tasks_${currentUserId}`,
-              JSON.stringify(cleanedLocallyCompleted)
-            ).catch(() => {});
-          }
-
-          const mapped: MobileTaskItem[] = activeBackendTasks.map((t: any) => {
+          // Map backend tasks preserving any locally recorded completed state
+          const backendMapped: MobileTaskItem[] = activeBackendTasks.map((t: any) => {
             const locallyComp = localCompMap.get(t.id);
             if (locallyComp) {
               return locallyComp;
@@ -271,6 +262,42 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             };
           });
 
+          // Identify tasks explicitly cancelled by the backend server
+          const explicitlyCancelledIds = new Set(
+            data.filter((t: any) => isCancelledTask(t.status) || t.deleted_at).map((t: any) => t.id)
+          );
+
+          // Merge: Preserve all locally completed tasks (never wipe them on empty or rebooted server response)
+          const mergedMap = new Map<string, MobileTaskItem>();
+          backendMapped.forEach((t) => mergedMap.set(t.id, t));
+          locallyCompleted.forEach((lc) => {
+            if (!explicitlyCancelledIds.has(lc.id) && !isCancelledTask(lc.status)) {
+              mergedMap.set(lc.id, lc);
+            }
+          });
+
+          // If backend returned empty list (e.g. server redeploy/booting), retain prior in-memory tasks
+          if (activeBackendTasks.length === 0 && allTasks.length > 0) {
+            allTasks.forEach((pt) => {
+              if (!explicitlyCancelledIds.has(pt.id) && !isCancelledTask(pt.status) && !mergedMap.has(pt.id)) {
+                mergedMap.set(pt.id, pt);
+              }
+            });
+          }
+
+          const finalTasks = Array.from(mergedMap.values());
+
+          // Persist both full cache and completed tasks
+          const finalCompleted = finalTasks.filter((t) => t.status === 'COMPLETED');
+          await AsyncStorage.setItem(
+            `@ahtri_completed_tasks_${currentUserId}`,
+            JSON.stringify(finalCompleted)
+          ).catch(() => {});
+          await AsyncStorage.setItem(
+            `@ahtri_all_tasks_cache_${currentUserId}`,
+            JSON.stringify(finalTasks)
+          ).catch(() => {});
+
           // Check for newly assigned tasks and fire WhatsApp-style system notification immediately
           let hasNewTask = false;
           activeBackendTasks.forEach((t: any) => {
@@ -297,11 +324,20 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             ).catch(() => {});
           }
 
-          setAllTasks(mapped);
+          setAllTasks(finalTasks);
         }
       }
     } catch {
-      // Offline fallback
+      // Offline fallback: restore from cached tasks
+      try {
+        const raw = await AsyncStorage.getItem(`@ahtri_all_tasks_cache_${currentUserId}`);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (Array.isArray(cached) && cached.length > 0) {
+            setAllTasks(cached);
+          }
+        }
+      } catch {}
     }
   };
 
@@ -753,7 +789,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         AsyncStorage.setItem(
           `@ahtri_completed_tasks_${currentUserId}`,
           JSON.stringify(completedList),
-        );
+        ).catch(() => {});
+        AsyncStorage.setItem(
+          `@ahtri_all_tasks_cache_${currentUserId}`,
+          JSON.stringify(updated),
+        ).catch(() => {});
       } catch {}
       return updated;
     });

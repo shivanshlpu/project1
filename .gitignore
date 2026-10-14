@@ -24,6 +24,7 @@ coverage/
 # Runtime Database Stores & Snapshots (Local Retention)
 backend/data/ffa_db_store.json
 **/ffa_db_store.json
+!backend/data/ffa_db_store.seed.json
 *.db
 *.sqlite
 *.sqlite3

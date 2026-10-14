@@ -265,6 +265,46 @@ CREATE TABLE IF NOT EXISTS public.monthly_tour_plans (
 );
 
 -- ==============================================================================
+-- 9B. ORDERS & DELIVERIES (Persistent Store)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.orders (
+  id VARCHAR(64) PRIMARY KEY,
+  order_number VARCHAR(64) NOT NULL,
+  task_id VARCHAR(64),
+  mr_id VARCHAR(64) REFERENCES public.users(id) ON DELETE SET NULL,
+  mr_name VARCHAR(255),
+  customer_name VARCHAR(255),
+  location_name VARCHAR(255),
+  hq_id VARCHAR(64),
+  hq_name VARCHAR(255),
+  stocker_id VARCHAR(64),
+  stocker_name VARCHAR(255),
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  total_units INT DEFAULT 0,
+  total_amount NUMERIC(10, 2) DEFAULT 0,
+  delivery_status VARCHAR(50) DEFAULT 'PENDING',
+  delivered_at TIMESTAMPTZ,
+  delivered_by_user_id VARCHAR(64),
+  delivery_notes TEXT,
+  hq_accepted BOOLEAN DEFAULT FALSE,
+  accepted_at TIMESTAMPTZ,
+  accepted_by_user_id VARCHAR(64),
+  inventory_deducted BOOLEAN DEFAULT FALSE,
+  inventory_deducted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_mr_id ON public.orders(mr_id);
+CREATE INDEX IF NOT EXISTS idx_orders_task_id ON public.orders(task_id);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_status ON public.orders(delivery_status);
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Service role full access on orders" ON public.orders;
+CREATE POLICY "Service role full access on orders" ON public.orders FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+
+-- ==============================================================================
 -- 10. DEVICE AUTHORIZATIONS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.device_authorizations (

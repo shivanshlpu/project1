@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface MonthlyTpScreenProps {
   currentUserId?: string;
@@ -320,33 +321,37 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // Helper to get areas for an HQ (from localStorage settings or fallback)
+  // Helper to get areas for an HQ (from storage settings or fallback)
   const getStoredAreasForHq = (hqId: string): string[] => {
     try {
-      const savedRaw = localStorage.getItem('ahtri_hq_subareas');
-      if (savedRaw) {
-        const list = JSON.parse(savedRaw);
-        if (Array.isArray(list)) {
-          const matched = list
-            .filter((a: any) => a.hq_id === hqId && a.status !== 'INACTIVE')
-            .map((a: any) => a.name);
-          if (matched.length > 0) return matched;
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        const savedRaw = (window as any).localStorage.getItem('ahtri_hq_subareas');
+        if (savedRaw) {
+          const list = JSON.parse(savedRaw);
+          if (Array.isArray(list)) {
+            const matched = list
+              .filter((a: any) => a.hq_id === hqId && a.status !== 'INACTIVE')
+              .map((a: any) => a.name);
+            if (matched.length > 0) return matched;
+          }
         }
       }
     } catch {}
     return DEFAULT_HQ_AREAS_MAP[hqId] || ['Main Market', 'Station Road'];
   };
 
-  // Load HQs from backend & localStorage
+  // Load HQs from backend & cache
   const loadHqs = async () => {
     let loadedHqs = DEFAULT_HQS;
     try {
-      const savedRaw = localStorage.getItem('ahtri_inventory_hqs');
-      if (savedRaw) {
-        const list = JSON.parse(savedRaw);
-        if (Array.isArray(list) && list.length > 0) {
-          loadedHqs = list;
-          setHqs(list);
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        const savedRaw = (window as any).localStorage.getItem('ahtri_inventory_hqs');
+        if (savedRaw) {
+          const list = JSON.parse(savedRaw);
+          if (Array.isArray(list) && list.length > 0) {
+            loadedHqs = list;
+            setHqs(list);
+          }
         }
       }
     } catch {}
@@ -678,6 +683,21 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     })();
   }, [selectedHqId]);
 
+  // Load persistent Tour Plans from AsyncStorage cache immediately on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSubmittedPlans(parsed);
+          }
+        }
+      } catch {}
+    })();
+  }, [currentUserId]);
+
   // Load submitted plans for this MR
   const fetchMyTourPlans = async () => {
     try {
@@ -687,15 +707,52 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          data.sort(
+          // Read cached tour plans
+          let cachedPlans: any[] = [];
+          try {
+            const raw = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
+            if (raw) cachedPlans = JSON.parse(raw);
+          } catch {}
+
+          let merged: any[] = [];
+          if (data.length > 0) {
+            const map = new Map<string, any>();
+            cachedPlans.forEach((p) => map.set(p.id || p.month, p));
+            data.forEach((p: any) => map.set(p.id || p.month, p));
+            merged = Array.from(map.values());
+          } else if (cachedPlans.length > 0) {
+            // Keep cached tour plans if server temporarily returned empty
+            merged = cachedPlans;
+          } else {
+            merged = [];
+          }
+
+          merged.sort(
             (a, b) =>
               new Date(b.submitted_at || b.created_at || 0).getTime() -
               new Date(a.submitted_at || a.created_at || 0).getTime(),
           );
-          setSubmittedPlans(data);
+          setSubmittedPlans(merged);
+          if (merged.length > 0) {
+            await AsyncStorage.setItem(
+              `@ahtri_tp_cache_${currentUserId}`,
+              JSON.stringify(merged),
+            ).catch(() => {});
+          }
         }
       }
-    } catch {}
+    } catch {
+      // Offline fallback
+      try {
+        const cached = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSubmittedPlans(parsed);
+          }
+        }
+      } catch {}
+    }
   };
 
   useEffect(() => {
@@ -833,16 +890,19 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         });
       }
     } catch (e: any) {
-      // Local fallback
+      // Local fallback with AsyncStorage
       try {
-        const savedRaw = localStorage.getItem('ahtri_punched_tour_plans');
-        const list = savedRaw ? JSON.parse(savedRaw) : [];
+        const raw = await AsyncStorage.getItem(`@ahtri_punched_tour_plans_${currentUserId}`);
+        const list = raw ? JSON.parse(raw) : [];
         list.push({
           id: `local-tp-${Date.now()}`,
           ...punchItem,
           submitted_at: new Date().toISOString(),
         });
-        localStorage.setItem('ahtri_punched_tour_plans', JSON.stringify(list));
+        await AsyncStorage.setItem(
+          `@ahtri_punched_tour_plans_${currentUserId}`,
+          JSON.stringify(list),
+        ).catch(() => {});
       } catch {}
 
       setStatusNotice({

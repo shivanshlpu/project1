@@ -260,8 +260,6 @@ export class OrdersService {
       updated_at: new Date().toISOString(),
     };
 
-    this.db.orders.unshift(newOrder);
-
     // If linked to a task, keep task metadata in sync
     if (dto.task_id) {
       const task = this.db.tasks.find((t) => t.id === dto.task_id);
@@ -274,7 +272,7 @@ export class OrdersService {
       }
     }
 
-    this.db.persistToDisk();
+    await this.db.persistOrder(newOrder);
 
     // Notify admins of new pending order
     const admins = this.db.users.filter((u) => ['SUPER_ADMIN', 'ADMIN'].includes(u.role) && !u.deleted_at);
@@ -369,14 +367,12 @@ export class OrdersService {
       updated_at: new Date().toISOString(),
     };
 
-    this.db.orders.unshift(newOrder);
-
     task.order_id = newOrder.id;
     task.delivery_status = 'PENDING';
     task.hq_accepted = false;
     task.inventory_deducted = false;
 
-    this.db.persistToDisk();
+    await this.db.persistOrder(newOrder);
     return newOrder;
   }
 
@@ -450,7 +446,7 @@ export class OrdersService {
       }
     }
 
-    this.db.persistToDisk();
+    await this.db.persistOrder(order);
 
     // Push notification to Admin / Supervisors
     const admins = this.db.users.filter((u) => ['SUPER_ADMIN', 'ADMIN'].includes(u.role) && !u.deleted_at);
@@ -526,7 +522,7 @@ export class OrdersService {
       }
     }
 
-    this.db.persistToDisk();
+    await this.db.persistOrder(order);
 
     // Notify MR that their order was accepted and inventory was finalized
     this.notificationsService.sendPushNotification(

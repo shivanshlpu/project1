@@ -657,6 +657,7 @@ export interface MonthlyTourPlan {
   approved_by?: string;
   approved_at?: string;
   remarks?: string;
+  created_at?: string;
 }
 
 export interface AttendanceSettings {

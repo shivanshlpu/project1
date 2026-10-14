@@ -106,6 +106,21 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     { id: '1', product_name: 'Cefixime 200mg Tablets', quantity: '10', unit_price: '120' },
   ]);
 
+  // Load persistent orders from cache immediately on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setOrders(parsed);
+          }
+        }
+      } catch {}
+    })();
+  }, [currentUserId]);
+
   const fetchOrders = useCallback(async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -116,13 +131,34 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setOrders(data);
+          // Read cached orders
+          let cachedOrders: MobileOrder[] = [];
           try {
+            const raw = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
+            if (raw) cachedOrders = JSON.parse(raw);
+          } catch {}
+
+          let merged: MobileOrder[] = [];
+          if (data.length > 0) {
+            // Merge server orders with any locally cached orders (by id or order_number)
+            const map = new Map<string, MobileOrder>();
+            cachedOrders.forEach((o) => map.set(o.id || o.order_number, o));
+            data.forEach((o: MobileOrder) => map.set(o.id || o.order_number, o));
+            merged = Array.from(map.values());
+          } else if (cachedOrders.length > 0) {
+            // If server returned 0 orders (e.g. fresh reboot/sync in progress), never wipe existing orders!
+            merged = cachedOrders;
+          } else {
+            merged = [];
+          }
+
+          setOrders(merged);
+          if (merged.length > 0) {
             await AsyncStorage.setItem(
               `@ahtri_orders_cache_${currentUserId}`,
-              JSON.stringify(data),
-            );
-          } catch {}
+              JSON.stringify(merged),
+            ).catch(() => {});
+          }
         }
       }
     } catch (err) {
@@ -138,6 +174,16 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       setRefreshing(false);
     }
   }, [currentUserId]);
+
+  // Synchronize orders to AsyncStorage cache whenever orders array updates
+  useEffect(() => {
+    if (orders.length > 0) {
+      AsyncStorage.setItem(
+        `@ahtri_orders_cache_${currentUserId}`,
+        JSON.stringify(orders),
+      ).catch(() => {});
+    }
+  }, [orders, currentUserId]);
 
   useEffect(() => {
     fetchOrders();

@@ -252,6 +252,46 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
+   * Authoritative order persistence: updates in-memory cache, triggers debounced
+   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
+   */
+  public async persistOrder(order: Order): Promise<void> {
+    const idx = this.orders.findIndex((o) => o.id === order.id);
+    if (idx >= 0) {
+      this.orders[idx] = order;
+    } else {
+      this.orders.unshift(order);
+    }
+    this.persistToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      this.syncOrderToSupabase(order).catch((err) =>
+        console.warn(`[DatabaseService] Async Supabase order sync notice: ${err?.message}`),
+      );
+    }
+  }
+
+  /**
+   * Authoritative monthly tour plan persistence: updates in-memory cache, triggers debounced
+   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
+   */
+  public async persistMonthlyTourPlan(plan: MonthlyTourPlan): Promise<void> {
+    const idx = this.monthlyTourPlans.findIndex(
+      (p) => p.id === plan.id || (p.mr_id === plan.mr_id && p.month === plan.month),
+    );
+    if (idx >= 0) {
+      this.monthlyTourPlans[idx] = plan;
+    } else {
+      this.monthlyTourPlans.unshift(plan);
+    }
+    this.persistToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      this.syncMonthlyTourPlanToSupabase(plan).catch((err) =>
+        console.warn(`[DatabaseService] Async Supabase monthly TP sync notice: ${err?.message}`),
+      );
+    }
+  }
+
+  /**
    * Authoritative attendance persistence: updates in-memory cache, triggers debounced
    * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
    */
@@ -274,8 +314,21 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     if (process.env.NODE_ENV === 'test') return false;
     try {
       const filePath = this.getStorageFilePath();
-      if (!fs.existsSync(filePath)) return false;
-      const raw = fs.readFileSync(filePath, 'utf-8');
+      const seedPath = path.join(path.dirname(filePath), 'ffa_db_store.seed.json');
+      let targetPath = filePath;
+
+      if (!fs.existsSync(filePath)) {
+        if (fs.existsSync(seedPath)) {
+          targetPath = seedPath;
+          try {
+            fs.copyFileSync(seedPath, filePath);
+          } catch {}
+        } else {
+          return false;
+        }
+      }
+
+      const raw = fs.readFileSync(targetPath, 'utf-8');
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.tasks)) {
         this.tasks = data.tasks;
@@ -680,6 +733,151 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
+          // Authoritative sync: load monthly tour plans from Supabase
+          try {
+            const { data: remoteTp, error: tpErr } = await client.from('monthly_tour_plans').select('*');
+            if (!tpErr && Array.isArray(remoteTp) && remoteTp.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteTp.length} monthly tour plans from Supabase.`);
+              for (const rtp of remoteTp) {
+                const plan: MonthlyTourPlan = {
+                  id: rtp.id,
+                  mr_id: rtp.mr_id,
+                  mr_name: rtp.mr_name,
+                  month: rtp.month,
+                  status: rtp.status || 'SUBMITTED',
+                  entries: Array.isArray(rtp.entries)
+                    ? rtp.entries
+                    : typeof rtp.entries === 'string'
+                    ? JSON.parse(rtp.entries)
+                    : [],
+                  submitted_at: rtp.submitted_at || new Date().toISOString(),
+                  created_at: rtp.created_at || new Date().toISOString(),
+                };
+                const idx = this.monthlyTourPlans.findIndex(
+                  (p) => p.id === plan.id || (p.mr_id === plan.mr_id && p.month === plan.month),
+                );
+                if (idx >= 0) {
+                  this.monthlyTourPlans[idx] = { ...this.monthlyTourPlans[idx], ...plan };
+                } else {
+                  this.monthlyTourPlans.push(plan);
+                }
+              }
+            } else if (this.monthlyTourPlans.length > 0) {
+              for (const plan of this.monthlyTourPlans) {
+                await this.syncMonthlyTourPlanToSupabase(plan);
+              }
+            }
+          } catch (tpNotice: any) {
+            console.warn('[DatabaseService] Notice syncing monthly tour plans from Supabase:', tpNotice?.message);
+          }
+
+          // Authoritative sync: load orders from Supabase
+          try {
+            const { data: remoteOrders, error: ordErr } = await client.from('orders').select('*');
+            if (!ordErr && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteOrders.length} orders from Supabase.`);
+              for (const ro of remoteOrders) {
+                const ord: Order = {
+                  id: ro.id,
+                  order_number: ro.order_number,
+                  task_id: ro.task_id,
+                  mr_id: ro.mr_id,
+                  mr_name: ro.mr_name,
+                  customer_name: ro.customer_name,
+                  location_name: ro.location_name,
+                  hq_id: ro.hq_id,
+                  hq_name: ro.hq_name,
+                  stocker_id: ro.stocker_id,
+                  stocker_name: ro.stocker_name,
+                  items: Array.isArray(ro.items)
+                    ? ro.items
+                    : typeof ro.items === 'string'
+                    ? JSON.parse(ro.items)
+                    : [],
+                  total_units: Number(ro.total_units || 0),
+                  total_amount: Number(ro.total_amount || 0),
+                  delivery_status: ro.delivery_status || 'PENDING',
+                  delivered_at: ro.delivered_at,
+                  delivered_by_user_id: ro.delivered_by_user_id,
+                  delivery_notes: ro.delivery_notes,
+                  hq_accepted: !!ro.hq_accepted,
+                  accepted_at: ro.accepted_at,
+                  accepted_by_user_id: ro.accepted_by_user_id,
+                  inventory_deducted: !!ro.inventory_deducted,
+                  inventory_deducted_at: ro.inventory_deducted_at,
+                  created_at: ro.created_at || new Date().toISOString(),
+                  updated_at: ro.updated_at || new Date().toISOString(),
+                };
+                const idx = this.orders.findIndex((o) => o.id === ord.id);
+                if (idx >= 0) {
+                  this.orders[idx] = { ...this.orders[idx], ...ord };
+                } else {
+                  this.orders.push(ord);
+                }
+              }
+            } else if (this.orders.length > 0) {
+              for (const ord of this.orders) {
+                await this.syncOrderToSupabase(ord);
+              }
+            }
+          } catch (ordSyncErr: any) {
+            console.warn('[DatabaseService] Supabase orders table sync notice:', ordSyncErr?.message);
+          }
+
+          // Reconstruct orders from tasks if any task has orders but not yet in orders collection
+          for (const t of this.tasks) {
+            let taskOrders: any[] = [];
+            if (Array.isArray(t.orders)) {
+              taskOrders = t.orders;
+            } else if (typeof t.orders === 'string') {
+              try {
+                taskOrders = JSON.parse(t.orders);
+              } catch {}
+            }
+            if (taskOrders.length > 0) {
+              const existing = this.orders.find(
+                (o) => (t.order_id && o.id === t.order_id) || o.task_id === t.id,
+              );
+              if (!existing) {
+                const reconstructed: Order = {
+                  id: t.order_id || `ord-${t.id}`,
+                  order_number: `ORD-${t.date?.replace(/-/g, '') || 'AUTO'}-${t.id.slice(-4)}`,
+                  task_id: t.id,
+                  mr_id: t.assigned_mr_id,
+                  mr_name: t.assigned_mr_name || 'Field Representative',
+                  customer_name: t.location_name || t.title || 'Clinic Order',
+                  location_name: t.location_name,
+                  hq_id: t.hq_id || 'hq-shahdol',
+                  hq_name: t.hq_name || 'Shahdol',
+                  stocker_id: t.stocker_id || 'stk-shd-01',
+                  stocker_name: t.stocker_name || 'Tara Pharmacy',
+                  items: taskOrders,
+                  total_units: taskOrders.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0),
+                  total_amount: taskOrders.reduce(
+                    (sum, it) =>
+                      sum +
+                      (Number(it.total_amount) ||
+                        (Number(it.quantity) * Number(it.unit_price)) ||
+                        0),
+                    0,
+                  ),
+                  delivery_status:
+                    t.delivery_status || (t.status === 'COMPLETED' ? 'DELIVERED' : 'PENDING'),
+                  delivered_at: t.completed_at || t.started_at,
+                  delivered_by_user_id: t.assigned_mr_id,
+                  hq_accepted: !!t.hq_accepted,
+                  inventory_deducted: !!t.inventory_deducted,
+                  created_at: t.created_at || new Date().toISOString(),
+                  updated_at: t.completed_at || t.created_at || new Date().toISOString(),
+                };
+                this.orders.push(reconstructed);
+              }
+            }
+          }
+
+          // Flush synchronized state to disk store immediately
+          await this.flushToDisk();
+
           // Purge stale HQs, stockers, dummy clinics & dummy MRs from Supabase permanently
           try {
             await client.from('headquarters').delete().in('id', ['hq-delhi', 'hq-anuppur', 'hq-umaria']);
@@ -855,6 +1053,76 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       await client.from('location_verifications').delete().neq('id', '_____never_____');
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to clear all tasks from Supabase:`, err?.message);
+    }
+  }
+
+  public async syncOrderToSupabase(order: Order) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      const { error } = await client.from('orders').upsert({
+        id: order.id,
+        order_number: order.order_number,
+        task_id: order.task_id || null,
+        mr_id: order.mr_id,
+        mr_name: order.mr_name,
+        customer_name: order.customer_name,
+        location_name: order.location_name || null,
+        hq_id: order.hq_id,
+        hq_name: order.hq_name,
+        stocker_id: order.stocker_id || null,
+        stocker_name: order.stocker_name || null,
+        items: order.items || [],
+        total_units: order.total_units || 0,
+        total_amount: order.total_amount || 0,
+        delivery_status: order.delivery_status || 'PENDING',
+        delivered_at: order.delivered_at || null,
+        delivered_by_user_id: order.delivered_by_user_id || null,
+        delivery_notes: order.delivery_notes || null,
+        hq_accepted: !!order.hq_accepted,
+        accepted_at: order.accepted_at || null,
+        accepted_by_user_id: order.accepted_by_user_id || null,
+        inventory_deducted: !!order.inventory_deducted,
+        inventory_deducted_at: order.inventory_deducted_at || null,
+        created_at: order.created_at || new Date().toISOString(),
+        updated_at: order.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+
+      if (error && order.task_id) {
+        // Fallback: update linked task in Supabase
+        const task = this.tasks.find((t) => t.id === order.task_id);
+        if (task) {
+          task.orders = order.items;
+          task.order_id = order.id;
+          task.delivery_status = order.delivery_status;
+          task.hq_accepted = order.hq_accepted;
+          task.inventory_deducted = order.inventory_deducted;
+          await this.syncTaskToSupabase(task);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Notice syncing order ${order.id}:`, err?.message);
+    }
+  }
+
+  public async syncMonthlyTourPlanToSupabase(plan: MonthlyTourPlan) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('monthly_tour_plans').upsert({
+        id: plan.id,
+        mr_id: plan.mr_id,
+        mr_name: plan.mr_name,
+        month: plan.month,
+        status: plan.status || 'SUBMITTED',
+        entries: plan.entries || [],
+        submitted_at: plan.submitted_at || new Date().toISOString(),
+        created_at: plan.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Notice syncing monthly tour plan ${plan.id}:`, err?.message);
     }
   }
 

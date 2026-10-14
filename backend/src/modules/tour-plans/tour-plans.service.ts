@@ -171,7 +171,7 @@ export class TourPlansService {
       existing.submitted_at = new Date().toISOString();
       existing.remarks = dto.remarks || existing.remarks;
 
-      this.db.persistToDisk();
+      await this.db.persistMonthlyTourPlan(existing);
       this.notifyAdminsOfTpSubmission(user.name, dto.month, items.length);
       return existing;
     }
@@ -187,8 +187,7 @@ export class TourPlansService {
       remarks: dto.remarks || '',
     };
 
-    this.db.monthlyTourPlans.push(plan);
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
     this.notifyAdminsOfTpSubmission(user.name, dto.month, items.length);
     return plan;
   }
@@ -254,10 +253,9 @@ export class TourPlansService {
         submitted_at: new Date().toISOString(),
         remarks: 'Punched from Mobile App',
       };
-      this.db.monthlyTourPlans.push(plan);
     }
 
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
     this.notifyAdminsOfTpSubmission(user.name, month, plan.entries.length);
     return plan;
   }
@@ -303,7 +301,7 @@ export class TourPlansService {
     }
 
     if (dto.remarks !== undefined) plan.remarks = dto.remarks;
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
     return plan;
   }
 
@@ -324,7 +322,7 @@ export class TourPlansService {
     }
 
     plan.entries = plan.entries.filter((e) => e.id !== entryId);
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
     return plan;
   }
 
@@ -475,7 +473,7 @@ export class TourPlansService {
       }
     });
 
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
 
     // Send push notification to MR
     this.notificationsService.sendPushNotification(
@@ -506,7 +504,7 @@ export class TourPlansService {
       plan.remarks = plan.remarks ? `${plan.remarks} | ${remarks}` : remarks;
     }
 
-    this.db.persistToDisk();
+    await this.db.persistMonthlyTourPlan(plan);
 
     // Send push notification to MR
     this.notificationsService.sendPushNotification(

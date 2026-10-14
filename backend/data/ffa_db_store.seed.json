@@ -1,0 +1,3552 @@
+{
+  "tasks": [],
+  "orders": [
+    {
+      "id": "ord-b03eb79b",
+      "order_number": "ORD-2026-0004",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Surguja Health Center",
+      "location_name": "Surguja Health Center",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 10,
+          "unit_price": 150,
+          "total_amount": 1500,
+          "distributor": "Central Stocker"
+        }
+      ],
+      "total_units": 10,
+      "total_amount": 1500,
+      "delivery_status": "DELIVERED",
+      "hq_accepted": true,
+      "inventory_deducted": true,
+      "delivery_notes": "Handed over package at Surguja clinic reception",
+      "created_at": "2026-10-08T00:32:30.570Z",
+      "updated_at": "2026-10-08T00:32:30.585Z",
+      "delivered_at": "2026-10-08T00:32:30.580Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "accepted_at": "2026-10-08T00:32:30.585Z",
+      "accepted_by_user_id": "usr-admin-shivansh",
+      "inventory_deducted_at": "2026-10-08T00:32:30.585Z"
+    },
+    {
+      "id": "ord-a800818a",
+      "order_number": "ORD-2026-0003",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Surguja Health Center",
+      "location_name": "Surguja Health Center",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 10,
+          "unit_price": 150,
+          "total_amount": 1500,
+          "distributor": "Central Stocker"
+        }
+      ],
+      "total_units": 10,
+      "total_amount": 1500,
+      "delivery_status": "DELIVERED",
+      "hq_accepted": true,
+      "inventory_deducted": true,
+      "delivery_notes": "Handed over package at Surguja clinic reception",
+      "created_at": "2026-10-08T00:17:47.188Z",
+      "updated_at": "2026-10-08T00:17:47.210Z",
+      "delivered_at": "2026-10-08T00:17:47.202Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "accepted_at": "2026-10-08T00:17:47.209Z",
+      "accepted_by_user_id": "usr-admin-shivansh",
+      "inventory_deducted_at": "2026-10-08T00:17:47.210Z"
+    },
+    {
+      "id": "ord-shd-01",
+      "order_number": "ORD-2026-0001",
+      "task_id": "task-01",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "customer_name": "Dr. Rajesh Sharma (City Hospital)",
+      "location_name": "City Hospital, Shahdol",
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "stocker_id": "stk-shd-01",
+      "stocker_name": "Shahdol Stocker 1 (Central Depot)",
+      "items": [
+        {
+          "product_id": "med-01",
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 20,
+          "unit_price": 150,
+          "total_amount": 3000,
+          "distributor": "Shahdol Stocker 1 (Central Depot)"
+        },
+        {
+          "product_id": "med-02",
+          "product_name": "CardioFix-AM (Telmisartan + Amlodipine)",
+          "quantity": 15,
+          "unit_price": 85,
+          "total_amount": 1275,
+          "distributor": "Shahdol Stocker 1 (Central Depot)"
+        }
+      ],
+      "total_units": 35,
+      "total_amount": 4275,
+      "delivery_status": "PENDING",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "created_at": "2026-10-07T20:17:03.575Z",
+      "updated_at": "2026-10-07T20:17:03.575Z"
+    },
+    {
+      "id": "ord-amb-01",
+      "order_number": "ORD-2026-0002",
+      "task_id": "task-02",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "customer_name": "Ambikapur Civil Hospital Medico",
+      "location_name": "Hospital Chowk, Ambikapur",
+      "hq_id": "HQ-AMB-001",
+      "hq_name": "Ambikapur",
+      "stocker_id": "stk-amb-01",
+      "stocker_name": "Ambikapur Medical Store",
+      "items": [
+        {
+          "product_id": "med-01",
+          "product_name": "CardioFix-50 (Telmisartan 40mg)",
+          "quantity": 30,
+          "unit_price": 150,
+          "total_amount": 4500,
+          "distributor": "Ambikapur Medical Store"
+        }
+      ],
+      "total_units": 30,
+      "total_amount": 4500,
+      "delivery_status": "DELIVERED",
+      "delivered_at": "2026-10-07T23:17:03.575Z",
+      "delivered_by_user_id": "usr-mr-03",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "created_at": "2026-10-07T18:17:03.575Z",
+      "updated_at": "2026-10-07T23:17:03.575Z"
+    }
+  ],
+  "attendance": [],
+  "attendanceSettings": {
+    "id": "att-settings-default",
+    "expected_punch_in_time": "10:00:00",
+    "allowed_punch_in_window_minutes": 30,
+    "expected_punch_out_time": "18:00:00",
+    "allowed_punch_out_window_minutes": 30,
+    "reimbursement_rate_per_km": 2.5,
+    "updated_at": "2026-10-13T00:00:00.000Z"
+  },
+  "doctorVisits": [],
+  "visitDetails": [],
+  "dcrList": [],
+  "dcrItems": [],
+  "expenses": [],
+  "leaveRequests": [],
+  "leaveQuotas": [
+    {
+      "mr_id": "usr-mr-01",
+      "casual_total": 12,
+      "sick_total": 10,
+      "earned_total": 15,
+      "updated_at": "2026-10-13T00:00:00.000Z"
+    },
+    {
+      "mr_id": "usr-mr-02",
+      "casual_total": 12,
+      "sick_total": 10,
+      "earned_total": 15,
+      "updated_at": "2026-10-13T00:00:00.000Z"
+    },
+    {
+      "mr_id": "usr-mr-03",
+      "casual_total": 12,
+      "sick_total": 10,
+      "earned_total": 15,
+      "updated_at": "2026-10-13T00:00:00.000Z"
+    }
+  ],
+  "tourPlans": [],
+  "monthlyTourPlans": [
+    {
+      "id": "mtp-2d8ec590",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "month": "2026-08",
+      "status": "SUBMITTED",
+      "entries": [
+        {
+          "id": "tp-item-c9e1138e",
+          "date": "2026-08-10",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "General Field Coverage",
+          "planned_activity": "Doctor & Chemist Detailing",
+          "route_batch_id": "rb-shd-03",
+          "route_batch_code": "Batch 3",
+          "route_batch_name": "Shahdol → Gohparu → Jaisinghnagar",
+          "route": "Shahdol → Gohparu → Jaisinghnagar",
+          "route_stops": [
+            "Shahdol",
+            "Gohparu",
+            "Jaisinghnagar"
+          ],
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "APPROVED"
+        },
+        {
+          "id": "tp-item-d8d00508",
+          "date": "10-08-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. S. K. Gupta",
+          "planned_activity": "Cardiology Detailing",
+          "route_batch_id": "rb-shd-03",
+          "route_batch_code": "Batch 3",
+          "route_batch_name": "Shahdol → Gohparu → Jaisinghnagar",
+          "route": "Shahdol → Gohparu → Jaisinghnagar",
+          "route_stops": [
+            "Shahdol",
+            "Gohparu",
+            "Jaisinghnagar"
+          ],
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "APPROVED"
+        }
+      ],
+      "submitted_at": "2026-10-07T22:57:38.054Z",
+      "remarks": "Punched from Mobile App | Eligible distance verified | Verified Shahdol-Gohparu-Jaisinghnagar route and approved 120km claim | Verified Shahdol-Gohparu-Jaisinghnagar route and approved 120km claim"
+    },
+    {
+      "id": "mtp-15152933",
+      "mr_id": "usr-admin-shivansh",
+      "mr_name": "Shivansh Tiwari",
+      "month": "2026-10",
+      "status": "SUBMITTED",
+      "entries": [
+        {
+          "id": "tp-item-f329b07e",
+          "date": "15-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Budhar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. V. K. Patel",
+          "planned_activity": "Cardio product sampling",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
+        },
+        {
+          "id": "tp-item-03cef0d5",
+          "date": "16-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. S. K. Mishra",
+          "planned_activity": "Chemist detailing",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Jaisinghnagar"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 60,
+          "round_trip_distance_km": 120,
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-074a163c",
+          "date": "17-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Beohari",
+          "work_type": "Order Collection",
+          "planned_kol_drs": "Beohari Central Pharmacy",
+          "planned_activity": "Stock check",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Beohari (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Beohari"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 78,
+          "round_trip_distance_km": 156,
+          "distance_km": 156,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 390,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        }
+      ],
+      "submitted_at": "2026-10-07T23:21:58.905Z",
+      "remarks": "Punched from Mobile App"
+    },
+    {
+      "id": "mtp-ddf6d444",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "month": "2026-10",
+      "status": "SUBMITTED",
+      "entries": [
+        {
+          "id": "tp-item-3fb9ab35",
+          "date": "15-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Budhar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. V. K. Patel",
+          "planned_activity": "Cardio product sampling",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
+        },
+        {
+          "id": "tp-item-ce15a17c",
+          "date": "16-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Jaisinghnagar",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "Dr. S. K. Mishra",
+          "planned_activity": "Chemist detailing",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Jaisinghnagar (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Jaisinghnagar (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Jaisinghnagar"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 60,
+          "round_trip_distance_km": 120,
+          "distance_km": 120,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 300,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-43f0663d",
+          "date": "17-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Beohari",
+          "work_type": "Order Collection",
+          "planned_kol_drs": "Beohari Central Pharmacy",
+          "planned_activity": "Stock check",
+          "route_batch_code": "DIRECT_AREA",
+          "route_batch_name": "Beohari (Center to Boundary Direct)",
+          "route": "Shahdol Center ⇄ Beohari (Round Trip)",
+          "route_stops": [
+            "Shahdol",
+            "Beohari"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 78,
+          "round_trip_distance_km": 156,
+          "distance_km": 156,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 390,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_CENTER_TO_BOUNDARY"
+        },
+        {
+          "id": "tp-item-242176e7",
+          "date": "08-10-2026",
+          "hq_id": "HQ-SHD-001",
+          "hq_name": "Shahdol",
+          "planned_area": "Main Market",
+          "work_type": "Doctor Visit",
+          "planned_kol_drs": "aaa",
+          "planned_activity": "ddd",
+          "route_batch_id": "rb-shd-01",
+          "route_batch_code": "Batch 1",
+          "route_batch_name": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route": "Shahdol → Budhar → Dhanpuri → OPM",
+          "route_stops": [
+            "Shahdol",
+            "Budhar",
+            "Dhanpuri",
+            "OPM"
+          ],
+          "is_round_trip": true,
+          "one_way_distance_km": 55,
+          "round_trip_distance_km": 110,
+          "distance_km": 110,
+          "reimbursement_rate": 2.5,
+          "reimbursement_amount": 275,
+          "reimbursement_status": "PENDING",
+          "calculation_basis": "ROUND_TRIP_BATCH"
+        }
+      ],
+      "submitted_at": "2026-10-07T23:25:44.415Z",
+      "remarks": "Punched from Mobile App"
+    }
+  ],
+  "stockerInventory": [
+    {
+      "id": "inv-stk-shd-01-med-01",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-01",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-02",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-02",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-03",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-03",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-04",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-04",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-05",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-05",
+      "packaging_display": "20*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-06",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-06",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-07",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-07",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-08",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-08",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-09",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-09",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-10",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-10",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-11",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-11",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-12",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-12",
+      "packaging_display": "50 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-13",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-13",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-14",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-14",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-15",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-15",
+      "packaging_display": "30 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-16",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-16",
+      "packaging_display": "60 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-01-med-17",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-01",
+      "medicine_id": "med-17",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-01",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-01",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-02",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-02",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-03",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-03",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-04",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-04",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-05",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-05",
+      "packaging_display": "20*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-06",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-06",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-07",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-07",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-08",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-08",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-09",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-09",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-10",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-10",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-11",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-11",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-12",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-12",
+      "packaging_display": "50 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-13",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-13",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-14",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-14",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-15",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-15",
+      "packaging_display": "30 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-16",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-16",
+      "packaging_display": "60 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-shd-02-med-17",
+      "hq_id": "HQ-SHD-001",
+      "stocker_id": "stk-shd-02",
+      "medicine_id": "med-17",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-01",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-01",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-02",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-02",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-03",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-03",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-04",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-04",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-05",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-05",
+      "packaging_display": "20*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-06",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-06",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-07",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-07",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-08",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-08",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-09",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-09",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-10",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-10",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-11",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-11",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-12",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-12",
+      "packaging_display": "50 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-13",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-13",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-14",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-14",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-15",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-15",
+      "packaging_display": "30 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-16",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-16",
+      "packaging_display": "60 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-ktm-01-med-17",
+      "hq_id": "HQ-KOT-001",
+      "stocker_id": "stk-ktm-01",
+      "medicine_id": "med-17",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-01",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-01",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-02",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-02",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-03",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-03",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-04",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-04",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-05",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-05",
+      "packaging_display": "20*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-06",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-06",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-07",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-07",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-08",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-08",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-09",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-09",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-10",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-10",
+      "packaging_display": "10*1*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-11",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-11",
+      "packaging_display": "30 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-12",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-12",
+      "packaging_display": "50 GM",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-13",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-13",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-14",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-14",
+      "packaging_display": "10*10",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-15",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-15",
+      "packaging_display": "30 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-16",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-16",
+      "packaging_display": "60 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    },
+    {
+      "id": "inv-stk-amb-01-med-17",
+      "hq_id": "HQ-AMB-001",
+      "stocker_id": "stk-amb-01",
+      "medicine_id": "med-17",
+      "packaging_display": "200 ML",
+      "quantity": 0,
+      "low_stock_threshold": 15,
+      "updated_at": "2026-10-13T09:00:32.170Z"
+    }
+  ],
+  "verificationPhotos": [],
+  "deviceAuthorizations": [],
+  "routeBatches": [
+    {
+      "id": "rb-kot-b01",
+      "batch_code": "KOT-B01",
+      "name": "Kotma - Marwahi - Dhanikundi",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Marwahi",
+        "Dhanikundi"
+      ],
+      "areas": [
+        "Kotma",
+        "Marwahi",
+        "Dhanikundi"
+      ],
+      "distance_km": 85,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b02",
+      "batch_code": "KOT-B02",
+      "name": "Kotma - Kelhari - Janakpur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Kelhari",
+        "Janakpur"
+      ],
+      "areas": [
+        "Kotma",
+        "Kelhari",
+        "Janakpur"
+      ],
+      "distance_km": 95,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b03",
+      "batch_code": "KOT-B03",
+      "name": "Kotma - Keswahi - Girva - Khamhidol",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Keswahi",
+        "Girva",
+        "Khamhidol"
+      ],
+      "areas": [
+        "Kotma",
+        "Keswahi",
+        "Girva",
+        "Khamhidol"
+      ],
+      "distance_km": 110,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b04",
+      "batch_code": "KOT-B04",
+      "name": "Kotma - Jaithari - Rajendragram",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Jaithari",
+        "Rajendragram"
+      ],
+      "areas": [
+        "Kotma",
+        "Jaithari",
+        "Rajendragram"
+      ],
+      "distance_km": 70,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b05",
+      "batch_code": "KOT-B05",
+      "name": "Kotma - Anuppur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Anuppur"
+      ],
+      "areas": [
+        "Kotma",
+        "Anuppur"
+      ],
+      "distance_km": 45,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b06",
+      "batch_code": "KOT-B06",
+      "name": "Kotma - Manendragarh",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Manendragarh"
+      ],
+      "areas": [
+        "Kotma",
+        "Manendragarh"
+      ],
+      "distance_km": 65,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b07",
+      "batch_code": "KOT-B07",
+      "name": "Kotma - Chirmiri",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Chirmiri"
+      ],
+      "areas": [
+        "Kotma",
+        "Chirmiri"
+      ],
+      "distance_km": 80,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b08",
+      "batch_code": "KOT-B08",
+      "name": "Kotma - Baikunthpur",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Baikunthpur"
+      ],
+      "areas": [
+        "Kotma",
+        "Baikunthpur"
+      ],
+      "distance_km": 90,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-b09",
+      "batch_code": "KOT-B09",
+      "name": "Kotma - Gaurela",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma",
+        "Gaurela"
+      ],
+      "areas": [
+        "Kotma",
+        "Gaurela"
+      ],
+      "distance_km": 95,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-shd-b01",
+      "batch_code": "SHD-B01",
+      "name": "Shahdol - Budhar - Dhanpuri - OPM",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Budhar",
+        "Dhanpuri",
+        "OPM"
+      ],
+      "areas": [
+        "Shahdol",
+        "Budhar",
+        "Dhanpuri",
+        "OPM"
+      ],
+      "distance_km": 55,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-shd-b02",
+      "batch_code": "SHD-B02",
+      "name": "Shahdol - Pali - Navrozabad",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Pali",
+        "Navrozabad"
+      ],
+      "areas": [
+        "Shahdol",
+        "Pali",
+        "Navrozabad"
+      ],
+      "distance_km": 75,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-shd-b03",
+      "batch_code": "SHD-B03",
+      "name": "Shahdol - Gohparu - Jaisinghnagar",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Gohparu",
+        "Jaisinghnagar"
+      ],
+      "areas": [
+        "Shahdol",
+        "Gohparu",
+        "Jaisinghnagar"
+      ],
+      "distance_km": 120,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-shd-b04",
+      "batch_code": "SHD-B04",
+      "name": "Shahdol - Jaitpur",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Jaitpur"
+      ],
+      "areas": [
+        "Shahdol",
+        "Jaitpur"
+      ],
+      "distance_km": 80,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-shd-b05",
+      "batch_code": "SHD-B05",
+      "name": "Shahdol - Manpur",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol",
+        "Manpur"
+      ],
+      "areas": [
+        "Shahdol",
+        "Manpur"
+      ],
+      "distance_km": 110,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-amb-b01",
+      "batch_code": "AMB-B01",
+      "name": "Ambikapur - Laknapur - Udaypur - Kedma",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Laknapur",
+        "Udaypur",
+        "Kedma"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Laknapur",
+        "Udaypur",
+        "Kedma"
+      ],
+      "distance_km": 90,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-amb-b02",
+      "batch_code": "AMB-B02",
+      "name": "Ambikapur - Batuli - Sitapur - Patthalgawn",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Batuli",
+        "Sitapur",
+        "Patthalgawn"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Batuli",
+        "Sitapur",
+        "Patthalgawn"
+      ],
+      "distance_km": 130,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-amb-b03",
+      "batch_code": "AMB-B03",
+      "name": "Ambikapur - Silpili - Vishrampur - Surajpur - Devnagar - Shreenagar",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Silpili",
+        "Vishrampur",
+        "Surajpur",
+        "Devnagar",
+        "Shreenagar"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Silpili",
+        "Vishrampur",
+        "Surajpur",
+        "Devnagar",
+        "Shreenagar"
+      ],
+      "distance_km": 115,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-amb-b04",
+      "batch_code": "AMB-B04",
+      "name": "Ambikapur - Pratapur - Siluta - Vadrafnagar",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Pratapur",
+        "Siluta",
+        "Vadrafnagar"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Pratapur",
+        "Siluta",
+        "Vadrafnagar"
+      ],
+      "distance_km": 140,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-amb-b05",
+      "batch_code": "AMB-B05",
+      "name": "Ambikapur - Latori - Krwan - Datima - Batra - Bhatgawn",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur",
+        "Latori",
+        "Krwan",
+        "Datima",
+        "Batra",
+        "Bhatgawn"
+      ],
+      "areas": [
+        "Ambikapur",
+        "Latori",
+        "Krwan",
+        "Datima",
+        "Batra",
+        "Bhatgawn"
+      ],
+      "distance_km": 125,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z",
+      "updated_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "rb-kot-01",
+      "batch_code": "Batch 1",
+      "name": "Kotma Town & Local Market",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kotma Town",
+        "Station Road",
+        "Old Market"
+      ],
+      "areas": [
+        "Kotma Town"
+      ],
+      "distance_km": 15,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.871Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-02",
+      "batch_code": "Batch 2",
+      "name": "Anuppur District Hospital & Market",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Anuppur",
+        "District Hospital",
+        "Civil Lines"
+      ],
+      "areas": [
+        "Anuppur"
+      ],
+      "distance_km": 35,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-03",
+      "batch_code": "Batch 3",
+      "name": "Jaithari PHC & Thermal Power Belt",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Jaithari",
+        "Chachai Road",
+        "PHC Colony"
+      ],
+      "areas": [
+        "Jaithari"
+      ],
+      "distance_km": 42,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-04",
+      "batch_code": "Batch 4",
+      "name": "Bijuri Colliery & Main Market",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Bijuri",
+        "Colliery Road",
+        "Station Road"
+      ],
+      "areas": [
+        "Bijuri"
+      ],
+      "distance_km": 22,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-05",
+      "batch_code": "Batch 5",
+      "name": "Rajendragram Route & Tribal Area",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Rajendragram",
+        "Amarkantak Road"
+      ],
+      "areas": [
+        "Rajendragram"
+      ],
+      "distance_km": 55,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-06",
+      "batch_code": "Batch 6",
+      "name": "Bhalumuda Coalmines & Clinics",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Bhalumuda",
+        "Mine Gate",
+        "Main Chowk"
+      ],
+      "areas": [
+        "Bhalumuda"
+      ],
+      "distance_km": 28,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-07",
+      "batch_code": "Batch 7",
+      "name": "Kotma Outer & Rural Centers",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Kevai River Belt",
+        "Kotma Outer"
+      ],
+      "areas": [
+        "Kotma Town"
+      ],
+      "distance_km": 30,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-08",
+      "batch_code": "Batch 8",
+      "name": "Anuppur-Jaithari Connected Route",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Anuppur",
+        "Jaithari"
+      ],
+      "areas": [
+        "Anuppur",
+        "Jaithari"
+      ],
+      "distance_km": 48,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-kot-09",
+      "batch_code": "Batch 9",
+      "name": "Jaithari-Bijuri Extended Loop",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "territory_name": "Kotma HQ Territory",
+      "route_stops": [
+        "Jaithari",
+        "Bijuri"
+      ],
+      "areas": [
+        "Jaithari",
+        "Bijuri"
+      ],
+      "distance_km": 50,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-shd-01",
+      "batch_code": "Batch 1",
+      "name": "Shahdol Central & Medical College",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Shahdol Central",
+        "Gandhi Chowk",
+        "Medical College Road"
+      ],
+      "areas": [
+        "Shahdol Central"
+      ],
+      "distance_km": 20,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-shd-02",
+      "batch_code": "Batch 2",
+      "name": "Burhar Town & Dhanpuri Colliery",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Burhar Town",
+        "Dhanpuri",
+        "Amlai Paper Mills"
+      ],
+      "areas": [
+        "Burhar"
+      ],
+      "distance_km": 32,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-shd-03",
+      "batch_code": "Batch 3",
+      "name": "Gohparu & Sohagpur Clinics",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Gohparu",
+        "Sohagpur",
+        "Singhpur"
+      ],
+      "areas": [
+        "Gohparu",
+        "Sohagpur"
+      ],
+      "distance_km": 45,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-shd-04",
+      "batch_code": "Batch 4",
+      "name": "Beohari Sub-Division Route",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Beohari",
+        "Rewa Road Junction"
+      ],
+      "areas": [
+        "Beohari"
+      ],
+      "distance_km": 78,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-shd-05",
+      "batch_code": "Batch 5",
+      "name": "Jaisinghnagar & Amdih Route",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "territory_name": "Shahdol HQ Territory",
+      "route_stops": [
+        "Jaisinghnagar Town",
+        "Amdih",
+        "Janakpur Road"
+      ],
+      "areas": [
+        "Jaisinghnagar"
+      ],
+      "distance_km": 52,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-amb-01",
+      "batch_code": "Batch 1",
+      "name": "Ambikapur Central & Ring Road",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ambikapur Central",
+        "Hospital Road",
+        "Ring Road"
+      ],
+      "areas": [
+        "Ambikapur Central"
+      ],
+      "distance_km": 25,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-amb-02",
+      "batch_code": "Batch 2",
+      "name": "Sitapur & Lundra Corridor",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Sitapur",
+        "Lundra"
+      ],
+      "areas": [
+        "Sitapur",
+        "Lundra"
+      ],
+      "distance_km": 45,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-amb-03",
+      "batch_code": "Batch 3",
+      "name": "Batoli & Mainpat Route",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Batoli",
+        "Mainpat Plateau"
+      ],
+      "areas": [
+        "Batoli",
+        "Mainpat"
+      ],
+      "distance_km": 60,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-amb-04",
+      "batch_code": "Batch 4",
+      "name": "Udaipur & Lakhanpur Belt",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Udaipur",
+        "Lakhanpur"
+      ],
+      "areas": [
+        "Udaipur",
+        "Lakhanpur"
+      ],
+      "distance_km": 40,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    },
+    {
+      "id": "rb-amb-05",
+      "batch_code": "Batch 5",
+      "name": "Ramanujganj & Surguja Border",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "mr_id": "usr-mr-03",
+      "mr_name": "Ashish Soni",
+      "territory_name": "Ambikapur HQ Territory",
+      "route_stops": [
+        "Ramanujganj",
+        "Surguja Border"
+      ],
+      "areas": [
+        "Ramanujganj",
+        "Surguja"
+      ],
+      "distance_km": 80,
+      "standard_reimbursement_rate": 2.5,
+      "status": "ACTIVE",
+      "created_at": "2026-10-12T23:29:38.872Z",
+      "updated_at": "2026-10-12T23:29:38.872Z"
+    }
+  ],
+  "headquarters": [
+    {
+      "id": "HQ-KOT-001",
+      "hq_id": "HQ-KOT-001",
+      "name": "Kotma",
+      "code": "KOT",
+      "hq_code": "KOT",
+      "legacy_id": "hq-kotma",
+      "state": "Madhya Pradesh",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.582Z"
+    },
+    {
+      "id": "HQ-SHD-001",
+      "hq_id": "HQ-SHD-001",
+      "name": "Shahdol",
+      "code": "SHD",
+      "hq_code": "SHD",
+      "legacy_id": "hq-shahdol",
+      "state": "Madhya Pradesh",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    },
+    {
+      "id": "HQ-AMB-001",
+      "hq_id": "HQ-AMB-001",
+      "name": "Ambikapur",
+      "code": "AMB",
+      "hq_code": "AMB",
+      "legacy_id": "hq-ambikapur",
+      "state": "Chhattisgarh",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    },
+    {
+      "id": "HQ-BSP-001",
+      "hq_id": "HQ-BSP-001",
+      "name": "Bilaspur",
+      "code": "BSP",
+      "hq_code": "BSP",
+      "legacy_id": "hq-bilaspur",
+      "state": "Chhattisgarh",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    }
+  ],
+  "stockers": [
+    {
+      "id": "stk-shd-01",
+      "hq_id": "HQ-SHD-001",
+      "name": "Tara Pharmacy",
+      "sub_area": "Shahdol Central",
+      "contact_person": "",
+      "phone": "",
+      "address": "Shahdol, MP",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    },
+    {
+      "id": "stk-shd-02",
+      "hq_id": "HQ-SHD-001",
+      "name": "Parth Medical Agency",
+      "sub_area": "Shahdol Central",
+      "contact_person": "",
+      "phone": "",
+      "address": "Shahdol, MP",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    },
+    {
+      "id": "stk-ktm-01",
+      "hq_id": "HQ-KOT-001",
+      "name": "Triyash Medical Agency",
+      "sub_area": "Kotma Town",
+      "contact_person": "",
+      "phone": "",
+      "address": "Kotma, MP",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    },
+    {
+      "id": "stk-amb-01",
+      "hq_id": "HQ-AMB-001",
+      "name": "Kismira Medical Agency",
+      "sub_area": "Ambikapur Central",
+      "contact_person": "",
+      "phone": "",
+      "address": "Ambikapur, CG",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z"
+    }
+  ],
+  "hqAreas": [
+    {
+      "id": "area-shd-01",
+      "hq_id": "HQ-SHD-001",
+      "name": "Burhar",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-02",
+      "hq_id": "HQ-SHD-001",
+      "name": "Gohparu",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-03",
+      "hq_id": "HQ-SHD-001",
+      "name": "Beohari",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-04",
+      "hq_id": "HQ-SHD-001",
+      "name": "Jaisinghnagar",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-05",
+      "hq_id": "HQ-SHD-001",
+      "name": "Sohagpur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-06",
+      "hq_id": "HQ-SHD-001",
+      "name": "Singhpur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-shd-07",
+      "hq_id": "HQ-SHD-001",
+      "name": "Shahdol Central",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-01",
+      "hq_id": "HQ-AMB-001",
+      "name": "Sitapur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-02",
+      "hq_id": "HQ-AMB-001",
+      "name": "Lundra",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-03",
+      "hq_id": "HQ-AMB-001",
+      "name": "Batoli",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-04",
+      "hq_id": "HQ-AMB-001",
+      "name": "Mainpat",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-05",
+      "hq_id": "HQ-AMB-001",
+      "name": "Udaipur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-06",
+      "hq_id": "HQ-AMB-001",
+      "name": "Lakhanpur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-07",
+      "hq_id": "HQ-AMB-001",
+      "name": "Surguja",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-08",
+      "hq_id": "HQ-AMB-001",
+      "name": "Ramanujganj",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-amb-09",
+      "hq_id": "HQ-AMB-001",
+      "name": "Ambikapur Central",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-01",
+      "hq_id": "HQ-BSP-001",
+      "name": "Kota",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-02",
+      "hq_id": "HQ-BSP-001",
+      "name": "Takhatpur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-03",
+      "hq_id": "HQ-BSP-001",
+      "name": "Masturi",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-04",
+      "hq_id": "HQ-BSP-001",
+      "name": "Bilha",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-05",
+      "hq_id": "HQ-BSP-001",
+      "name": "Ratanpur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-06",
+      "hq_id": "HQ-BSP-001",
+      "name": "Bodri",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-07",
+      "hq_id": "HQ-BSP-001",
+      "name": "Sakri",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bsp-08",
+      "hq_id": "HQ-BSP-001",
+      "name": "Bilaspur City",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-01",
+      "hq_id": "HQ-KOT-001",
+      "name": "Kotma Town",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-02",
+      "hq_id": "HQ-KOT-001",
+      "name": "Anuppur",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-03",
+      "hq_id": "HQ-KOT-001",
+      "name": "Jaithari",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-04",
+      "hq_id": "HQ-KOT-001",
+      "name": "Bijuri",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-05",
+      "hq_id": "HQ-KOT-001",
+      "name": "Rajendragram",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-ktm-06",
+      "hq_id": "HQ-KOT-001",
+      "name": "Bhalumuda",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-jsn-01",
+      "hq_id": "HQ-SHD-001",
+      "name": "Jaisinghnagar Town",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-jsn-02",
+      "hq_id": "HQ-SHD-001",
+      "name": "Amdih",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-jsn-03",
+      "hq_id": "HQ-SHD-001",
+      "name": "Janakpur Road",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bhr-01",
+      "hq_id": "HQ-SHD-001",
+      "name": "Burhar Town",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bhr-02",
+      "hq_id": "HQ-SHD-001",
+      "name": "Dhanpuri",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bhr-03",
+      "hq_id": "HQ-SHD-001",
+      "name": "Amlai",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    },
+    {
+      "id": "area-bhr-04",
+      "hq_id": "HQ-SHD-001",
+      "name": "Bakaho",
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T21:42:43.046Z"
+    }
+  ],
+  "medicines": [
+    {
+      "id": "med-01",
+      "name": "AHTRI-S",
+      "code": "AHT-001",
+      "product_code": "AHT-001",
+      "sku": "AHT-001",
+      "category": "Liquid / Syrup",
+      "composition": "Ayurvedic Digestive Tonic & Alkalizer 200ml",
+      "unit": "200 ML",
+      "packing": "200 ML",
+      "base_price": 38.4,
+      "pts": 38.4,
+      "pts_rate": 38.4,
+      "ptr": 48,
+      "ptr_rate": 48,
+      "mrp": 195,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.169Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-01-200ml",
+          "medicine_id": "med-01",
+          "variant_name": "200 ML Bottle",
+          "package_size": 200,
+          "package_unit": "ML",
+          "display_label": "200 ML",
+          "packing": "200 ML",
+          "pts_rate": 38.4,
+          "ptr_rate": 48,
+          "mrp": 195,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-02",
+      "name": "AHTRI-A2Z",
+      "code": "AHT-002",
+      "product_code": "AHT-002",
+      "sku": "AHT-002",
+      "category": "Liquid / Syrup",
+      "composition": "Multivitamin, Multimineral & Antioxidant Syrup 200ml",
+      "unit": "200 ML",
+      "packing": "200 ML",
+      "base_price": 36.8,
+      "pts": 36.8,
+      "pts_rate": 36.8,
+      "ptr": 46,
+      "ptr_rate": 46,
+      "mrp": 185,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-02-200ml",
+          "medicine_id": "med-02",
+          "variant_name": "200 ML Bottle",
+          "package_size": 200,
+          "package_unit": "ML",
+          "display_label": "200 ML",
+          "packing": "200 ML",
+          "pts_rate": 36.8,
+          "ptr_rate": 46,
+          "mrp": 185,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-03",
+      "name": "AHTYME",
+      "code": "AHT-003",
+      "product_code": "AHT-003",
+      "sku": "AHT-003",
+      "category": "Liquid / Syrup",
+      "composition": "Fungal Diastase & Pepsin Digestive Enzyme Syrup 200ml",
+      "unit": "200 ML",
+      "packing": "200 ML",
+      "base_price": 36.8,
+      "pts": 36.8,
+      "pts_rate": 36.8,
+      "ptr": 46,
+      "ptr_rate": 46,
+      "mrp": 184,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-03-200ml",
+          "medicine_id": "med-03",
+          "variant_name": "200 ML Bottle",
+          "package_size": 200,
+          "package_unit": "ML",
+          "display_label": "200 ML",
+          "packing": "200 ML",
+          "pts_rate": 36.8,
+          "ptr_rate": 46,
+          "mrp": 184,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-04",
+      "name": "ATHRIMOX CV 625",
+      "code": "AHT-004",
+      "product_code": "AHT-004",
+      "sku": "AHT-004",
+      "category": "Tablet / Antibiotic",
+      "composition": "Amoxicillin 500mg + Potassium Clavulanate 125mg Tablets",
+      "unit": "10*1*10",
+      "packing": "10*1*10",
+      "base_price": 68,
+      "pts": 68,
+      "pts_rate": 68,
+      "ptr": 85,
+      "ptr_rate": 85,
+      "mrp": 182,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-04-10x1x10",
+          "medicine_id": "med-04",
+          "variant_name": "10*1*10 Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*1*10",
+          "packing": "10*1*10",
+          "pts_rate": 68,
+          "ptr_rate": 85,
+          "mrp": 182,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-05",
+      "name": "AHTRI-P",
+      "code": "AHT-005",
+      "product_code": "AHT-005",
+      "sku": "AHT-005",
+      "category": "Tablet / Analgesic",
+      "composition": "Aceclofenac 100mg + Paracetamol 325mg Tablets",
+      "unit": "20*10",
+      "packing": "20*10",
+      "base_price": 12,
+      "pts": 12,
+      "pts_rate": 12,
+      "ptr": 15,
+      "ptr_rate": 15,
+      "mrp": 84,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-05-20x10",
+          "medicine_id": "med-05",
+          "variant_name": "20*10 Tablets",
+          "package_size": 20,
+          "package_unit": "strips",
+          "display_label": "20*10",
+          "packing": "20*10",
+          "pts_rate": 12,
+          "ptr_rate": 15,
+          "mrp": 84,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-06",
+      "name": "TRIPAN DSR",
+      "code": "AHT-006",
+      "product_code": "AHT-006",
+      "sku": "AHT-006",
+      "category": "Capsule / Gastro",
+      "composition": "Pantoprazole Sodium 40mg + Domperidone 30mg SR Capsules",
+      "unit": "10*10",
+      "packing": "10*10",
+      "base_price": 20.8,
+      "pts": 20.8,
+      "pts_rate": 20.8,
+      "ptr": 26,
+      "ptr_rate": 26,
+      "mrp": 138,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-06-10x10",
+          "medicine_id": "med-06",
+          "variant_name": "10*10 Capsule Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*10",
+          "packing": "10*10",
+          "pts_rate": 20.8,
+          "ptr_rate": 26,
+          "mrp": 138,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-07",
+      "name": "AHTRI SP",
+      "code": "AHT-007",
+      "product_code": "AHT-007",
+      "sku": "AHT-007",
+      "category": "Tablet / NSAID",
+      "composition": "Aceclofenac 100mg + Paracetamol 325mg + Serratiopeptidase 15mg Tablets",
+      "unit": "10*10",
+      "packing": "10*10",
+      "base_price": 19.8,
+      "pts": 19.8,
+      "pts_rate": 19.8,
+      "ptr": 25,
+      "ptr_rate": 25,
+      "mrp": 120,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-07-10x10",
+          "medicine_id": "med-07",
+          "variant_name": "10*10 Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*10",
+          "packing": "10*10",
+          "pts_rate": 19.8,
+          "ptr_rate": 25,
+          "mrp": 120,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-08",
+      "name": "TRIZOLE OC",
+      "code": "AHT-008",
+      "product_code": "AHT-008",
+      "sku": "AHT-008",
+      "category": "Ointment / Topical",
+      "composition": "Ofloxacin, Ornidazole, Itraconazole & Clobetasol Propionate Cream 30g",
+      "unit": "30 GM",
+      "packing": "30 GM",
+      "base_price": 37.8,
+      "pts": 37.8,
+      "pts_rate": 37.8,
+      "ptr": 46,
+      "ptr_rate": 46,
+      "mrp": 95,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-08-30gm",
+          "medicine_id": "med-08",
+          "variant_name": "30 GM Tube",
+          "package_size": 30,
+          "package_unit": "GM",
+          "display_label": "30 GM",
+          "packing": "30 GM",
+          "pts_rate": 37.8,
+          "ptr_rate": 46,
+          "mrp": 95,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-09",
+      "name": "TRIZOLE 200",
+      "code": "AHT-009",
+      "product_code": "AHT-009",
+      "sku": "AHT-009",
+      "category": "Capsule / Antifungal",
+      "composition": "Itraconazole 200mg Capsules",
+      "unit": "10*10",
+      "packing": "10*10",
+      "base_price": 64.2,
+      "pts": 64.2,
+      "pts_rate": 64.2,
+      "ptr": 77,
+      "ptr_rate": 77,
+      "mrp": 245,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-09-10x10",
+          "medicine_id": "med-09",
+          "variant_name": "10*10 Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*10",
+          "packing": "10*10",
+          "pts_rate": 64.2,
+          "ptr_rate": 77,
+          "mrp": 245,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-10",
+      "name": "AHTRI K27",
+      "code": "AHT-010",
+      "product_code": "AHT-010",
+      "sku": "AHT-010",
+      "category": "Tablet / Supplement",
+      "composition": "Calcium Carbonate, Calcitriol & Vitamin K2-7 Softgel Tablets",
+      "unit": "10*1*10",
+      "packing": "10*1*10",
+      "base_price": 38.2,
+      "pts": 38.2,
+      "pts_rate": 38.2,
+      "ptr": 46,
+      "ptr_rate": 46,
+      "mrp": 285,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-10-10x1x10",
+          "medicine_id": "med-10",
+          "variant_name": "10*1*10 Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*1*10",
+          "packing": "10*1*10",
+          "pts_rate": 38.2,
+          "ptr_rate": 46,
+          "mrp": 285,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-11",
+      "name": "TRIDIC GEL",
+      "code": "AHT-011",
+      "product_code": "AHT-011",
+      "sku": "AHT-011",
+      "category": "Gel / Topical",
+      "composition": "Diclofenac Diethylamine, Virgin Linseed Oil, Methyl Salicylate & Menthol Gel 30g",
+      "unit": "30 GM",
+      "packing": "30 GM",
+      "base_price": 55.2,
+      "pts": 55.2,
+      "pts_rate": 55.2,
+      "ptr": 62,
+      "ptr_rate": 62,
+      "mrp": 110,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-11-30gm",
+          "medicine_id": "med-11",
+          "variant_name": "30 GM Tube",
+          "package_size": 30,
+          "package_unit": "GM",
+          "display_label": "30 GM",
+          "packing": "30 GM",
+          "pts_rate": 55.2,
+          "ptr_rate": 62,
+          "mrp": 110,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-12",
+      "name": "AHTRI STRETCH MARK CREAM",
+      "code": "AHT-012",
+      "product_code": "AHT-012",
+      "sku": "AHT-012",
+      "category": "Cream / Skincare",
+      "composition": "Advanced Anti-Stretch Mark & Skin Repair Cream 50g",
+      "unit": "50 GM",
+      "packing": "50 GM",
+      "base_price": 357.37,
+      "pts": 357.37,
+      "pts_rate": 357.37,
+      "ptr": 400,
+      "ptr_rate": 400,
+      "mrp": 599,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-12-50gm",
+          "medicine_id": "med-12",
+          "variant_name": "50 GM Tube",
+          "package_size": 50,
+          "package_unit": "GM",
+          "display_label": "50 GM",
+          "packing": "50 GM",
+          "pts_rate": 357.37,
+          "ptr_rate": 400,
+          "mrp": 599,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-13",
+      "name": "AHTRI 5G SYP",
+      "code": "AHT-013",
+      "product_code": "AHT-013",
+      "sku": "AHT-013",
+      "category": "Syrup / Tonic",
+      "composition": "Ginseng, Ginkgo Biloba, Green Tea, Grape Seed & Ginger Extract Syrup 200ml",
+      "unit": "200 ML",
+      "packing": "200 ML",
+      "base_price": 157,
+      "pts": 157,
+      "pts_rate": 157,
+      "ptr": 175.84,
+      "ptr_rate": 175.84,
+      "mrp": 235,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-13-200ml",
+          "medicine_id": "med-13",
+          "variant_name": "200 ML Bottle",
+          "package_size": 200,
+          "package_unit": "ML",
+          "display_label": "200 ML",
+          "packing": "200 ML",
+          "pts_rate": 157,
+          "ptr_rate": 175.84,
+          "mrp": 235,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-14",
+      "name": "TRIRAB DSR",
+      "code": "AHT-014",
+      "product_code": "AHT-014",
+      "sku": "AHT-014",
+      "category": "Capsule / Gastro",
+      "composition": "Rabeprazole Sodium 20mg + Domperidone 30mg SR Capsules",
+      "unit": "10*10",
+      "packing": "10*10",
+      "base_price": 80.46,
+      "pts": 80.46,
+      "pts_rate": 80.46,
+      "ptr": 89.6,
+      "ptr_rate": 89.6,
+      "mrp": 120,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-14-10x10",
+          "medicine_id": "med-14",
+          "variant_name": "10*10 Capsule Strip Box",
+          "package_size": 10,
+          "package_unit": "strips",
+          "display_label": "10*10",
+          "packing": "10*10",
+          "pts_rate": 80.46,
+          "ptr_rate": 89.6,
+          "mrp": 120,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-15",
+      "name": "AHTRIMOX CV SUSPENSION",
+      "code": "AHT-015",
+      "product_code": "AHT-015",
+      "sku": "AHT-015",
+      "category": "Suspension / Paediatric",
+      "composition": "Amoxicillin 200mg + Potassium Clavulanate 28.5mg Oral Suspension with Sterile Water 30ml",
+      "unit": "30 ML",
+      "packing": "30 ML",
+      "base_price": 42,
+      "pts": 42,
+      "pts_rate": 42,
+      "ptr": 47,
+      "ptr_rate": 47,
+      "mrp": 65,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-15-30ml",
+          "medicine_id": "med-15",
+          "variant_name": "30 ML Bottle",
+          "package_size": 30,
+          "package_unit": "ML",
+          "display_label": "30 ML",
+          "packing": "30 ML",
+          "pts_rate": 42,
+          "ptr_rate": 47,
+          "mrp": 65,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-16",
+      "name": "MAFTRI P",
+      "code": "AHT-016",
+      "product_code": "AHT-016",
+      "sku": "AHT-016",
+      "category": "Suspension / Paediatric",
+      "composition": "Mefenamic Acid 50mg + Paracetamol 125mg Suspension 60ml",
+      "unit": "60 ML",
+      "packing": "60 ML",
+      "base_price": 63.7,
+      "pts": 63.7,
+      "pts_rate": 63.7,
+      "ptr": 72,
+      "ptr_rate": 72,
+      "mrp": 95,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-16-60ml",
+          "medicine_id": "med-16",
+          "variant_name": "60 ML Bottle",
+          "package_size": 60,
+          "package_unit": "ML",
+          "display_label": "60 ML",
+          "packing": "60 ML",
+          "pts_rate": 63.7,
+          "ptr_rate": 72,
+          "mrp": 95,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    },
+    {
+      "id": "med-17",
+      "name": "AHTRI 9G",
+      "code": "AHT-017",
+      "product_code": "AHT-017",
+      "sku": "AHT-017",
+      "category": "Syrup / Tonic",
+      "composition": "Advanced 9G Herbal Vitality & Immunity Booster Syrup 200ml",
+      "unit": "200 ML",
+      "packing": "200 ML",
+      "base_price": 147.5,
+      "pts": 147.5,
+      "pts_rate": 147.5,
+      "ptr": 164,
+      "ptr_rate": 164,
+      "mrp": 220,
+      "status": "ACTIVE",
+      "is_active": true,
+      "low_stock_threshold": 15,
+      "created_at": "2026-10-13T09:00:32.170Z",
+      "packaging_variants": [
+        {
+          "id": "var-med-17-200ml",
+          "medicine_id": "med-17",
+          "variant_name": "200 ML Bottle",
+          "package_size": 200,
+          "package_unit": "ML",
+          "display_label": "200 ML",
+          "packing": "200 ML",
+          "pts_rate": 147.5,
+          "ptr_rate": 164,
+          "mrp": 220,
+          "status": "ACTIVE",
+          "created_at": "2026-10-14T09:54:11.156Z"
+        }
+      ]
+    }
+  ],
+  "monthlyStockagePermissions": [],
+  "stockageSubmissionRequests": [],
+  "medicinePackagingVariants": [
+    {
+      "id": "var-med-01-200ml",
+      "medicine_id": "med-01",
+      "variant_name": "200 ML Bottle",
+      "package_size": 200,
+      "package_unit": "ML",
+      "display_label": "200 ML",
+      "packing": "200 ML",
+      "pts_rate": 38.4,
+      "ptr_rate": 48,
+      "mrp": 195,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 200,
+      "unit": "ML",
+      "display_name": "200 ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-02-200ml",
+      "medicine_id": "med-02",
+      "variant_name": "200 ML Bottle",
+      "package_size": 200,
+      "package_unit": "ML",
+      "display_label": "200 ML",
+      "packing": "200 ML",
+      "pts_rate": 36.8,
+      "ptr_rate": 46,
+      "mrp": 185,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 200,
+      "unit": "ML",
+      "display_name": "200 ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-03-200ml",
+      "medicine_id": "med-03",
+      "variant_name": "200 ML Bottle",
+      "package_size": 200,
+      "package_unit": "ML",
+      "display_label": "200 ML",
+      "packing": "200 ML",
+      "pts_rate": 36.8,
+      "ptr_rate": 46,
+      "mrp": 184,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 200,
+      "unit": "ML",
+      "display_name": "200 ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-04-10x1x10",
+      "medicine_id": "med-04",
+      "variant_name": "10*1*10 Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*1*10",
+      "packing": "10*1*10",
+      "pts_rate": 68,
+      "ptr_rate": 85,
+      "mrp": 182,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*1*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-05-20x10",
+      "medicine_id": "med-05",
+      "variant_name": "20*10 Tablets",
+      "package_size": 20,
+      "package_unit": "strips",
+      "display_label": "20*10",
+      "packing": "20*10",
+      "pts_rate": 12,
+      "ptr_rate": 15,
+      "mrp": 84,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 20,
+      "unit": "strips",
+      "display_name": "20*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-06-10x10",
+      "medicine_id": "med-06",
+      "variant_name": "10*10 Capsule Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*10",
+      "packing": "10*10",
+      "pts_rate": 20.8,
+      "ptr_rate": 26,
+      "mrp": 138,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-07-10x10",
+      "medicine_id": "med-07",
+      "variant_name": "10*10 Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*10",
+      "packing": "10*10",
+      "pts_rate": 19.8,
+      "ptr_rate": 25,
+      "mrp": 120,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-08-30gm",
+      "medicine_id": "med-08",
+      "variant_name": "30 GM Tube",
+      "package_size": 30,
+      "package_unit": "GM",
+      "display_label": "30 GM",
+      "packing": "30 GM",
+      "pts_rate": 37.8,
+      "ptr_rate": 46,
+      "mrp": 95,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 30,
+      "unit": "GM",
+      "display_name": "30 GM",
+      "is_active": true
+    },
+    {
+      "id": "var-med-09-10x10",
+      "medicine_id": "med-09",
+      "variant_name": "10*10 Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*10",
+      "packing": "10*10",
+      "pts_rate": 64.2,
+      "ptr_rate": 77,
+      "mrp": 245,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-10-10x1x10",
+      "medicine_id": "med-10",
+      "variant_name": "10*1*10 Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*1*10",
+      "packing": "10*1*10",
+      "pts_rate": 38.2,
+      "ptr_rate": 46,
+      "mrp": 285,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*1*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-11-30gm",
+      "medicine_id": "med-11",
+      "variant_name": "30GM Tube",
+      "package_size": 30,
+      "package_unit": "GM",
+      "display_label": "30GM",
+      "packing": "30GM",
+      "pts_rate": 55.2,
+      "ptr_rate": 62,
+      "mrp": 110,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 30,
+      "unit": "GM",
+      "display_name": "30GM",
+      "is_active": true
+    },
+    {
+      "id": "var-med-12-50gm",
+      "medicine_id": "med-12",
+      "variant_name": "50 GM Tube",
+      "package_size": 50,
+      "package_unit": "GM",
+      "display_label": "50 GM",
+      "packing": "50 GM",
+      "pts_rate": 357.37,
+      "ptr_rate": 400,
+      "mrp": 599,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 50,
+      "unit": "GM",
+      "display_name": "50 GM",
+      "is_active": true
+    },
+    {
+      "id": "var-med-13-200ml",
+      "medicine_id": "med-13",
+      "variant_name": "200ML Bottle",
+      "package_size": 200,
+      "package_unit": "ML",
+      "display_label": "200ML",
+      "packing": "200ML",
+      "pts_rate": 157,
+      "ptr_rate": 175.84,
+      "mrp": 235,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 200,
+      "unit": "ML",
+      "display_name": "200ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-14-10x10",
+      "medicine_id": "med-14",
+      "variant_name": "10*10 Capsule Strip Box",
+      "package_size": 10,
+      "package_unit": "strips",
+      "display_label": "10*10",
+      "packing": "10*10",
+      "pts_rate": 80.46,
+      "ptr_rate": 89.6,
+      "mrp": 120,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 10,
+      "unit": "strips",
+      "display_name": "10*10",
+      "is_active": true
+    },
+    {
+      "id": "var-med-15-30ml",
+      "medicine_id": "med-15",
+      "variant_name": "30 ML Bottle",
+      "package_size": 30,
+      "package_unit": "ML",
+      "display_label": "30 ML",
+      "packing": "30 ML",
+      "pts_rate": 42,
+      "ptr_rate": 47,
+      "mrp": 65,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 30,
+      "unit": "ML",
+      "display_name": "30 ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-16-60ml",
+      "medicine_id": "med-16",
+      "variant_name": "60ML Bottle",
+      "package_size": 60,
+      "package_unit": "ML",
+      "display_label": "60ML",
+      "packing": "60ML",
+      "pts_rate": 63.7,
+      "ptr_rate": 72,
+      "mrp": 95,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 60,
+      "unit": "ML",
+      "display_name": "60ML",
+      "is_active": true
+    },
+    {
+      "id": "var-med-17-200ml",
+      "medicine_id": "med-17",
+      "variant_name": "200 ML Bottle",
+      "package_size": 200,
+      "package_unit": "ML",
+      "display_label": "200 ML",
+      "packing": "200 ML",
+      "pts_rate": 147.5,
+      "ptr_rate": 164,
+      "mrp": 220,
+      "status": "ACTIVE",
+      "created_at": "2026-10-13T00:30:31.583Z",
+      "size": 200,
+      "unit": "ML",
+      "display_name": "200 ML",
+      "is_active": true
+    }
+  ],
+  "competitions": [],
+  "rewardClaims": [],
+  "users": [
+    {
+      "id": "usr-admin-01",
+      "name": "Shivansh",
+      "phone": "9009149694",
+      "email": "shivanshti10@gmail.com",
+      "role": "SUPER_ADMIN",
+      "password_hash": "$2a$10$ad77d2tiqIxgiTOctE9ff.ZOm5VZT/w7.NELR5F73NTCebNfVsRXu",
+      "status": "ACTIVE",
+      "area_id": null,
+      "manager_id": null,
+      "biometric_enabled": false,
+      "created_at": "2026-10-14T09:08:02.420Z"
+    },
+    {
+      "id": "usr-mr-01",
+      "name": "Amar Dwivedi",
+      "phone": "9399604625",
+      "email": "amarkotma478@gmail.com",
+      "role": "MR",
+      "password_hash": "$2a$10$2sCmri/zudO0tMNkvIea5e83qMBkell1gcK5wsLvTjO3FTGPe1EZa",
+      "status": "ACTIVE",
+      "zone_id": "zone-hq-shahdol",
+      "region_id": "reg-shd-1",
+      "area_id": "area-ktm-1",
+      "hq_id": "HQ-KOT-001",
+      "hq_code": "KOT",
+      "hq_name": "Kotma",
+      "territory": "Kotma HQ Territory",
+      "assigned_territory": "Kotma HQ Territory",
+      "assigned_route_batches": [
+        "KOT-B01",
+        "KOT-B02",
+        "KOT-B03",
+        "KOT-B04",
+        "KOT-B05",
+        "KOT-B06",
+        "KOT-B07",
+        "KOT-B08",
+        "KOT-B09"
+      ],
+      "route_batches": [
+        "KOT-B01",
+        "KOT-B02",
+        "KOT-B03",
+        "KOT-B04",
+        "KOT-B05",
+        "KOT-B06",
+        "KOT-B07",
+        "KOT-B08",
+        "KOT-B09"
+      ],
+      "manager_id": null,
+      "biometric_enabled": true,
+      "created_at": "2026-10-14T09:08:02.421Z"
+    },
+    {
+      "id": "usr-mr-02",
+      "name": "Aman Rathore",
+      "phone": "6261654453",
+      "email": "amanrathour4453@gmail.com",
+      "role": "MR",
+      "password_hash": "$2a$10$99mDfzrM1Do8t1SB//OewOPNRDu9aOJw4/6z0w9ZEGHsM.5IH7h9C",
+      "status": "ACTIVE",
+      "zone_id": "zone-hq-shahdol",
+      "region_id": "reg-shd-1",
+      "area_id": "area-shd-07",
+      "hq_id": "HQ-SHD-001",
+      "hq_code": "SHD",
+      "hq_name": "Shahdol",
+      "territory": "Shahdol HQ Territory",
+      "assigned_territory": "Shahdol HQ Territory",
+      "assigned_route_batches": [
+        "SHD-B01",
+        "SHD-B02",
+        "SHD-B03",
+        "SHD-B04",
+        "SHD-B05"
+      ],
+      "route_batches": [
+        "SHD-B01",
+        "SHD-B02",
+        "SHD-B03",
+        "SHD-B04",
+        "SHD-B05"
+      ],
+      "manager_id": null,
+      "biometric_enabled": true,
+      "created_at": "2026-10-14T09:08:02.421Z"
+    },
+    {
+      "id": "usr-mr-03",
+      "name": "Ashish Soni",
+      "phone": "9343052283",
+      "email": "ashish103020@gmail.com",
+      "role": "MR",
+      "password_hash": "$2a$10$ENjkR6ohgd15d0KAsXR/2.cuVEJJaGJX2pLP8tVcjnRyHziQ1d2om",
+      "status": "ACTIVE",
+      "zone_id": "zone-hq-shahdol",
+      "region_id": "reg-shd-1",
+      "area_id": "area-bdh-1",
+      "hq_id": "HQ-AMB-001",
+      "hq_code": "AMB",
+      "hq_name": "Ambikapur",
+      "territory": "Ambikapur HQ Territory",
+      "assigned_territory": "Ambikapur HQ Territory",
+      "assigned_route_batches": [
+        "AMB-B01",
+        "AMB-B02",
+        "AMB-B03",
+        "AMB-B04",
+        "AMB-B05"
+      ],
+      "route_batches": [
+        "AMB-B01",
+        "AMB-B02",
+        "AMB-B03",
+        "AMB-B04",
+        "AMB-B05"
+      ],
+      "manager_id": null,
+      "biometric_enabled": true,
+      "created_at": "2026-10-14T09:08:02.421Z"
+    }
+  ],
+  "userCredentials": [
+    {
+      "id": "usr-admin-01",
+      "email": "shivanshti10@gmail.com",
+      "phone": "9009149694",
+      "password_hash": "$2a$10$ad77d2tiqIxgiTOctE9ff.ZOm5VZT/w7.NELR5F73NTCebNfVsRXu"
+    },
+    {
+      "id": "usr-mr-01",
+      "email": "amarkotma478@gmail.com",
+      "phone": "9399604625",
+      "password_hash": "$2a$10$2sCmri/zudO0tMNkvIea5e83qMBkell1gcK5wsLvTjO3FTGPe1EZa"
+    },
+    {
+      "id": "usr-mr-02",
+      "email": "amanrathour4453@gmail.com",
+      "phone": "6261654453",
+      "password_hash": "$2a$10$99mDfzrM1Do8t1SB//OewOPNRDu9aOJw4/6z0w9ZEGHsM.5IH7h9C"
+    },
+    {
+      "id": "usr-mr-03",
+      "email": "ashish103020@gmail.com",
+      "phone": "9343052283",
+      "password_hash": "$2a$10$ENjkR6ohgd15d0KAsXR/2.cuVEJJaGJX2pLP8tVcjnRyHziQ1d2om"
+    }
+  ],
+  "userDeviceStates": [
+    {
+      "id": "usr-admin-01"
+    },
+    {
+      "id": "usr-mr-01"
+    },
+    {
+      "id": "usr-mr-02"
+    },
+    {
+      "id": "usr-mr-03"
+    }
+  ],
+  "saved_at": "2026-10-14T09:54:14.971Z"
+}
