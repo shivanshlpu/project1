@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { ApiConfig } from '../services/apiConfig';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
@@ -1190,6 +1191,53 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   };
 
+  // Remove a punched tour plan entry
+  const handleDeletePunchedEntry = (plan: any, entry: any) => {
+    Alert.alert(
+      'Remove Tour Plan Entry',
+      `Are you sure you want to remove this punched TP entry for ${entry.planned_area || entry.destination || 'Visit'} on ${formatDateDDMMYYYY(entry.date)}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove Entry',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const baseUrl = await ApiConfig.getBaseUrl();
+              const headers = await ApiConfig.getAuthHeaders();
+              const entryId = entry.id || entry.date;
+              const res = await fetch(`${baseUrl}/tour-plans/${plan.id}/entries/${entryId}`, {
+                method: 'DELETE',
+                headers,
+              });
+
+              if (res.ok) {
+                setStatusNotice({
+                  type: 'success',
+                  message: `✓ Tour Plan entry for ${formatDateDDMMYYYY(entry.date)} removed.`,
+                });
+                fetchMyTourPlans();
+              } else {
+                const err = await res.json().catch(() => ({}));
+                setStatusNotice({
+                  type: 'error',
+                  message: err.message || 'Failed to remove entry.',
+                });
+              }
+            } catch (e: any) {
+              setStatusNotice({
+                type: 'error',
+                message: e?.message || 'Network error while removing entry.',
+              });
+            } finally {
+              setTimeout(() => setStatusNotice(null), 5000);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Calendar calculations
   const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
   const daysInCurrentMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
@@ -1706,15 +1754,25 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           </Text>
                         </View>
 
-                        {/* 24-HOUR EDIT BUTTON: ONLY APPEARS IF WITHIN 24 HOURS */}
-                        {editStatus.canEdit && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          {/* 24-HOUR EDIT BUTTON: ONLY APPEARS IF WITHIN 24 HOURS */}
+                          {editStatus.canEdit && (
+                            <TouchableOpacity
+                              style={styles.editVisitBtn}
+                              onPress={() => handleOpenEditModal(plan, e)}
+                            >
+                              <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                            </TouchableOpacity>
+                          )}
+
+                          {/* REMOVE PUNCHED ENTRY BUTTON */}
                           <TouchableOpacity
-                            style={styles.editVisitBtn}
-                            onPress={() => handleOpenEditModal(plan, e)}
+                            style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
+                            onPress={() => handleDeletePunchedEntry(plan, e)}
                           >
-                            <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                            <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
                           </TouchableOpacity>
-                        )}
+                        </View>
                       </View>
                     ))}
                   </View>

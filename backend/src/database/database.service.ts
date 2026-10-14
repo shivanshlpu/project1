@@ -292,6 +292,27 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
+   * Delete a monthly tour plan from in-memory cache, disk store, and Supabase
+   */
+  public async deleteMonthlyTourPlan(planId: string): Promise<void> {
+    const idx = this.monthlyTourPlans.findIndex((p) => p.id === planId);
+    if (idx >= 0) {
+      this.monthlyTourPlans.splice(idx, 1);
+    }
+    this.persistToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      try {
+        const client = this.supabase.getClient();
+        if (client) {
+          await client.from('monthly_tour_plans').delete().eq('id', planId);
+        }
+      } catch (err: any) {
+        console.warn(`[DatabaseService] Notice deleting monthly tour plan ${planId}:`, err?.message);
+      }
+    }
+  }
+
+  /**
    * Authoritative attendance persistence: updates in-memory cache, triggers debounced
    * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
    */

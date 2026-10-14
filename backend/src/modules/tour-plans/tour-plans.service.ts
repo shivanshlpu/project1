@@ -306,24 +306,50 @@ export class TourPlansService {
   }
 
   /**
-   * Delete an entry from a Tour Plan with strict 24-hour window enforcement
+   * Delete an entry from a Tour Plan (for both Admin and MR)
    */
-  async deleteTourPlanEntry(userId: string, planId: string, entryId: string): Promise<MonthlyTourPlan> {
+  async deleteTourPlanEntry(userId: string, planId: string, entryId: string): Promise<any> {
     const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
     if (!plan) throw new NotFoundException('Tour Plan not found');
 
-    const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
-    const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+    const user = this.db.users.find((u) => u.id === userId);
+    const isAdmin = user && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
 
-    if (elapsedHours > 24) {
-      throw new BadRequestException(
-        'The 24-Hour Edit Window has expired. This Tour Plan cannot be modified after 1 day.',
-      );
+    if (!isAdmin && plan.mr_id !== userId) {
+      throw new BadRequestException('You can only remove entries from your own tour plan');
     }
 
-    plan.entries = plan.entries.filter((e) => e.id !== entryId);
+    const initialLength = (plan.entries || []).length;
+    plan.entries = (plan.entries || []).filter(
+      (e) => e.id !== entryId && e.date !== entryId && String(e.id) !== String(entryId),
+    );
+
+    // If all entries in this tour plan are removed, remove the plan completely
+    if (plan.entries.length === 0) {
+      await this.db.deleteMonthlyTourPlan(plan.id);
+      return { success: true, deleted: true, planDeleted: true, message: 'Tour plan and entry removed' };
+    }
+
     await this.db.persistMonthlyTourPlan(plan);
-    return plan;
+    return { success: true, deleted: true, plan };
+  }
+
+  /**
+   * Delete an entire Tour Plan (for both Admin and MR owner)
+   */
+  async deleteTourPlan(userId: string, planId: string): Promise<any> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === planId);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+
+    const user = this.db.users.find((u) => u.id === userId);
+    const isAdmin = user && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+
+    if (!isAdmin && plan.mr_id !== userId) {
+      throw new BadRequestException('You can only delete your own tour plan');
+    }
+
+    await this.db.deleteMonthlyTourPlan(planId);
+    return { success: true, message: 'Monthly Tour Plan removed successfully' };
   }
 
   private notifyAdminsOfTpSubmission(mrName: string, month: string, count: number) {

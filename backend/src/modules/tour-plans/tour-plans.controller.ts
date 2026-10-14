@@ -70,6 +70,16 @@ export class TourPlansController {
     return this.tourPlansService.deleteTourPlanEntry(userId, id, entryId);
   }
 
+  @Delete(':id')
+  async deleteTourPlan(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
+    return this.tourPlansService.deleteTourPlan(userId, id);
+  }
+
   @Get('my')
   async getMyTourPlans(
     @CurrentUser() user: any,

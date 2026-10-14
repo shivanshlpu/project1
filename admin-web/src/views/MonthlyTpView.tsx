@@ -38,6 +38,7 @@ import { showConfirmModal } from '../components/CenteredModalNotice';
 export interface MonthlyTpItem {
   id: string;
   tp_id: string;
+  plan_id?: string;
   entry_id: string;
   mr_id: string;
   mr_name: string;
@@ -812,6 +813,54 @@ export const MonthlyTpView: React.FC = () => {
       setActionNotice({
         type: 'error',
         message: 'Network error updating reimbursement status.',
+      });
+    } finally {
+      setProcessingTpId(null);
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
+
+  // Delete / Remove Monthly TP Entry
+  const handleDeleteEntry = async (item: MonthlyTpItem) => {
+    const entryId = item.entry_id || item.id;
+    const planId = item.tp_id || item.plan_id;
+    if (!planId) return;
+
+    const ok = await showConfirmModal({
+      title: 'Remove Monthly TP Entry',
+      message: `Are you sure you want to remove this punched TP entry for ${item.mr_name} on ${item.date} (${item.destination || item.planned_area || 'Visit'})?\n\nThis will remove the entry from the tour plan and recalculate eligible reimbursements.`,
+      isDestructive: true,
+      confirmText: 'Yes, Remove Entry',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+
+    setProcessingTpId(entryId);
+    try {
+      const res = await fetch(`${apiUrl}/tour-plans/${planId}/entries/${entryId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setPlans((prev) => prev.filter((p) => (p.entry_id || p.id) !== entryId));
+        if (selectedEntryForDetails && (selectedEntryForDetails.entry_id || selectedEntryForDetails.id) === entryId) {
+          setSelectedEntryForDetails(null);
+        }
+        setActionNotice({
+          type: 'success',
+          message: `✓ Removed Monthly TP entry for ${item.mr_name} (${item.date})`,
+        });
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setActionNotice({
+          type: 'error',
+          message: errJson.message || 'Failed to remove entry.',
+        });
+      }
+    } catch {
+      setActionNotice({
+        type: 'error',
+        message: 'Network error deleting tour plan entry.',
       });
     } finally {
       setProcessingTpId(null);
@@ -1639,6 +1688,17 @@ export const MonthlyTpView: React.FC = () => {
                                   <span>Reject</span>
                                 </button>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEntry(item)}
+                                disabled={isProcessing}
+                                style={{ background: '#FFFFFF', color: '#DC2626', border: '1px solid #FECACA', padding: '3px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                title="Remove / Delete Entry"
+                              >
+                                <Trash2 size={11} />
+                                <span>Delete</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2030,6 +2090,14 @@ export const MonthlyTpView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEntry(selectedEntryForDetails)}
+                  style={{ background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5', padding: '7px 14px', borderRadius: 6, fontWeight: 700, cursor: 'pointer', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Entry</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleDecideReimbursement(selectedEntryForDetails, 'REJECTED')}
