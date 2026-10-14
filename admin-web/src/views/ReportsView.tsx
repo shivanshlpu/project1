@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
+import { parseSafeOrders, calculateOrderRevenue } from '../utils/orderHelper';
 
 interface ReportsViewProps {
   lang?: Language;
@@ -69,11 +70,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
           const tData = await tasksRes.json();
           if (Array.isArray(tData)) {
             const mapped: ReportRecord[] = tData.map((t: any, idx: number) => {
-              const orderTotal = t.orders
-                ? t.orders.reduce((sum: number, o: any) => sum + (o.total_amount || (o.unit_price ? o.unit_price * o.quantity : 0)), 0)
-                : 0;
-              const productsStr = t.orders && t.orders.length > 0
-                ? t.orders.map((o: any) => o.product_name || o.name).filter(Boolean).join(', ')
+              const safeOrders = parseSafeOrders(t.orders);
+              const orderTotal = calculateOrderRevenue(safeOrders);
+              const productsStr = safeOrders.length > 0
+                ? safeOrders.map((o: any) => o.product_name || o.name).filter(Boolean).join(', ')
                 : (t.products_detailed || 'Product Detailing');
               const dStr = t.completed_at ? t.completed_at.split('T')[0] : (t.date || t.scheduled_date || new Date().toISOString().split('T')[0]);
               const timeStr = t.completed_at ? new Date(t.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (t.time || '10:00 AM');

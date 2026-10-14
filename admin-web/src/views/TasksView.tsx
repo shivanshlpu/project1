@@ -49,6 +49,7 @@ import { InStockProduct, getStoredInStockProducts, syncInStockProductsWithBacken
 import { showCenteredNotice } from '../components/CenteredModalNotice';
 import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { markTaskAsDeleted, getDeletedTaskIds } from '../utils/deletedTasksStore';
+import { parseSafeOrders, calculateOrderRevenue, calculateOrderUnits } from '../utils/orderHelper';
 
 declare global {
   interface Window {
@@ -253,7 +254,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
         const data = await res.json();
         if (Array.isArray(data)) {
           const deletedIds = getDeletedTaskIds();
-          setTasks(data.filter((t: any) => !deletedIds.has(t.id)));
+          const normalized = data
+            .filter((t: any) => t && !deletedIds.has(t.id))
+            .map((t: any) => ({
+              ...t,
+              orders: parseSafeOrders(t.orders),
+            }));
+          setTasks(normalized);
         }
       }
     } catch (err) {
@@ -3794,38 +3801,48 @@ export const TasksView: React.FC<TasksViewProps> = ({
                         borderRadius: '10px',
                       }}
                     >
-                      {selectedCompletedTask.orders?.length || 0} items
+                      {parseSafeOrders(selectedCompletedTask.orders).length} items
                     </span>
                   </div>
 
-                  {selectedCompletedTask.orders && selectedCompletedTask.orders.length > 0 && (
-                    <div style={{ fontSize: '13px', fontWeight: '800', color: '#166534' }}>
-                      Total Value: ₹
-                      {selectedCompletedTask.orders
-                        .reduce((sum, o) => sum + (o.total_amount || (o.unit_price ? o.unit_price * o.quantity : 0)), 0)
-                        .toLocaleString('en-IN')}
-                    </div>
-                  )}
+                  {(() => {
+                    const compOrders = parseSafeOrders(selectedCompletedTask.orders);
+                    if (compOrders.length === 0) return null;
+                    return (
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#166534' }}>
+                        Total Value: ₹{calculateOrderRevenue(compOrders).toLocaleString('en-IN')}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {selectedCompletedTask.orders && selectedCompletedTask.orders.length > 0 ? (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                      <thead>
-                        <tr style={{ background: '#F1F5F9', color: '#475569', textAlign: 'left' }}>
-                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>#</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>Product Name</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Quantity</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Unit Price (₹)</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Total (₹)</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700' }}>Stockist / Distributor</th>
-                          <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Inspect</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedCompletedTask.orders.map((ord, idx) => {
-                          const total = ord.total_amount || (ord.unit_price ? ord.unit_price * ord.quantity : 0);
-                          const isSelected = selectedOrderItem === ord;
+                {(() => {
+                  const compOrders = parseSafeOrders(selectedCompletedTask.orders);
+                  if (compOrders.length === 0) {
+                    return (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
+                        No commercial orders were booked during this visit (Scientific detailing & sampling only).
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                        <thead>
+                          <tr style={{ background: '#F1F5F9', color: '#475569', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 14px', fontWeight: '700' }}>#</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700' }}>Product Name</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Quantity</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Unit Price (₹)</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'right' }}>Total (₹)</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700' }}>Stockist / Distributor</th>
+                            <th style={{ padding: '10px 14px', fontWeight: '700', textAlign: 'center' }}>Inspect</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {compOrders.map((ord, idx) => {
+                            const total = ord.total_amount || (ord.unit_price ? ord.unit_price * ord.quantity : 0);
+                            const isSelected = selectedOrderItem === ord;
                           return (
                             <tr
                               key={idx}
@@ -3888,12 +3905,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
                         })}
                       </tbody>
                     </table>
-                  </div>
-                ) : (
-                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
-                    No commercial orders were booked during this visit (Scientific detailing & sampling only).
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
 
                 {/* Selected Order Inspector Sub-panel */}
                 {selectedOrderItem && (

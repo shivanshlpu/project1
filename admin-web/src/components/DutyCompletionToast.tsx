@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, X, ShoppingBag, Clock, MapPin } from 'lucide-react';
+import { parseSafeOrders, calculateOrderRevenue, calculateOrderUnits } from '../utils/orderHelper';
 
 export interface DutyCompletionItem {
   id: string;
@@ -35,8 +36,9 @@ export const DutyCompletionToast: React.FC<DutyCompletionToastProps> = ({
 
   const current = completions[0];
 
-  const totalOrders = current.orders?.reduce((sum, o) => sum + (o.quantity || 0), 0) || 0;
-  const totalAmount = current.orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+  const safeOrders = parseSafeOrders(current.orders);
+  const totalOrders = calculateOrderUnits(safeOrders);
+  const totalAmount = calculateOrderRevenue(safeOrders);
 
   const formatDuration = (sec?: number) => {
     if (!sec) return '15m';

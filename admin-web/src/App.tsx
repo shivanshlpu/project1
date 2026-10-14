@@ -8,6 +8,7 @@ import { NewLocationToast, NewLocationItem } from './components/NewLocationToast
 import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
 import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { getApiBaseUrl, fetchDeviceAuthorizationsMerged } from './utils/apiHelper';
 import './styles/app.css';
 
@@ -549,56 +550,61 @@ export const App: React.FC = () => {
 
         {/* Main Workspace Canvas */}
         <main className="workspace-canvas">
-          <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>Loading workspace...</div>}>
-            {managerTab === 'overview' && <DashboardView lang={lang} />}
-            {managerTab === 'tasks' && (
-              <TasksView
-                prefilledLocation={assignedLocationTarget}
-                onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
-              />
-            )}
-            {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
-            {managerTab === 'orders' && <OrdersManagementView lang={lang} />}
-            {managerTab === 'locations' && (
-              <SavedLocationsView
-                onAssignTaskToLocation={handleAssignTaskToLocation}
-                targetLocationId={focusedLocationId}
-                onClearTargetLocation={() => setFocusedLocationId(null)}
-                onLocationAcknowledge={handleAcknowledgeLocation}
-              />
-            )}
-            {managerTab === 'members' && (
-              <MembersManagementView
-                onNavigateToLocation={(locId) => {
-                  setFocusedLocationId(locId);
-                  setManagerTab('locations');
-                }}
-              />
-            )}
-            {managerTab === 'approvals' && <ApprovalsView />}
-            {managerTab === 'attendance' && <AdminAttendanceView />}
-            {managerTab === 'tp' && <MonthlyTpView />}
-            {managerTab === 'stockers' && <StockerManagementView />}
-            {managerTab === 'competitions' && <CompetitionsView />}
-            {managerTab === 'reports' && <ReportsView lang={lang} />}
-            {managerTab === 'ai' && (
-              <AiChatView
-                lang={lang}
-                onNavigateTab={(tab) => {
-                  if (tab !== 'tasks') setAssignedLocationTarget(null);
-                  setManagerTab(tab as any);
-                }}
-              />
-            )}
-            {managerTab === 'settings' && (
-              <SettingsView
-                lang={lang}
-                managerName={managerName}
-                onUpdateManagerName={handleUpdateManagerName}
-                onNavigateTab={(tab) => setManagerTab(tab as any)}
-              />
-            )}
-          </Suspense>
+          <ErrorBoundary
+            fallbackTitle="Unable to Load View"
+            onReset={() => setManagerTab('overview')}
+          >
+            <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>Loading workspace...</div>}>
+              {managerTab === 'overview' && <DashboardView lang={lang} />}
+              {managerTab === 'tasks' && (
+                <TasksView
+                  prefilledLocation={assignedLocationTarget}
+                  onClearPrefilledLocation={() => setAssignedLocationTarget(null)}
+                />
+              )}
+              {managerTab === 'submitted_tasks' && <SubmittedTasksView />}
+              {managerTab === 'orders' && <OrdersManagementView lang={lang} />}
+              {managerTab === 'locations' && (
+                <SavedLocationsView
+                  onAssignTaskToLocation={handleAssignTaskToLocation}
+                  targetLocationId={focusedLocationId}
+                  onClearTargetLocation={() => setFocusedLocationId(null)}
+                  onLocationAcknowledge={handleAcknowledgeLocation}
+                />
+              )}
+              {managerTab === 'members' && (
+                <MembersManagementView
+                  onNavigateToLocation={(locId) => {
+                    setFocusedLocationId(locId);
+                    setManagerTab('locations');
+                  }}
+                />
+              )}
+              {managerTab === 'approvals' && <ApprovalsView />}
+              {managerTab === 'attendance' && <AdminAttendanceView />}
+              {managerTab === 'tp' && <MonthlyTpView />}
+              {managerTab === 'stockers' && <StockerManagementView />}
+              {managerTab === 'competitions' && <CompetitionsView />}
+              {managerTab === 'reports' && <ReportsView lang={lang} />}
+              {managerTab === 'ai' && (
+                <AiChatView
+                  lang={lang}
+                  onNavigateTab={(tab) => {
+                    if (tab !== 'tasks') setAssignedLocationTarget(null);
+                    setManagerTab(tab as any);
+                  }}
+                />
+              )}
+              {managerTab === 'settings' && (
+                <SettingsView
+                  lang={lang}
+                  managerName={managerName}
+                  onUpdateManagerName={handleUpdateManagerName}
+                  onNavigateTab={(tab) => setManagerTab(tab as any)}
+                />
+              )}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 

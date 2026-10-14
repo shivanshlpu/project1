@@ -24,6 +24,7 @@ import { TaskItem, TaskOrderItem } from '../types';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl } from '../utils/apiHelper';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
+import { parseSafeOrders, calculateOrderRevenue, calculateOrderUnits } from '../utils/orderHelper';
 
 export const SubmittedTasksView: React.FC = () => {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -54,7 +55,12 @@ export const SubmittedTasksView: React.FC = () => {
         const data = await res.json();
         if (Array.isArray(data)) {
           // Strictly only completed/submitted MR task records (§1.1 & §1.2)
-          const submittedOnly = data.filter((t: any) => t.status === 'COMPLETED');
+          const submittedOnly = data
+            .filter((t: any) => t && t.status === 'COMPLETED')
+            .map((t: any) => ({
+              ...t,
+              orders: parseSafeOrders(t.orders),
+            }));
           setTasks(submittedOnly);
         }
       }
@@ -90,8 +96,9 @@ export const SubmittedTasksView: React.FC = () => {
         return false;
       }
       // Orders only filter
-      if (filterOrderOnly && (!t.orders || t.orders.length === 0)) {
-        return false;
+      if (filterOrderOnly) {
+        const orderArr = parseSafeOrders(t.orders);
+        if (orderArr.length === 0) return false;
       }
       // Date range filter (using YYYY-MM-DD comparisons)
       const taskDate = t.date || (t.completed_at ? t.completed_at.substring(0, 10) : '');
@@ -115,11 +122,8 @@ export const SubmittedTasksView: React.FC = () => {
 
   // Aggregate metrics
   const totalSubmitted = filteredTasks.length;
-  const totalOrdersPlaced = filteredTasks.reduce((sum, t) => sum + (t.orders?.length || 0), 0);
-  const totalOrderRevenue = filteredTasks.reduce((sum, t) => {
-    const taskTotal = (t.orders || []).reduce((tsum, o) => tsum + (o.total_amount || 0), 0);
-    return sum + taskTotal;
-  }, 0);
+  const totalOrdersPlaced = filteredTasks.reduce((sum, t) => sum + parseSafeOrders(t.orders).length, 0);
+  const totalOrderRevenue = filteredTasks.reduce((sum, t) => sum + calculateOrderRevenue(t.orders), 0);
   const totalDurationSecs = filteredTasks.reduce((sum, t) => sum + (t.duration_seconds || 0), 0);
   const avgDurationMins = totalSubmitted > 0 ? Math.round(totalDurationSecs / totalSubmitted / 60) : 0;
 
@@ -177,9 +181,9 @@ export const SubmittedTasksView: React.FC = () => {
     const durationMins = task.duration_seconds ? Math.round(task.duration_seconds / 60) : 28;
     const photoUrl = (task.visit_photo as string) || (task.verification_photo_key as string) || '';
 
-    const orders = task.orders || [];
-    const totalOrderAmount = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-    const totalUnits = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+    const orders = parseSafeOrders(task.orders);
+    const totalOrderAmount = calculateOrderRevenue(orders);
+    const totalUnits = calculateOrderUnits(orders);
 
     const orderRowsHtml = orders.map((ord, idx) => `
       <tr style="border-bottom: 1px solid #E2E8F0; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
@@ -767,8 +771,9 @@ export const SubmittedTasksView: React.FC = () => {
               </tr>
             ) : (
               filteredTasks.map((t) => {
-                const orderCount = t.orders?.length || 0;
-                const orderAmount = (t.orders || []).reduce((sum, o) => sum + (o.total_amount || 0), 0);
+                const orders = parseSafeOrders(t.orders);
+                const orderCount = orders.length;
+                const orderAmount = calculateOrderRevenue(orders);
                 const hasPhoto = Boolean(t.visit_photo || t.verification_photo_key);
                 const durationMins = t.duration_seconds ? Math.round(t.duration_seconds / 60) : 25;
 
@@ -949,8 +954,9 @@ export const SubmittedTasksView: React.FC = () => {
           </div>
         ) : (
           filteredTasks.map((t) => {
-            const orderCount = t.orders?.length || 0;
-            const orderAmount = (t.orders || []).reduce((sum, o) => sum + (o.total_amount || 0), 0);
+            const orders = parseSafeOrders(t.orders);
+            const orderCount = orders.length;
+            const orderAmount = calculateOrderRevenue(orders);
             const hasPhoto = Boolean(t.visit_photo || t.verification_photo_key);
             const durationMins = t.duration_seconds ? Math.round(t.duration_seconds / 60) : 25;
 
@@ -1202,43 +1208,52 @@ export const SubmittedTasksView: React.FC = () => {
 
             {/* Orders Breakdown */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShoppingBag size={14} color="#1A3C6E" />
-                  <span>Commercial Orders Booked ({selectedTask.orders?.length || 0})</span>
-                </div>
-              </div>
+              {(() => {
+                const modalOrders = parseSafeOrders(selectedTask.orders);
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ShoppingBag size={14} color="#1A3C6E" />
+                        <span>Commercial Orders Booked ({modalOrders.length})</span>
+                      </div>
+                    </div>
 
-              {selectedTask.orders && selectedTask.orders.length > 0 ? (
-                <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Product Formulation</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>Units</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Unit Price</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Total (₹)</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Stockist / Distributor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedTask.orders.map((ord, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: '700', color: '#0F172A' }}>{ord.product_name}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>{ord.quantity}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>₹{ord.unit_price}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#166534' }}>₹{ord.total_amount?.toLocaleString()}</td>
-                          <td style={{ padding: '8px 10px', color: '#64748B' }}>{ord.distributor || 'MedPlus Saket'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', border: '1px dashed #CBD5E1', fontSize: '12px', color: '#64748B', textAlign: 'center' }}>
-                  No commercial orders booked for this detailing visit.
-                </div>
-              )}
+                    {modalOrders.length > 0 ? (
+                      <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                          <thead>
+                            <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                              <th style={{ padding: '8px 10px', textAlign: 'left' }}>Product Formulation</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'center' }}>Units</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>Unit Price</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>Total (₹)</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'left' }}>Stockist / Distributor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {modalOrders.map((ord, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: '700', color: '#0F172A' }}>{ord.product_name}</td>
+                                <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>{ord.quantity}</td>
+                                <td style={{ padding: '8px 10px', textAlign: 'right' }}>₹{Number(ord.unit_price || 0).toLocaleString('en-IN')}</td>
+                                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#166534' }}>
+                                  ₹{Number(ord.total_amount || (ord.unit_price ? ord.unit_price * ord.quantity : 0)).toLocaleString('en-IN')}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: '#64748B' }}>{ord.distributor || 'MedPlus Saket'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', border: '1px dashed #CBD5E1', fontSize: '12px', color: '#64748B', textAlign: 'center' }}>
+                        No commercial orders booked for this detailing visit.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Modal Actions */}

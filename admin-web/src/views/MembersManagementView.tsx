@@ -37,6 +37,7 @@ import { MRMemberItem, TaskItem, DoctorItem } from '../types';
 import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { getStoredSavedLocations } from '../utils/savedLocationsStore';
 import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
+import { parseSafeOrders, calculateOrderRevenue } from '../utils/orderHelper';
 
 interface LeaveQuotaData {
   mr_id: string;
@@ -693,18 +694,11 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
   const inProgressTasks = memberTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ASSIGNED');
 
   const totalOrdersCaptured = memberTasks.reduce(
-    (acc, t) => acc + (t.orders ? t.orders.length : 0),
+    (acc, t) => acc + parseSafeOrders(t.orders).length,
     0
   );
   const totalOrderRevenue = memberTasks.reduce((acc, t) => {
-    if (!t.orders) return acc;
-    return (
-      acc +
-      t.orders.reduce(
-        (sum, ord) => sum + (ord.total_amount || (ord.unit_price ? ord.unit_price * ord.quantity : 0)),
-        0
-      )
-    );
+    return acc + calculateOrderRevenue(t.orders);
   }, 0);
 
   // Filtered locations marked by current MR
@@ -1332,7 +1326,10 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                         </span>
                       </td>
                       <td style={{ padding: '10px 14px', color: '#166534', fontWeight: 700 }}>
-                        {t.orders && t.orders.length > 0 ? `✓ ${t.orders.length} items` : '-'}
+                        {(() => {
+                          const oList = parseSafeOrders(t.orders);
+                          return oList.length > 0 ? `✓ ${oList.length} items` : '-';
+                        })()}
                       </td>
                     </tr>
                   ))}
