@@ -24,7 +24,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 24px;
+  padding: 20px 24px 100px 24px;
   -webkit-overflow-scrolling: touch;
   background: var(--color-bg);
 }
@@ -536,7 +536,7 @@
 .workspace-canvas {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px;
+  padding: 20px 24px 100px 24px;
 }
 
 /* Metric Strip (Salesforce Tiles) */
@@ -1469,7 +1469,7 @@
 /* --- TABLET: 641px – 1024px --- */
 @media (max-width: 1024px) {
   .workspace-canvas {
-    padding: 16px 16px;
+    padding: 16px 16px 96px 16px;
   }
 
   .metric-tiles-strip {
@@ -2432,7 +2432,29 @@
   }
 }
 
-/* Floating AHTRI AI Copilot FAB */
+/* Floating AHTRI AI Copilot FAB (Circle Option Type) */
+@keyframes aiFabTooltipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.floating-ai-fab-circle {
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floating-ai-fab-circle:focus-visible {
+  outline: 2px solid #38BDF8;
+  outline-offset: 3px;
+}
+
 .floating-ai-fab {
   position: fixed;
   bottom: 24px;
@@ -2746,7 +2768,7 @@
 
   /* Mobile Canvas */
   .workspace-canvas {
-    padding: 12px 10px !important;
+    padding: 12px 10px 90px 10px !important;
   }
 
   /* Metric Strips */

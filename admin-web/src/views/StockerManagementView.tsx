@@ -1181,7 +1181,7 @@ export const StockerManagementView: React.FC = () => {
   const selectedHq = hqs.find((h) => h.id === selectedHqId || matchesHqId(h.id, selectedHqId));
 
   return (
-    <div style={{ padding: '16px 14px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 14px 32px 14px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ minWidth: 260, flex: '1 1 280px' }}>

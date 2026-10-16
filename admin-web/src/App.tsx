@@ -6,6 +6,7 @@ import { DeviceApprovalsModal } from './components/DeviceApprovalsModal';
 import { Sparkles } from 'lucide-react';
 import { NewLocationToast, NewLocationItem } from './components/NewLocationToast';
 import { DutyCompletionToast, DutyCompletionItem } from './components/DutyCompletionToast';
+import { FloatingAiFab } from './components/FloatingAiFab';
 import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -630,29 +631,9 @@ export const App: React.FC = () => {
         onDismiss={handleAcknowledgeCompletion}
         onDismissAll={handleAcknowledgeAllCompletions}
       />
-      {/* Floating AHTRI AI Operations Copilot Trigger -> Switches directly to AI Command Page */}
+      {/* Floating AHTRI AI Operations Copilot Trigger (Circle Option Type, Non-Overlapping) */}
       {managerTab !== 'ai' && (
-        <button
-          onClick={() => setManagerTab('ai')}
-          className="floating-ai-fab"
-          title="Open AI Command Hub"
-        >
-          <Sparkles size={16} color="#38BDF8" />
-          <span className="fab-text">Ask Aura AI</span>
-          <span
-            className="fab-badge"
-            style={{
-              background: '#0F8B5A',
-              color: '#FFFFFF',
-              borderRadius: '10px',
-              fontSize: '9.5px',
-              padding: '1px 6px',
-              fontWeight: '700',
-            }}
-          >
-            AURA
-          </span>
-        </button>
+        <FloatingAiFab onOpenAi={() => setManagerTab('ai')} />
       )}
     </div>
   );
