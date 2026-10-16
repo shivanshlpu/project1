@@ -541,7 +541,7 @@ CREATE TABLE IF NOT EXISTS public.stockage_submission_requests (
   stocker_id VARCHAR(64) NOT NULL,
   hq_id VARCHAR(64) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED' CHECK (
-    status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'APPLIED')
+    status IN ('PENDING', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'APPLIED')
   ),
   total_items INT NOT NULL DEFAULT 0,
   total_quantity NUMERIC(12, 2) NOT NULL DEFAULT 0,

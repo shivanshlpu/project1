@@ -1413,6 +1413,7 @@ export class InventoryService {
       };
 
       this.db.monthlyStockagePermissions.unshift(perm);
+      this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
       grantedList.push(perm);
 
       // Audit log & Notify MR
@@ -1423,6 +1424,8 @@ export class InventoryService {
         { permissionId: perm.id, month: monthStr, type: 'STOCKAGE_PERMISSION_GRANTED' },
       );
     }
+
+    this.db.persistToDisk();
 
     return {
       message: `Stockage upload permission granted to ${grantedList.length} MR(s) for ${monthStr}`,
@@ -1472,6 +1475,9 @@ export class InventoryService {
     perm.revoked_at = new Date().toISOString();
     perm.revoke_reason = reason || 'Revoked by Admin';
     perm.updated_at = new Date().toISOString();
+
+    this.db.persistToDisk();
+    this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
 
     return perm;
   }
@@ -1616,6 +1622,9 @@ export class InventoryService {
     perm.updated_at = new Date().toISOString();
 
     this.db.stockageSubmissionRequests.unshift(submission);
+    this.db.persistToDisk();
+    this.db.syncStockageRequestToSupabase(submission).catch(() => null);
+    this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
 
     // Notify Administrators
     const admins = this.db.users.filter((u) => ['SUPER_ADMIN', 'ADMIN'].includes(u.role) && !u.deleted_at);
@@ -1715,7 +1724,11 @@ export class InventoryService {
       // Rule: Permission remains linked and not silently reusable
       if (perm) {
         perm.updated_at = new Date().toISOString();
+        this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
       }
+
+      this.db.persistToDisk();
+      this.db.syncStockageRequestToSupabase(request).catch(() => null);
 
       this.notificationsService.sendPushNotification(
         request.mr_id,
@@ -1842,7 +1855,11 @@ export class InventoryService {
       perm.status = 'CONSUMED';
       perm.consumed_at = new Date().toISOString();
       perm.updated_at = new Date().toISOString();
+      this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
     }
+
+    this.db.persistToDisk();
+    this.db.syncStockageRequestToSupabase(request).catch(() => null);
 
     // Notify MR
     this.notificationsService.sendPushNotification(

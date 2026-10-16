@@ -44,6 +44,7 @@ import {
   Order,
   MonthlyStockagePermission,
   StockageSubmissionRequest,
+  StockageSubmissionItem,
   MedicinePackagingVariant,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
@@ -1188,6 +1189,153 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             console.warn('[DatabaseService] Notice syncing competitions/claims from Supabase:', compNotice?.message);
           }
 
+          // Authoritative sync: load monthly stockage permissions from Supabase
+          try {
+            const { data: remotePerms, error: permErr } = await client
+              .from('monthly_stockage_permissions')
+              .select('*');
+            if (!permErr && Array.isArray(remotePerms) && remotePerms.length > 0) {
+              console.log(`[DatabaseService] Synced ${remotePerms.length} monthly stockage permissions from Supabase.`);
+              for (const rp of remotePerms) {
+                const parts = (rp.month_year || '').split('-');
+                const y = parseInt(parts[0], 10) || new Date().getFullYear();
+                const m = parseInt(parts[1], 10) || new Date().getMonth() + 1;
+                const hq = this.headquarters.find((h) => h.id === rp.hq_id);
+                const stocker = this.stockers.find((s) => s.id === rp.stocker_id);
+
+                const perm: MonthlyStockagePermission = {
+                  id: rp.id,
+                  mr_id: rp.mr_id,
+                  mr_name: rp.mr_name,
+                  hq_id: rp.hq_id || undefined,
+                  hq_name: hq?.name,
+                  stocker_id: rp.stocker_id || undefined,
+                  stocker_name: stocker?.name,
+                  year: y,
+                  month: m,
+                  month_str: rp.month_year,
+                  status: rp.status as any,
+                  granted_by_id: rp.granted_by_admin_id,
+                  granted_by_name: rp.granted_by_admin_name,
+                  granted_at: rp.created_at || new Date().toISOString(),
+                  revoked_by_id: rp.revoked_by_admin_id,
+                  revoked_at: rp.revoked_at,
+                  consumed_at: rp.consumed_at,
+                  notes: rp.notes,
+                  created_at: rp.created_at || new Date().toISOString(),
+                  updated_at: rp.updated_at || new Date().toISOString(),
+                };
+
+                const idx = this.monthlyStockagePermissions.findIndex((p) => p.id === perm.id);
+                if (idx >= 0) {
+                  this.monthlyStockagePermissions[idx] = { ...this.monthlyStockagePermissions[idx], ...perm };
+                } else {
+                  this.monthlyStockagePermissions.push(perm);
+                }
+              }
+            } else if (this.monthlyStockagePermissions.length > 0) {
+              // Bidirectional initial sync: push local permissions to Supabase
+              for (const perm of this.monthlyStockagePermissions) {
+                await this.syncStockagePermissionToSupabase(perm);
+              }
+            }
+          } catch (pNotice: any) {
+            console.warn('[DatabaseService] Notice syncing monthly stockage permissions from Supabase:', pNotice?.message);
+          }
+
+          // Authoritative sync: load stockage submission requests and line items from Supabase
+          try {
+            const { data: remoteReqs, error: reqErr } = await client
+              .from('stockage_submission_requests')
+              .select('*')
+              .order('submitted_at', { ascending: false });
+            if (!reqErr && Array.isArray(remoteReqs) && remoteReqs.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteReqs.length} stockage requests from Supabase.`);
+
+              // Fetch line items for these requests
+              const reqIds = remoteReqs.map((r) => r.id);
+              const { data: remoteItems, error: itemsErr } = await client
+                .from('stockage_submission_items')
+                .select('*')
+                .in('request_id', reqIds);
+
+              const itemsByReq = new Map<string, StockageSubmissionItem[]>();
+              if (!itemsErr && Array.isArray(remoteItems)) {
+                for (const it of remoteItems) {
+                  const arr = itemsByReq.get(it.request_id) || [];
+                  arr.push({
+                    id: it.id,
+                    medicine_id: it.medicine_id,
+                    medicine_name: it.medicine_name,
+                    medicine_code: '',
+                    variant_id: it.packaging_id || undefined,
+                    package_size: it.packaging_size ? parseFloat(it.packaging_size) : undefined,
+                    package_unit: it.packaging_unit || undefined,
+                    packaging_display: it.packaging_size ? `${it.packaging_size} ${it.packaging_unit || ''}`.trim() : 'Units',
+                    pts_rate: it.pts_rate !== null ? Number(it.pts_rate) : undefined,
+                    mrp: it.mrp !== null ? Number(it.mrp) : undefined,
+                    submitted_quantity: Number(it.submitted_quantity || 0),
+                    approved_quantity: it.approved_quantity !== null ? Number(it.approved_quantity) : undefined,
+                    previous_stock: it.previous_stock !== null ? Number(it.previous_stock) : undefined,
+                    final_stock: it.final_stock !== null ? Number(it.final_stock) : undefined,
+                    notes: it.notes || '',
+                  });
+                  itemsByReq.set(it.request_id, arr);
+                }
+              }
+
+              for (const rr of remoteReqs) {
+                const parts = (rr.month_year || '').split('-');
+                const y = parseInt(parts[0], 10) || new Date().getFullYear();
+                const m = parseInt(parts[1], 10) || new Date().getMonth() + 1;
+                const hq = this.headquarters.find((h) => h.id === rr.hq_id);
+                const stocker = this.stockers.find((s) => s.id === rr.stocker_id);
+
+                const requestObj: StockageSubmissionRequest = {
+                  id: rr.id,
+                  permission_id: rr.permission_id,
+                  mr_id: rr.mr_id,
+                  mr_name: rr.mr_name,
+                  hq_id: rr.hq_id,
+                  hq_name: hq?.name || 'Shahdol',
+                  stocker_id: rr.stocker_id,
+                  stocker_name: stocker?.name || 'Central Pharma Stockist',
+                  month: rr.month_year,
+                  month_year: rr.month_year,
+                  year: y,
+                  month_num: m,
+                  status: (rr.status === 'SUBMITTED' ? 'PENDING' : rr.status) as any,
+                  items: itemsByReq.get(rr.id) || [],
+                  total_items: Number(rr.total_items || (itemsByReq.get(rr.id)?.length ?? 0)),
+                  total_quantity: Number(rr.total_quantity || 0),
+                  submitted_at: rr.submitted_at || new Date().toISOString(),
+                  reviewed_at: rr.reviewed_at || undefined,
+                  reviewed_by_id: rr.reviewed_by_admin_id || undefined,
+                  reviewed_by_name: rr.reviewed_by_admin_name || undefined,
+                  admin_comment: rr.admin_notes || undefined,
+                  admin_notes: rr.admin_notes || undefined,
+                  applied_at: rr.applied_at || undefined,
+                  created_at: rr.created_at || new Date().toISOString(),
+                  updated_at: rr.updated_at || new Date().toISOString(),
+                };
+
+                const idx = this.stockageSubmissionRequests.findIndex((r) => r.id === requestObj.id);
+                if (idx >= 0) {
+                  this.stockageSubmissionRequests[idx] = { ...this.stockageSubmissionRequests[idx], ...requestObj };
+                } else {
+                  this.stockageSubmissionRequests.push(requestObj);
+                }
+              }
+            } else if (this.stockageSubmissionRequests.length > 0) {
+              // Bidirectional initial sync: push local requests to Supabase
+              for (const req of this.stockageSubmissionRequests) {
+                await this.syncStockageRequestToSupabase(req);
+              }
+            }
+          } catch (rNotice: any) {
+            console.warn('[DatabaseService] Notice syncing stockage requests from Supabase:', rNotice?.message);
+          }
+
           // Flush synchronized state to disk store immediately
           await this.flushToDisk();
 
@@ -1839,6 +1987,96 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       }, { onConflict: 'id' });
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync reward claim ${claim.id}:`, err?.message);
+    }
+  }
+
+  public async syncStockagePermissionToSupabase(perm: MonthlyStockagePermission) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('monthly_stockage_permissions').upsert({
+        id: perm.id,
+        mr_id: perm.mr_id,
+        mr_name: perm.mr_name,
+        month_year: perm.month_str || `${perm.year}-${String(perm.month).padStart(2, '0')}`,
+        stocker_id: perm.stocker_id || null,
+        hq_id: perm.hq_id || null,
+        status: perm.status || 'AVAILABLE',
+        granted_by_admin_id: perm.granted_by_id || 'usr-admin-01',
+        granted_by_admin_name: perm.granted_by_name || 'System Admin',
+        notes: perm.notes || null,
+        revoked_at: perm.revoked_at || null,
+        revoked_by_admin_id: perm.revoked_by_id || null,
+        consumed_at: perm.consumed_at || null,
+        reserved_at: perm.status === 'RESERVED' ? new Date().toISOString() : null,
+        created_at: perm.created_at || new Date().toISOString(),
+        updated_at: perm.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync monthly stockage permission ${perm.id}:`, err?.message);
+    }
+  }
+
+  public async syncStockageRequestToSupabase(req: StockageSubmissionRequest) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+
+      // Note: In Supabase, the check constraint accepts: 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'APPLIED'
+      // If status is 'PENDING', map to 'SUBMITTED' so it never violates the database constraint
+      const dbStatus = req.status === 'PENDING' ? 'SUBMITTED' : req.status;
+
+      await client.from('stockage_submission_requests').upsert({
+        id: req.id,
+        permission_id: req.permission_id,
+        mr_id: req.mr_id,
+        mr_name: req.mr_name,
+        month_year: req.month || req.month_year || `${req.year}-${String(req.month_num).padStart(2, '0')}`,
+        stocker_id: req.stocker_id,
+        hq_id: req.hq_id,
+        status: dbStatus,
+        total_items: req.total_items || req.items?.length || 0,
+        total_quantity: req.total_quantity || 0,
+        notes: (req as any).notes || null,
+        submitted_at: req.submitted_at || new Date().toISOString(),
+        reviewed_at: req.reviewed_at || null,
+        reviewed_by_admin_id: req.reviewed_by_id || null,
+        reviewed_by_admin_name: req.reviewed_by_name || null,
+        admin_notes: req.admin_comment || req.admin_notes || null,
+        applied_at: req.applied_at || null,
+        created_at: req.created_at || new Date().toISOString(),
+        updated_at: req.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+
+      // Upsert line items individually for resilience
+      if (req.items && Array.isArray(req.items) && req.items.length > 0) {
+        for (const item of req.items) {
+          try {
+            await client.from('stockage_submission_items').upsert({
+              id: item.id,
+              request_id: req.id,
+              medicine_id: item.medicine_id,
+              medicine_name: item.medicine_name,
+              packaging_id: item.variant_id || null,
+              packaging_size: item.package_size ? String(item.package_size) : null,
+              packaging_unit: item.package_unit || null,
+              submitted_quantity: item.submitted_quantity || 0,
+              approved_quantity: item.approved_quantity !== undefined ? item.approved_quantity : null,
+              previous_stock: item.previous_stock !== undefined ? item.previous_stock : null,
+              final_stock: item.final_stock !== undefined ? item.final_stock : null,
+              pts_rate: item.pts_rate !== undefined ? item.pts_rate : null,
+              mrp: item.mrp !== undefined ? item.mrp : null,
+              notes: item.notes || null,
+            }, { onConflict: 'id' });
+          } catch (itemErr: any) {
+            console.warn(`[SupabaseSync] Notice syncing item ${item.id}:`, itemErr?.message);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync stockage request ${req.id}:`, err?.message);
     }
   }
 
