@@ -13,7 +13,7 @@ export class SupabaseService implements OnModuleInit {
 
   public async initializeClient(): Promise<boolean> {
     const supabaseUrl = process.env.SUPABASE_URL;
-    // Prefer secret/service-role key for backend operations, fallback to publishable
+    
     const supabaseKey =
       process.env.SUPABASE_SECRET_KEY ||
       process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -34,14 +34,14 @@ export class SupabaseService implements OnModuleInit {
         },
       });
 
-      // Quick ping test to verify connection
+      
       const { data, error } = await this.client
         .from('users')
         .select('id')
         .limit(1);
 
       if (error) {
-        // Table might not exist yet if schema hasn't been run
+        
         this.logger.warn(
           `Database reached but query returned: ${error.message}. Please run schema migration. Using resilient fallback.`,
         );
@@ -67,7 +67,6 @@ export class SupabaseService implements OnModuleInit {
     return {
       configured: !!(process.env.SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY)),
       connected: this.isConnected,
-      url: process.env.SUPABASE_URL || null,
     };
   }
 

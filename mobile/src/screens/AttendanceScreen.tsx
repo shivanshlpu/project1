@@ -52,9 +52,9 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const userId = currentUser?.id || 'usr-mr-01';
   const ATTENDANCE_KEY = `@ahtri_attendance_${userId}_${todayStr}`;
 
-  // Restore today's attendance strictly for active user
+  
   useEffect(() => {
-    // 1. Reset volatile UI state on user switch
+    
     setCheckedIn(false);
     setCheckedOut(false);
     setCheckInTime(null);
@@ -66,7 +66,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     setSelfiePhoto(null);
     setAttendanceHistory([]);
 
-    // 2. Immediately load locally cached attendance for THIS user (offline-first instant restore)
+    
     AsyncStorage.getItem(ATTENDANCE_KEY)
       .then((raw) => {
         if (raw) {
@@ -97,7 +97,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       })
       .catch(() => {});
 
-    // 3. Fetch live status & history from backend strictly for THIS user ID
+    
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -124,7 +124,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               setCheckInTime(inTime);
               if (gpsStr) setCheckInGps(gpsStr);
 
-              // Restore photo from server if returned, or maintain existing local photo
+              
               let photoToKeep = todayRec.check_in_photo;
               if (!photoToKeep) {
                 try {
@@ -178,14 +178,14 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 }),
               );
             } else {
-              // Server did not return a record for today.
-              // CRITICAL: NEVER erase local punch! Check if employee already marked punch locally today.
+              
+              
               try {
                 const cachedRaw = await AsyncStorage.getItem(ATTENDANCE_KEY);
                 if (cachedRaw) {
                   const localRec = JSON.parse(cachedRaw);
                   if (localRec && localRec.checkedIn) {
-                    // Restore local punch & photo immediately!
+                    
                     setCheckedIn(true);
                     setCheckInTime(localRec.checkInTime);
                     setCheckInGps(localRec.checkInGps);
@@ -203,7 +203,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                       setCheckOutGps(localRec.checkOutGps);
                     }
 
-                    // Auto-sync local punch to server in background
+                    
                     fetch(`${baseUrl}/attendance/check-in`, {
                       method: 'POST',
                       headers: { ...headers, 'x-user-id': userId },
@@ -223,7 +223,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 }
               } catch {}
 
-              // Only reset if genuinely no punch locally either
+              
               setCheckedIn(false);
               setCheckedOut(false);
               setCheckInTime(null);
@@ -239,7 +239,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     })();
   }, [userId, todayStr]);
 
-  // Take selfie photo via Camera (§21)
+  
   const handleTakeSelfie = async () => {
     Alert.alert(
       'Work Attire & ID Card Verification',
@@ -266,7 +266,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     );
   };
 
-  // Perform GPS-tagged Punch-in (§20, §21, §22, §24)
+  
   const handleCheckIn = async () => {
     if (!selfiePhoto) {
       Alert.alert(
@@ -278,7 +278,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
     setIsLoading(true);
     try {
-      // 1. Get Live GPS with Anti-Mock detection and satellite convergence
+      
       const coords = await LocationService.getCurrentLocation({ timeoutMs: 10000, targetAccuracy: 25 });
       const defaultLat = (currentUser as any)?.hq_code === 'KOT' ? 23.2015 : (currentUser as any)?.hq_code === 'AMB' ? 23.1188 : 23.2962;
       const defaultLon = (currentUser as any)?.hq_code === 'KOT' ? 81.9682 : (currentUser as any)?.hq_code === 'AMB' ? 83.1977 : 81.3537;
@@ -289,7 +289,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const gpsFormatted = `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} (±${accuracy}m)`;
 
-      // 2. Prepare compressed photo payload (guaranteed base64 data URL for cross-platform DB viewing)
+      
       let photoPayload: string | null = null;
       if (selfiePhoto.base64 && selfiePhoto.base64.startsWith('data:image')) {
         photoPayload = selfiePhoto.base64;
@@ -314,7 +314,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
 
       const photoKey = `photo_att_in_${Date.now()}`;
 
-      // 3. Post to Backend with Photo & Geo-Location
+      
       let lateMsg = '';
       let isSyncedWithServer = false;
       try {
@@ -356,7 +356,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       setCheckInTime(nowStr);
       setCheckInGps(gpsFormatted);
 
-      // 4. Save locally in AsyncStorage immediately WITH photoPayload (never lost on logout)
+      
       await AsyncStorage.setItem(
         ATTENDANCE_KEY,
         JSON.stringify({
@@ -386,7 +386,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     }
   };
 
-  // Perform GPS-tagged Punch-out (§23, §24)
+  
   const handleCheckOut = async () => {
     setIsLoading(true);
     try {
@@ -430,10 +430,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       setCheckOutTime(nowStr);
       setCheckOutGps(gpsFormatted);
 
-      // Preserve existing photo from state or storage
+      
       const currentPhoto = selfiePhoto?.uri || (selfiePhoto?.base64 ? (selfiePhoto.base64.startsWith('data:') ? selfiePhoto.base64 : `data:image/jpeg;base64,${selfiePhoto.base64}`) : null);
 
-      // Save locally in AsyncStorage
+      
       await AsyncStorage.setItem(
         ATTENDANCE_KEY,
         JSON.stringify({

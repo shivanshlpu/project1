@@ -48,7 +48,7 @@ export class InventoryService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  // === 1. HEADQUARTERS ===
+  
   async getHeadquarters(): Promise<Headquarter[]> {
     return this.db.headquarters.filter((h) => h.status === 'ACTIVE');
   }

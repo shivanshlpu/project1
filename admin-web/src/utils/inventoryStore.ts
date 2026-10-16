@@ -1,8 +1,4 @@
-/**
- * Live Synchronized Inventory & In-Stock Medicines Store
- * Bridges StockerManagementView and TasksView detailing focus in real-time.
- * Only medicines that have stock > 0 in store are considered in-stock.
- */
+
 
 export interface InStockProduct {
   id: string;
@@ -190,9 +186,6 @@ export function persistInStockProducts(products: InStockProduct[]) {
   } catch {}
 }
 
-/**
- * Synchronize in-stock medicines directly from StockerManagement inventory array
- */
 export function syncInStockFromInventoryItems(
   items: Array<{
     medicine_id: string;
@@ -235,7 +228,7 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    // 1. Fetch medicines (with optional hqId to prevent cross-HQ visibility per §1.4)
+    
     const medUrl = hqId ? `${apiUrl}/inventory/medicines?hqId=${encodeURIComponent(hqId)}` : `${apiUrl}/inventory/medicines`;
     const medRes = await fetch(medUrl, { headers });
     let medicines: any[] = [];
@@ -243,7 +236,7 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
       medicines = await medRes.json();
     }
 
-    // 2. Fetch stockers to get aggregated inventory
+    
     const stkRes = await fetch(`${apiUrl}/inventory/stockers`, { headers });
     let stockers: any[] = [];
     if (stkRes.ok) {
@@ -252,7 +245,7 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
 
     const medicineQtyMap = new Map<string, number>();
 
-    // If stockers exist, sum up inventory quantities
+    
     if (Array.isArray(stockers) && stockers.length > 0) {
       for (const stk of stockers.slice(0, 10)) {
         try {
@@ -275,7 +268,7 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
       for (const med of medicines) {
         if (med.status === 'INACTIVE' || med.is_active === false) continue;
         const totalQty = medicineQtyMap.get(med.id) ?? 0;
-        // Only include if store has stock > 0
+        
         if (totalQty > 0) {
           inStockList.push({
             id: med.id,

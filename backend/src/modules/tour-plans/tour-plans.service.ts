@@ -34,7 +34,7 @@ export class TourPlansService {
       this.db.routeBatches[0]?.standard_reimbursement_rate ??
       2.5;
 
-    // 1. Check if route batch is explicitly specified or if we can match one
+    
     let batch = null;
     if (e.route_batch_id) {
       batch = this.db.routeBatches.find(
@@ -48,7 +48,7 @@ export class TourPlansService {
       );
     }
 
-    // 2. Compute route, stops, distance (Two-way round trip calculation)
+    
     let routeBatchId = batch?.id || e.route_batch_id;
     let routeBatchCode = batch?.batch_code || e.route_batch_code;
     let routeBatchName = batch?.name || e.route_batch_name;
@@ -66,7 +66,7 @@ export class TourPlansService {
     let calculationBasis: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL' = 'ROUND_TRIP_BATCH';
 
     if (batch) {
-      // PREDEFINED ROUTE BATCH:
+      
       oneWayDistanceKm = e.one_way_distance_km ?? batch.distance_km;
       roundTripDistanceKm = oneWayDistanceKm * 2;
       calculationBasis = 'ROUND_TRIP_BATCH';

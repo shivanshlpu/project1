@@ -86,24 +86,20 @@ export class AuthService {
       isMatch = await bcrypt.compare(dto.password, user.password_hash);
     }
 
-    // Strict credential verification: only valid password hashes are accepted.
-    // Automated test suite allows seeded test passwords only when NODE_ENV is strictly 'test'.
+    
+    
     const isTestEnv = process.env.NODE_ENV === 'test';
     const isTestMatch =
       isTestEnv &&
-      (dto.password === '12345678' ||
-        dto.password === 'Password@123' ||
-        dto.password === 'AmarDwivediKOT' ||
-        dto.password === 'AmanRathoreSHD' ||
-        dto.password === 'AshishSoniAMB');
+      (dto.password === '12345678' || dto.password === 'Password@123');
 
     if (!isMatch && !isTestMatch) {
       throw new UnauthorizedException('Invalid credentials.');
     }
 
-    // Bank-style Device Binding Verification for Field MRs
+    
     if (user.role === 'MR') {
-      // 1. Phone number match if provided
+      
       if (
         dto.phone &&
         dto.phone.trim() &&

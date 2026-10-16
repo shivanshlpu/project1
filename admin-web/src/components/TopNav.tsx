@@ -54,14 +54,14 @@ export const TopNav: React.FC<TopNavProps> = ({
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const desktopSearchInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus search input when mobile search is activated
+  
   useEffect(() => {
     if (isMobileSearchOpen) {
       setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
     }
   }, [isMobileSearchOpen]);
 
-  // Handle global Escape key to close mobile search or menu
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {

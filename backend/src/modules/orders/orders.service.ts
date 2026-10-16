@@ -45,9 +45,9 @@ export class OrdersService {
 
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
 
-    // Scoping Rule:
-    // If not admin, the user can ONLY see orders for their assigned HQ (or their own created orders)
-    // "only the HQ for which it was made can see it in their ID, not all HQs"
+    
+    
+    
     if (!isAdmin) {
       const dbUser = this.db.users.find((u) => u.id === user?.id);
       const effectiveHq = user?.hq_id || (user as any)?.area_id || dbUser?.hq_id || (dbUser as any)?.area_id;
@@ -82,7 +82,7 @@ export class OrdersService {
       list = list.filter((o) => o.task_id === query.task_id);
     }
 
-    // Sort newest first
+    
     return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 

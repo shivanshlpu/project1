@@ -114,50 +114,50 @@ export class AttendanceFilterDto {
 
   @IsString()
   @IsOptional()
-  is_late?: string; // 'true' | 'false'
+  is_late?: string; 
 
   @IsString()
   @IsOptional()
-  is_early?: string; // 'true' | 'false'
+  is_early?: string; 
 
   @IsString()
   @IsOptional()
-  missing_punchout?: string; // 'true' | 'false'
+  missing_punchout?: string; 
 
   @IsString()
   @IsOptional()
-  is_missing_punchout?: string; // 'true' | 'false'
+  is_missing_punchout?: string; 
 
   @IsString()
   @IsOptional()
-  suspicious?: string; // 'true' | 'false'
+  suspicious?: string; 
 
   @IsString()
   @IsOptional()
-  is_suspicious?: string; // 'true' | 'false'
+  is_suspicious?: string; 
 }
 
 export class UpdateAttendanceSettingsDto {
   @IsString()
   @IsOptional()
-  expected_punch_in_time?: string; // e.g. "10:00:00"
+  expected_punch_in_time?: string; 
 
   @IsNumber()
   @IsOptional()
   @Min(0)
-  allowed_punch_in_window_minutes?: number; // e.g. 30
+  allowed_punch_in_window_minutes?: number; 
 
   @IsString()
   @IsOptional()
-  expected_punch_out_time?: string; // e.g. "18:00:00"
+  expected_punch_out_time?: string; 
 
   @IsNumber()
   @IsOptional()
   @Min(0)
-  allowed_punch_out_window_minutes?: number; // e.g. 30
+  allowed_punch_out_window_minutes?: number; 
 
   @IsNumber()
   @IsOptional()
   @Min(0)
-  reimbursement_rate_per_km?: number; // e.g. 2.50
+  reimbursement_rate_per_km?: number; 
 }

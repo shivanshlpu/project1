@@ -40,7 +40,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
-  // === HEADQUARTERS ===
+  
   @Get('hqs')
   async getHeadquarters() {
     return this.inventoryService.getHeadquarters();
@@ -64,7 +64,7 @@ export class InventoryController {
     return this.inventoryService.deleteHeadquarter(id);
   }
 
-  // === HQ AREAS ===
+  
   @Get('areas')
   async getHqAreas(@Query('hq_id') hqId?: string) {
     return this.inventoryService.getHqAreas(hqId);
@@ -99,7 +99,7 @@ export class InventoryController {
     return this.inventoryService.syncHqAreas(dto);
   }
 
-  // === STOCKERS ===
+  
   @Get('stockers')
   async getStockers(
     @Query('hq_id') hqId?: string,
@@ -126,7 +126,7 @@ export class InventoryController {
     return this.inventoryService.deleteStocker(id);
   }
 
-  // === MEDICINES MASTER ===
+  
   @Get('medicines')
   async getMedicines(
     @Query('all') all?: string,
@@ -158,7 +158,7 @@ export class InventoryController {
     return this.inventoryService.deleteMedicine(id);
   }
 
-  // === STOCKER INVENTORY ===
+  
   @Get('stockers/:stockerId/inventory')
   async getStockerInventory(@Param('stockerId') stockerId: string) {
     return this.inventoryService.getStockerInventory(stockerId);
@@ -174,7 +174,7 @@ export class InventoryController {
     return this.inventoryService.adjustStock(stockerId, dto, user.id);
   }
 
-  // === ALERTS & TRANSACTIONS ===
+  
   @Get('alerts')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getStockAlerts(@Query('hq_id') hqId?: string) {
@@ -191,7 +191,7 @@ export class InventoryController {
     return this.inventoryService.getTransactions({ hq_id: hqId, stocker_id: stockerId, medicine_id: medicineId });
   }
 
-  // === MONTHLY STOCK INWARD ENTRIES ===
+  
   @Get('monthly-entries')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getMonthlyStockEntries(
@@ -220,7 +220,7 @@ export class InventoryController {
     return this.inventoryService.createBatchMonthlyStockEntries(dto, user.id);
   }
 
-  // === PACKAGING VARIANTS & PRICING (§4 & §5) ===
+  
   @Get('packaging-variants')
   async getPackagingVariants(@Query('medicine_id') medicineId?: string) {
     return this.inventoryService.getPackagingVariants(medicineId);
@@ -247,7 +247,7 @@ export class InventoryController {
     return this.inventoryService.deletePackagingVariant(id);
   }
 
-  // === MONTHLY MR STOCKAGE UPLOAD PERMISSIONS (§1) ===
+  
   @Get('stockage/permissions')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getStockagePermissions(
@@ -293,7 +293,7 @@ export class InventoryController {
     return this.inventoryService.getMrActiveStockagePermission(user.id, effectiveMonth);
   }
 
-  // === MR BULK STOCKAGE SUBMISSION & ADMIN APPROVAL (§2, §3, §7) ===
+  
   @Post('stockage/submit')
   @Roles('MR', 'SUPER_ADMIN', 'ADMIN')
   async submitStockageRequest(
@@ -311,7 +311,7 @@ export class InventoryController {
     @Query('month') month?: string,
     @Query('hq_id') hqId?: string,
   ) {
-    // If authenticated as MR, can only view own requests (§2)
+    
     const effectiveMrId = user.role === 'MR' ? user.id : mrId;
     return this.inventoryService.getStockageRequests({
       status,

@@ -14,12 +14,12 @@ interface RateLimitRecord {
 @Injectable()
 export class AuthRateLimiterGuard implements CanActivate {
   private readonly attempts = new Map<string, RateLimitRecord>();
-  private readonly windowMs = 60 * 1000; // 1 minute
-  private readonly maxAttempts = 15; // Max 15 attempts per minute per IP
+  private readonly windowMs = 60 * 1000; 
+  private readonly maxAttempts = 15; 
 
   canActivate(context: ExecutionContext): boolean {
     if (process.env.NODE_ENV === 'test') {
-      return true; // Bypass in unit/integration test runs
+      return true; 
     }
 
     const req = context.switchToHttp().getRequest();

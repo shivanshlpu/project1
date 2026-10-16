@@ -98,7 +98,6 @@ interface UserOption {
   hq_id?: string;
 }
 
-// Helper to get current YYYY-MM
 const getCurrentMonthKey = (): string => {
   const d = new Date();
   const y = d.getFullYear();
@@ -106,13 +105,12 @@ const getCurrentMonthKey = (): string => {
   return `${y}-${m}`;
 };
 
-// Generate list of months centered around current month
 const generateMonthOptions = () => {
   const options: Array<{ value: string; label: string; isCurrent: boolean }> = [];
   const currentKey = getCurrentMonthKey();
   const [currY, currM] = currentKey.split('-').map(Number);
 
-  // 6 months in the past to 6 months in future
+  
   for (let offset = -6; offset <= 6; offset++) {
     const targetDate = new Date(currY, currM - 1 + offset, 1);
     const y = targetDate.getFullYear();
@@ -130,7 +128,7 @@ const generateMonthOptions = () => {
 };
 
 const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
-  // Kotma (Amar Dwivedi: KOT-B01 to KOT-B09)
+  
   {
     id: 'rb-kot-b01',
     batch_code: 'KOT-B01',
@@ -276,7 +274,7 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     status: 'ACTIVE',
   },
 
-  // Shahdol (Aman Rathore: SHD-B01 to SHD-B05)
+  
   {
     id: 'rb-shd-b01',
     batch_code: 'SHD-B01',
@@ -358,7 +356,7 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     status: 'ACTIVE',
   },
 
-  // Ambikapur (Ashish Soni: AMB-B01 to AMB-B05)
+  
   {
     id: 'rb-amb-b01',
     batch_code: 'AMB-B01',
@@ -442,7 +440,7 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
 ];
 
 export const MonthlyTpView: React.FC = () => {
-  // Sub-tabs: 'schedules' | 'route_batches'
+  
   const [activeSubTab, setActiveSubTab] = useState<'schedules' | 'route_batches'>('schedules');
 
   const [plans, setPlans] = useState<MonthlyTpItem[]>([]);
@@ -450,7 +448,7 @@ export const MonthlyTpView: React.FC = () => {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [hqs, setHqs] = useState<Array<{ id: string; name: string; code?: string }>>([]);
 
-  // Route Batches Master State (Initialized with the 19 Authentic Batches)
+  
   const [routeBatches, setRouteBatches] = useState<RouteBatchItem[]>(DEFAULT_ROUTE_BATCHES);
   const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
   const [batchHqFilter, setBatchHqFilter] = useState<string>('ALL');
@@ -459,7 +457,7 @@ export const MonthlyTpView: React.FC = () => {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState<boolean>(false);
   const [editingBatch, setEditingBatch] = useState<RouteBatchItem | null>(null);
 
-  // Batch Form State
+  
   const [batchFormData, setBatchFormData] = useState({
     batch_code: '',
     name: '',
@@ -471,10 +469,10 @@ export const MonthlyTpView: React.FC = () => {
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
-  // Calculation Breakdown Modal
+  
   const [selectedEntryForDetails, setSelectedEntryForDetails] = useState<MonthlyTpItem | null>(null);
 
-  // Enterprise Filters (§8)
+  
   const currentMonthKey = getCurrentMonthKey();
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [selectedMr, setSelectedMr] = useState<string>('ALL');
@@ -483,11 +481,11 @@ export const MonthlyTpView: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Pagination for 10,000+ employees
+  
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(50);
 
-  // PDF Print dialog state
+  
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfStartDate, setPdfStartDate] = useState(() => {
     const d = new Date();
@@ -500,11 +498,11 @@ export const MonthlyTpView: React.FC = () => {
   const [pdfSelectedHq, setPdfSelectedHq] = useState('ALL');
   const [pdfSelectedMr, setPdfSelectedMr] = useState('ALL');
 
-  // Status Action state
+  
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [processingTpId, setProcessingTpId] = useState<string | null>(null);
 
-  // Global Reimbursement Rate Settings State
+  
   const [globalRate, setGlobalRate] = useState<number>(() => {
     const saved = localStorage.getItem('ahtri_reimbursement_rate');
     return saved ? parseFloat(saved) || 2.5 : 2.5;
@@ -533,7 +531,7 @@ export const MonthlyTpView: React.FC = () => {
         body: JSON.stringify({ rate: newRate }),
       }).catch(() => {});
 
-      // Update local route batches state
+      
       setRouteBatches((prev) =>
         prev.map((b) => ({
           ...b,
@@ -541,7 +539,7 @@ export const MonthlyTpView: React.FC = () => {
         }))
       );
 
-      // Recalculate pending tour plan reimbursement amounts
+      
       setPlans((prev) =>
         prev.map((p) => {
           const dist = p.round_trip_distance_km || p.distance_km || 0;
@@ -576,7 +574,7 @@ export const MonthlyTpView: React.FC = () => {
 
   const monthOptions = useMemo(() => generateMonthOptions(), []);
 
-  // Fetch Users & HQs on mount
+  
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -601,7 +599,7 @@ export const MonthlyTpView: React.FC = () => {
     fetchMetadata();
   }, [apiUrl]);
 
-  // Fetch active reimbursement rate setting on mount
+  
   useEffect(() => {
     const fetchActiveRate = async () => {
       try {
@@ -619,7 +617,7 @@ export const MonthlyTpView: React.FC = () => {
     fetchActiveRate();
   }, []);
 
-  // Fetch Route Batches
+  
   const fetchRouteBatches = async () => {
     setIsBatchesLoading(true);
     try {
@@ -653,7 +651,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   }, [activeSubTab]);
 
-  // Fetch complete Monthly Tour Plan list with fallback and field normalization
+  
   const fetchMonthlyPlans = async () => {
     setIsLoading(true);
     try {
@@ -732,7 +730,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   }, [selectedMr, selectedMonth, selectedHq, selectedWorkType, selectedStatus, activeSubTab]);
 
-  // Client-side search and filtering for TP entries
+  
   const filteredPlans = useMemo(() => {
     return plans.filter((p) => {
       if (selectedWorkType !== 'ALL' && p.work_type !== selectedWorkType) return false;
@@ -754,14 +752,14 @@ export const MonthlyTpView: React.FC = () => {
     });
   }, [plans, selectedWorkType, selectedStatus, searchQuery]);
 
-  // Pagination slicing
+  
   const totalPages = Math.ceil(filteredPlans.length / itemsPerPage) || 1;
   const paginatedPlans = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredPlans.slice(start, start + itemsPerPage);
   }, [filteredPlans, currentPage, itemsPerPage]);
 
-  // KPI Metrics Calculation
+  
   const kpiStats = useMemo(() => {
     const totalVisits = filteredPlans.length;
     const pendingCount = filteredPlans.filter((p) => (p.reimbursement_status || p.status) === 'PENDING' || p.status === 'SUBMITTED').length;
@@ -772,7 +770,7 @@ export const MonthlyTpView: React.FC = () => {
     return { totalVisits, pendingCount, approvedCount, distinctMrs, totalDistance, totalReimbursement };
   }, [filteredPlans]);
 
-  // Filtered Route Batches
+  
   const filteredBatches = useMemo(() => {
     return routeBatches.filter((b) => {
       if (batchHqFilter !== 'ALL' && b.hq_id !== batchHqFilter && b.hq_name !== batchHqFilter) return false;
@@ -790,7 +788,7 @@ export const MonthlyTpView: React.FC = () => {
     });
   }, [routeBatches, batchHqFilter, batchMrFilter, batchSearchQuery]);
 
-  // Decide Reimbursement for a specific entry
+  
   const handleDecideReimbursement = async (
     item: MonthlyTpItem,
     newStatus: 'APPROVED' | 'REJECTED',
@@ -822,7 +820,7 @@ export const MonthlyTpView: React.FC = () => {
           message: `✓ Reimbursement marked as ${newStatus} for ${item.mr_name} (${item.date})`,
         });
       } else {
-        // Fallback to updating entire plan status
+        
         await handleUpdateStatus(item.tp_id, newStatus);
       }
     } catch {
@@ -836,7 +834,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Delete / Remove Monthly TP Entry
+  
   const handleDeleteEntry = async (item: MonthlyTpItem) => {
     const entryId = item.entry_id || item.id;
     const planId = item.tp_id || item.plan_id;
@@ -883,7 +881,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Quick Approve / Reject Entire Tour Plan
+  
   const handleUpdateStatus = async (tpId: string, newStatus: 'APPROVED' | 'REJECTED') => {
     setProcessingTpId(tpId);
     try {
@@ -924,7 +922,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Open Batch Modal for Add or Edit
+  
   const handleOpenBatchModal = (batch?: RouteBatchItem) => {
     if (batch) {
       setEditingBatch(batch);
@@ -954,7 +952,7 @@ export const MonthlyTpView: React.FC = () => {
     setIsBatchModalOpen(true);
   };
 
-  // Save Route Batch
+  
   const handleSaveBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     const stops = batchFormData.route_stops_str
@@ -1011,7 +1009,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Toggle Route Batch Status (Active / Inactive)
+  
   const handleToggleBatchStatus = async (batch: RouteBatchItem) => {
     const nextStatus = batch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
@@ -1033,7 +1031,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Delete Route Batch
+  
   const handleDeleteBatch = async (batch: RouteBatchItem) => {
     const ok = await showConfirmModal({
       title: `Delete Route Batch "${batch.batch_code}"`,
@@ -1061,7 +1059,7 @@ export const MonthlyTpView: React.FC = () => {
     }
   };
 
-  // Export CSV
+  
   const handleExportCsv = () => {
     const headers = [
       'Date (DD-MM-YYYY)',
@@ -1110,7 +1108,7 @@ export const MonthlyTpView: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Generate PDF
+  
   const handleGenerateTpPdf = () => {
     const list = plans.filter((p) => {
       const pDate = p.date || '';
@@ -1197,7 +1195,7 @@ export const MonthlyTpView: React.FC = () => {
     setIsPdfModalOpen(false);
   };
 
-  // Representatives filter list
+  
   const activeMrOptions = useMemo(() => {
     const map = new Map<string, string>();
     users.forEach((u) => {

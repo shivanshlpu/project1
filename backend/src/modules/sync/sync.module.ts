@@ -35,9 +35,7 @@ export class SyncPushDto {
 export class SyncService {
   constructor(private readonly db: DatabaseService) {}
 
-  /**
-   * Section 4.4: Idempotent push of offline write drafts
-   */
+  
   async pushDrafts(userId: string, dto: SyncPushDto) {
     const syncedIds: { [key: string]: string[] } = {
       visits: [],
@@ -45,10 +43,10 @@ export class SyncService {
       expenses: [],
     };
 
-    // 1. Process visits
+    
     if (dto.visit_drafts && dto.visit_drafts.length > 0) {
       for (const draft of dto.visit_drafts) {
-        // Idempotent check: skip if draft id already processed
+        
         const exists = this.db.doctorVisits.find((v) => v.id === draft.id);
         if (!exists) {
           this.db.doctorVisits.push({
@@ -72,7 +70,7 @@ export class SyncService {
       }
     }
 
-    // 2. Process expenses
+    
     if (dto.expense_drafts && dto.expense_drafts.length > 0) {
       for (const draft of dto.expense_drafts) {
         const exists = this.db.expenses.find((e) => e.id === draft.id);
@@ -100,20 +98,18 @@ export class SyncService {
     };
   }
 
-  /**
-   * Section 4.4: Pull latest read caches (tasks, doctors) since timestamp
-   */
+  
   async pullData(userId: string, since?: string) {
     const user = this.db.users.find((u) => u.id === userId);
     const userAreaId = user?.area_id;
 
-    // Filter tasks for this MR
+    
     let tasks = this.db.tasks.filter((t) => t.assigned_mr_id === userId && !t.deleted_at && t.status !== 'CANCELLED');
     if (since) {
       tasks = tasks.filter((t) => t.created_at >= since);
     }
 
-    // Filter doctors in MR's area
+    
     let doctors = this.db.doctors.filter((d) => !d.deleted_at);
     if (userAreaId) {
       doctors = doctors.filter((d) => d.area_id === userAreaId);

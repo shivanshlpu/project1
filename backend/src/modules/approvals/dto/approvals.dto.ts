@@ -16,11 +16,11 @@ export class CreateLeaveDto {
 
   @IsString()
   @IsNotEmpty()
-  start_date: string; // YYYY-MM-DD
+  start_date: string; 
 
   @IsString()
   @IsNotEmpty()
-  end_date: string; // YYYY-MM-DD
+  end_date: string; 
 
   @IsString()
   @IsNotEmpty()

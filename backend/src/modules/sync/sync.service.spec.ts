@@ -22,7 +22,7 @@ describe('Offline Sync Engine (Node 14 DoD Verification)', () => {
     const draftVisitId = 'offline-vis-101';
     const draftExpId = 'offline-exp-202';
 
-    // 1. Push drafts
+    
     const pushRes = await syncService.pushDrafts('usr-mr-01', {
       visit_drafts: [
         {
@@ -47,11 +47,11 @@ describe('Offline Sync Engine (Node 14 DoD Verification)', () => {
     expect(pushRes.synced_ids.visits).toContain(draftVisitId);
     expect(pushRes.synced_ids.expenses).toContain(draftExpId);
 
-    // Verify row added to doctorVisits
+    
     const visitInDb = db.doctorVisits.find((v) => v.id === draftVisitId);
     expect(visitInDb).toBeDefined();
 
-    // 2. Duplicate push (idempotent retry)
+    
     await syncService.pushDrafts('usr-mr-01', {
       visit_drafts: [
         {
@@ -62,7 +62,7 @@ describe('Offline Sync Engine (Node 14 DoD Verification)', () => {
       ],
     });
 
-    // Should still only have 1 visit with this ID
+    
     const count = db.doctorVisits.filter((v) => v.id === draftVisitId).length;
     expect(count).toBe(1);
   });

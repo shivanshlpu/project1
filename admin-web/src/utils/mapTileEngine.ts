@@ -11,13 +11,6 @@ export interface TileProvider {
   maxZoom: number;
 }
 
-/**
- * Enterprise Street Tile Providers with Automatic Multi-CDN Fallback.
- * Tier 1: Google Street Map (Clean, high-uptime, zero watermark, crystal-clear roads & places)
- * Tier 2: Esri World Street Map (AWS CloudFront global GIS CDN, high reliability, zero watermark)
- * Tier 3: CARTO Voyager (Fastly Anycast CDN fallback)
- * Tier 4: OpenStreetMap Foundation CDN
- */
 export const STREET_PROVIDERS: TileProvider[] = [
   {
     name: 'GoogleStreet',
@@ -53,11 +46,6 @@ export const STREET_PROVIDERS: TileProvider[] = [
   },
 ];
 
-/**
- * High-Resolution Satellite Providers with Automatic Multi-CDN Fallback.
- * Tier 1: Google Hybrid Satellite (Sub-meter photography + street & clinic overlays, zero watermark)
- * Tier 2: Esri World Imagery (Standard GIS satellite imagery, AWS CDN)
- */
 export const SATELLITE_PROVIDERS: TileProvider[] = [
   {
     name: 'GoogleHybridSatellite',
@@ -77,9 +65,6 @@ export const SATELLITE_PROVIDERS: TileProvider[] = [
   },
 ];
 
-/**
- * Custom Resilient Tile Layer with Real-Time Multi-Tier Error Recovery.
- */
 export class ResilientTileLayer extends L.TileLayer {
   private providers: TileProvider[];
   private activeProviderIndex: number = 0;
@@ -164,10 +149,6 @@ export function createResilientTileLayer(
   return new ResilientTileLayer(providers, options);
 }
 
-/**
- * Creates an optimized Leaflet Map instance with hardware-accelerated Canvas rendering,
- * smooth animation flags, and anti-lag mobile settings.
- */
 export function createOptimizedMap(
   element: HTMLElement | string,
   options?: L.MapOptions

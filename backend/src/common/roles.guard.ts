@@ -13,7 +13,7 @@ export class RolesGuard implements CanActivate {
     ]);
 
     if (!requiredRoles || requiredRoles.length === 0) {
-      return true; // Route does not require specific roles
+      return true; 
     }
 
     const { user } = context.switchToHttp().getRequest();
@@ -21,7 +21,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied: user role could not be verified.');
     }
 
-    // Super Admin has universal access
+    
     if (user.role === 'SUPER_ADMIN') {
       return true;
     }

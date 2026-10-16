@@ -53,8 +53,8 @@ function getLocalDateStr(d: Date = new Date()): string {
 }
 
 function getStartOfWeek(d: Date): Date {
-  const day = d.getDay(); // 0 = Sunday
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+  const day = d.getDay(); 
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
   const monday = new Date(d);
   monday.setDate(diff);
   monday.setHours(0, 0, 0, 0);
@@ -164,11 +164,11 @@ function normalizeTaskOrders(raw: any) {
   return [];
 }
 
-  // Fetch completed tasks from API and local storage (§2.5)
+  
   const fetchCompletedTasks = useCallback(async () => {
     const combinedMap = new Map<string, CompletedTask>();
 
-    // 1. Fetch from local AsyncStorage first for instant offline availability
+    
     try {
       const localRaw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
       if (localRaw) {
@@ -185,7 +185,7 @@ function normalizeTaskOrders(raw: any) {
       console.warn('AsyncStorage task history read error:', e);
     }
 
-    // 2. Fetch completed tasks from backend /tasks?status=COMPLETED
+    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -202,7 +202,7 @@ function normalizeTaskOrders(raw: any) {
       }
     } catch {}
 
-    // 3. Also query /tasks/my to ensure all completed tasks assigned to this user are gathered
+    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -236,7 +236,7 @@ function normalizeTaskOrders(raw: any) {
     setRefreshing(false);
   }, [fetchCompletedTasks]);
 
-  // Apply filter
+  
   useEffect(() => {
     const now = new Date();
     const todayStr = getLocalDateStr(now);
@@ -286,7 +286,7 @@ function normalizeTaskOrders(raw: any) {
     setFilteredTasks(filtered);
   }, [filterMode, allCompletedTasks, customStartDate, customEndDate]);
 
-  // Group tasks by date
+  
   const groupedTasks = React.useMemo(() => {
     const groups: Record<string, CompletedTask[]> = {};
     filteredTasks.forEach(task => {
@@ -295,11 +295,11 @@ function normalizeTaskOrders(raw: any) {
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(task);
     });
-    // Sort groups by date (newest first)
+    
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
   }, [filteredTasks]);
 
-  // Summary stats
+  
   const totalTasks = filteredTasks.length;
   const totalDuration = filteredTasks.reduce((sum, t) => sum + (Number(t?.duration_seconds) || 0), 0);
   const avgDuration = totalTasks > 0 ? Math.round(totalDuration / totalTasks) : 0;
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
 
-  // Header
+  
   headerSection: {
     paddingHorizontal: 16,
     paddingTop: 14,
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Filter Chips
+  
   filterRow: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 8,
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Summary Card
+  
   summaryCard: {
     flexDirection: 'row',
     marginHorizontal: 14,
@@ -861,12 +861,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
-  // Task List
+  
   taskList: {
     flex: 1,
   },
 
-  // Empty State
+  
   emptyState: {
     alignItems: 'center',
     paddingTop: 60,
@@ -889,7 +889,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Date Groups
+  
   dateGroup: {
     marginBottom: 4,
   },
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Task Card
+  
   taskCard: {
     marginHorizontal: 14,
     marginTop: 8,
@@ -1036,7 +1036,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Custom Date Modal
+  
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Detail Modal
+  
   detailModal: {
     width: '100%',
     maxWidth: 400,

@@ -1,4 +1,4 @@
-// Hermes native runtime safety polyfill
+
 if (typeof global !== 'undefined') {
   if (typeof (global as any).document === 'undefined') {
     (global as any).document = {
@@ -77,7 +77,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<LoggedInUser | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  // Restore persistent login session on boot
+  
   useEffect(() => {
     AsyncStorage.getItem(SESSION_KEY)
       .then(async (saved) => {
@@ -110,12 +110,12 @@ export default function App() {
   const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
   const lastNotifiedVersionRef = React.useRef<string>('');
 
-  // Auto-check for over-the-air in-app updates on boot, resume & active polling
+  
   useEffect(() => {
-    // Setup Android notification channels & permissions
+    
     NotificationService.setupPermissionsAndChannels();
 
-    // Non-blocking background warm-up for Render cold start
+    
     ApiConfig.warmupServer();
 
     setEffectiveVersion(CURRENT_APP_VERSION);
@@ -134,7 +134,7 @@ export default function App() {
             setUpdateInfo(res.info);
             setIsUpdateModalOpen(true);
           }
-          // Only fire notification once per new version so employee is not harassed
+          
           if (lastNotifiedVersionRef.current !== res.info.latestVersion) {
             lastNotifiedVersionRef.current = res.info.latestVersion;
             NotificationService.notifyAppUpdateAvailable(res.info.latestVersion, res.info.downloadUrl);
@@ -145,19 +145,19 @@ export default function App() {
       }
     };
 
-    // Staggered boot checks to accommodate Render cold start
+    
     const t1 = setTimeout(checkUpdate, 2000);
     const t2 = setTimeout(checkUpdate, 7000);
     const t3 = setTimeout(checkUpdate, 16000);
 
-    // Re-check whenever employee switches to the app (foreground resume)
+    
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         checkUpdate();
       }
     });
 
-    // Active foreground poll every 60s so manager broadcasts arrive in near real-time
+    
     const interval = setInterval(checkUpdate, 60000);
 
     return () => {
@@ -170,7 +170,7 @@ export default function App() {
     };
   }, []);
 
-  // Poll for Manager Leave Decisions & Approvals
+  
   const knownLeaveStatusesRef = React.useRef<Map<string, string>>(new Map());
   useEffect(() => {
     if (!currentUser) return;
@@ -220,14 +220,14 @@ export default function App() {
     };
   }, [currentUser]);
 
-  // Register for Remote Push Notifications (Expo / FCM)
+  
   useEffect(() => {
     if (currentUser?.id) {
       NotificationService.registerForRemotePushNotifications(currentUser.id);
     }
   }, [currentUser?.id]);
 
-  // Listen for user tapping on push notifications in Android status bar
+  
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response?.notification?.request?.content?.data;
@@ -266,12 +266,12 @@ export default function App() {
     }
   };
 
-  // Responsive device dimensions
+  
   const { width } = useWindowDimensions();
   const isMobileScreen = width < 600;
   const isTablet = width >= 600 && width < 1024;
 
-  // PWA Install Event & Detection
+  
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(true);
   const [isAppInstalled, setIsAppInstalled] = useState<boolean>(false);
@@ -358,10 +358,10 @@ export default function App() {
     const userIdentifier = userToLogOut?.email || userToLogOut?.phone;
     const userDeviceId = userToLogOut?.device_id;
 
-    // 1. Instantly clear user state so UI immediately returns to Login screen
+    
     setCurrentUser(null);
 
-    // 2. Clear all local storage tokens & sessions synchronously
+    
     try {
       await AsyncStorage.removeItem(SESSION_KEY);
       await AsyncStorage.setItem('@ahtri_requires_reauth_otp', 'true');
@@ -375,7 +375,7 @@ export default function App() {
       console.warn('Storage cleanup error on logout:', err);
     }
 
-    // 3. Notify backend in the background with a fast timeout (2.5s)
+    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const controller = new AbortController();
@@ -395,7 +395,7 @@ export default function App() {
     } catch {}
   };
 
-  // Responsive container styles
+  
   const outerWrapperStyle = [
     styles.appOuterWrapper,
     isMobileScreen && { backgroundColor: '#FFFFFF', padding: 0 },
@@ -406,7 +406,7 @@ export default function App() {
     isTablet && { maxWidth: 720, borderRadius: 16 },
   ];
 
-  // Show loader while restoring session
+  
   if (isLoadingSession) {
     return (
       <View style={[outerWrapperStyle, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -415,7 +415,7 @@ export default function App() {
     );
   }
 
-  // If not logged in, render Login Screen
+  
   if (!currentUser) {
     return (
       <View style={outerWrapperStyle}>

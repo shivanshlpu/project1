@@ -1,8 +1,4 @@
-/**
- * 3D Google Maps Style Pin Generator for Leaflet (Mobile App)
- * Renders high-fidelity 3D teardrop map pins with ground shadows and category icons.
- * Strict: No emojis! Only vector graphics and 3D CSS lighting.
- */
+
 
 export type PinCategory = 'HOSPITAL' | 'PHARMACY' | 'CLINIC' | 'OFFICE' | 'OTHER' | 'MR';
 
@@ -16,39 +12,39 @@ interface PinOptions {
 export function create3DMapPinHtml(options: PinOptions): string {
   const { category, isSelected = false, isNew = false } = options;
 
-  let primaryColor = '#0F8B5A'; // Emerald (Clinic)
+  let primaryColor = '#0F8B5A'; 
   let secondaryColor = '#065F46';
   let highlightColor = '#34D399';
   let ringColor = 'rgba(16, 185, 129, 0.4)';
 
   switch (category) {
     case 'HOSPITAL':
-      primaryColor = '#DC2626'; // Red
+      primaryColor = '#DC2626'; 
       secondaryColor = '#991B1B';
       highlightColor = '#F87171';
       ringColor = 'rgba(220, 38, 38, 0.45)';
       break;
     case 'PHARMACY':
-      primaryColor = '#2563EB'; // Blue
+      primaryColor = '#2563EB'; 
       secondaryColor = '#1E40AF';
       highlightColor = '#60A5FA';
       ringColor = 'rgba(37, 99, 235, 0.45)';
       break;
     case 'OFFICE':
-      primaryColor = '#7C3AED'; // Purple
+      primaryColor = '#7C3AED'; 
       secondaryColor = '#5B21B6';
       highlightColor = '#A78BFA';
       ringColor = 'rgba(124, 58, 237, 0.45)';
       break;
     case 'MR':
-      primaryColor = '#D97706'; // Amber
+      primaryColor = '#D97706'; 
       secondaryColor = '#92400E';
       highlightColor = '#FBBF24';
       ringColor = 'rgba(217, 119, 6, 0.5)';
       break;
     case 'CLINIC':
     default:
-      primaryColor = '#0F8B5A'; // Emerald Green
+      primaryColor = '#0F8B5A'; 
       secondaryColor = '#065F46';
       highlightColor = '#34D399';
       ringColor = 'rgba(15, 139, 90, 0.45)';
@@ -95,7 +91,7 @@ export function create3DMapPinHtml(options: PinOptions): string {
       </svg>
     `;
   } else {
-    // Stethoscope / Medical Clinic Cross
+    
     iconSvg = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>

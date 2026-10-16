@@ -10,16 +10,13 @@ export interface LocationCoords {
 
 export type AccuracyGrade = 'HIGH' | 'GOOD' | 'MODERATE' | 'COARSE';
 
-// In-memory hot GPS state to prevent cold-start satellite delays
 let _latestCoords: LocationCoords | null = null;
 let _bestRecentCoords: LocationCoords | null = null;
 let _watchSubscription: Location.LocationSubscription | null = null;
 const _listeners = new Set<(coords: LocationCoords) => void>();
 
 export const LocationService = {
-  /**
-   * Request foreground GPS location permissions from user
-   */
+  
   async requestPermissions(): Promise<boolean> {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -30,9 +27,7 @@ export const LocationService = {
     }
   },
 
-  /**
-   * Ensure hardware GPS & Google High Accuracy Location services are enabled
-   */
+  
   async ensureLocationServices(): Promise<boolean> {
     try {
       const enabled = await Location.hasServicesEnabledAsync();
@@ -49,10 +44,7 @@ export const LocationService = {
     }
   },
 
-  /**
-   * Start continuous active GPS watching with satellite convergence.
-   * Keeps phone GPS sensor warm and provides real-time fixes with zero lag.
-   */
+  
   async startWatching(onUpdate?: (coords: LocationCoords) => void): Promise<() => void> {
     if (onUpdate) {
       _listeners.add(onUpdate);
@@ -91,7 +83,7 @@ export const LocationService = {
 
                 _latestCoords = coords;
 
-                // Retain best fix seen in recent memory
+                
                 if (
                   !_bestRecentCoords ||
                   (coords.accuracy !== null &&
@@ -130,9 +122,7 @@ export const LocationService = {
     };
   },
 
-  /**
-   * Stop active GPS watching completely
-   */
+  
   stopWatching() {
     if (_watchSubscription) {
       _watchSubscription.remove();
@@ -141,20 +131,17 @@ export const LocationService = {
     _listeners.clear();
   },
 
-  /**
-   * Retrieve high-precision device GPS coordinates with progressive satellite convergence.
-   * Eliminates the 100m+ cell tower error by allowing hardware GPS sufficient time to lock satellites.
-   */
+  
   async getCurrentLocation(options?: {
     timeoutMs?: number;
     targetAccuracy?: number;
     maxAgeMs?: number;
   }): Promise<LocationCoords | null> {
     const timeoutMs = options?.timeoutMs ?? 12000;
-    const targetAccuracy = options?.targetAccuracy ?? 25; // meters
-    const maxAgeMs = options?.maxAgeMs ?? 15000; // 15 seconds
+    const targetAccuracy = options?.targetAccuracy ?? 25; 
+    const maxAgeMs = options?.maxAgeMs ?? 15000; 
 
-    // 1. Fast path: check if warm GPS watcher already holds a fresh, high-precision fix
+    
     const now = Date.now();
     if (_latestCoords && _latestCoords.timestamp && now - _latestCoords.timestamp < maxAgeMs) {
       if (
@@ -182,8 +169,8 @@ export const LocationService = {
 
       await this.ensureLocationServices();
 
-      // 2. High-precision progressive convergence loop:
-      // Poll satellite receiver until accuracy reaches target or timeout is reached.
+      
+      
       let bestFix: LocationCoords | null = _latestCoords || _bestRecentCoords || null;
 
       const convergencePromise = new Promise<LocationCoords | null>(async (resolve) => {
@@ -241,7 +228,7 @@ export const LocationService = {
                   _bestRecentCoords = fix;
                 }
 
-                // If accuracy reached target (e.g. <= 25m), resolve immediately!
+                
                 if (fix.accuracy !== null && fix.accuracy !== undefined && fix.accuracy <= targetAccuracy) {
                   if (!isResolved) {
                     isResolved = true;
@@ -254,7 +241,7 @@ export const LocationService = {
             },
           );
         } catch {
-          // If watcher fails, fallback to one-shot Highest accuracy
+          
           try {
             const oneShot = await Location.getCurrentPositionAsync({
               accuracy: Location.Accuracy.Highest,
@@ -283,7 +270,7 @@ export const LocationService = {
       const result = await convergencePromise;
       if (result) return result;
 
-      // 3. Fallback: High accuracy single position
+      
       const fallbackPos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
@@ -301,7 +288,7 @@ export const LocationService = {
       console.warn('[LocationService] GPS convergence notice:', err);
     }
 
-    // 4. Last resort: last known recent position if within 5 minutes
+    
     try {
       const lastKnown = await Location.getLastKnownPositionAsync();
       if (lastKnown && lastKnown.coords) {
@@ -321,9 +308,7 @@ export const LocationService = {
     return _bestRecentCoords || _latestCoords || null;
   },
 
-  /**
-   * Determine categorical accuracy rating for UI feedback
-   */
+  
   getAccuracyGrade(accuracyMeters?: number | null): {
     grade: AccuracyGrade;
     label: string;
@@ -363,16 +348,14 @@ export const LocationService = {
     };
   },
 
-  /**
-   * Calculate distance between two coordinates in meters using the Haversine formula
-   */
+  
   calculateDistanceMeters(
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number,
   ): number {
-    const R = 6371e3; // Earth radius in meters
+    const R = 6371e3; 
     const phi1 = (lat1 * Math.PI) / 180;
     const phi2 = (lat2 * Math.PI) / 180;
     const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
@@ -389,19 +372,14 @@ export const LocationService = {
     return Math.round(R * c);
   },
 
-  /**
-   * Calculate dynamic effective geofence radius that incorporates sensor accuracy error margin.
-   * Solves indoor false-rejections when the user is physically inside a clinic.
-   */
+  
   calculateEffectiveGeofence(baseRadiusMeters?: number, accuracyMeters?: number | null): number {
     const base = Math.max(baseRadiusMeters || 50, 100);
     const accBuffer = Math.min(Math.max(accuracyMeters || 10, 0), 120);
     return Math.round(base + accBuffer);
   },
 
-  /**
-   * Determine if current position is within designated geofence radius with error margin
-   */
+  
   isWithinGeofence(
     currentLat: number,
     currentLon: number,

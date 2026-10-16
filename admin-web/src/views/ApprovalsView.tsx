@@ -79,10 +79,10 @@ export const ApprovalsView: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unsuspendingId, setUnsuspendingId] = useState<string | null>(null);
 
-  // Leave & DCR Approvals State (Strictly dynamic from database)
+  
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
 
-  // Suspended Tasks State
+  
   const [suspendedTasks, setSuspendedTasks] = useState<SuspendedTaskItem[]>([]);
   const [resolvedTasks, setResolvedTasks] = useState<{ id: string; title: string; assigned_mr_name: string; resolvedAt: string }[]>([]);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export const ApprovalsView: React.FC = () => {
 
   const [comment, setComment] = useState('');
 
-  // Fetch approvals and suspended tasks from backend
+  
   const fetchData = async () => {
     try {
       const apiUrl = getApiBaseUrl();
@@ -105,13 +105,13 @@ export const ApprovalsView: React.FC = () => {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
-      // 1. Fetch pending approvals (strictly exclude EXPENSE)
+      
       const apprRes = await fetch(`${apiUrl}/approvals/pending`, { headers }).catch(() => null);
       if (apprRes && apprRes.ok) {
         const data = await apprRes.json();
         const storedDecisions = getStoredDecisions();
         if (Array.isArray(data)) {
-          // Filter out any EXPENSE item
+          
           const filtered = data.filter((a: any) => a.entity_type !== 'EXPENSE');
           const mapped: ApprovalItem[] = filtered.map((a: any) => {
             const dec = storedDecisions[a.id] || (a.entity_id ? storedDecisions[a.entity_id] : undefined);
@@ -133,7 +133,7 @@ export const ApprovalsView: React.FC = () => {
         }
       }
 
-      // 2. Fetch suspended tasks from /tasks
+      
       const tasksRes = await fetch(`${apiUrl}/tasks`, { headers }).catch(() => null);
       if (tasksRes && tasksRes.ok) {
         const allTasks = await tasksRes.json();
@@ -158,7 +158,7 @@ export const ApprovalsView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle Approve / Reject for Leave & DCR
+  
   const handleLeaveDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
     const item = approvals.find((a) => a.id === id);
     const newStatus: 'APPROVED' | 'REJECTED' = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
@@ -203,7 +203,7 @@ export const ApprovalsView: React.FC = () => {
     window.dispatchEvent(new Event('ahtri_approvals_updated'));
   };
 
-  // Handle Approve & Unsuspend for Suspended Task
+  
   const handleUnsuspendTask = async (taskId: string, mrName: string, taskTitle: string) => {
     setUnsuspendingId(taskId);
     try {
@@ -254,7 +254,7 @@ export const ApprovalsView: React.FC = () => {
     }
   };
 
-  // Permanently Delete a Suspended Task
+  
   const handleDeleteSuspendedTask = async (taskId: string, title: string) => {
     showCenteredNotice({
       title: 'Delete Task',
@@ -264,13 +264,13 @@ export const ApprovalsView: React.FC = () => {
       cancelText: 'Cancel',
       onConfirm: async () => {
         setDeletingTaskId(taskId);
-        // 1. Immediately persist deletion locally so it never resurfaces in UI
+        
         markTaskAsDeleted(taskId);
         setSuspendedTasks((prev) => prev.filter((t) => t.id !== taskId));
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
         window.dispatchEvent(new Event('ahtri_tasks_updated'));
 
-        // 2. Dispatch resilient multi-method backend deletion
+        
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -278,11 +278,11 @@ export const ApprovalsView: React.FC = () => {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           };
-          // Method A: DELETE /tasks/:id
+          
           await fetch(`${apiUrl}/tasks/${taskId}`, { method: 'DELETE', headers: hdrs }).catch(() => null);
-          // Method B: POST /tasks/:id/delete
+          
           await fetch(`${apiUrl}/tasks/${taskId}/delete`, { method: 'POST', headers: hdrs }).catch(() => null);
-          // Method C: Fallback PATCH status to CANCELLED
+          
           await fetch(`${apiUrl}/tasks/${taskId}`, {
             method: 'PATCH',
             headers: hdrs,
@@ -300,7 +300,7 @@ export const ApprovalsView: React.FC = () => {
     });
   };
 
-  // Permanently Delete All Suspended Tasks
+  
   const handleClearAllSuspendedTasks = async () => {
     const idsToClear = suspendedTasks.map((t) => t.id);
     showCenteredNotice({
@@ -310,13 +310,13 @@ export const ApprovalsView: React.FC = () => {
       confirmText: 'Clear All Tasks',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        // 1. Immediately persist deletion locally
+        
         markTaskAsDeleted(idsToClear);
         setSuspendedTasks([]);
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
         window.dispatchEvent(new Event('ahtri_tasks_updated'));
 
-        // 2. Dispatch resilient purge to backend
+        
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -324,9 +324,9 @@ export const ApprovalsView: React.FC = () => {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           };
-          // Method A: POST purge-suspended
+          
           await fetch(`${apiUrl}/tasks/purge-suspended`, { method: 'POST', headers: hdrs }).catch(() => null);
-          // Method B: Individual fallback cancel
+          
           for (const id of idsToClear) {
             fetch(`${apiUrl}/tasks/${id}`, {
               method: 'PATCH',
@@ -345,7 +345,7 @@ export const ApprovalsView: React.FC = () => {
     });
   };
 
-  // Filtered Leave/DCR requests
+  
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
   const pendingSuspendedCount = suspendedTasks.length;
   const totalPendingActionCount = pendingApprovalsCount + pendingSuspendedCount;

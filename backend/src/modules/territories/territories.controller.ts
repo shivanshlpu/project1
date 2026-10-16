@@ -74,9 +74,9 @@ export class TerritoriesController {
     return this.territoriesService.assignAreaMr(areaId, dto);
   }
 
-  // ==========================================
-  // ROUTE BATCHES
-  // ==========================================
+  
+  
+  
 
   @Get('route-batches')
   async getRouteBatches(

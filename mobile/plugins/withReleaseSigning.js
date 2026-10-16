@@ -14,7 +14,6 @@ const withReleaseSigning = (config) => {
     const androidAppDir = path.join(projectRoot, 'android', 'app');
     const keystoreDest = path.join(androidAppDir, 'release.keystore');
 
-    // 1. Copy persistent keystore into android/app if available
     try {
       if (fs.existsSync(keystoreSrc)) {
         if (!fs.existsSync(androidAppDir)) {
@@ -28,20 +27,23 @@ const withReleaseSigning = (config) => {
 
     let buildGradle = config.modResults.contents;
 
-    // 2. Add release signing config inside signingConfigs block
-    if (!buildGradle.includes('keyAlias "ahtri-key"') && !buildGradle.includes('release.keystore')) {
+    if (!buildGradle.includes('release.keystore')) {
+      const storePassword = process.env.ANDROID_KEYSTORE_PASSWORD || process.env.KEYSTORE_PASSWORD || 'ahtri123';
+      const keyAlias = process.env.ANDROID_KEY_ALIAS || 'ahtri-key';
+      const keyPassword = process.env.ANDROID_KEY_PASSWORD || process.env.KEY_PASSWORD || storePassword;
+
       const releaseSigningConfig = `
         release {
             if (file("release.keystore").exists()) {
                 storeFile file("release.keystore")
-                storePassword "ahtri123"
-                keyAlias "ahtri-key"
-                keyPassword "ahtri123"
+                storePassword "${storePassword}"
+                keyAlias "${keyAlias}"
+                keyPassword "${keyPassword}"
             } else if (file("../../credentials/ahtri-release.keystore").exists()) {
                 storeFile file("../../credentials/ahtri-release.keystore")
-                storePassword "ahtri123"
-                keyAlias "ahtri-key"
-                keyPassword "ahtri123"
+                storePassword "${storePassword}"
+                keyAlias "${keyAlias}"
+                keyPassword "${keyPassword}"
             }
         }`;
 
@@ -51,8 +53,6 @@ const withReleaseSigning = (config) => {
       );
     }
 
-    // 3. Ensure release buildType points to release signingConfig
-    // Target release block specifically without crossing braces
     buildGradle = buildGradle.replace(
       /(release\s*\{[^}]*?signingConfig\s+)signingConfigs\.debug/g,
       '$1signingConfigs.release'

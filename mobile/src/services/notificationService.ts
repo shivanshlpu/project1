@@ -2,7 +2,6 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { ApiConfig } from './apiConfig';
 
-// Configure notification presentation when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -23,9 +22,7 @@ type InAppAlertListener = (alert: InAppAlertPayload) => void;
 const listeners: Set<InAppAlertListener> = new Set();
 
 export const NotificationService = {
-  /**
-   * Subscribe to in-app notification banners
-   */
+  
   subscribe(listener: InAppAlertListener): () => void {
     listeners.add(listener);
     return () => {
@@ -33,9 +30,7 @@ export const NotificationService = {
     };
   },
 
-  /**
-   * Broadcast an in-app banner to all active screens
-   */
+  
   broadcastInAppAlert(alert: InAppAlertPayload): void {
     listeners.forEach((fn) => {
       try {
@@ -44,13 +39,11 @@ export const NotificationService = {
     });
   },
 
-  /**
-   * Request system notification permissions and configure Android channels
-   */
+  
   async setupPermissionsAndChannels(): Promise<boolean> {
     try {
       if (Platform.OS === 'android') {
-        // High-importance channel with sound and vibration (WhatsApp-like)
+        
         await Notifications.setNotificationChannelAsync('ahtri_tasks', {
           name: 'Task Assignments & Calls',
           importance: Notifications.AndroidImportance.MAX,
@@ -82,7 +75,7 @@ export const NotificationService = {
         });
       }
 
-      // Request permission
+      
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== 'granted') {
@@ -90,7 +83,7 @@ export const NotificationService = {
         finalStatus = status;
       }
 
-      // Web Notification permission
+      
       if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'default') {
           Notification.requestPermission().catch(() => {});
@@ -103,9 +96,7 @@ export const NotificationService = {
     }
   },
 
-  /**
-   * Fire a system notification with sound & heads-up banner
-   */
+  
   async sendSystemNotification(
     title: string,
     body: string,
@@ -113,7 +104,7 @@ export const NotificationService = {
     data: Record<string, any> = {}
   ): Promise<void> {
     try {
-      // 1. Android / Native OS Notification via expo-notifications
+      
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
@@ -125,7 +116,7 @@ export const NotificationService = {
         trigger: null, // null = immediate
       });
 
-      // 2. Web browser HTML5 Notification
+      
       if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'granted') {
           new Notification(title, {
@@ -135,7 +126,7 @@ export const NotificationService = {
         }
       }
 
-      // 3. In-App floating banner
+      
       this.broadcastInAppAlert({
         id: `alert-${Date.now()}`,
         title,
@@ -144,7 +135,7 @@ export const NotificationService = {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       });
     } catch {
-      // Fallback in-app banner
+      
       this.broadcastInAppAlert({
         id: `alert-${Date.now()}`,
         title,
@@ -155,9 +146,7 @@ export const NotificationService = {
     }
   },
 
-  /**
-   * WhatsApp-style notification when a new task is assigned
-   */
+  
   async notifyTaskAssigned(task: {
     id: string;
     title: string;
@@ -177,9 +166,7 @@ export const NotificationService = {
     });
   },
 
-  /**
-   * Notification when a leave request is approved or updated by Manager
-   */
+  
   async notifyLeaveDecision(leave: {
     id: string;
     status: 'APPROVED' | 'REJECTED' | string;
@@ -201,9 +188,7 @@ export const NotificationService = {
     });
   },
 
-  /**
-   * Notification when an app update is broadcasted by Admin
-   */
+  
   async notifyAppUpdateAvailable(version: string, downloadUrl?: string): Promise<void> {
     const title = `🚀 New Update Available (v${version})`;
     const body = `A new version of AHTRI FFA Mobile is ready. Tap to download and install now!`;
@@ -215,10 +200,7 @@ export const NotificationService = {
     });
   },
 
-  /**
-   * Register device for Remote Push Notifications (Expo Push Service / FCM)
-   * This allows the backend to ring the phone even when the app is completely closed or locked (like WhatsApp)
-   */
+  
   async registerForRemotePushNotifications(userId: string): Promise<string | null> {
     try {
       if (Platform.OS === 'web') return null;
@@ -240,7 +222,7 @@ export const NotificationService = {
       const pushToken = tokenData.data;
       console.log('[NotificationService] Device Push Token obtained:', pushToken);
 
-      // Register with backend server
+      
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
       await fetch(`${baseUrl}/notifications/register-device`, {

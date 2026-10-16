@@ -54,7 +54,7 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
   const [remarks, setRemarks] = useState<string>('');
   const [followUpDate, setFollowUpDate] = useState<string>('');
 
-  // Multiple Orders State (initialized empty)
+  
   const [orders, setOrders] = useState<OrderItem[]>([]);
 
   const handleAddOrder = () => {
@@ -76,7 +76,7 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
 
   const handleRemoveOrder = (id: string) => {
     if (orders.length <= 1) {
-      // If only 1 order left, just clear it
+      
       setOrders([
         {
           id: `ord-${Date.now()}`,
@@ -96,7 +96,7 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
       orders.map((o) => {
         if (o.id !== id) return o;
         const updated = { ...o, [field]: value };
-        // If product chosen matches a catalog suggestion, auto-fill standard price
+        
         if (field === 'productName') {
           const matched = CATALOG_SUGGESTIONS.find((c) => c.name === value);
           if (matched && (!o.unitPrice || o.unitPrice === '0' || o.unitPrice === '180')) {
@@ -118,7 +118,7 @@ export const DoctorVisitScreen: React.FC<DoctorVisitScreenProps> = ({
     );
   };
 
-  // Totals Calculation
+  
   const validOrders = orders.filter((o) => (parseInt(o.quantity) || 0) > 0 && o.productName.trim().length > 0);
   const totalUnits = validOrders.reduce((sum, o) => sum + (parseInt(o.quantity) || 0), 0);
   const grandTotal = validOrders.reduce(

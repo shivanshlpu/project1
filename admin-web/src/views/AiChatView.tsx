@@ -257,7 +257,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Web Speech API Voice Recognition Toggle
+  
   const toggleListening = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -348,7 +348,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
     setInputText('');
     setIsTyping(true);
 
-    // Simulate / parse query with intelligence
+    
     setTimeout(async () => {
       const lower = textToSend.toLowerCase();
       const isHindi =
@@ -359,7 +359,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
 
       let aiReply: ChatMessage;
 
-      // 1. Direct Leave Granting Intent (Hindi & English)
+      
       if (
         (lower.includes('grant') || lower.includes('दो') || lower.includes('approve') || lower.includes('स्वीकृत')) &&
         (lower.includes('leave') || lower.includes('छुट्टी') || lower.includes('लीव') || lower.includes('cl') || lower.includes('sl'))
@@ -376,7 +376,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           ? 'Earned Leave (EL)'
           : 'Casual Leave (CL)';
 
-        // Match days
+        
         const match = textToSend.match(/(\d+)\s*(?:day|दिन)/i);
         const days = match ? parseInt(match[1], 10) : 2;
 
@@ -387,7 +387,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
 
         const dateStr = `${formatDateDDMMYYYY(startDate)} - ${formatDateDDMMYYYY(endDate)}`;
 
-        // Trigger backend leave creation if available
+        
         try {
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const mrId = targetName === 'Amar Dwivedi' ? 'usr-mr-01' : targetName === 'Ashish Soni' ? 'usr-mr-03' : 'usr-mr-02';
@@ -756,7 +756,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
         };
       }
 
-      // Populate context-rich related questions if not set
+      
       if (!aiReply.relatedQuestions || aiReply.relatedQuestions.length === 0) {
         if (lower.includes('order') || lower.includes('ऑर्डर') || lower.includes('revenue') || lower.includes('बिक्री') || lower.includes('delivery')) {
           aiReply.relatedQuestions = isHindi
@@ -1171,7 +1171,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
                 {/* Text Content */}
                 <div style={{ whiteSpace: 'pre-line' }}>
                   {msg.text.split('\n').map((line, lIdx) => {
-                    // Simple bold replacement
+                    
                     const parts = line.split(/(\*\*.*?\*\*)/g);
                     return (
                       <div key={lIdx} style={{ marginTop: lIdx > 0 ? '4px' : 0 }}>

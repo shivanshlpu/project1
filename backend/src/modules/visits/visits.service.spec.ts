@@ -31,7 +31,7 @@ describe('Doctor Visits & Signature (Node 7 DoD Verification)', () => {
     expect(startRes.visit.start_time).toBeDefined();
     expect(startRes.visit.end_time).toBeUndefined();
 
-    // Prevent starting another visit while one is active
+    
     await expect(
       service.startVisit('usr-mr-01', {
         doctor_id: 'doc-02',
@@ -40,7 +40,7 @@ describe('Doctor Visits & Signature (Node 7 DoD Verification)', () => {
       }),
     ).rejects.toThrow(ConflictException);
 
-    // End the visit with samples, remarks, and signature key
+    
     const endRes = await service.endVisit(startRes.visit.id, 'usr-mr-01', {
       remarks: 'Doctor agreed to prescribe CardioFix-50 for hypertension patients.',
       signature_file_key: 'signatures/2026/09/doc-01-sig.png',

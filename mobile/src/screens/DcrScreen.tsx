@@ -22,7 +22,7 @@ export const DcrScreen: React.FC<DcrScreenProps> = ({
     const loadTodayVisits = async () => {
       setIsLoading(true);
       try {
-        // 1. Check local completed tasks cache first
+        
         let localTasks: any[] = [];
         const raw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
         if (raw) {
@@ -36,7 +36,7 @@ export const DcrScreen: React.FC<DcrScreenProps> = ({
           }
         }
 
-        // 2. Query backend for today's completed calls
+        
         try {
           const baseUrl = await ApiConfig.getBaseUrl();
           const headers = await ApiConfig.getAuthHeaders();

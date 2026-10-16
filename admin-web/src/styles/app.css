@@ -1,6 +1,5 @@
 @import './tokens.css';
 
-/* Layout Containers */
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -29,7 +28,6 @@
   background: var(--color-bg);
 }
 
-/* Enterprise Sidebar Navigation (Scrollable & Collapsible) */
 .enterprise-sidebar {
   background: #ffffff;
   border-right: 1px solid var(--color-border);
@@ -328,7 +326,6 @@
   display: none;
 }
 
-/* Enterprise Top Bar (Salesforce / Meta Style) */
 .enterprise-navbar {
   height: 52px;
   background: #ffffff;
@@ -378,7 +375,6 @@
   color: var(--color-text-secondary);
 }
 
-/* App View Switcher (Manager vs Salesman) */
 .view-mode-toggle {
   display: flex;
   background: #ebecf0;
@@ -471,7 +467,6 @@
   justify-content: center;
 }
 
-/* Secondary Enterprise Header / Subnav */
 .subnav-bar {
   background: #ffffff;
   border-bottom: 1px solid var(--color-border);
@@ -532,14 +527,12 @@
   gap: 10px;
 }
 
-/* Workspace Canvas */
 .workspace-canvas {
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px 100px 24px;
 }
 
-/* Metric Strip (Salesforce Tiles) */
 .metric-tiles-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -611,7 +604,6 @@
   color: var(--color-info);
 }
 
-/* Card Panels */
 .enterprise-panel {
   background: #ffffff;
   border: 1px solid var(--color-border);
@@ -645,7 +637,6 @@
   gap: 8px;
 }
 
-/* Enterprise Data Tables */
 .enterprise-table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -681,7 +672,6 @@
   background: #f8f9fa;
 }
 
-/* Status Badges (Clean Stroke / Solid Dot) */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -731,7 +721,6 @@
 .status-dot.alert { background: #de350b; }
 .status-dot.neutral { background: #7a869a; }
 
-/* Buttons */
 .btn-enterprise {
   display: inline-flex;
   align-items: center;
@@ -810,7 +799,6 @@
   font-size: 11px;
 }
 
-/* Icon action buttons with robust hover contrast */
 .btn-icon-subtle {
   background: transparent;
   border: 1px solid transparent;
@@ -849,7 +837,6 @@
   border-color: #FCA5A5 !important;
 }
 
-/* Radar & Schematic Geofence Inspector */
 .geofence-radar-canvas {
   height: 260px;
   background: #0d1b2a;
@@ -923,7 +910,6 @@
   z-index: 12;
 }
 
-/* Dedicated Field Salesman (MR) Portal View */
 .salesman-mobile-view-container {
   display: flex;
   justify-content: center;
@@ -1008,7 +994,6 @@
   color: var(--color-accent);
 }
 
-/* High-Contrast Geofence Widget */
 .distance-widget-card {
   padding: 14px;
   border-radius: var(--radius-sm);
@@ -1032,7 +1017,6 @@
   border-color: #de350b;
 }
 
-/* Modal Backdrop & Solid Card Surfaces */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1085,11 +1069,6 @@
   gap: 8px;
 }
 
-/* ========================================================
-   RESPONSIVE DESIGN — MOBILE & TABLET MEDIA QUERIES
-   ======================================================== */
-
-/* --- Modern TopNav Responsive Actions & Mobile Drawer --- */
 .desktop-only-action {
   display: flex !important;
 }
@@ -1098,7 +1077,6 @@
   display: none !important;
 }
 
-/* Mobile Search Bar Active Overlay (Occupies header when search is open) */
 .mobile-search-bar-active {
   position: absolute;
   top: 0;
@@ -1182,7 +1160,6 @@
   color: #0F172A;
 }
 
-/* Mobile Icon Buttons in Header */
 .mobile-icon-btn {
   background: #FFFFFF;
   border: 1.5px solid #E2E8F0;
@@ -1251,7 +1228,6 @@
   border-color: #1A3C6E;
 }
 
-/* Mobile Backdrop Overlay */
 .mobile-drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -1266,7 +1242,6 @@
   to { opacity: 1; }
 }
 
-/* Mobile Floating Dropdown Menu Card */
 .mobile-dropdown-menu {
   display: none;
   position: absolute;
@@ -1413,7 +1388,6 @@
   background: #FEE2E2;
 }
 
-/* Base Component Layout Helpers */
 .tasks-modal-split {
   display: flex;
   flex: 1;
@@ -1466,7 +1440,6 @@
   position: relative;
 }
 
-/* --- TABLET: 641px – 1024px --- */
 @media (max-width: 1024px) {
   .workspace-canvas {
     padding: 16px 16px 96px 16px;
@@ -1505,9 +1478,8 @@
   }
 }
 
-/* --- MOBILE: ≤640px --- */
 @media (max-width: 640px) {
-  /* Top Navigation */
+  
   .enterprise-navbar {
     height: 52px;
     min-height: 52px;
@@ -1547,7 +1519,7 @@
     display: none !important;
   }
 
-  /* Sub Navigation */
+  
   .subnav-bar {
     padding: 8px 12px;
     flex-direction: column;
@@ -1611,12 +1583,12 @@
     display: inline;
   }
 
-  /* Workspace Canvas */
+  
   .workspace-canvas {
     padding: 10px 10px;
   }
 
-  /* Metric Tiles */
+  
   .metric-tiles-strip {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -1640,7 +1612,7 @@
     font-size: 10.5px;
   }
 
-  /* Enterprise Panel */
+  
   .enterprise-panel {
     margin-bottom: 14px;
     border-radius: var(--radius-xs);
@@ -1661,7 +1633,7 @@
     justify-content: flex-end;
   }
 
-  /* Tables — horizontal scroll */
+  
   .enterprise-table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1677,7 +1649,7 @@
     font-size: 11px;
   }
 
-  /* Buttons */
+  
   .btn-enterprise {
     padding: 8px 10px;
     font-size: 11.5px;
@@ -1688,7 +1660,7 @@
     font-size: 10.5px;
   }
 
-  /* Geofence Radar */
+  
   .geofence-radar-canvas {
     height: 180px;
   }
@@ -1703,7 +1675,7 @@
     height: 100px;
   }
 
-  /* Modals */
+  
   .modal-overlay {
     padding: 0;
     align-items: flex-end;
@@ -1718,7 +1690,7 @@
     overflow-y: auto;
   }
 
-  /* Responsive Tasks Modal Split */
+  
   .tasks-modal-split {
     flex-direction: column;
     overflow-y: auto;
@@ -1745,7 +1717,7 @@
     grid-template-columns: 1fr;
   }
 
-  /* Responsive Saved Locations Split */
+  
   .saved-locations-split {
     display: flex !important;
     flex-direction: column !important;
@@ -1786,7 +1758,7 @@
     padding: 10px 14px;
   }
 
-  /* Salesman Mobile View */
+  
   .salesman-mobile-view-container {
     padding: 0;
   }
@@ -1800,7 +1772,6 @@
   }
 }
 
-/* --- Extra Small: ≤400px --- */
 @media (max-width: 400px) {
   .metric-tiles-strip {
     grid-template-columns: 1fr;
@@ -1820,9 +1791,6 @@
   }
 }
 
-/* ==============================================================================
-   Enterprise Login Screen Styles
-   ============================================================================== */
 .login-screen-wrapper {
   min-height: 100vh;
   min-height: 100dvh;
@@ -2189,7 +2157,6 @@
   }
 }
 
-/* 3D Google Maps Pin & Ground Pulse Animation */
 @keyframes pinPulse {
   0% {
     transform: translateX(-50%) scale(0.6);
@@ -2214,7 +2181,6 @@
   border: none !important;
 }
 
-/* WhatsApp-style Unread Location Notification Badge */
 @keyframes whatsappBadgePulse {
   0% {
     transform: scale(1);
@@ -2256,7 +2222,6 @@
   background: #FFFFFF;
 }
 
-/* High-performance Leaflet GPU Acceleration & Anti-Stutter */
 .leaflet-container {
   font-family: inherit;
   transform: translateZ(0);
@@ -2279,7 +2244,6 @@
   will-change: transform;
 }
 
-/* Responsive Map Location Picker Modal for Mobile & Small Tablets */
 .map-picker-modal-box {
   width: 92vw !important;
   max-width: 1080px !important;
@@ -2363,7 +2327,6 @@
   height: 100% !important;
 }
 
-/* Zone Map Container in Tasks View */
 .tasks-zone-map-wrapper {
   width: 100%;
   height: 500px;
@@ -2381,7 +2344,6 @@
   }
 }
 
-/* Responsive Territory Geofences & Tasks Explorer Grid */
 .tasks-geofence-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr);
@@ -2413,8 +2375,6 @@
   }
 }
 
-
-/* Tasks Action Bar Responsive Wrap */
 .tasks-header-actions-row {
   display: flex;
   gap: 8px;
@@ -2432,7 +2392,6 @@
   }
 }
 
-/* Floating AHTRI AI Copilot FAB (Circle Option Type) */
 @keyframes aiFabTooltipIn {
   from {
     opacity: 0;
@@ -2481,7 +2440,6 @@
   box-shadow: 0 12px 28px rgba(26, 60, 110, 0.45);
 }
 
-/* Dashboard Timeframe & Report Scope Filter */
 .dashboard-timeframe-strip {
   display: flex;
   justify-content: space-between;
@@ -2594,15 +2552,15 @@
 
 @media (max-width: 768px) {
   .floating-ai-fab {
-    display: none !important; /* Replaced by first-class AI Command Hub tab */
+    display: none !important; 
   }
 
-  /* CRITICAL: Hide persistent sidebar on phone view completely to give 100% canvas width */
+  
   .enterprise-sidebar {
     display: none !important;
   }
 
-  /* When mobile drawer is toggled open, slide in as a full drawer over the content */
+  
   .enterprise-sidebar.mobile-open {
     display: flex !important;
     position: fixed !important;
@@ -2652,7 +2610,7 @@
     }
   }
 
-  /* Dark Backdrop for Mobile Sidebar Drawer */
+  
   .sidebar-mobile-backdrop {
     display: block !important;
     position: fixed !important;
@@ -2687,7 +2645,7 @@
     border-color: #FCA5A5;
   }
 
-  /* Mobile Enterprise TopBar */
+  
   .enterprise-navbar {
     height: 52px !important;
     min-height: 52px !important;
@@ -2728,7 +2686,7 @@
     flex-shrink: 0 !important;
   }
 
-  /* Mobile SubNav Bar & Horizontal Scrollable Tabs */
+  
   .subnav-bar {
     height: auto !important;
     min-height: 44px;
@@ -2766,12 +2724,12 @@
     display: none !important;
   }
 
-  /* Mobile Canvas */
+  
   .workspace-canvas {
     padding: 12px 10px 90px 10px !important;
   }
 
-  /* Metric Strips */
+  
   .metric-tiles-strip {
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
@@ -2787,7 +2745,7 @@
     font-size: 10px !important;
   }
 
-  /* Responsive Grid Adjustments */
+  
   .responsive-grid-2col,
   .responsive-grid-3col,
   .responsive-grid-4col {
@@ -2795,7 +2753,7 @@
     gap: 10px !important;
   }
 
-  /* Responsive Tables */
+  
   .table-responsive-container {
     width: 100%;
     overflow-x: auto;
@@ -2803,7 +2761,7 @@
     border-radius: 8px;
   }
 
-  /* Mobile Dashboard Timeframe Filter Strip (Perfect Phone Screen Fit) */
+  
   .dashboard-timeframe-strip {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -2868,7 +2826,6 @@
   }
 }
 
-/* AI Aura Command Hub - Responsive Layout System */
 .ai-aura-container {
   display: flex;
   flex-direction: column;
@@ -3004,7 +2961,7 @@
     font-size: 11px !important;
   }
 
-  /* CRITICAL: On phone view, prompt track is a single sleek horizontal swipe track, NEVER stacking into 8 vertical lines */
+  
   .ai-aura-prompt-track {
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
@@ -3046,5 +3003,4 @@
     font-size: 11px !important;
   }
 }
-
 

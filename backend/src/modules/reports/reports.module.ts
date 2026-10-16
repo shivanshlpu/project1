@@ -106,7 +106,7 @@ export class ReportsService {
     for (const row of data) {
       const values = headers.map((header) => {
         let val = row[header] !== undefined ? String(row[header]) : '';
-        // Mitigate CSV / Formula Injection (CWE-1236)
+        
         if (/^[=+\-@\t\r]/.test(val)) {
           val = `'${val}`;
         }

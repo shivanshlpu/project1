@@ -61,7 +61,7 @@ export class AuditInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const method = req.method;
 
-    // Only audit mutation operations (POST, PUT, PATCH, DELETE)
+    
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       return next.handle().pipe(
         tap((resBody) => {

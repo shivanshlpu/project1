@@ -12,14 +12,14 @@ export const HeadsUpNotificationBanner: React.FC<{
   useEffect(() => {
     const unsubscribe = NotificationService.subscribe((alert) => {
       setActiveAlert(alert);
-      // Slide in
+      
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
         friction: 7,
       }).start();
 
-      // Auto dismiss after 5.5s
+      
       const timer = setTimeout(() => {
         Animated.timing(slideAnim, {
           toValue: -120,
@@ -57,7 +57,7 @@ export const HeadsUpNotificationBanner: React.FC<{
     } else if (activeAlert.type === 'TASK' && onPressTask) {
       onPressTask(activeAlert.id);
     }
-    // Dismiss
+    
     Animated.timing(slideAnim, {
       toValue: -120,
       duration: 200,

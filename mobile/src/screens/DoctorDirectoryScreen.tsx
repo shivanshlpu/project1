@@ -51,11 +51,11 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Map Picker State
+  
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [targetDoctorForMap, setTargetDoctorForMap] = useState<Doctor | null>(null);
 
-  // Fetch doctors from backend
+  
   const loadDoctors = async () => {
     setIsLoading(true);
     try {
@@ -79,7 +79,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     loadDoctors();
   }, []);
 
-  // Filtered doctors list
+  
   const filteredDoctors = doctors.filter((doc) => {
     const matchesAssigned =
       filterMode === 'assigned' ? doc.assigned_mr_id === currentUser.id : true;
@@ -99,19 +99,19 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     (d) => d.assigned_mr_id === currentUser.id && d.latitude && d.longitude,
   ).length;
 
-  // Open Interactive Map for a specific doctor
+  
   const handleOpenDoctorMap = (doc: Doctor) => {
     setTargetDoctorForMap(doc);
     setIsMapPickerOpen(true);
   };
 
-  // Open Interactive Map to Add New Doctor / Facility
+  
   const handleAddNewPlace = () => {
     setTargetDoctorForMap(null);
     setIsMapPickerOpen(true);
   };
 
-  // Save location from Interactive Map Picker
+  
   const handleSaveLocationFromMap = async (data: {
     name: string;
     doctor_name?: string;
@@ -127,7 +127,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     const headers = await ApiConfig.getAuthHeaders();
 
     if (targetDoctorForMap) {
-      // 1. Updating Existing Doctor
+      
       const docId = targetDoctorForMap.id;
       setDoctors((prev) =>
         prev.map((d) =>
@@ -147,7 +147,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       );
 
       try {
-        // Update Doctor
+        
         await fetch(`${baseUrl}/doctors/${docId}`, {
           method: 'PATCH',
           headers,
@@ -161,7 +161,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           }),
         });
 
-        // Register Location in Locations table
+        
         await fetch(`${baseUrl}/locations`, {
           method: 'POST',
           headers,
@@ -186,7 +186,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         `Successfully marked exact coordinates (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) for ${targetDoctorForMap.name} at ${data.name}.`,
       );
     } else {
-      // 2. Creating New Doctor & Facility Discovery
+      
       const newDocId = `doc-mr-${Date.now().toString().slice(-4)}`;
       const newDoc: Doctor = {
         id: newDocId,
@@ -255,7 +255,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     }
   };
 
-  // If map picker is open, render full-viewport interactive map picker
+  
   if (isMapPickerOpen) {
     return (
       <InteractiveMapPicker

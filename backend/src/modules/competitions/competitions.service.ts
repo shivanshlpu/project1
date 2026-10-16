@@ -25,7 +25,7 @@ export class CompetitionsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  // === 1. CREATE & MANAGE COMPETITION (ADMIN) ===
+  
   async createCompetition(dto: CreateCompetitionDto): Promise<Competition> {
     const hq = this.db.headquarters.find((h) => h.id === dto.hq_id);
     if (!hq) throw new NotFoundException('Headquarter not found');

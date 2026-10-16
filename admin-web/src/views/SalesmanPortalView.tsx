@@ -32,7 +32,7 @@ import { resilientFetch } from '../utils/apiHelper';
 import { showConfirmModal } from '../components/CenteredModalNotice';
 
 export const SalesmanPortalView: React.FC = () => {
-  // Persistent MR Session State (never logs out unless explicitly requested)
+  
   const [salesmanUser, setSalesmanUser] = useState<{
     id: string;
     name: string;
@@ -60,7 +60,7 @@ export const SalesmanPortalView: React.FC = () => {
     };
   });
 
-  // Login & Device OTP Challenge Simulation State
+  
   const [simIdentifier, setSimIdentifier] = useState('aman@ahtri.com');
   const [simPassword, setSimPassword] = useState('AmanRathoreSHD');
   const [isSimulatingOtherPhone, setIsSimulatingOtherPhone] = useState(false);
@@ -75,14 +75,14 @@ export const SalesmanPortalView: React.FC = () => {
   const [pendingDrafts, setPendingDrafts] = useState<number>(1);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Live Geofence Parameters for Salesman
-  const [currentDistance, setCurrentDistance] = useState<number>(12.4); // 12.4m on-site
-  const [gpsAccuracy, setGpsAccuracy] = useState<number>(9.5); // ±9.5m accuracy
+  
+  const [currentDistance, setCurrentDistance] = useState<number>(12.4); 
+  const [gpsAccuracy, setGpsAccuracy] = useState<number>(9.5); 
   const [callState, setCallState] = useState<'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED'>('ASSIGNED');
   const [assignedCalls, setAssignedCalls] = useState<any[]>([]);
   const [activeCallId, setActiveCallId] = useState<string>('');
 
-  // Fetch Assigned Calls from Backend Server
+  
   const fetchSalesmanCalls = async () => {
     if (!salesmanUser?.id) return;
     try {
@@ -110,16 +110,16 @@ export const SalesmanPortalView: React.FC = () => {
     return () => clearInterval(interval);
   }, [salesmanUser?.id]);
 
-  // Detailing State
+  
   const [sampleUnits, setSampleUnits] = useState<number>(5);
   const [doctorFeedback, setDoctorFeedback] = useState<string>('Reviewed clinical trial data for AHTRI-S. Prescribed for 12 patients.');
   const [signatureCaptured, setSignatureCaptured] = useState<boolean>(false);
 
-  // Expense State
+  
   const [expenseCategory, setExpenseCategory] = useState<'CONVEYANCE' | 'TA_DA' | 'FOOD'>('CONVEYANCE');
   const [expenseAmount, setExpenseAmount] = useState<string>('380');
 
-  // Attendance State
+  
   const [checkedIn, setCheckedIn] = useState<boolean>(true);
   const [checkedOut, setCheckedOut] = useState<boolean>(false);
 

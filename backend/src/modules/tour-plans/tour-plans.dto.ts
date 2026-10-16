@@ -11,7 +11,7 @@ import { Type } from 'class-transformer';
 export class MonthlyTpItemDto {
   @IsString()
   @IsNotEmpty()
-  date: string; // YYYY-MM-DD
+  date: string; 
 
   @IsString()
   @IsNotEmpty()
@@ -41,7 +41,7 @@ export class MonthlyTpItemDto {
   @IsOptional()
   planned_activity?: string;
 
-  // Predefined Route Batch & Reimbursement Integration
+  
   @IsString()
   @IsOptional()
   route_batch_id?: string;
@@ -92,7 +92,7 @@ export class MonthlyTpItemDto {
 export class SubmitMonthlyTpDto {
   @IsString()
   @IsNotEmpty()
-  month: string; // YYYY-MM
+  month: string; 
 
   @IsArray()
   @ValidateNested({ each: true })

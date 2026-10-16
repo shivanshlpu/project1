@@ -130,7 +130,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Dedicated Secure Password Reset State (Plaintext passwords never displayed or saved locally)
+  
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [resettingMember, setResettingMember] = useState<MRMemberItem | null>(null);
   const [newResetPassword, setNewResetPassword] = useState('');
@@ -179,7 +179,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     }
   };
 
-  // Direct Leave Grant Modal State
+  
   const [isGrantLeaveModalOpen, setIsGrantLeaveModalOpen] = useState(false);
   const [grantCategory, setGrantCategory] = useState<'CASUAL' | 'SICK' | 'EARNED'>('CASUAL');
   const [grantStartDate, setGrantStartDate] = useState(() => {
@@ -195,7 +195,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [grantReason, setGrantReason] = useState('Authorized Leave approved by Owner');
   const [isGrantingLeave, setIsGrantingLeave] = useState(false);
 
-  // Edit Member Modal State
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MRMemberItem | null>(null);
   const [editName, setEditName] = useState('');
@@ -210,11 +210,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [editPassword, setEditPassword] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-  // Tasks & Locations (Seed Delhi tasks removed, uses authentic stored locations)
+  
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [locations, setLocations] = useState<DoctorItem[]>(getStoredSavedLocations);
 
-  // Helper to load persistent leave quota from localStorage
+  
   const getCachedQuota = (memberId: string): LeaveQuotaData | null => {
     try {
       const raw = localStorage.getItem(`ahtri_quota_${memberId}`);
@@ -228,7 +228,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     return null;
   };
 
-  // Leave Quota State for Selected Member (persisted across reloads)
+  
   const [leaveQuota, setLeaveQuota] = useState<LeaveQuotaData>(() => {
     const cached = getCachedQuota('usr-admin-01');
     if (cached) return cached;
@@ -356,7 +356,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         localStorage.setItem('ahtri_cached_members', JSON.stringify(updatedMembers));
       } catch {}
 
-      // If updating the admin or current logged in user, keep session storage in sync
+      
       const currentAuthUser = localStorage.getItem('ahtri_user');
       let parsedUser: any = null;
       try {
@@ -421,7 +421,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     }
   };
 
-  // Fetch Users, Tasks, and Locations
+  
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -463,11 +463,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     fetchData();
   }, []);
 
-  // Fetch Leave Quota for selected member (loads instantly from localStorage, then verifies with backend)
+  
   useEffect(() => {
     if (!selectedMemberId) return;
 
-    // 1. Immediately apply cached quota if available
+    
     const cached = getCachedQuota(selectedMemberId);
     if (cached) {
       setLeaveQuota(cached);
@@ -476,7 +476,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       setEarnedInput(cached.earned.total);
     }
 
-    // 2. Fetch latest authoritative quota from backend
+    
     const fetchQuota = async () => {
       try {
         const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -502,12 +502,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     fetchQuota();
   }, [selectedMemberId]);
 
-  // Update Leave Quota in Backend & Persistent Cache
+  
   const handleSaveQuota = async () => {
     setIsSavingQuota(true);
     const memberName = selectedMember?.name || 'Selected Employee';
 
-    // Calculate current values
+    
     const cTotal = Math.max(0, Number(casualInput));
     const sTotal = Math.max(0, Number(sickInput));
     const eTotal = Math.max(0, Number(earnedInput));
@@ -530,7 +530,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       updated_at: new Date().toISOString(),
     };
 
-    // Update state & localStorage immediately so reload NEVER loses data
+    
     setLeaveQuota(updatedQuotaObj);
     localStorage.setItem(`ahtri_quota_${selectedMemberId}`, JSON.stringify(updatedQuotaObj));
 
@@ -570,7 +570,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     }
   };
 
-  // Grant Leave directly to MR
+  
   const handleExecuteGrantLeave = async () => {
     const start = new Date(grantStartDate);
     const end = new Date(grantEndDate);
@@ -595,7 +595,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         }),
       });
 
-      // Update local quota immediately and persist to cache
+      
       setLeaveQuota((prev) => {
         const key = grantCategory === 'CASUAL' ? 'casual' : grantCategory === 'SICK' ? 'sick' : 'earned';
         const newUsed = (prev[key]?.used || 0) + days;
@@ -614,7 +614,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         return updated;
       });
 
-      // Fetch authoritative quota calculation from server
+      
       try {
         const qRes = await resilientFetch(`/leave/quota?mr_id=${selectedMemberId}`);
         if (qRes.ok) {
@@ -634,7 +634,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     }
   };
 
-  // Reset Device Lock
+  
   const handleResetDevice = async (id: string, name: string) => {
     const ok = await showConfirmModal({
       title: 'Reset Device Lock',
@@ -658,7 +658,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     showToast(`Device binding cleared for ${name}.`);
   };
 
-  // Copy Account Information (Strictly no plaintext passwords)
+  
   const handleCopyCredentials = (member: MRMemberItem) => {
     const hqCode = member.hq_code || (member.name.includes('Kotma') || member.name.includes('Amar') ? 'KOT' : member.name.includes('Ashish') || member.name.includes('Ambikapur') ? 'AMB' : 'SHD');
     const hqName = member.hq_name || (hqCode === 'KOT' ? 'Kotma' : hqCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
@@ -681,7 +681,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
     showToast(`✓ Account details copied for ${member.name}`);
   };
 
-  // Filtered tasks for current selected MR
+  
   const memberTasks = selectedMember
     ? tasks.filter(
         (t) =>
@@ -701,7 +701,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
     return acc + calculateOrderRevenue(t.orders);
   }, 0);
 
-  // Filtered locations marked by current MR
+  
   const memberLocations = selectedMember
     ? locations.filter(
         (loc) =>
@@ -710,7 +710,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
       )
     : [];
 
-  // Scalable Employee Filtering & Pagination for 10,000+ Scale
+  
   const filteredMembers = members.filter((m) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;

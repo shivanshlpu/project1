@@ -58,7 +58,6 @@ declare global {
   }
 }
 
-// Distance helper between two geographic coordinates
 function getDistanceFromLatLngInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return calculateDistanceKm(lat1, lon1, lat2, lon2);
 }
@@ -82,18 +81,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
 }) => {
   const t = translations[lang];
 
-  // Pre-saved Doctor & Location Presets (Derived dynamically from authentic saved locations)
+  
   const doctorPresets: any[] = [];
 
-  // Available Products for Detailing Focus (Only in-stock products with quantity > 0 in store)
+  
   const [inStockProducts, setInStockProducts] = useState<InStockProduct[]>(getStoredInStockProducts);
 
-  // Tasks State - Initialized empty without dummy seed data
+  
   const [tasks, setTasks] = useState<TaskItem[]>([]);
 
   const [verificationLogs] = useState<VerificationLogItem[]>([]);
 
-  // Registered Medical Representatives with Territories (dynamically loaded from backend)
+  
   const [mrList, setMrList] = useState<Array<{ id: string; name: string; territory: string }>>([]);
 
   useEffect(() => {
@@ -127,7 +126,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(Boolean(prefilledLocation));
 
-  // Form State
+  
   const [locationMode, setLocationMode] = useState<'saved' | 'custom'>('saved');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('custom');
   const [taskTitle, setTaskTitle] = useState('');
@@ -158,7 +157,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   });
   const [taskDescription, setTaskDescription] = useState('');
 
-  // Edit Assigned Task State
+  
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('usr-mr-02');
@@ -171,7 +170,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [editTaskStatus, setEditTaskStatus] = useState<TaskItem['status']>('ASSIGNED');
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
 
-  // Live Sync In-Stock Products with Store Inventory
+  
   useEffect(() => {
     syncInStockProductsWithBackend().then((items) => {
       if (items && items.length > 0) {
@@ -240,7 +239,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setTimeout(() => setToastNotification(null), 5000);
   };
 
-  // Live Auto-Fetch and Overdue Check from Backend
+  
   const fetchBackendTasks = async () => {
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -281,9 +280,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
   }, []);
 
-  // -------------------------------------------------------------
-  // ZONE BY ZONE OPERATIONAL MAP & SAVED LOCATIONS DASHBOARD
-  // -------------------------------------------------------------
+  
+  
+  
   const [dashboardView, setDashboardView] = useState<'zone_map' | 'cards'>('zone_map');
   const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [zoneMapMode, setZoneMapMode] = useState<'street' | 'satellite'>('street');
@@ -300,7 +299,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     return op[0]?.id || 'zone-hq-shahdol';
   });
 
-  // Dynamically re-read zones whenever Headquarters or covered regions are updated in Settings
+  
   useEffect(() => {
     const handleHqUpdate = () => {
       setZones(getOperatingZones());
@@ -313,11 +312,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
   }, []);
 
-  // Modal Map Leaflet Refs
+  
   const modalSavedLocationsLayerRef = useRef<L.LayerGroup | null>(null);
   const modalZoneCircleRef = useRef<L.Circle | null>(null);
 
-  // Zone Map Leaflet Refs
+  
   const zoneMapContainerRef = useRef<HTMLDivElement>(null);
   const zoneMapInstanceRef = useRef<L.Map | null>(null);
   const zoneTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -326,7 +325,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const lastZoneDataSigRef = useRef<string>('');
   const isUserInteractingRef = useRef<boolean>(false);
 
-  // Auto-sync locations across all maps, views and backend
+  
   useEffect(() => {
     const handleLocUpdate = (e: any) => {
       if (e.detail && Array.isArray(e.detail)) {
@@ -340,7 +339,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     return () => window.removeEventListener('ahtri_locations_updated', handleLocUpdate);
   }, []);
 
-  // Compute locations inside a zone
+  
   const getLocationsInZone = (zone: TerritoryZone) => {
     return savedLocations.filter((loc) => {
       const dist = getDistanceFromLatLngInKm(zone.latitude, zone.longitude, loc.latitude, loc.longitude);
@@ -356,7 +355,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Compute tasks assigned inside a zone
+  
   const getTasksInZone = (zone: TerritoryZone) => {
     return tasks.filter((t) => {
       const dist = getDistanceFromLatLngInKm(zone.latitude, zone.longitude, t.latitude, t.longitude);
@@ -372,7 +371,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Switch Active Zone
+  
   const handleSelectZone = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     if (!zoneMapInstanceRef.current) return;
@@ -386,7 +385,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Open create task modal cleanly with preset or custom mode
+  
   const handleOpenCreateModal = (mode: 'saved' | 'custom' = 'saved') => {
     setLocationMode(mode);
     const activeZone = zones.find((z) => z.id === modalSelectedZoneId) || zones[0];
@@ -418,7 +417,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setIsCreateModalOpen(true);
   };
 
-
   const toggleZoneMapInteraction = () => {
     if (!zoneMapInstanceRef.current) return;
     if (isZoneMapInteracting) {
@@ -430,7 +428,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Initialize Zone Overview Map with Hardware Canvas Acceleration & Multi-CDN Fallback
+  
   useEffect(() => {
     if (dashboardView !== 'zone_map' || !zoneMapContainerRef.current) return;
 
@@ -442,7 +440,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       }).setView([23.2953, 81.3586], 8.5);
       zoneMapInstanceRef.current = map;
 
-      // Position zoom controls in bottom-right to avoid overlapping top controls
+      
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       map.on('movestart', () => {
@@ -473,14 +471,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setTimeout(() => zoneMapInstanceRef.current?.invalidateSize(), 500);
   }, [dashboardView]);
 
-  // Update Zone Map Mode (Street / Satellite) with Resilient Layer
+  
   useEffect(() => {
     if (!zoneMapInstanceRef.current || !zoneTileLayerRef.current) return;
     zoneMapInstanceRef.current.removeLayer(zoneTileLayerRef.current);
     zoneTileLayerRef.current = createResilientTileLayer(zoneMapMode).addTo(zoneMapInstanceRef.current);
   }, [zoneMapMode]);
 
-  // Re-render Zone Map Entities with Intelligent Anti-Jank Diffing
+  
   useEffect(() => {
     if (dashboardView === 'zone_map') {
       const currentSig = `${selectedZoneId}_${savedLocations.length}_${tasks.map((t) => `${t.id}:${t.status}:${t.date}`).join('|')}_${zones.length}`;
@@ -491,13 +489,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   }, [selectedZoneId, savedLocations, tasks, zones]);
 
-  // Render Saved Points of Care (Clean view without dashed circles, TASK badges, or black box markers)
+  
   const renderZoneMapEntities = () => {
     if (!zoneCirclesGroupRef.current || !zoneMarkersGroupRef.current || !zoneMapInstanceRef.current) return;
     zoneCirclesGroupRef.current.clearLayers();
     zoneMarkersGroupRef.current.clearLayers();
 
-    // 2. Render Saved Locations inside selected/all zones
+    
     const activeZone = zones.find((z) => z.id === selectedZoneId);
     const visibleLocations = selectedZoneId === 'all' ? savedLocations : activeZone ? getLocationsInZone(activeZone) : savedLocations;
 
@@ -530,7 +528,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Embedded Map State inside the Modal
+  
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -555,7 +553,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   };
   const [isSearchingMap, setIsSearchingMap] = useState(false);
 
-  // Listen for prefilled location changes
+  
   useEffect(() => {
     if (prefilledLocation) {
       setLocationMode('custom');
@@ -571,7 +569,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   }, [prefilledLocation]);
 
-  // Render all saved points of care as clickable 3D map pins inside Assign Modal Map
+  
   const renderModalSavedLocations = (map: L.Map) => {
     if (!modalSavedLocationsLayerRef.current) return;
     modalSavedLocationsLayerRef.current.clearLayers();
@@ -615,7 +613,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Helper to select a saved location preset
+  
   const handleSelectSavedLocationPreset = (locId: string) => {
     setLocationMode('saved');
     setSelectedPresetId(`saved-${locId}`);
@@ -629,7 +627,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       setTaskRadius(loc.geofence_radius_m || 50);
       setTaskTitle(`Detailing Call at ${loc.clinic || loc.name}`);
 
-      // Auto match zone
+      
       const matchedZone = zones.find((z) => {
         const dist = calculateDistanceKm(z.latitude, z.longitude, loc.latitude, loc.longitude);
         return dist <= z.radiusKm * 1.5;
@@ -653,7 +651,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Helper to change operational territory zone in modal
+  
   const handleSelectModalZone = (zoneId: string) => {
     setModalSelectedZoneId(zoneId);
     const zone = zones.find((z) => z.id === zoneId);
@@ -668,7 +666,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       mapInstanceRef.current.flyTo([zone.latitude, zone.longitude], 14, { duration: 1.0 });
     }
 
-    // Only auto-pick saved customer preset if currently in 'saved' mode
+    
     if (locationMode === 'saved') {
       const inZone = savedLocations.filter((l) => {
         const dist = calculateDistanceKm(zone.latitude, zone.longitude, l.latitude, l.longitude);
@@ -681,7 +679,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Global handler for Leaflet popup "Use This Saved Location" button
+  
   useEffect(() => {
     window.__selectModalLocation = (locId: string) => {
       setLocationMode('saved');
@@ -692,7 +690,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
   }, [savedLocations, zones]);
 
-  // Initialize Embedded Map when Create Modal is open
+  
   useEffect(() => {
     if (!isCreateModalOpen || !mapContainerRef.current) return;
 
@@ -710,10 +708,10 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
-      // Group for all saved locations
+      
       modalSavedLocationsLayerRef.current = L.layerGroup().addTo(map);
 
-      // Render all saved points of care as 3D pins
+      
       renderModalSavedLocations(map);
 
       const customIcon = L.divIcon({
@@ -740,13 +738,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
       }).addTo(map);
       circleRef.current = circle;
 
-      // Click anywhere to place marker or snap to saved point of care
+      
       map.on('click', (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
         updateLocationFromMap(lat, lng);
       });
 
-      // Drag marker
+      
       marker.on('dragend', () => {
         const pos = marker.getLatLng();
         updateLocationFromMap(pos.lat, pos.lng);
@@ -767,34 +765,34 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
   }, [isCreateModalOpen]);
 
-  // Re-render saved locations when locations change while modal is open
+  
   useEffect(() => {
     if (isCreateModalOpen && mapInstanceRef.current) {
       renderModalSavedLocations(mapInstanceRef.current);
     }
   }, [savedLocations, matchedSavedLocation, isCreateModalOpen]);
 
-  // Update map tile layer when switching Satellite vs Street mode
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Update circle radius on slider change
+  
   useEffect(() => {
     if (circleRef.current) {
       circleRef.current.setRadius(taskRadius);
     }
   }, [taskRadius]);
 
-  // Update coordinates and reverse geocode when clicking/dragging map
+  
   const updateLocationFromMap = async (lat: number, lng: number, nameHint?: string) => {
-    // Only snap to saved customer if in SAVED mode
+    
     if (locationMode === 'saved') {
       const nearbySaved = savedLocations.find((l) => {
         const dist = calculateDistanceKm(lat, lng, l.latitude, l.longitude);
-        return dist <= 0.08; // 80 meters
+        return dist <= 0.08; 
       });
 
       if (nearbySaved) {
@@ -804,7 +802,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       }
     }
 
-    // Custom Mode (or no saved point nearby): update custom coordinates directly without snapping
+    
     setMatchedSavedLocation(null);
     setTaskLat(lat);
     setTaskLng(lng);
@@ -841,7 +839,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Search Address / Clinic on map
+  
   const handleSearchOnMap = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchMapQuery.trim()) return;
@@ -895,7 +893,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     );
   };
 
-  // Preset or custom selection
+  
   const handleSelectPreset = (presetId: string) => {
     if (presetId === 'custom') {
       setLocationMode('custom');
@@ -940,7 +938,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Toggle product chip
+  
   const toggleProduct = (prod: string) => {
     if (selectedProducts.includes(prod)) {
       setSelectedProducts(selectedProducts.filter((p) => p !== prod));
@@ -949,7 +947,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Create Task on Backend with full resilience so no 401 ever blocks the manager
+  
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim() || !assignedMrId) {
@@ -992,7 +990,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
         showToast(`Task assigned to ${assignedMr} (${formatDateDDMMYYYY(taskDate)} • ${taskTime} ${selectedTimeZone === 'Asia/Kolkata' ? 'IST' : selectedTimeZone}).`, 'success');
       } else {
-        // Graceful fallback on 401 or backend validation error
+        
         console.warn('Backend rejected task assignment, saving locally:', res.status);
         const newTask: TaskItem = {
           id: `task-${Date.now().toString().slice(-4)}`,
@@ -1044,7 +1042,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Owner Action: Unsuspend Task
+  
   const handleUnsuspendTask = async (taskId: string, currentTaskTitle: string, mrName: string) => {
     setUnsuspendingId(taskId);
     try {
@@ -1069,7 +1067,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       }
     } catch (err) {
       console.error('Error unsuspending task:', err);
-      // Fallback local update
+      
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
@@ -1083,7 +1081,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Owner Action: Bulk Unsuspend All Overdue Tasks
+  
   const handleUnsuspendAllTasks = async () => {
     const suspendedList = tasks.filter((t) => t.status === 'SUSPENDED');
     if (suspendedList.length === 0) return;
@@ -1100,7 +1098,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
   };
 
-  // Owner Action: Delete Individual Task
+  
   const handleDeleteTask = async (taskId: string, title: string) => {
     showCenteredNotice({
       title: 'Delete Task',
@@ -1109,12 +1107,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
       confirmText: 'Delete Task',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        // 1. Immediately persist locally
+        
         markTaskAsDeleted(taskId);
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
 
-        // 2. Resilient multi-method backend deletion
+        
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -1122,11 +1120,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           };
-          // Method A: DELETE
+          
           await fetch(`${apiUrl}/tasks/${taskId}`, { method: 'DELETE', headers: hdrs }).catch(() => null);
-          // Method B: POST :id/delete
+          
           await fetch(`${apiUrl}/tasks/${taskId}/delete`, { method: 'POST', headers: hdrs }).catch(() => null);
-          // Method C: Fallback PATCH status: CANCELLED
+          
           await fetch(`${apiUrl}/tasks/${taskId}`, {
             method: 'PATCH',
             headers: hdrs,
@@ -1143,7 +1141,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Owner Action: Clear All Tasks Data
+  
   const handleClearAllTasks = async () => {
     const idsToClear = tasks.map((t) => t.id);
     showCenteredNotice({
@@ -1153,12 +1151,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
       confirmText: 'Delete All Tasks',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        // 1. Immediately persist locally
+        
         markTaskAsDeleted(idsToClear);
         setTasks([]);
         window.dispatchEvent(new Event('ahtri_approvals_updated'));
 
-        // 2. Resilient backend deletion
+        
         try {
           const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -1166,11 +1164,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           };
-          // Method A: DELETE /tasks
+          
           await fetch(`${apiUrl}/tasks`, { method: 'DELETE', headers: hdrs }).catch(() => null);
-          // Method B: POST /tasks/clear-all
+          
           await fetch(`${apiUrl}/tasks/clear-all`, { method: 'POST', headers: hdrs }).catch(() => null);
-          // Method C: Fallback cancel each
+          
           for (const id of idsToClear) {
             fetch(`${apiUrl}/tasks/${id}`, {
               method: 'PATCH',
@@ -1189,7 +1187,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  // Owner Action: Open Edit Task Modal
+  
   const handleOpenEditTask = (task: TaskItem) => {
     setEditingTask(task);
     setEditTaskTitle(task.title || '');
@@ -1203,7 +1201,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setEditTaskStatus(task.status || 'ASSIGNED');
   };
 
-  // Owner Action: Save Edited Task
+  
   const handleSaveEditedTask = async () => {
     if (!editingTask) return;
     if (!editTaskTitle.trim()) {
@@ -1236,7 +1234,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         status: editTaskStatus,
       };
 
-      // Try PATCH first, fallback to POST /update
+      
       const res = await fetch(`${apiUrl}/tasks/${editingTask.id}`, {
         method: 'PATCH',
         headers,
@@ -1290,7 +1288,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   };
 
   const filteredTasks = tasks.filter((t) => {
-    // Suspended tasks are strictly routed to Approval Hub per requirements
+    
     if (t.status === 'SUSPENDED') return false;
     const matchesMr = filterMr === 'ALL' || t.assigned_mr_name === filterMr;
     const matchesStatus = filterStatus === 'ALL' || t.status === filterStatus;

@@ -21,7 +21,7 @@ import { RouteBatch } from '../../database/database.types';
 export class TerritoriesService {
   constructor(private readonly db: DatabaseService) {}
 
-  // Zones
+  
   async getZones() {
     return this.db.zones;
   }

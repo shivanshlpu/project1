@@ -13,7 +13,7 @@ export function getDeletedTaskIds(): Set<string> {
     const raw = localStorage.getItem(DELETED_TASKS_KEY);
     const parsed: string[] = raw ? JSON.parse(raw) : [];
     const set = new Set<string>(parsed);
-    // Legacy dummy tasks should never be displayed
+    
     LEGACY_DUMMY_IDS.forEach((id) => set.add(id));
     return set;
   } catch {

@@ -38,12 +38,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Real Hardware Fingerprint of the running phone
+  
   const [currentDeviceId, setCurrentDeviceId] = useState('dev-hw-s22-9f8a2c');
   const [currentDeviceModel, setCurrentDeviceModel] = useState('Samsung Galaxy S22 (SM-S901B)');
   const [isSimulatingOtherDevice, setIsSimulatingOtherDevice] = useState(false);
 
-  // OTP Verification Flow State
+  
   const [step, setStep] = useState<'credentials' | 'otp_verify'>('credentials');
   const [deviceAuthRequestId, setDeviceAuthRequestId] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -51,7 +51,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Automatically detect physical device hardware on mount
+    
     DeviceBindingService.getDeviceProfile().then((profile) => {
       if (profile.deviceId) {
         setCurrentDeviceId(profile.deviceId);
@@ -60,7 +60,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     });
   }, []);
 
-  // Registered MR accounts in the system (Kotma, Shahdol, Ambikapur)
+  
   const registeredMRs: Record<
     string,
     {
@@ -79,7 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       bound_device_model?: string;
     }
   > = {
-    // 1. Amar Dwivedi (Kotma - KOT - HQ-KOT-001)
+    
     'kot': {
       id: 'usr-mr-01',
       name: 'Amar Dwivedi',
@@ -126,7 +126,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
     },
 
-    // 2. Aman Rathore (Shahdol - SHD - HQ-SHD-001)
+    
     'shd': {
       id: 'usr-mr-02',
       name: 'Aman Rathore',
@@ -173,7 +173,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       bound_device_model: 'OnePlus 11 5G (CPH2449)',
     },
 
-    // 3. Ashish Soni (Ambikapur - AMB - HQ-AMB-001)
+    
     'amb': {
       id: 'usr-mr-03',
       name: 'Ashish Soni',
@@ -290,19 +290,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const handleToggleDeviceSimulation = () => {
     if (isSimulatingOtherDevice) {
-      // Revert to designated phone
+      
       setCurrentDeviceId('dev-hw-s22-9f8a2c');
       setCurrentDeviceModel('Samsung Galaxy S22 (SM-S901B)');
       setIsSimulatingOtherDevice(false);
     } else {
-      // Switch to unauthorized device (e.g. friend's phone or secondary device)
+      
       setCurrentDeviceId('dev-hw-unauthorized-x999');
       setCurrentDeviceModel('Redmi Note 12 (UNAUTHORIZED DEVICE)');
       setIsSimulatingOtherDevice(true);
     }
   };
 
-  // Auto-detect if Owner clicked "1-Click Approve" on Web Dashboard
+  
   useEffect(() => {
     if (step !== 'otp_verify' || !deviceAuthRequestId) return;
     const interval = setInterval(async () => {
@@ -315,7 +315,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             (h: any) => h.id === deviceAuthRequestId && h.status === 'APPROVED'
           );
           if (approved) {
-            // Owner approved via web dashboard! Auto-login smoothly!
+            
             await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
             handleLogin(true);
           }
@@ -332,9 +332,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsSubmitting(true);
     setOtpError('');
 
-    // Ensure backwards compatibility with all cloud/live backend versions:
-    // If the input is an HQ code/alias (like 'shd', 'kot', 'amb', 'hq-shd-001'), or if cleanPhone is provided,
-    // resolve to the registered phone number or email which ALL backend versions accept!
+    
+    
+    
     const knownMr = registeredMRs[cleanId] || (cleanPhone ? Object.values(registeredMRs).find((u: any) => u.phone === cleanPhone) : undefined);
     const serverIdentifier = cleanPhone || knownMr?.phone || knownMr?.email || rawId;
 
@@ -361,7 +361,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
       if (res.ok) {
         if (data.requires_device_otp || mustEnforceOtp) {
-          // If server returned request_id:
+          
           let reqId = data.request_id;
           if (!reqId) {
             try {
@@ -388,7 +388,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
         if (data.access_token) {
           await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
-          // Direct login success on recognized device
+          
           onLoginSuccess({
             id: data.user?.id || 'usr-mr-02',
             name: data.user?.name || 'Aman Rathore',
@@ -413,7 +413,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
     } catch {
-      // Network/offline fallback: check local registeredMRs
+      
       const user = registeredMRs[cleanId];
       if (!user || user.password !== password) {
         Alert.alert('Login Failed', 'Invalid credentials. Please contact your manager/owner.');
@@ -421,10 +421,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      // Check if reauth OTP is required or device mismatch
+      
       const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
       if ((requiresReauthOtp === 'true' && !forceBypassReauthCheck) || (user.bound_device_id && user.bound_device_id !== currentDeviceId)) {
-        // Trigger OTP verification flow
+        
         setDeviceAuthRequestId(`req-sim-${Date.now()}`);
         setStep('otp_verify');
         setIsSubmitting(false);
@@ -432,7 +432,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       }
 
       await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
-      // Bound or new pairing
+      
       user.bound_device_id = currentDeviceId;
       user.bound_device_model = currentDeviceModel;
       onLoginSuccess({
@@ -504,7 +504,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Administrator.');
       }
     } catch {
-      // Offline simulation verify
+      
       await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
       Alert.alert('Device Authorized (Offline Mode)', 'Device linked successfully.');
       const fallbackUser = registeredMRs[identifier.trim().toLowerCase()] || registeredMRs['shd'];
@@ -528,11 +528,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleCheckOwnerApprovedDirectly = async () => {
-    // If administrator clicked "Approve" button on their web dashboard, logging in now will succeed
+    
     handleLogin(true);
   };
 
-  // STEP 2: 6-Digit Owner OTP Challenge Screen
+  
   if (step === 'otp_verify') {
     return (
       <ScrollView contentContainerStyle={styles.container}>
@@ -629,10 +629,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     );
   }
 
-  // STEP 1: Standard Credentials Screen
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
-
 
       {/* Brand Header */}
       <View style={styles.brandContainer}>
@@ -651,8 +650,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 12 }}>
           Sign in using your assigned HQ Code, HQ ID, email, or mobile number.
         </Text>
-
-
 
         {/* Identifier */}
         <View style={styles.inputGroup}>

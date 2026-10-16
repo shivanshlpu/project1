@@ -49,7 +49,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   onClearTargetLocation,
   onLocationAcknowledge,
 }) => {
-  // Set of location IDs that the owner has already clicked/viewed
+  
   const [readLocationIds, setReadLocationIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('ahtri_read_locations');
@@ -59,7 +59,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     }
   });
 
-  // Centralized Saved Locations across all territories (Delhi + Shahdol)
+  
   const [locations, setLocations] = useState<DoctorItem[]>(getStoredSavedLocations);
   const [zones, setZones] = useState<TerritoryZone[]>(getOperatingZones);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
@@ -70,13 +70,13 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const [editingLocation, setEditingLocation] = useState<DoctorItem | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DoctorItem | null>(null);
 
-  // Helper to check if a location has a NEW unread mark
+  
   const isLocationUnread = (loc: DoctorItem) => {
     if (readLocationIds.has(loc.id)) return false;
     return Boolean(loc.is_new);
   };
 
-  // Mark a location as read / acknowledged (removes the "NEW" mark immediately)
+  
   const markLocationAsRead = (id: string) => {
     setReadLocationIds((prev) => {
       const next = new Set(prev);
@@ -89,12 +89,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       return next;
     });
 
-    // Remove is_new flag in component state so UI updates instantly
+    
     setLocations((prev) =>
       prev.map((loc) => (loc.id === id ? { ...loc, is_new: false } : loc)),
     );
 
-    // Notify parent to decrement SubNav badge counter
+    
     onLocationAcknowledge?.(id);
 
     const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -105,8 +105,8 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     }).catch(() => {});
   };
 
-  // Central handler for selecting a location (card click or pin click)
-  // Handler to switch zone and pan map to that zone
+  
+  
   const handleSelectZone = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     if (zoneId === 'all') {
@@ -140,7 +140,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     }
   };
 
-  // Live Auto-Fetch Locations from Backend (Without causing map zoom resets)
+  
   const fetchLocations = async () => {
     try {
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -152,7 +152,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         const data: DoctorItem[] = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setLocations((prev) => {
-            // Check if there is an actual difference to avoid continuous re-rendering
+            
             if (prev.length === data.length) {
               const isIdentical = prev.every((p, idx) => {
                 const d = data[idx];
@@ -225,7 +225,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     }
   };
 
-  // Compute locations inside a zone
+  
   const getLocationsInZone = (zone: TerritoryZone) => {
     return locations.filter((loc) => {
       const dist = calculateDistanceKm(zone.latitude, zone.longitude, loc.latitude, loc.longitude);
@@ -258,7 +258,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     return matchesSearch && matchesCat;
   });
 
-  // Initialize interactive overview map with ResizeObserver and multi-phase rendering
+  
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -280,7 +280,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
       markersGroupRef.current = L.layerGroup().addTo(map);
 
-      // Add ResizeObserver to prevent blank white maps on mobile layout reflow
+      
       if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
         const ro = new ResizeObserver(() => {
           mapInstanceRef.current?.invalidateSize();
@@ -289,7 +289,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       }
     }
 
-    // Refresh markers
+    
     if (markersGroupRef.current) {
       markersGroupRef.current.clearLayers();
 
@@ -359,7 +359,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         markersGroupRef.current?.addLayer(marker);
       });
 
-      // Attach click listeners to popup buttons
+      
       mapInstanceRef.current?.off('popupopen');
       mapInstanceRef.current?.on('popupopen', (e) => {
         const container = e.popup.getElement();
@@ -386,7 +386,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     setTimeout(() => mapInstanceRef.current?.invalidateSize(), 80);
     setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
-      // Only fit-all on the very first render to avoid resetting the user's zoom/pan
+      
       if (!initialFitDoneRef.current) {
         fitAllMarkers();
         initialFitDoneRef.current = true;
@@ -395,7 +395,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     setTimeout(() => mapInstanceRef.current?.invalidateSize(), 600);
   }, [locations, selectedCategory, searchQuery, readLocationIds, selectedZoneId]);
 
-  // Auto-focus on targetLocationId if provided from toast notification (RUN ONCE ONLY)
+  
   useEffect(() => {
     if (!targetLocationId || targetLocationId === lastTargetIdRef.current) return;
 
@@ -413,20 +413,20 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     }
   }, [targetLocationId, locations]);
 
-  // Update Tile Layer when satellite / street mode toggles
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Handle editing an existing location
+  
   const handleEditLocation = (loc: DoctorItem) => {
     setEditingLocation(loc);
     setIsPickerOpen(true);
   };
 
-  // Handle deleting a location (also cleans up associated tasks)
+  
   const handleDeleteLocation = (id: string, name: string) => {
     showCenteredNotice({
       title: 'Delete Customer Location',
@@ -447,9 +447,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-          // 1. Delete location
+          
           await fetch(`${apiUrl}/locations/${id}`, { method: 'DELETE', headers });
-          // 2. Delete any matching tasks at this location so they don't remain as orphans
+          
           await fetch(`${apiUrl}/tasks?location=${encodeURIComponent(name)}`, { method: 'DELETE', headers });
           window.dispatchEvent(new Event('ahtri_approvals_updated'));
           fetchLocations();
@@ -466,12 +466,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     });
   };
 
-  // Handle saving new or updated location from modal
+  
   const handleSaveLocation = async (locData: any) => {
     const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
     if (locData.id) {
-      // Update existing location
+      
       const updatedList = locations.map((l) =>
         l.id === locData.id
           ? {
@@ -516,7 +516,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       return;
     }
 
-    // Create new location
+    
     const created: DoctorItem = {
       id: `loc-${Date.now().toString().slice(-4)}`,
       name: locData.name,

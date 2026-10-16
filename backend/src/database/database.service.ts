@@ -61,7 +61,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public users: User[] = [];
   public refreshTokens: Map<string, { userId: string; expiresAt: Date }> = new Map();
   public otpStore: Map<string, { otp: string; expiresAt: Date }> = new Map();
-  public fcmTokens: Map<string, string> = new Map(); // userId -> fcmToken
+  public fcmTokens: Map<string, string> = new Map(); 
 
   public tasks: Task[] = [];
   public orders: Order[] = [];
@@ -87,7 +87,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public auditLogs: AuditLog[] = [];
   public deviceAuthorizations: DeviceAuthorizationRequest[] = [];
 
-  // Enhancement collections
+  
   public headquarters: Headquarter[] = [];
   public routeBatches: RouteBatch[] = [];
   public hqAreas: HqArea[] = [];
@@ -236,10 +236,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     }, 250);
   }
 
-  /**
-   * Authoritative task persistence: updates in-memory cache, triggers debounced
-   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
-   */
+  
   public async persistTask(task: Task): Promise<void> {
     const idx = this.tasks.findIndex((t) => t.id === task.id);
     if (idx >= 0) {
@@ -2517,7 +2514,6 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     }
 
     // 13. Route Batches seeded in Section 11.1 above (19 authentic batches)
-
 
     // 14. Seed Medicines Master (§11) - Authoritative 17 AHTRI Medicine Catalog with Structured Packaging & PTS/PTR/MRP Rates
     const seedMedicinesList: Medicine[] = [

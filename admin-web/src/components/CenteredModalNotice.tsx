@@ -14,9 +14,6 @@ export interface CenteredNoticeOptions {
 
 let notifyGlobalHandler: ((opts: CenteredNoticeOptions) => void) | null = null;
 
-/**
- * Trigger a centered modal notice anywhere in the web app
- */
 export const showCenteredNotice = (opts: CenteredNoticeOptions | string) => {
   const options: CenteredNoticeOptions =
     typeof opts === 'string' ? { message: opts, type: 'info' } : opts;
@@ -28,10 +25,6 @@ export const showCenteredNotice = (opts: CenteredNoticeOptions | string) => {
   }
 };
 
-/**
- * Modern Promise-based Confirmation Modal
- * Replaces ugly browser native window.confirm with an executive design dialog
- */
 export const showConfirmModal = (opts: {
   title?: string;
   message: string;
@@ -54,9 +47,6 @@ export const showConfirmModal = (opts: {
   });
 };
 
-/**
- * Centered modal dialog component rendered at top of the DOM tree
- */
 export const CenteredModalNotice: React.FC = () => {
   const [activeNotice, setActiveNotice] = useState<CenteredNoticeOptions | null>(null);
 
@@ -65,7 +55,7 @@ export const CenteredModalNotice: React.FC = () => {
       setActiveNotice(opts);
     };
 
-    // Override browser's native window.alert so all alerts display as centered modals
+    
     const originalAlert = window.alert;
     window.alert = (msg: any) => {
       showCenteredNotice({
@@ -75,7 +65,7 @@ export const CenteredModalNotice: React.FC = () => {
       });
     };
 
-    // Intercept native window.confirm so ugly browser dialogs are suppressed
+    
     const originalConfirm = window.confirm;
     window.confirm = (msg?: string) => {
       showCenteredNotice({
@@ -93,7 +83,7 @@ export const CenteredModalNotice: React.FC = () => {
     };
   }, []);
 
-  // Handle ESC and Enter keys
+  
   useEffect(() => {
     if (!activeNotice) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -204,7 +194,7 @@ export const CenteredModalNotice: React.FC = () => {
     if (confirmCb) confirmCb();
   };
 
-  // Split message if it contains primary title + secondary explanation (\n\n)
+  
   const messageParts = (activeNotice.message || '').split('\n\n');
   const primaryMessage = messageParts[0] || '';
   const secondaryDetails = messageParts.slice(1).join('\n\n').trim();

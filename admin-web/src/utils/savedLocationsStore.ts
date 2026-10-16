@@ -178,35 +178,35 @@ export const DEFAULT_TERRITORY_ZONES: TerritoryZone[] = [
 ];
 
 export const KNOWN_HQ_COORDINATES: Record<string, { lat: number; lng: number; radiusKm: number; mrName?: string; mrId?: string }> = {
-  // Kotma
+  
   'kotma': { lat: 23.2035, lng: 81.9669, radiusKm: 25.0, mrName: 'Amar Dwivedi', mrId: 'usr-mr-01' },
   'hq-kotma': { lat: 23.2035, lng: 81.9669, radiusKm: 25.0, mrName: 'Amar Dwivedi', mrId: 'usr-mr-01' },
   'hq-kot-001': { lat: 23.2035, lng: 81.9669, radiusKm: 25.0, mrName: 'Amar Dwivedi', mrId: 'usr-mr-01' },
   'kot': { lat: 23.2035, lng: 81.9669, radiusKm: 25.0, mrName: 'Amar Dwivedi', mrId: 'usr-mr-01' },
   'hq-ktm': { lat: 23.2035, lng: 81.9669, radiusKm: 25.0, mrName: 'Amar Dwivedi', mrId: 'usr-mr-01' },
 
-  // Shahdol
+  
   'shahdol': { lat: 23.2953, lng: 81.3586, radiusKm: 25.0, mrName: 'Aman Rathore', mrId: 'usr-mr-02' },
   'hq-shahdol': { lat: 23.2953, lng: 81.3586, radiusKm: 25.0, mrName: 'Aman Rathore', mrId: 'usr-mr-02' },
   'hq-shd-001': { lat: 23.2953, lng: 81.3586, radiusKm: 25.0, mrName: 'Aman Rathore', mrId: 'usr-mr-02' },
   'shd': { lat: 23.2953, lng: 81.3586, radiusKm: 25.0, mrName: 'Aman Rathore', mrId: 'usr-mr-02' },
   'hq-shd': { lat: 23.2953, lng: 81.3586, radiusKm: 25.0, mrName: 'Aman Rathore', mrId: 'usr-mr-02' },
 
-  // Ambikapur
+  
   'ambikapur': { lat: 23.1197, lng: 83.1979, radiusKm: 30.0, mrName: 'Ashish Soni', mrId: 'usr-mr-03' },
   'hq-ambikapur': { lat: 23.1197, lng: 83.1979, radiusKm: 30.0, mrName: 'Ashish Soni', mrId: 'usr-mr-03' },
   'hq-amb-001': { lat: 23.1197, lng: 83.1979, radiusKm: 30.0, mrName: 'Ashish Soni', mrId: 'usr-mr-03' },
   'amb': { lat: 23.1197, lng: 83.1979, radiusKm: 30.0, mrName: 'Ashish Soni', mrId: 'usr-mr-03' },
   'hq-amb': { lat: 23.1197, lng: 83.1979, radiusKm: 30.0, mrName: 'Ashish Soni', mrId: 'usr-mr-03' },
 
-  // Bilaspur
+  
   'bilaspur': { lat: 22.0797, lng: 82.1409, radiusKm: 30.0 },
   'hq-bilaspur': { lat: 22.0797, lng: 82.1409, radiusKm: 30.0 },
   'hq-bsp-001': { lat: 22.0797, lng: 82.1409, radiusKm: 30.0 },
   'bsp': { lat: 22.0797, lng: 82.1409, radiusKm: 30.0 },
   'hq-bsp': { lat: 22.0797, lng: 82.1409, radiusKm: 30.0 },
 
-  // Surrounding operational regions in MP / CG
+  
   'anuppur': { lat: 23.1037, lng: 81.6896, radiusKm: 20.0 },
   'burhar': { lat: 23.2185, lng: 81.5369, radiusKm: 20.0 },
   'manendragarh': { lat: 23.2147, lng: 82.2038, radiusKm: 25.0 },
@@ -257,7 +257,7 @@ function resolveHqCoordinates(
   hq: any,
   operatingCities: any[]
 ): { lat: number; lng: number; radiusKm: number } {
-  // 1. Direct coordinates on HQ object
+  
   if (typeof hq.latitude === 'number' && !isNaN(hq.latitude) && typeof hq.longitude === 'number' && !isNaN(hq.longitude)) {
     return { lat: hq.latitude, lng: hq.longitude, radiusKm: hq.radiusKm || 25.0 };
   }
@@ -268,7 +268,7 @@ function resolveHqCoordinates(
   const normName = (hq.name || hq.cityName || '').toLowerCase().trim();
   const normId = (hq.id || '').toLowerCase().trim();
 
-  // 2. Check in ahtri_operating_cities (Settings > Operating Cities & Branch Network)
+  
   const cityMatch = operatingCities.find((c: any) => {
     const cName = (c.cityName || c.name || '').toLowerCase().trim();
     const cId = (c.id || '').toLowerCase().trim();
@@ -278,7 +278,7 @@ function resolveHqCoordinates(
     return { lat: cityMatch.latitude, lng: cityMatch.longitude, radiusKm: cityMatch.radiusKm || 25.0 };
   }
 
-  // 3. Known headquarters lookup table
+  
   const candidates = [
     normId,
     normName,
@@ -292,14 +292,14 @@ function resolveHqCoordinates(
     }
   }
 
-  // Partial substring match in known table
+  
   for (const [key, val] of Object.entries(KNOWN_HQ_COORDINATES)) {
     if (normName && (normName.includes(key) || key.includes(normName))) {
       return { lat: val.lat, lng: val.lng, radiusKm: val.radiusKm || 25.0 };
     }
   }
 
-  // Geographic safe fallbacks
+  
   if (normName.includes('kot') || normId.includes('kot') || normId.includes('ktm')) {
     return { lat: 23.2035, lng: 81.9669, radiusKm: 25.0 };
   }
@@ -318,7 +318,7 @@ function resolveSubAreasForHq(hq: any, allAreas: any[]): string[] {
   const normCode = (hq.code || hq.hq_code || '').toLowerCase().trim();
   const normName = (hq.name || hq.cityName || '').toLowerCase().trim();
 
-  // Find user-added subareas from Settings > HQ & Territory Master
+  
   const matched = Array.isArray(allAreas)
     ? allAreas.filter((a: any) => {
         if (a && a.status === 'INACTIVE') return false;
@@ -336,7 +336,7 @@ function resolveSubAreasForHq(hq: any, allAreas: any[]): string[] {
 
   const userAreaNames = matched.map((a: any) => (a.name || '').trim()).filter(Boolean);
 
-  // Fallback defaults for standard HQs if user hasn't added areas
+  
   let defaultAreas: string[] = [];
   if (normName.includes('kot') || normId.includes('kot') || normId.includes('ktm')) {
     defaultAreas = DEFAULT_MANAGED_AREAS_MAP['kotma'] || [];
@@ -363,13 +363,13 @@ export function getOperatingZones(): TerritoryZone[] {
     const rawCities = localStorage.getItem('ahtri_operating_cities');
     const operatingCities = rawCities && Array.isArray(JSON.parse(rawCities)) ? JSON.parse(rawCities) : [];
 
-    // Filter out dummy/test metros
+    
     const isExcluded = (name: string) => {
       const n = (name || '').toLowerCase();
       return n.includes('delhi') || n.includes('mumbai') || n.includes('jaipur') || n.includes('chandigarh');
     };
 
-    // Consistent key generator to prevent duplicate entries across all aliases and codes
+    
     const getZoneKey = (item: any) => {
       const name = (item.name || item.cityName || '').toLowerCase().trim();
       const cleanName = name.replace(/^(hq-|zone-)/, '').replace(/\s*hq$/, '').trim();
@@ -388,10 +388,10 @@ export function getOperatingZones(): TerritoryZone[] {
       return rawCode;
     };
 
-    // 1. Gather all unique HQs and operating branches
+    
     const zoneMap = new Map<string, any>();
 
-    // Start with default 4 standard headquarters
+    
     DEFAULT_TERRITORY_ZONES.forEach((dz) => {
       const key = getZoneKey(dz);
       zoneMap.set(key, {
@@ -408,7 +408,7 @@ export function getOperatingZones(): TerritoryZone[] {
       });
     });
 
-    // Merge from ahtri_inventory_hqs
+    
     if (Array.isArray(hqs)) {
       hqs.forEach((h: any) => {
         if (!h || !h.name || isExcluded(h.name)) return;
@@ -424,7 +424,7 @@ export function getOperatingZones(): TerritoryZone[] {
       });
     }
 
-    // Merge from ahtri_operating_cities (Settings > Operating Cities & Branch Network)
+    
     if (Array.isArray(operatingCities)) {
       operatingCities.forEach((c: any) => {
         if (!c || !c.cityName || isExcluded(c.cityName)) return;
@@ -443,7 +443,7 @@ export function getOperatingZones(): TerritoryZone[] {
       });
     }
 
-    // Deduplicate strictly by normalized zone key to ensure zero duplicate entries
+    
     const seenZoneKeys = new Set<string>();
     const effectiveHqs = Array.from(zoneMap.values()).filter((hq: any) => {
       const k = getZoneKey(hq);
@@ -504,7 +504,7 @@ export function getStoredSavedLocations(): DoctorItem[] {
         return parsed;
       }
     }
-    // Only return initial defaults if storage was never initialized
+    
     return INITIAL_SAVED_LOCATIONS;
   } catch {
     return [];

@@ -102,7 +102,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'DELIVERED' | 'ACCEPTED'>('ALL');
   const [actionProcessingId, setActionProcessingId] = useState<string | null>(null);
 
-  // New Order Modal
+  
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [newCustomerName, setNewCustomerName] = useState<string>('');
   const [newLocationName, setNewLocationName] = useState<string>('');
@@ -112,7 +112,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     { id: '1', product_name: 'AHTRI-S (200 ML)', quantity: '10', unit_price: '38.40' },
   ]);
 
-  // Live HQ Stock Map
+  
   const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
 
   const loadHqStock = useCallback(async () => {
@@ -139,7 +139,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     loadHqStock();
   }, [loadHqStock]);
 
-  // Load persistent orders from cache immediately on mount
+  
   useEffect(() => {
     (async () => {
       try {
@@ -159,12 +159,12 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
-      // Scoped fetch: will return orders matching current user's HQ or created by this user
+      
       const res = await fetch(`${baseUrl}/orders`, { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Read cached orders
+          
           let cachedOrders: MobileOrder[] = [];
           try {
             const raw = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
@@ -173,13 +173,13 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
           let merged: MobileOrder[] = [];
           if (data.length > 0) {
-            // Merge server orders with any locally cached orders (by id or order_number)
+            
             const map = new Map<string, MobileOrder>();
             cachedOrders.forEach((o) => map.set(o.id || o.order_number, o));
             data.forEach((o: MobileOrder) => map.set(o.id || o.order_number, o));
             merged = Array.from(map.values());
           } else if (cachedOrders.length > 0) {
-            // If server returned 0 orders (e.g. fresh reboot/sync in progress), never wipe existing orders!
+            
             merged = cachedOrders;
           } else {
             merged = [];
@@ -195,7 +195,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
         }
       }
     } catch (err) {
-      // Offline fallback: load cached orders
+      
       try {
         const cached = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
         if (cached) {
@@ -208,7 +208,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   }, [currentUserId]);
 
-  // Synchronize orders to AsyncStorage cache whenever orders array updates
+  
   useEffect(() => {
     if (orders.length > 0) {
       AsyncStorage.setItem(
@@ -243,7 +243,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     fetchOrders();
   };
 
-  // Toggle delivery status
+  
   const handleToggleDelivery = async (order: MobileOrder) => {
     const nextStatus = order.delivery_status === 'DELIVERED' ? 'PENDING' : 'DELIVERED';
     const actionLabel = nextStatus === 'DELIVERED' ? 'Mark as Delivered' : 'Revert to Pending';
@@ -296,7 +296,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     );
   };
 
-  // Handle direct order creation
+  
   const handleCreateOrder = async () => {
     if (!newCustomerName.trim()) {
       Alert.alert('Validation Error', 'Please enter customer or clinic name.');
@@ -363,15 +363,15 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   };
 
-  // Filtering
+  
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      // Filter tab
+      
       if (filterTab === 'PENDING' && o.delivery_status !== 'PENDING') return false;
       if (filterTab === 'DELIVERED' && o.delivery_status !== 'DELIVERED') return false;
       if (filterTab === 'ACCEPTED' && !o.hq_accepted) return false;
 
-      // Search Query
+      
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const numMatch = (o.order_number || '').toLowerCase().includes(q);
@@ -387,7 +387,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     });
   }, [orders, filterTab, searchQuery]);
 
-  // Aggregate counts
+  
   const pendingCount = orders.filter((o) => o.delivery_status === 'PENDING').length;
   const deliveredCount = orders.filter((o) => o.delivery_status === 'DELIVERED').length;
   const acceptedCount = orders.filter((o) => o.hq_accepted).length;
@@ -1336,7 +1336,7 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
 
-  // Modal styles
+  
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.7)',

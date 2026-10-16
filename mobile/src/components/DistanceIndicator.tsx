@@ -3,14 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 
 export interface DistanceIndicatorProps {
   distanceMeters: number;
-  maxGeofenceRadiusM?: number; // default 20m
+  maxGeofenceRadiusM?: number; 
   gpsAccuracyMeters: number;
 }
 
-/**
- * Section 5: The "76m away / 12m verified" widget.
- * This is the single most important UI component in the app since it drives the whole geofence flow.
- */
 export const DistanceIndicator: React.FC<DistanceIndicatorProps> = ({
   distanceMeters,
   maxGeofenceRadiusM = 20,

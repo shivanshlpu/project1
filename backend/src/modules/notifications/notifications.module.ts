@@ -24,7 +24,7 @@ export class NotificationsService {
       .filter((n) => n.user_id === userId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-    // Mark as read
+    
     const now = new Date().toISOString();
     list.forEach((n) => {
       if (!n.read_at) n.read_at = now;

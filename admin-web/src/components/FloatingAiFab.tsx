@@ -48,7 +48,7 @@ export const FloatingAiFab: React.FC<FloatingAiFabProps> = ({ onOpenAi }) => {
     hasMoved: false,
   });
 
-  // Handle window resize so FAB stays on screen
+  
   useEffect(() => {
     const handleResize = () => {
       setPosition((prev) => ({
@@ -61,7 +61,7 @@ export const FloatingAiFab: React.FC<FloatingAiFabProps> = ({ onOpenAi }) => {
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only drag on left mouse button
+    
     if (e.button !== 0) return;
     dragRef.current = {
       startX: e.clientX,
@@ -175,7 +175,7 @@ export const FloatingAiFab: React.FC<FloatingAiFabProps> = ({ onOpenAi }) => {
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Reset to default bottom-right
+    
     setPosition({ bottom: DEFAULT_BOTTOM, right: DEFAULT_RIGHT });
     try {
       localStorage.removeItem(STORAGE_KEY);

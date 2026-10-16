@@ -46,7 +46,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     status?: string;
   } | null>(null);
 
-  // Dynamic Saved Locations from Store (no hardcoded dummy pins)
+  
   const savedLocations = getStoredSavedLocations();
   const primaryLoc = savedLocations.length > 0 ? savedLocations[0] : null;
   const otherClinics = savedLocations.length > 1 ? savedLocations.slice(1) : [];
@@ -68,7 +68,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     currentCallStarted: '10:15 AM',
   };
 
-  // Initialize Map
+  
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -80,7 +80,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
       });
       mapInstanceRef.current = map;
 
-      // Add Resilient Base Layer
+      
       tileLayerRef.current = createResilientTileLayer(mapMode === 'satellite' ? 'satellite' : 'street').addTo(map);
 
       layersGroupRef.current = L.layerGroup().addTo(map);
@@ -93,7 +93,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     }, 200);
   }, []);
 
-  // Update Tile Layer when mode toggles
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
@@ -101,7 +101,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     tileLayerRef.current = createResilientTileLayer(mapMode === 'satellite' ? 'satellite' : 'street').addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Re-render markers and geofences
+  
   useEffect(() => {
     renderMapEntities();
   }, [showGeofenceCircles, mapMode]);
@@ -110,7 +110,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     if (!layersGroupRef.current || !mapInstanceRef.current) return;
     layersGroupRef.current.clearLayers();
 
-    // 1. Plot Main Clinic & Geofence Circle if genuine saved location exists
+    
     if (primaryLoc) {
       const clinicIcon = L.divIcon({
         html: create3DMapPinHtml({ category: primaryLoc.category || 'CLINIC', isSelected: selectedPin?.type === 'doctor' }),
@@ -143,7 +143,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
       });
       layersGroupRef.current.addLayer(clinicMarker);
 
-      // 2. Plot Geofence Circle Boundary
+      
       if (showGeofenceCircles) {
         const radius = primaryLoc.geofence_radius_m || 20;
         const circle = L.circle([primaryLoc.latitude, primaryLoc.longitude], {
@@ -158,7 +158,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
         layersGroupRef.current.addLayer(circle);
       }
 
-      // Distance connection line between MR and Clinic
+      
       const line = L.polyline(
         [
           [primaryLoc.latitude, primaryLoc.longitude],
@@ -169,7 +169,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
       layersGroupRef.current.addLayer(line);
     }
 
-    // 3. Plot Field MR with live GPS Position & 3D Agent Pin
+    
     const mrIcon = L.divIcon({
       html: create3DMapPinHtml({ category: 'MR', isSelected: selectedPin?.type === 'mr' }),
       className: 'saved-location-3d-marker',
@@ -202,7 +202,7 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
     });
     layersGroupRef.current.addLayer(mrMarker);
 
-    // 4. Plot any other genuine saved locations
+    
     otherClinics.forEach((oc) => {
       const isHospital = (oc.category || '').toUpperCase() === 'HOSPITAL' || oc.name.toLowerCase().includes('hospital');
       const otherIcon = L.divIcon({
@@ -378,8 +378,6 @@ export const LiveGeofenceMap: React.FC<LiveGeofenceMapProps> = ({ lang = 'en' })
           </button>
         </div>
       </div>
-
-
 
       {/* Map Canvas & Live Position Bar */}
       <div style={{ position: 'relative', height: '380px', width: '100%' }}>

@@ -39,7 +39,7 @@ export interface MobileTaskItem {
   hq_name?: string;
   started_at?: string;
   completed_at?: string;
-  duration_seconds?: number; // SECRET TRACKED (NOT DISPLAYED TO MR)
+  duration_seconds?: number; 
   outcome?: string;
   orders?: Array<{ product_name: string; quantity: number; unit_price: number; total_amount: number; distributor?: string }>;
   visit_photo?: string;
@@ -103,12 +103,12 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   currentUserHqId = 'hq-shahdol',
   currentUserHqName = 'Shahdol HQ',
 }) => {
-  // All system tasks across MRs
+  
   const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);
-  // Live stock for current MR HQ
+  
   const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
 
-  // Real Hardware Sensor GPS Tracking
+  
   const [deviceCoords, setDeviceCoords] = useState<{
     latitude: number;
     longitude: number;
@@ -117,16 +117,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const [isReadingGps, setIsReadingGps] = useState<boolean>(false);
   const [liveGpsInfo, setLiveGpsInfo] = useState<string | null>(null);
 
-  // Active Detailing Timer State
+  
   const [activeElapsedSeconds, setActiveElapsedSeconds] = useState<number>(0);
 
-  // Completion Modal & Detailing State
+  
   const [completingTask, setCompletingTask] = useState<MobileTaskItem | null>(null);
   const [visitPhoto, setVisitPhoto] = useState<PhotoResult | null>(null);
   const [visitOutcome, setVisitOutcome] = useState(
     'Reviewed AHTRI-S scheme. Doctor agreed to prescribe for 20 patients.',
   );
-  // Multi-Order State for Task Completion (Initialized empty - orders created only when MR explicitly adds them per §2.1)
+  
   const [modalOrders, setModalOrders] = useState<
     Array<{
       id: string;
@@ -137,7 +137,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     }>
   >([]);
 
-  // Fetch live HQ stock for this representative's Headquarter
+  
   const loadHqStock = async (targetHqId?: string) => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -189,7 +189,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
   };
 
-  // Atomic synchronized updater (§2.2) to prevent product name vs price desynchronization
+  
   const handleSelectMedicineForOrder = (id: string, name: string, price: number) => {
     setModalOrders((prev) =>
       prev.map((o) =>
@@ -198,31 +198,31 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
   };
 
-  // Top Segmented Tab for Active Calls vs Completed & History
+  
   const [taskTab, setTaskTab] = useState<'AGENDA' | 'HISTORY'>('AGENDA');
 
-  // Helper to reliably detect cancelled task statuses (case-insensitive and format-agnostic)
+  
   const isCancelledTask = (status?: string): boolean => {
     if (!status) return false;
     const s = String(status).trim().toUpperCase();
     return s === 'CANCELLED' || s === 'CANCELED' || s === 'CANCEL';
   };
 
-  // STRICT FILTERING: Only show active tasks assigned to this logged-in member (strictly exclude CANCELLED tasks)
+  
   const myTasks = allTasks.filter(
     (t) => t.assigned_mr_id === currentUserId && !isCancelledTask(t.status)
   );
   const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED' && !isCancelledTask(t.status));
   const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED' && !isCancelledTask(t.status));
 
-  // Track seen tasks to fire notifications on newly assigned tasks
+  
   const seenTaskIdsRef = React.useRef<Set<string>>(new Set());
   const isInitialLoadRef = React.useRef<boolean>(true);
 
-  // Completed history date filter
+  
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('ALL');
 
-  // Load persistent all tasks and completed tasks from AsyncStorage on mount
+  
   useEffect(() => {
     (async () => {
       try {
@@ -251,7 +251,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     })();
   }, [currentUserId]);
 
-  // Load persistent seen task IDs from AsyncStorage on mount
+  
   useEffect(() => {
     AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`)
       .then((raw) => {
@@ -267,7 +267,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       .catch(() => {});
   }, [currentUserId]);
 
-  // Live Auto-Fetch from Backend Server
+  
   const fetchTasksFromBackend = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -278,7 +278,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Read local completed tasks so completed status is never overridden
+          
           let locallyCompleted: MobileTaskItem[] = [];
           try {
             const raw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
@@ -286,12 +286,12 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           } catch {}
           const localCompMap = new Map(locallyCompleted.map((c) => [c.id, c]));
 
-          // Filter out CANCELLED, CANCELED, and deleted tasks so they completely disappear from the employee app
+          
           const activeBackendTasks = data.filter(
             (t: any) => !isCancelledTask(t.status) && !t.deleted_at
           );
 
-          // Map backend tasks preserving any locally recorded completed state
+          
           const backendMapped: MobileTaskItem[] = activeBackendTasks.map((t: any) => {
             const locallyComp = localCompMap.get(t.id);
             if (locallyComp) {
@@ -322,12 +322,12 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             };
           });
 
-          // Identify tasks explicitly cancelled by the backend server
+          
           const explicitlyCancelledIds = new Set(
             data.filter((t: any) => isCancelledTask(t.status) || t.deleted_at).map((t: any) => t.id)
           );
 
-          // Merge: Preserve all locally completed tasks (never wipe them on empty or rebooted server response)
+          
           const mergedMap = new Map<string, MobileTaskItem>();
           backendMapped.forEach((t) => mergedMap.set(t.id, t));
           locallyCompleted.forEach((lc) => {
@@ -336,7 +336,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             }
           });
 
-          // If backend returned empty list (e.g. server redeploy/booting), retain prior in-memory tasks
+          
           if (activeBackendTasks.length === 0 && allTasks.length > 0) {
             allTasks.forEach((pt) => {
               if (!explicitlyCancelledIds.has(pt.id) && !isCancelledTask(pt.status) && !mergedMap.has(pt.id)) {
@@ -347,7 +347,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
           const finalTasks = Array.from(mergedMap.values());
 
-          // Persist both full cache and completed tasks
+          
           const finalCompleted = finalTasks.filter((t) => t.status === 'COMPLETED');
           await AsyncStorage.setItem(
             `@ahtri_completed_tasks_${currentUserId}`,
@@ -358,7 +358,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             JSON.stringify(finalTasks)
           ).catch(() => {});
 
-          // Check for newly assigned tasks and fire WhatsApp-style system notification immediately
+          
           let hasNewTask = false;
           activeBackendTasks.forEach((t: any) => {
             if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED' && !isCancelledTask(t.status)) {
@@ -388,7 +388,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         }
       }
     } catch {
-      // Offline fallback: restore from cached tasks
+      
       try {
         const raw = await AsyncStorage.getItem(`@ahtri_all_tasks_cache_${currentUserId}`);
         if (raw) {
@@ -403,7 +403,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
   useEffect(() => {
     fetchTasksFromBackend();
-    // 25s polling while app is in active foreground (prevents battery and network storm)
+    
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') {
         fetchTasksFromBackend();
@@ -422,7 +422,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     };
   }, [currentUserId]);
 
-  // Unique dates from completed history
+  
   const availableHistoryDates = React.useMemo(() => {
     const dates = new Set<string>();
     historyTasks.forEach((t) => {
@@ -432,7 +432,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     return Array.from(dates);
   }, [historyTasks]);
 
-  // Filtered completed tasks based on historyDateFilter
+  
   const filteredHistoryTasks = React.useMemo(() => {
     if (historyDateFilter === 'ALL') return historyTasks;
     return historyTasks.filter((t) => {
@@ -441,7 +441,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     });
   }, [historyTasks, historyDateFilter]);
 
-  // Executive summary metrics for filtered history
+  
   const historyMetrics = React.useMemo(() => {
     const totalCalls = filteredHistoryTasks.length;
     let totalRevenue = 0;
@@ -463,7 +463,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     return { totalCalls, totalRevenue, totalUnits, totalSecs };
   }, [filteredHistoryTasks]);
 
-  // Read Live Hardware GPS from phone sensor
+  
   const handleReadLiveGPS = async (silent = false) => {
     setIsReadingGps(true);
     try {
@@ -500,7 +500,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     }
   };
 
-  // Continuous active GPS watching with satellite convergence on screen mount
+  
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     LocationService.startWatching((coords) => {
@@ -525,7 +525,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     };
   }, []);
 
-  // Live Timer for In-Progress Detailing Visit
+  
   useEffect(() => {
     if (!completingTask || completingTask.status !== 'IN_PROGRESS') return;
     const startMs = completingTask.started_at
@@ -553,7 +553,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     return `${Math.round(meters)}m`;
   };
 
-  // Precise Distance from current device coordinates to target task
+  
   const getTaskDistance = (task: MobileTaskItem): number | null => {
     if (!deviceCoords) return null;
     return LocationService.calculateDistanceMeters(
@@ -564,7 +564,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
   };
 
-  // Capture Live Doctor / Clinic Proof Photo via Camera
+  
   const handleCaptureVisitPhoto = async () => {
     const photo = await CameraService.captureLivePhoto({
       aspect: [4, 3],
@@ -576,7 +576,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     }
   };
 
-  // Open Google Maps Directions
+  
   const handleGetDirections = (task: MobileTaskItem) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${task.latitude},${task.longitude}`;
     Linking.openURL(url).catch(() => {
@@ -584,7 +584,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     });
   };
 
-  // Start Task (Automatic Geofence Enforced + Adaptive Weak-Signal Tolerance + Instant Workspace Transition)
+  
   const handleStartTask = async (task: MobileTaskItem) => {
     if (task.status === 'SUSPENDED') {
       Alert.alert(
@@ -594,7 +594,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return;
     }
 
-    // 1. Ensure we have fresh, live GPS coordinates (or perform convergence lock if accuracy is coarse)
+    
     let currentCoords = deviceCoords;
     if (!currentCoords || (currentCoords.accuracy && currentCoords.accuracy > 40)) {
       setIsReadingGps(true);
@@ -645,10 +645,10 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         prev.map((t) => (t.id === task.id ? inProgressTask : t)),
       );
 
-      // Immediately open Active Detailing & Visit Finalization Workspace!
+      
       setCompletingTask(inProgressTask);
 
-      // Sync start to backend
+      
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
@@ -668,7 +668,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     };
 
     if (dist > effectiveRadius) {
-      // If user is within reasonable proximity (up to 350m) but indoor drift / weak network causes displacement:
+      
       if (dist <= 350) {
         Alert.alert(
           'Location Calibration Notice',
@@ -696,11 +696,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return;
     }
 
-    // Inside geofence: start task directly
+    
     proceedWithTask(false);
   };
 
-  // Open Visit Completion & Immediate Order Sheet
+  
   const handleOpenCompleteSheet = (task: MobileTaskItem) => {
     if (task.status === 'SUSPENDED') {
       Alert.alert(
@@ -712,7 +712,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     setCompletingTask(task);
   };
 
-  // Skip Order for Now (§2) - Moves task to ORDER_PENDING status without losing task details
+  
   const handleSkipOrder = async () => {
     if (!completingTask) return;
 
@@ -722,7 +722,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       : new Date(Date.now() - 15 * 60 * 1000);
     const duration = Math.max(60, Math.round((endTime.getTime() - startTime.getTime()) / 1000));
 
-    // Extract guaranteed base64 data URL for cross-platform DB viewing
+    
     let photoPayload: string | undefined = undefined;
     if (visitPhoto?.base64 && visitPhoto.base64.startsWith('data:image')) {
       photoPayload = visitPhoto.base64;
@@ -757,7 +757,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       prev.map((t) => (t.id === completingTask.id ? pendingTask : t)),
     );
 
-    // Sync to backend via POST /tasks/:id/skip-order
+    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -789,7 +789,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     );
   };
 
-  // Submit Visit Completion & Immediate Order (or Pending Order submission)
+  
   const handleSubmitCompletion = async () => {
     if (!completingTask) return;
 
@@ -811,7 +811,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     const totalOrderAmount = validOrders.reduce((sum, o) => sum + o.total_amount, 0);
     const totalOrderUnits = validOrders.reduce((sum, o) => sum + o.quantity, 0);
 
-    // Extract guaranteed base64 data URL for cross-platform DB viewing
+    
     let photoPayload: string | undefined = undefined;
     if (visitPhoto?.base64 && visitPhoto.base64.startsWith('data:image')) {
       photoPayload = visitPhoto.base64;
@@ -860,7 +860,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       return updated;
     });
 
-    // Sync completion to backend with photo verification & auto stock deduction
+    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -891,7 +891,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     setCompletingTask(null);
     setVisitPhoto(null);
 
-    // Check if any product is low stock or out of stock at this HQ
+    
     const effectiveHqTitle = completingTask.hq_name || currentUserHqName || 'HQ';
     const stockShortages: string[] = [];
     validOrders.forEach((o) => {

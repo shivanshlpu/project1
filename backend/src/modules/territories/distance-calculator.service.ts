@@ -1,10 +1,4 @@
-/**
- * Distance Calculation Engine for AHTRI FFA Tour Plans
- * Calculates:
- * 1. Predefined route batch travel distance
- * 2. Fallback distance from HQ Center (e.g. Shahdol Center) to destination center / boundary
- * 3. Round-trip (two-way) travel distance and reimbursement fare
- */
+
 
 export interface HqCenterPoint {
   id: string;
@@ -80,9 +74,6 @@ export const HQ_CENTERS: Record<string, HqCenterPoint> = {
   },
 };
 
-/**
- * Standard Google Maps road distance from Shahdol Center to sub-area centers/boundaries
- */
 export const SHAHDOL_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'shahdol': 5,
   'shahdol central': 5,
@@ -116,9 +107,6 @@ export const SHAHDOL_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'bilaspur': 210,
 };
 
-/**
- * Standard road distances from Kotma Center
- */
 export const KOTMA_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'kotma': 5,
   'kotma town': 5,
@@ -140,9 +128,6 @@ export const KOTMA_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'shahdol': 72,
 };
 
-/**
- * Standard road distances from Ambikapur Center
- */
 export const AMBIKAPUR_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'ambikapur': 5,
   'ambikapur central': 5,
@@ -169,9 +154,6 @@ export const AMBIKAPUR_CENTER_TO_LOCATION_KM: Record<string, number> = {
   'vadrafnagar': 140,
 };
 
-/**
- * Known Coordinates for regional towns for Haversine fallback
- */
 export const REGIONAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
   'shahdol': { lat: 23.2953, lon: 81.3586 },
   'sohagpur': { lat: 23.2800, lon: 81.3700 },
@@ -216,10 +198,6 @@ export interface DistanceCalculationResult {
   source: string;
 }
 
-/**
- * Calculates distance from HQ Center (e.g. Shahdol center) to the destination boundary/center.
- * Also calculates the two-way (round-trip) distance.
- */
 export function calculateHqCenterToDestinationDistance(
   hqIdentifier: string,
   destination: string,
@@ -227,7 +205,7 @@ export function calculateHqCenterToDestinationDistance(
   const cleanDest = (destination || '').trim().toLowerCase();
   const cleanHq = (hqIdentifier || '').trim().toLowerCase();
 
-  // 1. Identify HQ Center
+  
   let hqKey = 'hq-shahdol';
   let hqName = 'Shahdol';
   if (cleanHq.includes('kot')) {
@@ -240,12 +218,12 @@ export function calculateHqCenterToDestinationDistance(
 
   const hqCenter = HQ_CENTERS[hqKey] || HQ_CENTERS['hq-shahdol'];
 
-  // 2. Lookup distance in HQ road distance reference
+  
   let distMap = SHAHDOL_CENTER_TO_LOCATION_KM;
   if (hqKey === 'hq-kotma') distMap = KOTMA_CENTER_TO_LOCATION_KM;
   else if (hqKey === 'hq-ambikapur') distMap = AMBIKAPUR_CENTER_TO_LOCATION_KM;
 
-  // Exact or direct match
+  
   if (distMap[cleanDest] !== undefined) {
     const oneWay = distMap[cleanDest];
     return {

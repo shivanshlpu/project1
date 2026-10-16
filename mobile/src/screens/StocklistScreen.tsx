@@ -335,7 +335,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     }
   }, [currentUserHqId]);
 
-  // Monthly Stockage Upload State
+  
   const [activePermission, setActivePermission] = useState<any>(null);
   const [stockageRequests, setStockageRequests] = useState<any[]>([]);
   const [packagingVariants, setPackagingVariants] = useState<any[]>([]);
@@ -365,7 +365,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
-      // Fetch active permission for current MR
+      
       const permRes = await fetch(`${baseUrl}/inventory/stockage/active-permission?month_year=${currentMonth}`, {
         headers,
       });
@@ -380,14 +380,14 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         setActivePermission(null);
       }
 
-      // Fetch requests history
+      
       const reqRes = await fetch(`${baseUrl}/inventory/stockage/requests`, { headers });
       if (reqRes.ok) {
         const reqData = await reqRes.json();
         setStockageRequests(Array.isArray(reqData) ? reqData : []);
       }
 
-      // Fetch packaging variants
+      
       const varRes = await fetch(`${baseUrl}/inventory/packaging-variants`, { headers });
       if (varRes.ok) {
         const varData = await varRes.json();
@@ -422,7 +422,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
       ? packagingVariants.find((v) => v.id === selectedDraftVarId)
       : packagingVariants.find((v) => v.medicine_id === med.medicine_id);
 
-    // Prevent duplicate medicine + variant in draft
+    
     const alreadyExists = draftItems.some(
       (d) => d.medicine_id === med.medicine_id && (d.packaging_id || '') === (variant?.id || ''),
     );
@@ -520,7 +520,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     );
   };
 
-  // Fetch Master Company Medicines Catalog
+  
   useEffect(() => {
     (async () => {
       try {
@@ -556,7 +556,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     })();
   }, [currentUserId]);
 
-  // 1. Fetch HQs (Excluding sub-areas like Jaisinghnagar or Burhar)
+  
   useEffect(() => {
     (async () => {
       try {
@@ -582,14 +582,14 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     })();
   }, []);
 
-  // 2. Fetch stockers under selected HQ
+  
   useEffect(() => {
     (async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
 
-        // Stockers for this HQ
+        
         const res = await fetch(`${baseUrl}/inventory/stockers?hq_id=${selectedHqId}`, { headers });
         if (res.ok) {
           const list: StockerItem[] = await res.json();
@@ -603,7 +603,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
 
   const filteredStockers = stockers;
 
-  // Auto-select active stocker when stockers list updates
+  
   useEffect(() => {
     if (filteredStockers.length > 0) {
       if (!filteredStockers.some((s) => s.id === selectedStockerId)) {
@@ -615,7 +615,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     }
   }, [stockers]);
 
-  // 3. Fetch inventory for selected stocker
+  
   useEffect(() => {
     if (!selectedStockerId) return;
     (async () => {
@@ -636,7 +636,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     })();
   }, [selectedStockerId]);
 
-  // Compute source inventory mapping real stocker storage quantity
+  
   const sourceInventory: InventoryProductItem[] =
     viewMode === 'catalog'
       ? companyCatalog.map((catItem) => {

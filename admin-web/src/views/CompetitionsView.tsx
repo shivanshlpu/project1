@@ -121,7 +121,7 @@ export const CompetitionsView: React.FC = () => {
   const [claims, setClaims] = useState<RewardClaimItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Master options with persistent storage & resilient fallback
+  
   const [hqs, setHqs] = useState<Array<{ id: string; name: string }>>(() => {
     try {
       const saved = localStorage.getItem('ahtri_inventory_hqs');
@@ -143,7 +143,7 @@ export const CompetitionsView: React.FC = () => {
     return DEFAULT_COMP_MEDICINES;
   });
 
-  // Create Modal state (§27)
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [compName, setCompName] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('2026-09-01');
@@ -154,7 +154,7 @@ export const CompetitionsView: React.FC = () => {
   const [compRewardAmount, setCompRewardAmount] = useState<string>('2000');
   const [compDesc, setCompDesc] = useState<string>('Sell 100 units during competition period to claim ₹2,000 cash reward.');
 
-  // Edit Modal state (§27)
+  
   const [editingComp, setEditingComp] = useState<CompetitionItem | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [editCompName, setEditCompName] = useState<string>('');
@@ -291,7 +291,7 @@ export const CompetitionsView: React.FC = () => {
     };
   };
 
-  // Load HQs & Medicines master
+  
   useEffect(() => {
     const fetchMaster = async () => {
       try {
@@ -318,7 +318,7 @@ export const CompetitionsView: React.FC = () => {
     fetchMaster();
   }, [apiUrl]);
 
-  // Fetch Competitions list (§27)
+  
   const fetchCompetitions = async () => {
     setIsLoading(true);
     try {
@@ -344,7 +344,7 @@ export const CompetitionsView: React.FC = () => {
     }
   };
 
-  // Fetch MR progress for selected competition (§34)
+  
   const fetchProgress = async () => {
     if (!selectedCompId) return;
     const found = competitions.find((c: any) => c.id === selectedCompId);
@@ -353,7 +353,7 @@ export const CompetitionsView: React.FC = () => {
     }
   };
 
-  // Fetch all claims (§33 & §34)
+  
   const fetchClaims = async () => {
     try {
       const res = await fetch(`${apiUrl}/competitions/claims`, {
@@ -379,7 +379,7 @@ export const CompetitionsView: React.FC = () => {
     }
   }, [selectedCompId, competitions]);
 
-  // Handler: Create Competition (§27)
+  
   const handleCreateCompetition = async () => {
     if (!compName.trim()) {
       showCenteredNotice({
@@ -431,7 +431,7 @@ export const CompetitionsView: React.FC = () => {
     }
   };
 
-  // Handler: Decide Claim (Approve / Reject / Mark Paid) (§33 & §34)
+  
   const handleDecideClaim = async (claimId: string, status: 'APPROVED' | 'REJECTED' | 'PAID') => {
     try {
       const res = await fetch(`${apiUrl}/competitions/claims/${claimId}`, {

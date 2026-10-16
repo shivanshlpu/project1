@@ -9,7 +9,7 @@ describe('Security Hardening & Vulnerability Remediation Suite', () => {
 
     beforeEach(() => {
       guard = new AuthRateLimiterGuard();
-      delete process.env.NODE_ENV; // Ensure test bypass is inactive for guard unit testing
+      delete process.env.NODE_ENV; 
     });
 
     afterEach(() => {
@@ -75,7 +75,7 @@ describe('Security Hardening & Vulnerability Remediation Suite', () => {
 
       const csv = reportsService.generateCsv(maliciousPayload);
 
-      // Verify that dangerous formula expressions are escaped with leading single quote
+      
       expect(csv).toContain("\"'=1+1\"");
       expect(csv).toContain("\"'+cmd|\"\"/C calc\"\"!A0\"");
       expect(csv).toContain("\"'-2+5\"");
@@ -89,9 +89,19 @@ describe('Security Hardening & Vulnerability Remediation Suite', () => {
       const testIdentifier = 'test@example.com,status.neq.ACTIVE';
       const cleanIdent = testIdentifier.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase().trim();
 
-      // Ensure commas and parentheses are stripped
       expect(cleanIdent).not.toContain(',');
       expect(cleanIdent).toBe('test@example.comstatus.neq.active');
+    });
+  });
+
+  describe('4. Infrastructure and Database Topology Protection', () => {
+    it('SupabaseService.getStatus should not leak database host URL in public status', () => {
+      const { SupabaseService } = require('../database/supabase.service');
+      const supabaseService = new SupabaseService();
+      const status = supabaseService.getStatus();
+      expect(status.url).toBeUndefined();
+      expect(status).toHaveProperty('configured');
+      expect(status).toHaveProperty('connected');
     });
   });
 });

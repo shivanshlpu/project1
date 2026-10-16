@@ -2,7 +2,7 @@ export type Language = 'en' | 'hi';
 
 export const translations = {
   en: {
-    // Brand & Top Navigation
+    
     brandName: 'AHTRI BIOTECH',
     brandSub: 'Enterprise Field Operations',
     managerMode: 'Manager Command Center',
@@ -12,7 +12,7 @@ export const translations = {
     langToggleLabel: 'Hindi',
     langCurrent: 'English',
 
-    // Tabs
+    
     fieldOperations: 'Field Force Operations',
     tabOverview: 'Performance Overview',
     tabTasks: 'Task Agenda & Audit',
@@ -28,13 +28,13 @@ export const translations = {
     tabSettings: 'Settings & Control',
     tabAi: 'AI Command Hub',
 
-    // Header Actions
+    
     exportSummary: 'Export Summary',
     assignNewCall: 'Assign New Call',
     markNewLocation: 'Mark New Location',
     addDoctor: 'Add Doctor',
 
-    // Task Assignment Modal
+    
     assignTaskModalTitle: 'Assign Doctor Detailing Call to Representative',
     assignTaskModalDesc: 'Mark clinic on live interactive satellite map or pick registered doctor. Configure geofence radius and detailing focus.',
     callType: 'Call / Task Category',
@@ -45,7 +45,7 @@ export const translations = {
     timeSlot: 'Scheduled Time',
     assignButton: 'Assign Call & Synchronize',
 
-    // Geofencing Concept & Explanations
+    
     geofenceTitle: 'What is Geofencing & How Does It Protect Your Business?',
     geofenceDesc: 'Geofencing creates an automated GPS perimeter (e.g. 50 meters) around each doctor clinic. Field representatives can only start or close visits when their phone is physically inside this boundary. This prevents fake visits, eliminates false DCR reports, and guarantees authentic on-site compliance for payroll.',
     geofenceActive: 'Perimeter Verified (≤50m)',
@@ -57,7 +57,7 @@ export const translations = {
     recenter: 'Recenter',
     refresh: 'Refresh',
 
-    // Map Controls
+    
     streetMode: 'Street Map',
     satelliteMode: 'Satellite View',
     topoMode: 'Topo Map',
@@ -67,7 +67,7 @@ export const translations = {
     fieldMrOnSite: 'Field MR On-Site',
     geofencePerimeter: '50m Geofence',
 
-    // Doctor Directory
+    
     doctorDirectoryTitle: 'Doctor Master Directory & Territory Target Coverage',
     allClasses: 'All Classes',
     classA: 'Class A (High Potential)',
@@ -88,7 +88,7 @@ export const translations = {
     viewOnMap: 'View on Map',
     totalVisits: 'Total Visits',
 
-    // Reports
+    
     reportsTitle: 'Operational Reports & Analytics Export Center',
     reportsDesc: 'Extract structured datasets in professional CSV, PDF, or JSON format with executive filters.',
     filterDate: 'Date Range',
@@ -107,7 +107,7 @@ export const translations = {
     totalOrders: 'Total Orders Booked',
     complianceRate: 'Compliance Rate',
 
-    // Settings
+    
     settingsTitle: 'System Settings & Operational Control Hub',
     settingsDesc: 'Configure account credentials, team passwords, city pinpoints, and enterprise compliance policies.',
     tabProfile: 'Profile & Account',
@@ -117,7 +117,7 @@ export const translations = {
     tabAppUpdates: 'Update Settings (OTA)',
     tabPreferences: 'System Preferences',
 
-    // Settings: Profile
+    
     profileHeading: 'Manager Profile & Account Identity',
     fullName: 'Full Name',
     email: 'Official Email ID',
@@ -127,7 +127,7 @@ export const translations = {
     saveProfile: 'Save Profile Changes',
     profileSaved: 'Profile information updated successfully!',
 
-    // Settings: Security & Passwords
+    
     managerPasswordTitle: 'Change My Manager Password',
     currentPassword: 'Current Password',
     newPassword: 'New Password',
@@ -139,7 +139,7 @@ export const translations = {
     copyCredentials: 'Copy Credentials',
     generatePassword: 'Generate Password',
 
-    // Settings: City Pinpoint
+    
     cityPinpointTitle: 'Operating Headquarters & City Pinpoint',
     cityPinpointDesc: 'Search, pinpoint, and inspect any operating city across India or globally. Switch between Street and Satellite views to view city terrain.',
     searchCityPlaceholder: 'Search city, district, state (e.g. Shahdol, Kotma, Ambikapur, Bilaspur)...',
@@ -149,7 +149,7 @@ export const translations = {
     clickToCenter: 'Click to center map on city',
     operatingRadius: 'Territory Radius',
 
-    // Settings: Field Policy
+    
     fieldPolicyTitle: 'Field Compliance & Automated Geofence Policy',
     defaultGeofenceRadius: 'Default Doctor Geofence Radius',
     shiftStartTime: 'Daily Morning Shift Start Time',
@@ -157,7 +157,7 @@ export const translations = {
     deviceBindingEnforced: 'Enforce Bank-Grade Device Binding',
     spoofAlertLocked: 'Lock Visits on Spoof / Fake GPS Flag',
 
-    // Common
+    
     loading: 'Loading...',
     all: 'All',
     verified: 'Verified On-Site',
@@ -172,7 +172,7 @@ export const translations = {
     sync: 'Sync Data',
   },
   hi: {
-    // Brand & Top Navigation
+    
     brandName: 'आहतरी फार्मा',
     brandSub: 'एंटरप्राइज फील्ड ऑपरेशंस',
     managerMode: 'प्रबंधक कमांड सेंटर',
@@ -182,7 +182,7 @@ export const translations = {
     langToggleLabel: 'English',
     langCurrent: 'हिंदी',
 
-    // Tabs
+    
     fieldOperations: 'फील्ड फोर्स परिचालन',
     tabOverview: 'प्रदर्शन अवलोकन',
     tabTasks: 'कार्य एजेंडा और ऑडिट',
@@ -198,13 +198,13 @@ export const translations = {
     tabSettings: 'सेटिंग्स और नियंत्रण',
     tabAi: 'एआई कमांड हब',
 
-    // Header Actions
+    
     exportSummary: 'सारांश निर्यात करें',
     assignNewCall: 'नया कार्य सौंपें',
     markNewLocation: 'नया स्थान चिह्नित करें',
     addDoctor: 'डॉक्टर जोड़ें',
 
-    // Task Assignment Modal
+    
     assignTaskModalTitle: 'चिकित्सा प्रतिनिधि को कॉल / कार्य सौंपें',
     assignTaskModalDesc: 'लाइव सैटेलाइट मैप पर क्लिनिक चिह्नित करें या पंजीकृत डॉक्टर चुनें। जियोफेंस दायरा और डिटेलिंग उत्पाद सेट करें।',
     callType: 'कॉल / कार्य श्रेणी',
@@ -215,7 +215,7 @@ export const translations = {
     timeSlot: 'निर्धारित समय',
     assignButton: 'कॉल सौंपें और सिंक्रनाइज़ करें',
 
-    // Geofencing Concept & Explanations
+    
     geofenceTitle: 'जियोफेंसिंग क्या है और यह आपके व्यवसाय की सुरक्षा कैसे करता है?',
     geofenceDesc: 'जियोफेंसिंग प्रत्येक डॉक्टर के क्लिनिक के चारों ओर एक स्वचालित जीपीएस सीमा (जैसे 50 मीटर) बनाती है। प्रतिनिधि केवल तभी विज़िट शुरू या समाप्त कर सकते हैं जब उनका फोन भौतिक रूप से इस क्लिनिक के दायरे में हो। इससे फर्जी विज़िट और गलत DCR रिपोर्टिंग पूरी तरह रुक जाती है।',
     geofenceActive: 'क्लिनिक में सत्यापित (≤50 मी)',
@@ -227,7 +227,7 @@ export const translations = {
     recenter: 'मैप री-सेंटर करें',
     refresh: 'ताज़ा करें',
 
-    // Map Controls
+    
     streetMode: 'Street Map',
     satelliteMode: 'Satellite View',
     topoMode: 'Topo Map',
@@ -237,7 +237,7 @@ export const translations = {
     fieldMrOnSite: 'प्रतिनिधि उपस्थित',
     geofencePerimeter: '50 मी जियोफेंस',
 
-    // Doctor Directory
+    
     doctorDirectoryTitle: 'डॉक्टर मास्टर निर्देशिका और क्षेत्र कवरेज',
     allClasses: 'सभी श्रेणियां',
     classA: 'श्रेणी A (उच्च प्राथमिकता)',
@@ -258,7 +258,7 @@ export const translations = {
     viewOnMap: 'मैप पर देखें',
     totalVisits: 'कुल विज़िट',
 
-    // Reports
+    
     reportsTitle: 'परिचालन रिपोर्ट और विश्लेषण निर्यात केंद्र',
     reportsDesc: 'कार्यकारी फिल्टर के साथ पेशेवर सीएसवी (CSV) या पीडीएफ (PDF) प्रारूप में डेटा डाउनलोड करें।',
     filterDate: 'तिथि सीमा',
@@ -277,7 +277,7 @@ export const translations = {
     totalOrders: 'कुल प्राप्त ऑर्डर',
     complianceRate: 'अनुपालन दर',
 
-    // Settings
+    
     settingsTitle: 'सिस्टम सेटिंग्स और परिचालन नियंत्रण केंद्र',
     settingsDesc: 'खाता क्रेडेंशियल, टीम पासवर्ड, शहर पिनपॉइंट और उद्यम अनुपालन नीतियां कॉन्फ़िगर करें।',
     tabProfile: 'प्रोफ़ाइल और खाता',
@@ -287,7 +287,7 @@ export const translations = {
     tabAppUpdates: 'अपडेट सेटिंग्स (ओटीए)',
     tabPreferences: 'सिस्टम प्राथमिकताएं',
 
-    // Settings: Profile
+    
     profileHeading: 'प्रबंधक प्रोफ़ाइल और खाता पहचान',
     fullName: 'पूरा नाम',
     email: 'आधिकारिक ईमेल आईडी',
@@ -297,7 +297,7 @@ export const translations = {
     saveProfile: 'प्रोफ़ाइल परिवर्तन सहेजें',
     profileSaved: 'प्रोफ़ाइल जानकारी सफलतापूर्वक अपडेट की गई!',
 
-    // Settings: Security & Passwords
+    
     managerPasswordTitle: 'मेरा प्रबंधक पासवर्ड बदलें',
     currentPassword: 'वर्तमान पासवर्ड',
     newPassword: 'नया पासवर्ड',
@@ -309,7 +309,7 @@ export const translations = {
     copyCredentials: 'क्रेडेंशियल कॉपी करें',
     generatePassword: 'Generate Password',
 
-    // Settings: City Pinpoint
+    
     cityPinpointTitle: 'परिचालन मुख्यालय और शहर पिनपॉइंट',
     cityPinpointDesc: 'भारत या विश्व भर के किसी भी शहर को खोजें, पिनपॉइंट करें और निरीक्षण करें। शहर का भूभाग देखने के लिए सड़क और सैटेलाइट दृश्य के बीच स्विच करें।',
     searchCityPlaceholder: 'शहर, जिला, राज्य खोजें (उदा. नई दिल्ली, मुंबई, जयपुर, लखनऊ)...',
@@ -319,7 +319,7 @@ export const translations = {
     clickToCenter: 'शहर पर मैप केंद्रित करने के लिए क्लिक करें',
     operatingRadius: 'कार्यक्षेत्र दायरा',
 
-    // Settings: Field Policy
+    
     fieldPolicyTitle: 'फील्ड अनुपालन और स्वचालित जियोफेंस नीतियां',
     defaultGeofenceRadius: 'डिफ़ॉल्ट डॉक्टर जियोफेंस दायरा',
     shiftStartTime: 'दैनिक सुबह की शिफ्ट शुरू होने का समय',
@@ -327,7 +327,7 @@ export const translations = {
     deviceBindingEnforced: 'बैंक-ग्रेड डिवाइस बाइंडिंग लागू करें',
     spoofAlertLocked: 'फर्जी जीपीएस पर विज़िट लॉक करें',
 
-    // Common
+    
     loading: 'लोड हो रहा है...',
     all: 'सभी',
     verified: 'क्लिनिक में सत्यापित',

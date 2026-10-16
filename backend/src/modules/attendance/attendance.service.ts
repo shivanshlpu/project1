@@ -21,21 +21,16 @@ export class AttendanceService implements OnModuleInit {
   constructor(private readonly db: DatabaseService) {}
 
   onModuleInit() {
-    // Initial purge check on server startup
+    
     this.purgeExpiredPhotos();
 
-    // Routine purge every 15 minutes to guarantee 512MB quota protection
+    
     setInterval(() => {
       this.purgeExpiredPhotos();
     }, 15 * 60 * 1000);
   }
 
-  /**
-   * 24-Hour Auto-Purge Service
-   * Automatically clears compressed attendance photos older than 24 hours to prevent overloading
-   * the database (512MB storage quota protection).
-   * ALL other attendance records, check-in/out timestamps, GPS coordinates, and statuses remain PERMANENTLY INTACT.
-   */
+  
   purgeExpiredPhotos(): { purgedCount: number; message: string } {
     const now = Date.now();
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;

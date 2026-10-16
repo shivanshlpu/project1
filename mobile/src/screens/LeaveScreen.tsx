@@ -57,14 +57,14 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
   const [isRefreshingQuota, setIsRefreshingQuota] = useState<boolean>(false);
 
-  // Leave balances for this MR dynamically linked to Admin Panel
+  
   const [balances, setBalances] = useState({
     casual: { total: 0, used: 0, remaining: 0 },
     sick: { total: 0, used: 0, remaining: 0 },
     earned: { total: 0, used: 0, remaining: 0 },
   });
 
-  // Fetch live leave quota from backend
+  
   const fetchQuota = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -90,10 +90,10 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     }
   };
 
-  // Submitted leave requests list (initialized empty - loaded dynamically from server)
+  
   const [leaveHistory, setLeaveHistory] = useState<LeaveItem[]>([]);
 
-  // Calculate day count between start and end date
+  
   const calculateDays = (s: string, e: string): number => {
     try {
       const d1 = parseDateString(s);
@@ -115,7 +115,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
       : 'casual';
   const currentRemaining = balances[selectedKey]?.remaining ?? 0;
 
-  // Fetch live leaves from backend
+  
   const fetchMyLeaves = async () => {
     setIsLoadingHistory(true);
     try {
@@ -148,7 +148,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     fetchMyLeaves();
     fetchQuota();
 
-    // Refresh leave quota periodically while screen is active in foreground
+    
     const intervalId = setInterval(() => {
       if (AppState.currentState === 'active') {
         fetchQuota();
@@ -167,7 +167,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     };
   }, [currentUserId]);
 
-  // Quick Preset Date Helpers
+  
   const setQuickDates = (offsetDays: number, durationDays: number) => {
     const s = new Date();
     s.setDate(s.getDate() + offsetDays);
@@ -177,7 +177,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
     setEndDate(formatDateDDMMYYYY(e));
   };
 
-  // Submit Leave Request
+  
   const handleSubmitLeave = async () => {
     if (!startDate || !endDate || !reason.trim()) {
       Alert.alert('Missing Details', 'Please specify both start date, end date, and reason for leave.');
@@ -246,7 +246,7 @@ export const LeaveScreen: React.FC<LeaveScreenProps> = ({
         throw new Error('Server rejected request');
       }
     } catch {
-      // Local fallback with pending status
+      
       const fallbackLeave: LeaveItem = {
         id: `leave-${Date.now().toString().slice(-4)}`,
         mr_id: currentUserId,

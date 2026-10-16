@@ -25,10 +25,10 @@ export interface TaskItem {
   distance_verified?: boolean;
   started_at?: string;
   completed_at?: string;
-  duration_seconds?: number; // Secret meeting duration visible to Owner
-  outcome?: string; // Doctor feedback / interest
-  orders?: TaskOrderItem[]; // Immediate orders captured
-  visit_photo?: string; // On-site clinic / doctor detailing proof photo (base64 data URL)
+  duration_seconds?: number; 
+  outcome?: string; 
+  orders?: TaskOrderItem[]; 
+  visit_photo?: string; 
   verification_photo_key?: string;
   suspended_at?: string;
   suspended_reason?: string;

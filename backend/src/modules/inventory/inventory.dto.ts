@@ -255,7 +255,7 @@ export class AdjustStockDto {
   medicine_id: string;
 
   @IsNumber()
-  quantity: number; // positive to add, negative to deduct, or target stock if mode === 'SET'
+  quantity: number; 
 
   @IsNumber()
   @IsOptional()
@@ -284,11 +284,11 @@ export class CreateMonthlyStockEntryDto {
 
   @IsString()
   @IsNotEmpty()
-  month: string; // e.g. "2026-10"
+  month: string; 
 
   @IsString()
   @IsNotEmpty()
-  entry_date: string; // e.g. "2026-10-01"
+  entry_date: string; 
 
   @IsString()
   @IsNotEmpty()
@@ -478,19 +478,19 @@ export class UpdatePackagingVariantDto {
 
 export class GrantStockagePermissionDto {
   @IsNotEmpty()
-  mr_ids: string[]; // Can select one or multiple MRs
+  mr_ids: string[]; 
 
   @IsNumber()
   @IsOptional()
-  month?: number; // 1-12
+  month?: number; 
 
   @IsNumber()
   @IsOptional()
-  year?: number; // e.g. 2026
+  year?: number; 
 
   @IsString()
   @IsOptional()
-  month_year?: string; // e.g. '2026-11'
+  month_year?: string; 
 
   @IsString()
   @IsOptional()

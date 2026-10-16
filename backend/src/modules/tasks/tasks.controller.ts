@@ -42,7 +42,7 @@ export class TasksController {
     @Headers('x-user-id') headerUserId?: string,
     @Query('date') date?: string,
   ) {
-    // Prevent IDOR: Field MRs can strictly only query their own tasks
+    
     const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
     const userId = isPrivileged
       ? (queryUserId || headerUserId || user?.id)

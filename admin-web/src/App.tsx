@@ -61,7 +61,7 @@ const isValidManagerTab = (tab: any): tab is ManagerTab => {
 
 const parseTabFromLocation = (): ManagerTab | null => {
   try {
-    // 1. Check window.location.hash (e.g. #/stockers, #stockers, #/competitions)
+    
     if (typeof window !== 'undefined' && window.location.hash) {
       const cleanHash = window.location.hash.replace(/^#\/?/, '').trim();
       const tabName = cleanHash.split('?')[0].split('/')[0];
@@ -72,7 +72,7 @@ const parseTabFromLocation = (): ManagerTab | null => {
   } catch {}
 
   try {
-    // 2. Check window.location.search (?tab=stockers)
+    
     if (typeof window !== 'undefined' && window.location.search) {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
@@ -83,7 +83,7 @@ const parseTabFromLocation = (): ManagerTab | null => {
   } catch {}
 
   try {
-    // 3. Check persistent localStorage
+    
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('ahtri_active_manager_tab') || localStorage.getItem('ahtri_active_tab');
       if (saved && isValidManagerTab(saved)) {
@@ -96,7 +96,7 @@ const parseTabFromLocation = (): ManagerTab | null => {
 };
 
 export const App: React.FC = () => {
-  // Authentication Gate State
+  
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
     const saved = localStorage.getItem('ahtri_user');
     const token = localStorage.getItem('ahtri_auth_token');
@@ -110,7 +110,7 @@ export const App: React.FC = () => {
     return null;
   });
 
-  // Persistent Manager Tab State (stays on current page across browser reloads)
+  
   const [managerTab, setManagerTabState] = useState<ManagerTab>(() => {
     return parseTabFromLocation() || 'overview';
   });
@@ -127,7 +127,7 @@ export const App: React.FC = () => {
     } catch {}
   };
 
-  // Sync hash changes (back/forward button, direct URL navigation) with state
+  
   useEffect(() => {
     try {
       const currentHash = window.location.hash.replace(/^#\/?/, '').trim();
@@ -163,12 +163,12 @@ export const App: React.FC = () => {
     return localStorage.getItem('ahtri_manager_name') || 'System Administrator';
   });
 
-  // Sidebar Navigation State (Expand / Collapse with Persistence)
+  
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('ahtri_sidebar_collapsed') === 'true';
   });
 
-  // Mobile Drawer Navigation State
+  
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   const handleToggleSidebar = () => {
@@ -191,18 +191,18 @@ export const App: React.FC = () => {
     geofence_radius_m: number;
   } | null>(null);
 
-  // Owner Device Authorizations & 6-Digit OTP State
+  
   const [isDeviceApprovalsOpen, setIsDeviceApprovalsOpen] = useState(false);
   const [deviceApprovalsCount, setDeviceApprovalsCount] = useState(0);
 
-  // Dynamic Approvals Hub Pending Count (Leaves & Suspended Tasks)
+  
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
 
-  // New MR-Marked Field Locations Notification State
+  
   const [recentNewLocations, setRecentNewLocations] = useState<NewLocationItem[]>([]);
   const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
 
-  // Live MR Duty Completion Notification State
+  
   const [recentCompletions, setRecentCompletions] = useState<DutyCompletionItem[]>([]);
   const [acknowledgedCompletionIds, setAcknowledgedCompletionIds] = useState<Set<string>>(() => {
     try {
@@ -213,7 +213,7 @@ export const App: React.FC = () => {
     }
   });
 
-  // Live poll pending approvals count (strictly dynamic from actual pending leaves and suspended tasks)
+  
   useEffect(() => {
     if (!authUser) return;
     const fetchPendingApprovals = async () => {
@@ -266,7 +266,7 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Live poll pending device authorizations count
+  
   useEffect(() => {
     if (!authUser) return;
     const fetchPendingCount = async () => {
@@ -283,7 +283,7 @@ export const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Live poll for newly marked field locations from MRs
+  
   useEffect(() => {
     if (!authUser) return;
     const fetchRecentLocations = async () => {
@@ -297,7 +297,7 @@ export const App: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            // Only field discoveries submitted by MRs trigger notifications for owner
+            
             setRecentNewLocations(data.filter((l) => l.created_by_role === 'MR'));
           }
         }
@@ -338,7 +338,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Live poll for MR completed duties
+  
   useEffect(() => {
     if (!authUser) return;
     const fetchRecentCompletions = async () => {
@@ -445,12 +445,12 @@ export const App: React.FC = () => {
   };
 
   const handleAssignNewCall = () => {
-    // Open clean task modal without hardcoded mock location
+    
     setAssignedLocationTarget(null);
     setManagerTab('tasks');
   };
 
-  // If not authenticated, render Login Page
+  
   if (!authUser) {
     return (
       <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>Loading login...</div>}>

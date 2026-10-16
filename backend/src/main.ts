@@ -9,11 +9,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
 
-  // Limit payload sizes to prevent memory exhaustion DoS
+  
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // HTTP Security Headers (OWASP standard defensive headers)
+  
   app.use((_req: any, res: any, next: any) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -25,7 +25,7 @@ async function bootstrap() {
     next();
   });
 
-  // Secure CORS Configuration
+  
   const configuredOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
     : [];
@@ -43,7 +43,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile native apps, curl, background tasks)
+      
       if (!origin) return callback(null, true);
       if (
         process.env.NODE_ENV !== 'production' ||

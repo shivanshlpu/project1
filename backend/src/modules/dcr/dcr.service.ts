@@ -13,11 +13,7 @@ import { DCR, DCRItem } from '../../database/database.types';
 export class DcrService {
   constructor(private readonly db: DatabaseService) {}
 
-  /**
-   * Section 4.2: DCR auto-population.
-   * On GET /dcr/today, builds DCR draft by joining doctor_visits + location_verifications
-   * for MR's date. Pre-fills date, doctor, time, duration, location, visit count.
-   */
+  
   async getTodayDcrDraft(mrId: string) {
     const todayStr = new Date().toISOString().split('T')[0];
     let dcr = this.db.dcrList.find((d) => d.mr_id === mrId && d.date === todayStr);

@@ -4,11 +4,9 @@ import { AuthGuard } from '@nestjs/passport';
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
     const isTest = process.env.NODE_ENV === 'test';
-
-    // In automated testing environment, support mock user context if provided
     if (isTest) {
+      const req = context.switchToHttp().getRequest();
       const xUserId = req.headers['x-user-id'] || 'usr-admin-01';
       const isPrivileged = xUserId.toLowerCase().includes('admin');
       req.user = {
@@ -20,62 +18,22 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    try {
-      const result = await (super.canActivate(context) as any);
-      if (result) return true;
-    } catch (authErr) {
-      // Resilient fallback for authenticated Admin Web requests
-      const xUserId = req.headers['x-user-id'];
-      const xUserRole = req.headers['x-user-role'];
-      if (
-        xUserId &&
-        (xUserRole === 'SUPER_ADMIN' ||
-          xUserRole === 'ADMIN' ||
-          xUserRole === 'MANAGER' ||
-          xUserId.toLowerCase().includes('admin'))
-      ) {
-        req.user = {
-          id: xUserId,
-          email: `${xUserId}@ahtri.com`,
-          role: xUserRole || 'SUPER_ADMIN',
-          name: 'Authenticated Admin',
-        };
-        return true;
-      }
-      throw authErr;
-    }
-
-    return true;
+    return (await super.canActivate(context)) as boolean;
   }
 
-  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    if (err || !user) {
+  handleRequest(err: any, user: any, _info: any, context: ExecutionContext) {
+    if (process.env.NODE_ENV === 'test') {
       const req = context.switchToHttp().getRequest();
-      const xUserId = req.headers['x-user-id'];
-      const xUserRole = req.headers['x-user-role'];
-      if (
-        xUserId &&
-        (xUserRole === 'SUPER_ADMIN' ||
-          xUserRole === 'ADMIN' ||
-          xUserRole === 'MANAGER' ||
-          xUserId.toLowerCase().includes('admin'))
-      ) {
-        return {
-          id: xUserId,
-          email: `${xUserId}@ahtri.com`,
-          role: xUserRole || 'SUPER_ADMIN',
-          name: 'Authenticated Admin',
-        };
-      }
-      if (process.env.NODE_ENV === 'test') {
-        const xUserIdTest = req.headers['x-user-id'] || 'usr-admin-01';
-        return {
-          id: xUserIdTest,
-          email: `${xUserIdTest}@ahtri.com`,
-          role: xUserIdTest.toLowerCase().includes('admin') ? 'SUPER_ADMIN' : 'MR',
-          name: 'Test User',
-        };
-      }
+      const xUserIdTest = req.headers['x-user-id'] || 'usr-admin-01';
+      return {
+        id: xUserIdTest,
+        email: `${xUserIdTest}@ahtri.com`,
+        role: xUserIdTest.toLowerCase().includes('admin') ? 'SUPER_ADMIN' : 'MR',
+        name: 'Test User',
+      };
+    }
+
+    if (err || !user) {
       throw err || new UnauthorizedException('Authentication token required or expired.');
     }
     return user;

@@ -14,15 +14,10 @@ export interface QueuedDraft {
   synced: boolean;
 }
 
-/**
- * Section 4.4 & Section 11: Local offline SQLite queue.
- * Append-only write queue where each draft is tagged with a client UUID + timestamp
- * to make retries idempotent.
- */
 class LocalOfflineQueue {
   private queue: QueuedDraft[] = [];
 
-  // Read caches mirrored locally (§4.4)
+  
   public cachedTasks: any[] = [];
   public cachedDoctors: any[] = [];
   public lastSyncTimestamp: string | null = null;

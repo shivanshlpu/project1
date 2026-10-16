@@ -63,14 +63,14 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  // Selected Location State
+  
   const [selectedLat, setSelectedLat] = useState<number>(initialLat);
   const [selectedLng, setSelectedLng] = useState<number>(initialLng);
   const [locationName, setLocationName] = useState('');
   const [address, setAddress] = useState('Gandhi Chowk, Shahdol, MP');
   const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER'>('CLINIC');
   const [phone, setPhone] = useState('');
-  const [geofenceRadius, setGeofenceRadius] = useState<number>(50); // 50m default
+  const [geofenceRadius, setGeofenceRadius] = useState<number>(50); 
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [nearbyPois, setNearbyPois] = useState<Array<{ name: string; type: string; lat: number; lng: number }>>([]);
   const [isSearchingPois, setIsSearchingPois] = useState(false);
@@ -94,7 +94,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   };
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  // Initialize Map
+  
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current) return;
 
@@ -145,20 +145,20 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       }).addTo(map);
       circleRef.current = circle;
 
-      // Handle map clicks
+      
       map.on('click', (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
         updatePosition(lat, lng);
       });
 
-      // Handle marker drag
+      
       marker.on('dragend', () => {
         const pos = marker.getLatLng();
         updatePosition(pos.lat, pos.lng);
       });
     }
 
-    // Update marker icon when category changes
+    
     if (markerRef.current) {
       const updatedIcon = L.divIcon({
         html: create3DMapPinHtml({ category, isSelected: true }),
@@ -200,7 +200,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     };
   }, [isOpen]);
 
-  // Dynamically update 3D map pin icon and geofence color when user changes category
+  
   useEffect(() => {
     const getCatColor = (cat: string) => {
       if (cat === 'HOSPITAL') return '#DC2626';
@@ -229,14 +229,14 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   }, [category]);
 
-  // Handle mapMode switch (Street / Satellite)
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Update position, marker, circle, and reverse geocode
+  
   const updatePosition = async (lat: number, lng: number) => {
     setSelectedLat(lat);
     setSelectedLng(lng);
@@ -251,12 +251,12 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       mapInstanceRef.current.panTo([lat, lng]);
     }
 
-    // Live Reverse Geocode via OpenStreetMap Nominatim + Smart POI Discovery
+    
     try {
       setIsReverseGeocoding(true);
       setIsSearchingPois(true);
 
-      // 1. Fetch street address details
+      
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`,
         { headers: { 'User-Agent': 'AHTRI-FFA/1.0' } }
@@ -268,7 +268,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         if (data && data.display_name) {
           setAddress(data.display_name);
           
-          // Check if reverse geocode already hit a named establishment (not just a road)
+          
           const isRoadOnly = !data.name || /^(road|residential|highway|unclassified|tertiary|secondary|primary)$/i.test(data.addresstype || '') || /(rd|road|street|marg|lane|gali|highway|ave|avenue)$/i.test(data.name || '');
           if (!isRoadOnly && data.name) {
             reverseName = data.name;
@@ -276,8 +276,8 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         }
       }
 
-      // 2. Smart POI Discovery: Search nearby shops, tea stalls, cafes, restaurants, clinics within 90m
-      const delta = 0.001; // ~90 meters
+      
+      const delta = 0.001; 
       const minLng = lng - delta;
       const maxLng = lng + delta;
       const minLat = lat - delta;
@@ -301,7 +301,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
 
             setNearbyPois(validPois);
 
-            // Automatically pick the nearest shop/clinic if reverse geocoding only found a street name
+            
             if (!reverseName && validPois.length > 0) {
               reverseName = validPois[0].name;
             }
@@ -313,7 +313,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         console.warn('POI search error:', poiErr);
       }
 
-      // Set best identified place name (e.g. "Apna Chai Wala")
+      
       if (reverseName) {
         setLocationName(reverseName);
       } else if (!locationName) {
@@ -328,7 +328,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   };
 
-  // Synchronize state when editingLocation changes or modal opens or coordinates change
+  
   useEffect(() => {
     if (!isOpen) return;
     if (editingLocation) {
@@ -356,14 +356,14 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
   }, [isOpen, editingLocation, initialLat, initialLng]);
 
-  // Update geofence radius visual circle
+  
   useEffect(() => {
     if (circleRef.current) {
       circleRef.current.setRadius(geofenceRadius);
     }
   }, [geofenceRadius]);
 
-  // High-Accuracy Live Search (Photon POI for medical shops/hospitals + Nominatim + GPS Coords)
+  
   const handleLiveSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
@@ -371,7 +371,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
 
     setIsSearching(true);
 
-    // 1. Check if user entered direct GPS coordinates: "lat, lng" or "lat lng"
+    
     const coordMatch = query.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -385,7 +385,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     }
 
     try {
-      // 2. Query Photon POI API (Specialized in places, clinics, pharmacies, hospitals & shops)
+      
       const photonRes = await fetch(
         `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`,
       );
@@ -419,7 +419,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
         }
       }
 
-      // 3. Fallback to Nominatim if Photon yields no results
+      
       if (parsedResults.length === 0) {
         const nomRes = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6`,

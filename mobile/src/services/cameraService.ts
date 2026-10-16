@@ -11,9 +11,7 @@ export interface PhotoResult {
 }
 
 export const CameraService = {
-  /**
-   * Request camera capture permissions
-   */
+  
   async requestCameraPermission(): Promise<boolean> {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -24,24 +22,19 @@ export const CameraService = {
     }
   },
 
-  /**
-   * Capture a live photo via device camera (e.g. attendance selfie, doctor clinic photo)
-   * Follows enterprise attendance standard (JioAttendance / Darwinbox pattern):
-   * Scales on-device to standard 360x360 verification square at quality 0.5 (~12KB - 18KB).
-   * Ensures instant upload, zero 413 Payload Too Large errors, and safe database storage.
-   */
+  
   async captureLivePhoto(options?: {
     allowsEditing?: boolean;
     aspect?: [number, number];
     quality?: number;
   }): Promise<PhotoResult | null> {
-    // If running in Web environment (browser / mobile web)
+    
     if (Platform.OS === 'web' && typeof document !== 'undefined' && typeof window !== 'undefined') {
       return new Promise<PhotoResult | null>((resolve) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.capture = 'user'; // Requests front selfie camera
+        input.capture = 'user'; 
         input.style.display = 'none';
         document.body.appendChild(input);
 
@@ -59,7 +52,7 @@ export const CameraService = {
           const reader = new FileReader();
           reader.onload = (event: any) => {
             const dataUrl = event.target.result as string;
-            // Compress with Canvas to standard 360x360 (~12KB-18KB)
+            
             try {
               const img = document.createElement('img');
               img.onload = () => {
@@ -121,7 +114,7 @@ export const CameraService = {
           reader.readAsDataURL(file);
         };
 
-        // Fallback for user cancelling
+        
         window.addEventListener(
           'focus',
           () => {
@@ -145,7 +138,7 @@ export const CameraService = {
       });
     }
 
-    // Native Mobile (Expo on Android / iOS)
+    
     const hasPermission = await this.requestCameraPermission();
     if (!hasPermission) {
       return null;
@@ -166,7 +159,7 @@ export const CameraService = {
 
       const asset = result.assets[0];
 
-      // Enterprise compression on device: scale to standard dimension JPEG @ 0.45 (~15KB-25KB)
+      
       let base64Clean: string | null = null;
       let finalUri = asset.uri;
       let width = asset.width || 360;
@@ -194,12 +187,12 @@ export const CameraService = {
         console.warn('ImageManipulator compression fallback:', manipErr);
       }
 
-      // Check asset.base64 if ImageManipulator didn't provide base64
+      
       if (!base64Clean && asset.base64 && asset.base64.length > 50) {
         base64Clean = asset.base64;
       }
 
-      // Bulletproof native FileSystem read (guaranteed to read local file:/// on Android even with cropping)
+      
       if (!base64Clean && finalUri) {
         try {
           const fsBase64 = await FileSystem.readAsStringAsync(finalUri, {
@@ -234,7 +227,7 @@ export const CameraService = {
         };
       }
 
-      // Fallback: return file URI but with base64: null so it cannot be mistaken for base64
+      
       return {
         uri: finalUri,
         width,
@@ -247,9 +240,7 @@ export const CameraService = {
     }
   },
 
-  /**
-   * Select a photo from phone gallery (e.g. expense receipts)
-   */
+  
   async selectFromGallery(): Promise<PhotoResult | null> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({

@@ -24,7 +24,7 @@ describe('AuthService (Node 1 DoD Verification)', () => {
 
     service = module.get<AuthService>(AuthService);
     db = module.get<DatabaseService>(DatabaseService);
-    await db.onModuleInit(); // Seed data
+    await db.onModuleInit(); 
   });
 
   it('should login successfully with valid email and password', async () => {
@@ -76,10 +76,10 @@ describe('AuthService (Node 1 DoD Verification)', () => {
     expect(refreshRes.refresh_token).toBeDefined();
     expect(refreshRes.refresh_token).not.toBe(oldRefreshToken);
 
-    // CRITICAL: Previous token must now be invalidated
+    
     expect(db.refreshTokens.has(oldRefreshToken)).toBe(false);
 
-    // Attempting to re-use old token must fail
+    
     await expect(service.refresh({ refreshToken: oldRefreshToken })).rejects.toThrow(
       UnauthorizedException,
     );
@@ -99,7 +99,7 @@ describe('AuthService (Node 1 DoD Verification)', () => {
   });
 
   it('should bind device ID on first MR login and reject subsequent login from different device', async () => {
-    // 1. First login: MR pairs with device-A
+    
     const login1 = (await service.login({
       identifier: 'mr@ahtri.com',
       password: 'Password@123',
@@ -111,12 +111,12 @@ describe('AuthService (Node 1 DoD Verification)', () => {
     expect(login1.access_token).toBeDefined();
     expect(login1.user.device_id).toBe('device-phone-A');
 
-    // Verify user in db has device_id bound
+    
     const mrUser = db.users.find((u) => u.id === 'usr-mr-01');
     expect(mrUser?.device_id).toBe('device-phone-A');
     expect(mrUser?.device_bound_at).toBeDefined();
 
-    // 2. Second login with SAME device -> success
+    
     const loginSameDevice = (await service.login({
       identifier: 'mr@ahtri.com',
       password: 'Password@123',
@@ -124,7 +124,7 @@ describe('AuthService (Node 1 DoD Verification)', () => {
     })) as any;
     expect(loginSameDevice.access_token).toBeDefined();
 
-    // 3. Unauthorized attempt from DIFFERENT device -> must reject with ForbiddenException
+    
     await expect(
       service.login({
         identifier: 'mr@ahtri.com',
@@ -133,7 +133,7 @@ describe('AuthService (Node 1 DoD Verification)', () => {
       }),
     ).rejects.toThrow(ForbiddenException);
 
-    // 4. Reject if phone number does not match registered phone
+    
     await expect(
       service.login({
         identifier: 'mr@ahtri.com',

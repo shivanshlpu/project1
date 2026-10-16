@@ -36,7 +36,6 @@ export interface DownloadProgressPayload {
 
 export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void;
 
-// Current version and versionCode installed on this device (read dynamically from manifest or fallback to 1.0.8 / 9)
 export const CURRENT_APP_VERSION =
   Constants.expoConfig?.version ||
   (Constants as any).manifest2?.extra?.expoClient?.version ||
@@ -53,9 +52,6 @@ const UPDATE_STORAGE_KEYS = {
   DISMISSED_VERSION: '@ahtri_dismissed_version',
 };
 
-/**
- * Format bytes to readable MB / KB
- */
 export function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 MB';
   const mb = bytes / (1024 * 1024);
@@ -64,10 +60,6 @@ export function formatBytes(bytes: number): string {
   return `${kb.toFixed(0)} KB`;
 }
 
-/**
- * Compare two semver strings like "1.0.1" vs "1.0.0".
- * Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
- */
 export function compareSemVer(v1: string, v2: string): number {
   const p1 = (v1 || '0').replace(/[^0-9.]/g, '').split('.').map((x) => parseInt(x, 10) || 0);
   const p2 = (v2 || '0').replace(/[^0-9.]/g, '').split('.').map((x) => parseInt(x, 10) || 0);
@@ -83,16 +75,12 @@ export function compareSemVer(v1: string, v2: string): number {
 }
 
 export const AppUpdateService = {
-  /**
-   * Get effective version of the installed app
-   */
+  
   async getEffectiveCurrentVersion(): Promise<string> {
     return CURRENT_APP_VERSION;
   },
 
-  /**
-   * Mark a version as dismissed by user so they are not nagged again
-   */
+  
   async markVersionDismissed(version: string): Promise<void> {
     try {
       await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION, version);
@@ -101,9 +89,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Check if a specific version was dismissed by the user
-   */
+  
   async isVersionDismissed(version: string): Promise<boolean> {
     try {
       const dismissed = await AsyncStorage.getItem(UPDATE_STORAGE_KEYS.DISMISSED_VERSION);
@@ -113,9 +99,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Clear any legacy suppression keys
-   */
+  
   async clearSuppressionCache(): Promise<void> {
     try {
       await AsyncStorage.multiRemove([
@@ -127,15 +111,13 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Check backend for newer application versions
-   */
+  
   async checkForUpdates(): Promise<UpdateCheckResult> {
     const effectiveVersion = CURRENT_APP_VERSION;
 
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
-      // Resilient fetch with automatic retries for Render wake-up tolerance
+      
       const res = await ApiConfig.fetchWithRetry(
         `${baseUrl}/api/app/version`,
         { headers: { Accept: 'application/json' } },
@@ -144,7 +126,7 @@ export const AppUpdateService = {
       );
 
       if (!res.ok) {
-        // Fallback to /app/version
+        
         const resFallback = await fetch(`${baseUrl}/app/version`, {
           headers: { Accept: 'application/json' },
         });
@@ -172,14 +154,12 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Evaluate whether the returned version is newer than installed
-   */
+  
   async evaluateVersion(info: AppVersionInfo, baseVersion?: string): Promise<UpdateCheckResult> {
     const currentVer = baseVersion || CURRENT_APP_VERSION;
     const currentCode = CURRENT_APP_VERSION_CODE;
 
-    // If update broadcast is paused or deactivated by admin, suppress update prompts
+    
     if (info.isActive === false || !info.downloadUrl) {
       return {
         hasUpdate: false,
@@ -193,7 +173,7 @@ export const AppUpdateService = {
     const isNewerCode = (info.latestVersionCode || 0) > currentCode;
     const isTrulyNewer = isNewerSemVer || isNewerCode;
 
-    // If user is ALREADY on the same or newer version, NEVER trigger update!
+    
     if (!isTrulyNewer) {
       return {
         hasUpdate: false,
@@ -214,12 +194,7 @@ export const AppUpdateService = {
     };
   },
 
-  /**
-   * Direct In-App APK Download & Native Package Installer
-   * 1. Downloads the APK file directly inside the app with real-time progress.
-   * 2. Prompts Android's native package installer dialog immediately on completion.
-   * 3. No external browser redirect or multi-step manual download needed.
-   */
+  
   async downloadAndInstallApk(
     downloadUrl: string,
     onProgress?: UpdateProgressCallback,
@@ -230,10 +205,10 @@ export const AppUpdateService = {
         return { success: false, error: 'No download URL provided' };
       }
 
-      // Record download timestamp
+      
       await AsyncStorage.setItem(UPDATE_STORAGE_KEYS.LAST_UPDATE_TIME, new Date().toISOString());
 
-      // Web Fallback: direct file download trigger (no external navigation)
+      
       if (Platform.OS === 'web') {
         const link = document.createElement('a');
         link.href = downloadUrl;
@@ -245,17 +220,17 @@ export const AppUpdateService = {
         return { success: true };
       }
 
-      // Native Android / iOS: In-App Download via DocumentDirectory (persistent and accessible across package manager)
+      
       const targetFileName = 'ahtri-ffa-update.apk';
       const fileUri = `${FileSystem.documentDirectory}${targetFileName}`;
 
-      // Clean up previous temporary update file if exists
+      
       const existing = await FileSystem.getInfoAsync(fileUri);
       if (existing.exists) {
         await FileSystem.deleteAsync(fileUri, { idempotent: true });
       }
 
-      // Resumable background-safe downloader with progress tracking
+      
       const downloadResumable = FileSystem.createDownloadResumable(
         downloadUrl,
         fileUri,
@@ -281,13 +256,13 @@ export const AppUpdateService = {
         throw new Error('Download failed to produce a valid APK file.');
       }
 
-      // Verify downloaded file size is non-empty
+      
       const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
       if (!fileInfo.exists || ('size' in fileInfo && fileInfo.size < 1000000)) {
         throw new Error('Downloaded APK appears corrupted or truncated. Please retry.');
       }
 
-      // Immediately launch Android OS Native Package Installer
+      
       if (Platform.OS === 'android') {
         const installRes = await this.launchApkInstaller(downloadResult.uri);
         return installRes;
@@ -300,10 +275,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Directly launch Android OS Native Package Installer for downloaded APK.
-   * Uses FLAG_GRANT_READ_URI_PERMISSION (1) and FLAG_ACTIVITY_NEW_TASK (268435456).
-   */
+  
   async launchApkInstaller(fileUri?: string): Promise<{ success: boolean; error?: string }> {
     if (Platform.OS !== 'android') {
       return { success: true };
@@ -317,7 +289,7 @@ export const AppUpdateService = {
       }
 
       const contentUri = await FileSystem.getContentUriAsync(targetUri);
-      // FLAG_GRANT_READ_URI_PERMISSION (1) | FLAG_ACTIVITY_NEW_TASK (0x10000000 / 268435456) = 268435457
+      
       const flags = 1 | 268435456;
 
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
@@ -336,9 +308,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Open Android App Details / Unknown Sources Settings if user needs to grant permission
-   */
+  
   async openInstallUnknownSourcesSettings(): Promise<void> {
     if (Platform.OS !== 'android') return;
     try {
@@ -356,9 +326,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Fallback: direct download in mobile browser
-   */
+  
   async openBrowserDownload(downloadUrl: string): Promise<boolean> {
     try {
       await Linking.openURL(downloadUrl);
@@ -369,9 +337,7 @@ export const AppUpdateService = {
     }
   },
 
-  /**
-   * Legacy simple launcher
-   */
+  
   async startUpdate(downloadUrl: string): Promise<boolean> {
     const res = await this.downloadAndInstallApk(downloadUrl);
     return res.success;

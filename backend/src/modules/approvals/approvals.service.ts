@@ -12,9 +12,7 @@ import { Approval, LeaveRequest, Notification } from '../../database/database.ty
 export class ApprovalsService {
   constructor(private readonly db: DatabaseService) {}
 
-  /**
-   * Register a new polymorphic approval request (§4.3)
-   */
+  
   async registerApproval(
     entityType: 'LEAVE' | 'EXPENSE' | 'DCR_CORRECTION' | 'TOUR_PLAN',
     entityId: string,

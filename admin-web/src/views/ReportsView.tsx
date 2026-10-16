@@ -45,7 +45,7 @@ export interface ReportRecord {
 export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
   const t = translations[lang];
 
-  // Dynamic Datasets from Live Operations
+  
   const [records, setRecords] = useState<ReportRecord[]>([]);
   const [mrList, setMrList] = useState<Array<{ id: string; name: string }>>([]);
 
@@ -106,7 +106,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     fetchData();
   }, []);
 
-  // UI Filter State
+  
   const [selectedReport, setSelectedReport] = useState('visits');
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'pdf' | 'json'>('csv');
   const [filterDateRange, setFilterDateRange] = useState('ALL');
@@ -161,7 +161,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     return Array.from(set);
   }, [records, mrList]);
 
-  // Filtering Logic with Dynamic Daily, Weekly, and Monthly Filters
+  
   const filteredRecords = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sevenDaysAgo = new Date();
@@ -181,7 +181,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     });
   }, [records, filterDateRange, filterTerritory, filterMr, filterStatus, filterOrderOnly]);
 
-  // Aggregate KPI Metrics for Executive Summary
+  
   const stats = useMemo(() => {
     const total = filteredRecords.length;
     const verifiedCount = filteredRecords.filter((r) => r.geofence_status === 'VERIFIED_ON_SITE').length;
@@ -195,7 +195,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     return { total, complianceRate, totalRevenue, avgDuration };
   }, [filteredRecords]);
 
-  // Professional RFC 4180 CSV Download Handler (Supports Selective Downloading)
+  
   const downloadCSV = (onlySelected: boolean = false) => {
     const targetRecords = onlySelected && selectedRowIds.size > 0
       ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
@@ -285,7 +285,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     setTimeout(() => setDownloadNotice(null), 4000);
   };
 
-  // Professional Formatted Executive PDF Generation (Supports Selective Downloading)
+  
   const downloadPDF = (onlySelected: boolean = false) => {
     const targetRecords = onlySelected && selectedRowIds.size > 0
       ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
@@ -403,7 +403,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
       </html>
     `;
 
-    // Create a hidden iframe for seamless printing without popup blockers
+    
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
@@ -445,7 +445,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
     } else if (selectedFormat === 'pdf') {
       downloadPDF(onlySelected);
     } else {
-      // JSON
+      
       const targetRecords = onlySelected && selectedRowIds.size > 0
         ? filteredRecords.filter((r) => selectedRowIds.has(r.id))
         : filteredRecords;

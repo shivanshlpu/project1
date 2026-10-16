@@ -1,5 +1,5 @@
 :root {
-  /* Modern Enterprise SaaS Color Palette (Slate, Navy & Medical Emerald) */
+  
   --color-primary: #0F172A;
   --color-primary-hover: #1E293B;
   --color-primary-light: #F1F5F9;
@@ -27,7 +27,7 @@
   --color-text-secondary: #475569;
   --color-text-muted: #64748B;
 
-  /* Typography Scale */
+  
   --font-family-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-family-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 

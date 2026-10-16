@@ -54,7 +54,7 @@ export const SubmittedTasksView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Strictly only completed/submitted MR task records (§1.1 & §1.2)
+          
           const submittedOnly = data
             .filter((t: any) => t && t.status === 'COMPLETED')
             .map((t: any) => ({
@@ -77,7 +77,7 @@ export const SubmittedTasksView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Distinct MR list for dropdown
+  
   const mrOptions = useMemo(() => {
     const map = new Map<string, string>();
     tasks.forEach((t) => {
@@ -88,24 +88,24 @@ export const SubmittedTasksView: React.FC = () => {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [tasks]);
 
-  // Filter tasks
+  
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
-      // MR filter
+      
       if (filterMr !== 'ALL' && t.assigned_mr_id !== filterMr && t.assigned_mr_name !== filterMr) {
         return false;
       }
-      // Orders only filter
+      
       if (filterOrderOnly) {
         const orderArr = parseSafeOrders(t.orders);
         if (orderArr.length === 0) return false;
       }
-      // Date range filter (using YYYY-MM-DD comparisons)
+      
       const taskDate = t.date || (t.completed_at ? t.completed_at.substring(0, 10) : '');
       if (filterDateFrom && taskDate < filterDateFrom) return false;
       if (filterDateTo && taskDate > filterDateTo) return false;
 
-      // Text search
+      
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesTitle = (t.title || '').toLowerCase().includes(q);
@@ -120,7 +120,7 @@ export const SubmittedTasksView: React.FC = () => {
     });
   }, [tasks, filterMr, filterOrderOnly, filterDateFrom, filterDateTo, searchQuery]);
 
-  // Aggregate metrics
+  
   const totalSubmitted = filteredTasks.length;
   const totalOrdersPlaced = filteredTasks.reduce((sum, t) => sum + parseSafeOrders(t.orders).length, 0);
   const totalOrderRevenue = filteredTasks.reduce((sum, t) => sum + calculateOrderRevenue(t.orders), 0);

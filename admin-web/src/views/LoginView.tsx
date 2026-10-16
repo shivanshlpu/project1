@@ -67,7 +67,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           }),
         });
       } catch (primaryErr) {
-        // Fallback to Render live backend if primary endpoint failed
+        
         if (apiUrl !== 'https://ahtri-backend.onrender.com') {
           try {
             response = await fetch('https://ahtri-backend.onrender.com/auth/login', {
@@ -97,7 +97,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
         throw new Error(message);
       }
 
-      // Success
+      
       const userData = {
         id: data.user.id,
         name: data.user.name,
@@ -107,7 +107,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
         token: data.access_token,
       };
 
-      // Always store active session credentials in localStorage for all views and API calls
+      
       localStorage.setItem('ahtri_auth_token', data.access_token);
       localStorage.setItem('token', data.access_token);
       if (data.refresh_token) {

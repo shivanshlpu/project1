@@ -1,9 +1,5 @@
 import { TaskOrderItem } from '../types';
 
-/**
- * Safely normalizes orders whether coming from Supabase/PostgreSQL as an array,
- * stringified JSON string, or null/undefined.
- */
 export function parseSafeOrders(rawOrders: any): TaskOrderItem[] {
   if (!rawOrders) return [];
   if (Array.isArray(rawOrders)) return rawOrders;
@@ -16,9 +12,6 @@ export function parseSafeOrders(rawOrders: any): TaskOrderItem[] {
   return [];
 }
 
-/**
- * Calculate total order revenue safely
- */
 export function calculateOrderRevenue(rawOrders: any): number {
   const orders = parseSafeOrders(rawOrders);
   return orders.reduce((sum, o) => {
@@ -32,9 +25,6 @@ export function calculateOrderRevenue(rawOrders: any): number {
   }, 0);
 }
 
-/**
- * Calculate total order quantity units safely
- */
 export function calculateOrderUnits(rawOrders: any): number {
   const orders = parseSafeOrders(rawOrders);
   return orders.reduce((sum, o) => sum + (Number(o.quantity) || 0), 0);

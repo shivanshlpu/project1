@@ -15,9 +15,7 @@ export interface DeviceHardwareProfile {
 }
 
 export const DeviceBindingService = {
-  /**
-   * Retrieve or create a persistent unique hardware ID for this phone
-   */
+  
   async getUniqueDeviceId(): Promise<string> {
     try {
       let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
@@ -31,9 +29,7 @@ export const DeviceBindingService = {
     }
   },
 
-  /**
-   * Retrieve complete device profile for bank-grade binding verification
-   */
+  
   async getDeviceProfile(): Promise<DeviceHardwareProfile> {
     const deviceId = await this.getUniqueDeviceId();
     const brand = Device.brand || 'Android';

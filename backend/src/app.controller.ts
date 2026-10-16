@@ -75,7 +75,6 @@ function savePersistedVersion(data: AppVersionData): void {
   }
 }
 
-// In-memory version state initialized from persistent storage
 let currentAppVersion: AppVersionData = loadPersistedVersion();
 
 @Controller()
@@ -105,19 +104,14 @@ export class AppController {
     };
   }
 
-  /**
-   * Check latest version metadata
-   */
+  
   @Get(['api/app/version', 'app/version'])
   @Head(['api/app/version', 'app/version'])
   getAppVersion() {
     return currentAppVersion;
   }
 
-  /**
-   * Set new APK link or version on the server dynamically from Admin Panel
-   * Saves to persistent file storage so server restarts never lose the link.
-   */
+  
   @Post(['api/app/version', 'app/version'])
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
@@ -130,14 +124,14 @@ export class AppController {
           currentAppVersion.downloadUrl = trimmedUrl;
         }
       } catch {
-        // Ignore invalid URL schemes
+        
       }
     }
 
     if (body.latestVersion && body.latestVersion.trim()) {
       currentAppVersion.latestVersion = body.latestVersion.trim();
     } else {
-      // Auto-increment version if admin didn't specify one
+      
       const parts = (currentAppVersion.latestVersion || '1.0.3').split('.');
       const lastIndex = Math.max(0, parts.length - 1);
       const nextPatch = (parseInt(parts[lastIndex] || '0', 10) || 0) + 1;
@@ -156,7 +150,7 @@ export class AppController {
     currentAppVersion.releaseDate = new Date().toISOString().split('T')[0];
     currentAppVersion.publishedAt = new Date().toISOString();
 
-    // Persist to disk
+    
     savePersistedVersion(currentAppVersion);
 
     return {
@@ -166,14 +160,7 @@ export class AppController {
     };
   }
 
-  /**
-   * Direct APK Download Stream / 302 Redirect
-   * Allows downloading directly from:
-   * - https://ahtri-backend.onrender.com/download
-   * - https://ahtri-backend.onrender.com/download-apk
-   * - https://ahtri-backend.onrender.com/app/latest-apk
-   * - https://ahtri-backend.onrender.com/api/app/latest-apk
-   */
+  
   @Get([
     'api/app/latest-apk',
     'app/latest-apk',
@@ -189,7 +176,7 @@ export class AppController {
     if (!currentAppVersion.downloadUrl) {
       return res.status(HttpStatus.NOT_FOUND).json({ error: 'No APK download URL configured.' });
     }
-    // Redirect directly to the storage APK URL
+    
     return res.redirect(HttpStatus.FOUND, currentAppVersion.downloadUrl);
   }
 }

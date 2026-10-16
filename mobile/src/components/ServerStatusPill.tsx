@@ -24,7 +24,7 @@ export const ServerStatusPill: React.FC<ServerStatusPillProps> = ({ compact = fa
       } else {
         setFailedCount((prev) => {
           const next = prev + 1;
-          // Only show red "offline" after 2 consecutive failures to allow Render cold start
+          
           if (next >= 2) {
             setStatus('offline');
           } else {

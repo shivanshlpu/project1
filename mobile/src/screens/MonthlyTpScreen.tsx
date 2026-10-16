@@ -85,7 +85,6 @@ const DEFAULT_HQS = [
   { id: 'hq-burhar', name: 'Burhar', state: 'Madhya Pradesh' },
 ];
 
-// Predefined Initial Master Batches Configured in System
 const STATIC_PRESET_BATCHES: Array<{
   id: string;
   batch_code: string;
@@ -96,7 +95,7 @@ const STATIC_PRESET_BATCHES: Array<{
   hq_id: string;
   mr_id: string;
 }> = [
-  // Amar Dwivedi (Kotma)
+  
   { id: 'rb-kot-01', batch_code: 'KOT-B01', name: 'Kotma → Marwahi → Dhanikundi', route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'], distance_km: 85, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
   { id: 'rb-kot-02', batch_code: 'KOT-B02', name: 'Kotma → Kelhari → Janakpur', route_stops: ['Kotma', 'Kelhari', 'Janakpur'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
   { id: 'rb-kot-03', batch_code: 'KOT-B03', name: 'Kotma → Keswahi → Girva → Khamhidol', route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
@@ -107,14 +106,14 @@ const STATIC_PRESET_BATCHES: Array<{
   { id: 'rb-kot-08', batch_code: 'KOT-B08', name: 'Kotma → Baikunthpur', route_stops: ['Kotma', 'Baikunthpur'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
   { id: 'rb-kot-09', batch_code: 'KOT-B09', name: 'Kotma → Gaurela', route_stops: ['Kotma', 'Gaurela'], distance_km: 95, reimbursement_rate: 2.5, hq_id: 'hq-kotma', mr_id: 'usr-mr-01' },
 
-  // Aman Rathore (Shahdol)
+  
   { id: 'rb-sha-01', batch_code: 'SHD-B01', name: 'Shahdol → Budhar → Dhanpuri → OPM', route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'], distance_km: 55, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-02', batch_code: 'SHD-B02', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-03', batch_code: 'SHD-B03', name: 'Shahdol → Gohparu → Jaisinghnagar', route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'], distance_km: 120, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-04', batch_code: 'SHD-B04', name: 'Shahdol → Jaitpur', route_stops: ['Shahdol', 'Jaitpur'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-05', batch_code: 'SHD-B05', name: 'Shahdol → Manpur', route_stops: ['Shahdol', 'Manpur'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
 
-  // Ashish Soni (Ambikapur)
+  
   { id: 'rb-amb-01', batch_code: 'AMB-B01', name: 'Ambikapur → Laknapur → Udaypur → Kedma', route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'], distance_km: 90, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
   { id: 'rb-amb-02', batch_code: 'AMB-B02', name: 'Ambikapur → Batuli → Sitapur → Patthalgawn', route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'], distance_km: 130, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
   { id: 'rb-amb-03', batch_code: 'AMB-B03', name: 'Ambikapur → Silpili → Vishrampur → Surajpur → Devnagar → Shreenagar', route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'], distance_km: 115, reimbursement_rate: 2.5, hq_id: 'hq-ambikapur', mr_id: 'usr-mr-03' },
@@ -208,7 +207,6 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-// Safely parse tour plan entries array regardless of whether Supabase returned raw JSON string or parsed array
 const parseSafeTpEntries = (entries: any): any[] => {
   if (Array.isArray(entries)) return entries;
   if (typeof entries === 'string') {
@@ -220,7 +218,6 @@ const parseSafeTpEntries = (entries: any): any[] => {
   return [];
 };
 
-// Normalize tour plan entries across array of plans
 const normalizeTourPlans = (plans: any[]): any[] => {
   if (!Array.isArray(plans)) return [];
   return plans.map((p) => {
@@ -239,7 +236,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   currentUserHqName,
   onBack,
 }) => {
-  // Auto-detect HQ based on props or username
+  
   const initialHqId = (() => {
     if (currentUserHqId) {
       const lower = currentUserHqId.toLowerCase();
@@ -260,7 +257,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     DEFAULT_HQ_AREAS_MAP[initialHqId] || DEFAULT_HQ_AREAS_MAP['hq-shahdol'],
   );
 
-  // Form inputs
+  
   const [formDate, setFormDate] = useState<string>(() => {
     const d = new Date();
     const day = String(d.getDate()).padStart(2, '0');
@@ -274,7 +271,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [kolDrsName, setKolDrsName] = useState<string>('');
   const [plannedActivity, setPlannedActivity] = useState<string>('');
 
-  // Route Batch Suggestion States
+  
   const [availableBatches, setAvailableBatches] = useState<RouteBatchSuggestion[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<RouteBatchSuggestion | null>(null);
   const [allHqBatches, setAllHqBatches] = useState<RouteBatchSuggestion[]>([]);
@@ -282,28 +279,28 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [batchSuggestionNotice, setBatchSuggestionNotice] = useState<string>('');
   const [isAllBatchesModalOpen, setIsAllBatchesModalOpen] = useState<boolean>(false);
 
-  // Status Notification Banner
+  
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Punching & Submitting States
+  
   const [isPunching, setIsPunching] = useState<boolean>(false);
   const [workingEntries, setWorkingEntries] = useState<WorkingTpItem[]>([]);
   const [isSubmittingBatch, setIsSubmittingBatch] = useState<boolean>(false);
   const [submittedPlans, setSubmittedPlans] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'CREATE' | 'VIEW_SUBMITTED'>('CREATE');
 
-  // Edit Modal Route Batch States
+  
   const [editSelectedBatch, setEditSelectedBatch] = useState<RouteBatchSuggestion | null>(null);
   const [editAvailableBatches, setEditAvailableBatches] = useState<RouteBatchSuggestion[]>([]);
   const [editAllBatches, setEditAllBatches] = useState<RouteBatchSuggestion[]>([]);
   const [isLoadingEditBatches, setIsLoadingEditBatches] = useState<boolean>(false);
 
-  // Calendar modal state
+  
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
 
-  // 24-Hour Edit Modal State
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [editingEntry, setEditingEntry] = useState<any | null>(null);
@@ -315,7 +312,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [editActivity, setEditActivity] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
-  // Native Select/Picker Modal State
+  
   const [pickerModal, setPickerModal] = useState<{
     visible: boolean;
     title: string;
@@ -330,7 +327,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     onSelect: () => {},
   });
 
-  // Helper to extract YYYY-MM
+  
   const getMonthKeyFromDate = (dateStr: string): string => {
     try {
       if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
@@ -346,7 +343,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // Helper to get areas for an HQ (from storage settings or fallback)
+  
   const getStoredAreasForHq = (hqId: string): string[] => {
     try {
       if (typeof window !== 'undefined' && (window as any).localStorage) {
@@ -365,7 +362,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     return DEFAULT_HQ_AREAS_MAP[hqId] || ['Main Market', 'Station Road'];
   };
 
-  // Load HQs from backend & cache
+  
   const loadHqs = async () => {
     let loadedHqs = DEFAULT_HQS;
     try {
@@ -394,7 +391,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }
     } catch {}
 
-    // Match against user's HQ
+    
     const matched = loadedHqs.find((h) =>
       (currentUserHqId && (h.id.toLowerCase() === currentUserHqId.toLowerCase() || h.name.toLowerCase() === currentUserHqId.toLowerCase())) ||
       h.id === selectedHqId
@@ -410,7 +407,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     loadHqs();
   }, []);
 
-  // Local helper to match static preset batches (offline / fallback)
+  
   const matchBatchesLocally = (
     destination: string,
     hqId: string,
@@ -488,7 +485,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }));
   };
 
-  // Fetch Route Batch suggestions for a destination
+  
   const fetchBatchSuggestions = async (destination: string, hqId: string) => {
     if (!destination || !destination.trim()) {
       setAvailableBatches([]);
@@ -515,7 +512,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       }
     } catch {}
 
-    // Offline / local fallback
+    
     const localMatches = matchBatchesLocally(destination, hqId, currentUserId);
     setAvailableBatches(localMatches);
     setSelectedBatch(localMatches[0] || null);
@@ -527,7 +524,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setIsLoadingBatches(false);
   };
 
-  // Fetch all assigned route batches for the selected HQ
+  
   const fetchAllHqBatches = async (hqId: string) => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -562,7 +559,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setAllHqBatches(fallback);
   };
 
-  // Fetch suggestions for the Edit Modal
+  
   const fetchEditBatchSuggestions = async (destination: string, hqId: string) => {
     if (!destination || !destination.trim()) {
       setEditAvailableBatches([]);
@@ -668,7 +665,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     });
   };
 
-  // Auto-fetch suggestions when destination (selectedArea) or selectedHqId changes
+  
   useEffect(() => {
     if (selectedArea && selectedHqId) {
       fetchBatchSuggestions(selectedArea, selectedHqId);
@@ -681,7 +678,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   }, [selectedHqId]);
 
-  // Load areas when HQ changes
+  
   useEffect(() => {
     const activeAreas = getStoredAreasForHq(selectedHqId);
     setAvailableAreas(activeAreas);
@@ -708,7 +705,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     })();
   }, [selectedHqId]);
 
-  // Load persistent Tour Plans from AsyncStorage cache immediately on mount
+  
   useEffect(() => {
     (async () => {
       try {
@@ -723,7 +720,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     })();
   }, [currentUserId]);
 
-  // Load submitted plans for this MR
+  
   const fetchMyTourPlans = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -732,7 +729,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Read cached tour plans
+          
           let cachedPlans: any[] = [];
           try {
             const raw = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
@@ -746,7 +743,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             data.forEach((p: any) => map.set(p.id || p.month, p));
             merged = Array.from(map.values());
           } else if (cachedPlans.length > 0) {
-            // Keep cached tour plans if server temporarily returned empty
+            
             merged = cachedPlans;
           } else {
             merged = [];
@@ -768,7 +765,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         }
       }
     } catch {
-      // Offline fallback
+      
       try {
         const cached = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
         if (cached) {
@@ -785,7 +782,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     fetchMyTourPlans();
   }, []);
 
-  // Handle HQ selection change
+  
   const handleHqChange = (newHqId: string) => {
     setSelectedHqId(newHqId);
     const newAreas = getStoredAreasForHq(newHqId);
@@ -793,7 +790,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setSelectedArea(newAreas[0] || 'Main Area');
   };
 
-  // Open calendar with current formDate
+  
   const handleOpenCalendar = () => {
     try {
       if (/^\d{2}-\d{2}-\d{4}$/.test(formDate)) {
@@ -858,7 +855,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     } catch {}
   };
 
-  // 1. Direct Punch & Save Visit Handler
+  
   const handlePunchVisitDirectly = async () => {
     if (!formDate.trim()) {
       setStatusNotice({ type: 'error', message: 'Please enter or select a planned visit date.' });
@@ -916,7 +913,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         });
       }
     } catch (e: any) {
-      // Local fallback with AsyncStorage
+      
       try {
         const raw = await AsyncStorage.getItem(`@ahtri_punched_tour_plans_${currentUserId}`);
         const list = raw ? JSON.parse(raw) : [];
@@ -944,7 +941,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   };
 
-  // 2. Add to Working Batch (Plan Month)
+  
   const handleAddNextTp = () => {
     if (!formDate.trim()) {
       setStatusNotice({ type: 'error', message: 'Please enter or select a planned visit date.' });
@@ -991,7 +988,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setWorkingEntries((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // 3. Submit complete monthly TP together
+  
   const handleSubmitMonthlyPlan = async () => {
     if (workingEntries.length === 0) {
       setStatusNotice({
@@ -1044,7 +1041,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   };
 
-  // 4. 24-Hour Edit Window Calculation
+  
   const getPlanEditStatus = (plan: any) => {
     const submittedTime = new Date(plan.submitted_at || plan.created_at || Date.now()).getTime();
     const now = Date.now();
@@ -1071,7 +1068,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     };
   };
 
-  // Open Edit Modal for a punched plan/entry
+  
   const handleOpenEditModal = (plan: any, entry: any) => {
     const status = getPlanEditStatus(plan);
     if (!status.canEdit) {
@@ -1111,7 +1108,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setIsEditModalOpen(true);
   };
 
-  // Save changes from Edit Modal (Strictly enforced 24-hour window)
+  
   const handleSaveEditedPlan = async () => {
     if (!editingPlan || !editingEntry) return;
 
@@ -1191,7 +1188,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   };
 
-  // Remove a punched tour plan entry
+  
   const handleDeletePunchedEntry = (plan: any, entry: any) => {
     Alert.alert(
       'Remove Tour Plan Entry',
@@ -1238,7 +1235,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     );
   };
 
-  // Calendar calculations
+  
   const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
   const daysInCurrentMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const calendarDays = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
@@ -2519,7 +2516,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0284C7',
   },
-  // Calendar Modal Styles
+  
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',

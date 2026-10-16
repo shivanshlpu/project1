@@ -39,14 +39,12 @@ export class AiAssistantService {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  /**
-   * Main RAG Query Handler
-   */
+  
   async processQuery(dto: QueryAiDto): Promise<AiResponseDto> {
     const rawQuery = (dto.query || '').trim();
     const queryLower = rawQuery.toLowerCase();
 
-    // 1. Determine date filter range
+    
     const todayStr = new Date().toISOString().split('T')[0];
     let startDate = dto.dateRange?.start;
     let endDate = dto.dateRange?.end;

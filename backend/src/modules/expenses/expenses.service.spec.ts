@@ -31,7 +31,7 @@ describe('Expenses (Node 9 DoD Verification)', () => {
     expect(res.expense.amount).toBe(450.0);
     expect(res.approval_id).toBeDefined();
 
-    // Verify approval record was generated in approvals table (§4.3)
+    
     const approval = db.approvals.find((a) => a.id === res.approval_id);
     expect(approval).toBeDefined();
     expect(approval?.entity_type).toBe('EXPENSE');

@@ -152,7 +152,7 @@ const DEFAULT_MRS_FALLBACK = [
   { id: 'usr-mr-03', name: 'Ashish Soni', phone: '9876543214', hq_id: 'HQ-AMB-001', hq_name: 'Ambikapur' },
 ];
 
-  // --- Monthly Permissions State ---
+  
   const [permissions, setPermissions] = useState<MonthlyPermission[]>([]);
   const [permMonthYear, setPermMonthYear] = useState<string>(() => {
     const d = new Date();
@@ -165,7 +165,7 @@ const DEFAULT_MRS_FALLBACK = [
   const [selectedMrIds, setSelectedMrIds] = useState<string[]>([]);
   const [permStatusFilter, setPermStatusFilter] = useState<string>('ALL');
 
-  // --- Approvals & Requests State ---
+  
   const [requests, setRequests] = useState<StockageRequest[]>([]);
   const [requestStatusFilter, setRequestStatusFilter] = useState<string>('ALL');
   const [selectedRequest, setSelectedRequest] = useState<StockageRequest | null>(null);
@@ -178,7 +178,7 @@ const DEFAULT_MRS_FALLBACK = [
   const [requestToReject, setRequestToReject] = useState<StockageRequest | null>(null);
   const [quickRejectNotes, setQuickRejectNotes] = useState<string>('');
 
-  // --- Packaging Variants State ---
+  
   const [variants, setVariants] = useState<PackagingVariant[]>([]);
   const [internalMedicines, setInternalMedicines] = useState<MedicineItem[]>(medicines || []);
   const [variantTypeFilter, setVariantTypeFilter] = useState<'ALL' | 'LIQUIDS' | 'TABLETS' | 'OINTMENTS' | 'OTHER'>('ALL');
@@ -191,7 +191,7 @@ const DEFAULT_MRS_FALLBACK = [
   const [newVarPtr, setNewVarPtr] = useState<string>('85');
   const [newVarMrp, setNewVarMrp] = useState<string>('110');
 
-  // Load Initial Data
+  
   useEffect(() => {
     fetchPermissions();
     fetchRequests();
@@ -373,7 +373,7 @@ const DEFAULT_MRS_FALLBACK = [
     });
   }, [variants, variantTypeFilter, variantSearch, effectiveMedicines]);
 
-  // Grant Permissions
+  
   const handleGrantPermissions = async () => {
     if (selectedMrIds.length === 0) {
       showToast('error', 'Please select at least one Medical Representative (MR)');
@@ -414,7 +414,7 @@ const DEFAULT_MRS_FALLBACK = [
     }
   };
 
-  // Revoke Permission
+  
   const handleRevokePermission = async (permId: string, mrName: string) => {
     const ok = await showConfirmModal({
       title: 'Revoke Upload Permission',
@@ -446,7 +446,7 @@ const DEFAULT_MRS_FALLBACK = [
     }
   };
 
-  // Review & Approve Request (Additive Rule)
+  
   const handleReviewRequest = async (
     status: 'APPROVED' | 'REJECTED',
     targetRequest?: StockageRequest,
@@ -466,7 +466,7 @@ const DEFAULT_MRS_FALLBACK = [
     try {
       let adjustments = customAdjustments;
       if (!adjustments && targetRequest && targetRequest.id !== selectedRequest?.id) {
-        // Direct card action: approve all submitted quantities as submitted
+        
         adjustments = (targetRequest.items || []).map((it) => ({
           item_id: it.id,
           approved_quantity: it.approved_quantity != null ? it.approved_quantity : it.submitted_quantity,
@@ -523,7 +523,7 @@ const DEFAULT_MRS_FALLBACK = [
     }
   };
 
-  // Add Packaging Variant
+  
   const handleAddVariant = async () => {
     if (!newVarMedId) {
       showToast('error', 'Please select a medicine');
@@ -582,7 +582,7 @@ const DEFAULT_MRS_FALLBACK = [
     }
   };
 
-  // Filtering helpers
+  
   const filteredPermissions = permissions.filter((p) => {
     if (permStatusFilter !== 'ALL' && p.status !== permStatusFilter) return false;
     return true;
@@ -989,7 +989,7 @@ const DEFAULT_MRS_FALLBACK = [
                               setSelectedRequest(null);
                             } else {
                               setSelectedRequest(req);
-                              // Initialize approved quantities with submitted quantities
+                              
                               const initQty: Record<string, number> = {};
                               req.items.forEach((it) => {
                                 initQty[it.id] = it.approved_quantity != null ? it.approved_quantity : it.submitted_quantity;

@@ -3,7 +3,7 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
-  identifier: string; // phone or email
+  identifier: string; 
 
   @IsString()
   @IsNotEmpty()

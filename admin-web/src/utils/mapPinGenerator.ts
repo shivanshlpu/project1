@@ -1,8 +1,4 @@
-/**
- * 3D Google Maps Style Pin Generator for Leaflet
- * Renders high-fidelity 3D teardrop map pins with ground shadows and category icons.
- * Strict: No emojis! Only vector graphics and 3D CSS lighting.
- */
+
 
 export type PinCategory = 'HOSPITAL' | 'PHARMACY' | 'CLINIC' | 'OFFICE' | 'OTHER' | 'MR';
 
@@ -16,51 +12,51 @@ interface PinOptions {
 export function create3DMapPinHtml(options: PinOptions): string {
   const { category, isSelected = false, isNew = false } = options;
 
-  // Category Color Palette with 3D gradients and rim highlights
-  let primaryColor = '#0F8B5A'; // Emerald (Clinic)
+  
+  let primaryColor = '#0F8B5A'; 
   let secondaryColor = '#065F46';
   let highlightColor = '#34D399';
   let ringColor = 'rgba(16, 185, 129, 0.4)';
 
   switch (category) {
     case 'HOSPITAL':
-      primaryColor = '#DC2626'; // Vivid Crimson Red
+      primaryColor = '#DC2626'; 
       secondaryColor = '#991B1B';
       highlightColor = '#F87171';
       ringColor = 'rgba(220, 38, 38, 0.45)';
       break;
     case 'PHARMACY':
-      primaryColor = '#2563EB'; // Royal Blue
+      primaryColor = '#2563EB'; 
       secondaryColor = '#1E40AF';
       highlightColor = '#60A5FA';
       ringColor = 'rgba(37, 99, 235, 0.45)';
       break;
     case 'OFFICE':
-      primaryColor = '#7C3AED'; // Purple / Diagnostic
+      primaryColor = '#7C3AED'; 
       secondaryColor = '#5B21B6';
       highlightColor = '#A78BFA';
       ringColor = 'rgba(124, 58, 237, 0.45)';
       break;
     case 'MR':
-      primaryColor = '#D97706'; // Amber / Gold for Field MR
+      primaryColor = '#D97706'; 
       secondaryColor = '#92400E';
       highlightColor = '#FBBF24';
       ringColor = 'rgba(217, 119, 6, 0.5)';
       break;
     case 'CLINIC':
     default:
-      primaryColor = '#0F8B5A'; // Emerald Green
+      primaryColor = '#0F8B5A'; 
       secondaryColor = '#065F46';
       highlightColor = '#34D399';
       ringColor = 'rgba(15, 139, 90, 0.45)';
       break;
   }
 
-  // Category Vector Icon (Crisp SVG)
+  
   let iconSvg = '';
 
   if (category === 'HOSPITAL') {
-    // 3D Hospital Building with Medical Cross
+    
     iconSvg = `
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 21h18" stroke-width="2.5"/>
@@ -71,7 +67,7 @@ export function create3DMapPinHtml(options: PinOptions): string {
       </svg>
     `;
   } else if (category === 'PHARMACY') {
-    // 3D Storefront / Chemist Shop with Awning & Plus Symbol
+    
     iconSvg = `
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l1.5-6h15L21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" stroke-width="2" fill="#DBEAFE" fill-opacity="0.6"/>
@@ -81,14 +77,14 @@ export function create3DMapPinHtml(options: PinOptions): string {
       </svg>
     `;
   } else if (category === 'MR') {
-    // Field Agent Navigation Compass / Location Pin
+    
     iconSvg = `
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="3 11 22 2 13 21 11 13 3 11" fill="#FEF3C7" fill-opacity="0.8"/>
       </svg>
     `;
   } else if (category === 'OFFICE') {
-    // Diagnostic Lab / Office Building
+    
     iconSvg = `
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="4" y="2" width="16" height="20" rx="2" ry="2" fill="#EDE9FE" fill-opacity="0.6"/>
@@ -99,7 +95,7 @@ export function create3DMapPinHtml(options: PinOptions): string {
       </svg>
     `;
   } else {
-    // Stethoscope & Doctor Practice
+    
     iconSvg = `
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 4v5a7 7 0 0 0 14 0V4" stroke-width="2.4"/>

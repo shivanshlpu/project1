@@ -71,7 +71,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const t = translations[lang];
 
-  // Settings Sub-Tabs
+  
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'hq_territory' | 'updates'>('profile');
 
   const getStoredUser = () => {
@@ -84,7 +84,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
   const storedUser = getStoredUser();
 
-  // 1. Profile State (Dynamically populated from logged-in admin user)
+  
   const [name, setName] = useState(() => storedUser?.name || managerName || 'Shivansh');
   const [email, setEmail] = useState(() => storedUser?.email || localStorage.getItem('ahtri_user_email') || 'shivanshti10@gmail.com');
   const [phone, setPhone] = useState(() => storedUser?.phone || localStorage.getItem('ahtri_user_phone') || '9009149694');
@@ -92,19 +92,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [companyName, setCompanyName] = useState(() => localStorage.getItem('ahtri_company_name') || 'AHTRI BIOTECH');
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
-  // 2. Password Security State
+  
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordNotice, setPasswordNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Team MR Passwords (dynamically loaded from backend)
+  
   const [mrList, setMrList] = useState<Array<{ id: string; name: string; email: string; phone: string; password?: string; territory?: string }>>([]);
   const [editingMrPasswordId, setEditingMrPasswordId] = useState<string | null>(null);
   const [tempMrPassword, setTempMrPassword] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Load current admin profile from database
+  
   useEffect(() => {
     const fetchCurrentProfile = async () => {
       const u = getStoredUser();
@@ -154,7 +154,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     fetchUsers();
   }, []);
 
-  // 3. City Pinpoint & Map State
+  
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -254,7 +254,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   });
   const [cityNotice, setCityNotice] = useState<string | null>(null);
 
-  // 4. Field Policy State
+  
   const [defaultGeofenceRadius, setDefaultGeofenceRadius] = useState<number>(50);
   const [shiftStart, setShiftStart] = useState('09:00');
   const [gracePeriod, setGracePeriod] = useState<number>(15);
@@ -262,7 +262,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [spoofLockEnabled, setSpoofLockEnabled] = useState(true);
   const [policyNotice, setPolicyNotice] = useState<string | null>(null);
 
-  // 5. App Updates & OTA State
+  
   const [targetServerUrl, setTargetServerUrl] = useState(() => {
     return (
       (import.meta as any).env?.VITE_API_URL ||
@@ -295,7 +295,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [justSentSuccess, setJustSentSuccess] = useState(false);
   const [lastBroadcastTime, setLastBroadcastTime] = useState<string | null>(null);
 
-  // Fetch active version configuration from server
+  
   const fetchRemoteVersionInfo = async (serverUrl = targetServerUrl) => {
     setIsLoadingUpdateInfo(true);
     try {
@@ -344,7 +344,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   }, [activeTab]);
 
-  // Test server connection
+  
   const handleTestServerConnection = async () => {
     setIsTestingServerConnection(true);
     try {
@@ -367,7 +367,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Broadcast update to all employees
+  
   const handleBroadcastUpdate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -412,7 +412,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         body: JSON.stringify(payload),
       });
 
-      // Synchronize with live Render backend if running on another target
+      
       if (cleanUrl !== 'https://ahtri-backend.onrender.com') {
         try {
           await fetch('https://ahtri-backend.onrender.com/api/app/version', {
@@ -465,7 +465,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Toggle active broadcast state (pause / resume)
+  
   const handleToggleBroadcastActive = async (newActiveState: boolean) => {
     setIsSavingUpdateInfo(true);
     try {
@@ -501,7 +501,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Helper to generate styled 3D Pin Icon based on Headquarters / Branch Tag
+  
   const createCityPinIcon = (branchType: BranchTagType = 'SUB_CITY_BRANCH', isHq: boolean = false) => {
     const isHeadquarters = isHq || branchType === 'HEADQUARTERS';
     const bg = isHeadquarters ? '#1A3C6E' : branchType === 'REGIONAL_HUB' ? '#4F46E5' : branchType === 'ZONAL_DEPOT' ? '#059669' : '#0891B2';
@@ -522,7 +522,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return '#0891B2';
   };
 
-  // Initialize City Pinpoint Map when city tab is active
+  
   useEffect(() => {
     if ((activeTab as string) !== 'city' || !mapContainerRef.current) return;
 
@@ -538,7 +538,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
-      // Create pinpoint marker
+      
       const pinIcon = createCityPinIcon(newCityBranchTag, newCityBranchTag === 'HEADQUARTERS');
 
       const marker = L.marker([currentCityPin.lat, currentCityPin.lng], {
@@ -572,21 +572,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }, 200);
   }, [activeTab]);
 
-  // Update Tile Layer on satellite toggle
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Update radius circle
+  
   useEffect(() => {
     if (circleRef.current) {
       circleRef.current.setRadius(currentCityPin.radiusKm * 1000);
     }
   }, [currentCityPin.radiusKm]);
 
-  // Reverse geocode clicked/dragged position to identify city
+  
   const updateCityPinPosition = async (lat: number, lng: number, fallbackName?: string) => {
     if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
     if (circleRef.current) circleRef.current.setLatLng([lat, lng]);
@@ -630,7 +630,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }));
   };
 
-  // Search City via Nominatim
+  
   const handleSearchCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchCityQuery.trim()) return;
@@ -659,7 +659,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Save Marked City to Operating Zones List
+  
   const handleSaveMarkedCity = () => {
     const isHq = newCityBranchTag === 'HEADQUARTERS';
     const targetName = currentCityPin.cityName.trim();
@@ -714,7 +714,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updatedList));
 
-      // Sync with ahtri_inventory_hqs
+      
       const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
       const hqsList = savedHqsRaw ? JSON.parse(savedHqsRaw) : [];
       const updatedHqsList = Array.isArray(hqsList) ? [...hqsList] : [];
@@ -737,7 +737,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
-    // Sync to backend inventory HQs
+    
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -762,7 +762,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     handleSelectOperatingCity(targetCity);
   };
 
-  // Focus on a saved city
+  
   const handleSelectOperatingCity = (city: OperatingCity) => {
     setCurrentCityPin({
       cityName: city.cityName,
@@ -788,7 +788,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Set any city as official Headquarters
+  
   const handleSetHeadquarters = (cityId: string) => {
     const target = operatingCities.find((c) => c.id === cityId);
     if (!target) return;
@@ -831,7 +831,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     handleSelectOperatingCity({ ...target, isHeadquarters: true, branchType: 'HEADQUARTERS' });
   };
 
-  // Change branch tag (Sub-City Branch, Regional Hub, Zonal Depot, Headquarters)
+  
   const handleChangeBranchTag = (cityId: string, tag: BranchTagType) => {
     if (tag === 'HEADQUARTERS') {
       handleSetHeadquarters(cityId);
@@ -867,7 +867,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     handleSelectOperatingCity({ ...target, isHeadquarters: false, branchType: tag });
   };
 
-  // Delete city / branch
+  
   const handleDeleteCity = (cityId: string) => {
     const target = operatingCities.find((c) => c.id === cityId);
     if (!target) return;
@@ -880,7 +880,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       localStorage.setItem('ahtri_operating_cities', JSON.stringify(updated));
 
-      // Also remove from ahtri_inventory_hqs
+      
       const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
       if (savedHqsRaw) {
         const savedHqs = JSON.parse(savedHqsRaw);
@@ -895,7 +895,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       window.dispatchEvent(new Event('ahtri_hq_updated'));
     } catch {}
 
-    // Delete from backend inventory HQs
+    
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -912,7 +912,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setCityNotice(null), 3500);
   };
 
-  // Save Profile Handler
+  
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -956,7 +956,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     localStorage.setItem('ahtri_company_name', companyName);
     localStorage.setItem('ahtri_manager_name', cleanName);
 
-    // Keep cached members list synchronized with admin profile update
+    
     try {
       const cached = localStorage.getItem('ahtri_cached_members');
       if (cached) {
@@ -976,7 +976,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setProfileNotice(null), 3500);
   };
 
-  // Update Manager Password
+  
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword) {
@@ -1019,7 +1019,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setPasswordNotice(null), 4000);
   };
 
-  // Generate random strong password
+  
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
     let pwd = '';
@@ -1029,7 +1029,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return pwd;
   };
 
-  // Update MR Password
+  
   const handleSaveMrPassword = async (mrId: string) => {
     if (!tempMrPassword.trim()) {
       alert('Password cannot be empty');

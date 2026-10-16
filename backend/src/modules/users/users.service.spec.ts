@@ -66,11 +66,11 @@ describe('Users & Territories (Node 3 DoD Verification)', () => {
 
     await usersService.deactivateUser(user.id);
 
-    // Verify soft-deleted user is excluded from active users list
+    
     const activeList = await usersService.getUsers({});
     expect(activeList.find((u) => u.id === user.id)).toBeUndefined();
 
-    // Verify row still retained in DB with deleted_at timestamp
+    
     const dbRecord = db.users.find((u) => u.id === user.id);
     expect(dbRecord?.status).toBe('INACTIVE');
     expect(dbRecord?.deleted_at).toBeDefined();

@@ -68,11 +68,11 @@ export const AdminAttendanceView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [mrs, setMrs] = useState<Array<{ id: string; name: string }>>([]);
 
-  // 512MB Quota Protection Manual Purge State
+  
   const [isPurging, setIsPurging] = useState<boolean>(false);
   const [purgeNotice, setPurgeNotice] = useState<string | null>(null);
 
-  // Filters (§26)
+  
   const [filterMr, setFilterMr] = useState<string>('ALL');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -82,7 +82,7 @@ export const AdminAttendanceView: React.FC = () => {
   const [filterMissingPunchOutOnly, setFilterMissingPunchOutOnly] = useState<boolean>(false);
   const [filterSuspiciousOnly, setFilterSuspiciousOnly] = useState<boolean>(false);
 
-  // Attendance PDF Report State (§1.6)
+  
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [pdfStartDate, setPdfStartDate] = useState<string>('2026-09-01');
   const [pdfEndDate, setPdfEndDate] = useState<string>('2026-09-30');
@@ -185,7 +185,7 @@ export const AdminAttendanceView: React.FC = () => {
     setIsPdfModalOpen(false);
   };
 
-  // Settings & Policy Modals
+  
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState<boolean>(false);
   const [settings, setSettings] = useState<AttendanceSettingsData>({
@@ -196,7 +196,7 @@ export const AdminAttendanceView: React.FC = () => {
   });
   const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
 
-  // Photo Preview Modal (§20 & §21)
+  
   const [previewPhoto, setPreviewPhoto] = useState<{
     url: string;
     userName: string;
@@ -207,7 +207,7 @@ export const AdminAttendanceView: React.FC = () => {
     photoPurged?: boolean;
   } | null>(null);
 
-  // Load MR list on mount
+  
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -225,7 +225,7 @@ export const AdminAttendanceView: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // Load Settings on mount (§22)
+  
   const fetchSettings = async () => {
     try {
       const res = await resilientFetch('/attendance/settings', {
@@ -242,7 +242,7 @@ export const AdminAttendanceView: React.FC = () => {
     fetchSettings();
   }, []);
 
-  // Load Attendance Records (§26)
+  
   const fetchAttendance = async () => {
     setIsLoading(true);
     try {
@@ -298,7 +298,7 @@ export const AdminAttendanceView: React.FC = () => {
     filterSuspiciousOnly,
   ]);
 
-  // Save Settings (§22)
+  
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
@@ -323,7 +323,7 @@ export const AdminAttendanceView: React.FC = () => {
     }
   };
 
-  // 24-Hour Auto-Purge Manual Action (512MB Database Quota Protection)
+  
   const handleManualPurge = async () => {
     setIsPurging(true);
     try {
@@ -345,7 +345,7 @@ export const AdminAttendanceView: React.FC = () => {
     }
   };
 
-  // Clear all attendance records from database and UI
+  
   const handleClearAllAttendance = async () => {
     const ok = await showConfirmModal({
       title: 'Clear All Attendance Records',
@@ -375,7 +375,7 @@ export const AdminAttendanceView: React.FC = () => {
     }
   };
 
-  // Metrics summary
+  
   const todayStr = new Date().toISOString().split('T')[0];
   const totalLogs = records.length;
   const activeOnFieldCount = records.filter(
@@ -714,7 +714,7 @@ export const AdminAttendanceView: React.FC = () => {
                   const isMissingPunchOut = rec.check_in_at && !rec.check_out_at && rec.date !== todayStr;
                   const isActiveShift = !!(rec.check_in_at && !rec.check_out_at && rec.date === todayStr);
 
-                  // Calculate live duration for active shift
+                  
                   let liveDurationStr = '';
                   if (isActiveShift && rec.check_in_at) {
                     const diffMs = Math.max(0, Date.now() - new Date(rec.check_in_at).getTime());

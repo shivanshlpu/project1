@@ -35,13 +35,13 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isProcessingAction, setIsProcessingAction] = useState<string | null>(null);
 
-  // Filters
+  
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHq, setFilterHq] = useState<string>('ALL');
   const [filterDeliveryStatus, setFilterDeliveryStatus] = useState<string>('ALL');
   const [filterAcceptance, setFilterAcceptance] = useState<string>('ALL');
 
-  // Modals
+  
   const [selectedOrderForItems, setSelectedOrderForItems] = useState<OrderItemRecord | null>(null);
   const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<OrderItemRecord | null>(null);
 
@@ -84,10 +84,10 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     return () => clearInterval(interval);
   }, []);
 
-  // Filtered orders
+  
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      // HQ filter
+      
       if (filterHq !== 'ALL') {
         const selectedHq = hqs.find((h) => h.id === filterHq);
         const selectedHqName = (selectedHq?.name || '').toLowerCase();
@@ -109,12 +109,12 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         }
       }
 
-      // Delivery Status filter
+      
       if (filterDeliveryStatus !== 'ALL' && o.delivery_status !== filterDeliveryStatus) {
         return false;
       }
 
-      // Acceptance filter
+      
       if (filterAcceptance === 'ACCEPTED' && !o.hq_accepted) {
         return false;
       }
@@ -122,7 +122,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         return false;
       }
 
-      // Search Query
+      
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchNum = (o.order_number || '').toLowerCase().includes(q);
@@ -142,7 +142,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     });
   }, [orders, filterHq, filterDeliveryStatus, filterAcceptance, searchQuery]);
 
-  // Aggregate Metrics
+  
   const totalCount = orders.length;
   const pendingDeliveryCount = orders.filter((o) => o.delivery_status === 'PENDING').length;
   const deliveredAwaitingAcceptance = orders.filter(
@@ -151,7 +151,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   const acceptedAndCountedCount = orders.filter((o) => o.hq_accepted).length;
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
-  // Delivery Status Toggle Handler (Admin supervision)
+  
   const handleToggleDeliveryStatus = async (order: OrderItemRecord) => {
     const nextStatus = order.delivery_status === 'DELIVERED' ? 'PENDING' : 'DELIVERED';
     setIsProcessingAction(order.id);
@@ -195,7 +195,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     }
   };
 
-  // HQ Acceptance & Stock Deduction Handler
+  
   const handleExecuteHqAcceptance = async (order: OrderItemRecord) => {
     setIsProcessingAction(order.id);
     try {

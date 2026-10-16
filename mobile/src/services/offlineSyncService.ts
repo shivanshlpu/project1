@@ -1,9 +1,7 @@
 import { sqliteQueue } from './sqliteQueue';
 
 export class OfflineSyncService {
-  /**
-   * Section 4.4: Push queued drafts on reconnect to /sync/push
-   */
+  
   static async pushPendingQueue(apiBaseUrl: string, token: string) {
     const unsynced = sqliteQueue.getUnsyncedDrafts();
     if (unsynced.length === 0) {
@@ -57,9 +55,7 @@ export class OfflineSyncService {
     }
   }
 
-  /**
-   * Section 4.4: Pull latest read caches to mirror tasks and doctors locally
-   */
+  
   static async pullLatestCaches(apiBaseUrl: string, token: string) {
     try {
       const sinceParam = sqliteQueue.lastSyncTimestamp

@@ -19,7 +19,6 @@ import { Language, translations } from '../utils/i18n';
 import { getApiBaseUrl } from '../utils/apiHelper';
 import { getDeletedTaskIds } from '../utils/deletedTasksStore';
 
-// Helper date utilities
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 const getSevenDaysAgoStr = () => {
@@ -42,7 +41,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => {
   const t = translations[lang];
 
-  // Active reporting timeframe
+  
   const [timeframe, setTimeframe] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('DAILY');
   const [selectedArea, setSelectedArea] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +51,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
-  // Raw state from backend API
+  
   const [rawMrUsers, setRawMrUsers] = useState<any[]>([]);
   const [rawAttendanceList, setRawAttendanceList] = useState<any[]>([]);
   const [allTasksList, setAllTasksList] = useState<any[]>([]);
@@ -63,11 +62,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   );
 
-  /**
-   * Primary data fetcher: Pulls active MR users, attendance records, tasks, and pending approvals.
-   * Engineered for real-time scale (10,000+ employees) by aggregating data server-side
-   * and using hash-map indices client-side.
-   */
+  
   const fetchDashboardRealData = async () => {
     try {
       const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
@@ -81,17 +76,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         fetch(`${baseUrl}/approvals/pending`, { headers: { ...authHeader, Accept: 'application/json' } }),
       ]);
 
-      // 1. Parse Active MR Users
+      
       if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
         const uData = await usersRes.value.json();
         if (Array.isArray(uData)) {
-          // Strictly filter for active field medical representatives
+          
           const activeMrs = uData.filter((u: any) => u.role === 'MR' && u.status !== 'INACTIVE' && u.status !== 'SUSPENDED');
           setRawMrUsers(activeMrs);
         }
       }
 
-      // 2. Parse Attendance
+      
       let attendanceList: any[] = [];
       if (attRes.status === 'fulfilled' && attRes.value.ok) {
         const aData = await attRes.value.json();
@@ -100,7 +95,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         }
       }
 
-      // Merge offline/local on-device attendance punches
+      
       const todayStr = getTodayStr();
       try {
         for (let i = 0; i < localStorage.length; i++) {
@@ -125,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
       } catch {}
       setRawAttendanceList(attendanceList);
 
-      // 3. Parse Tasks (strictly exclude deleted or cancelled tasks)
+      
       if (tasksRes.status === 'fulfilled' && tasksRes.value.ok) {
         const tData = await tasksRes.value.json();
         if (Array.isArray(tData)) {
@@ -137,7 +132,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         }
       }
 
-      // 4. Parse Pending Approvals
+      
       let remotePendingCount = 0;
       try {
         const storedDecisions = JSON.parse(localStorage.getItem('ahtri_decided_approvals') || '{}');
@@ -155,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         }
       } catch {}
 
-      // Count suspended tasks requiring admin attention
+      
       const suspendedCount = allTasksList.filter((t: any) => t.status === 'SUSPENDED').length;
       setPendingApprovalsCount(remotePendingCount + suspendedCount);
       setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -200,7 +195,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     });
   };
 
-  // Date range determination based on selected timeframe
+  
   const dateRange = useMemo(() => {
     const today = getTodayStr();
     if (timeframe === 'DAILY') {
@@ -212,7 +207,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     }
   }, [timeframe]);
 
-  // Scalable O(N) Hash-Map Indexing for Multi-Day Attendance & Tasks
+  
   const { filteredAttendanceByTimeframe, attendanceByUserMap } = useMemo(() => {
     const filtered = rawAttendanceList.filter(
       (a: any) => a.date >= dateRange.start && a.date <= dateRange.end
@@ -242,7 +237,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     return { filteredTasksByTimeframe: filtered, tasksByUserMap: byUser };
   }, [allTasksList, dateRange]);
 
-  // Map employee activities across the target time bucket
+  
   const mrTeamActivities = useMemo(() => {
     const todayStr = getTodayStr();
 
@@ -253,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
 
       const territoryName = u.territory || (u.hq_name ? `${u.hq_name} HQ` : 'Field Operations');
 
-      // Daily vs Multi-Day Attendance calculation
+      
       const todayPunch = userAtt.find((a: any) => a.date === todayStr);
       const isMarkedToday = !!todayPunch;
       const daysPresent = new Set(userAtt.map((a: any) => a.date)).size;
@@ -318,7 +313,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     });
   }, [rawMrUsers, attendanceByUserMap, tasksByUserMap, timeframe]);
 
-  // Territories available for dropdown filter
+  
   const availableTerritories = useMemo(() => {
     const set = new Set<string>();
     rawMrUsers.forEach((u: any) => {
@@ -328,7 +323,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     return Array.from(set).sort();
   }, [rawMrUsers]);
 
-  // Scalable Filter & Search Handling
+  
   const filteredActivities = useMemo(() => {
     let list = mrTeamActivities;
     if (selectedArea !== 'ALL') {
@@ -346,7 +341,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     return list;
   }, [mrTeamActivities, selectedArea, searchQuery]);
 
-  // Pagination for 10,000+ Scalability
+  
   const totalItems = filteredActivities.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -356,12 +351,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
     return filteredActivities.slice(startIdx, startIdx + pageSize);
   }, [filteredActivities, safeCurrentPage, pageSize]);
 
-  // Reset page on filter changes
+  
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedArea, searchQuery, timeframe]);
 
-  // Dynamic Real Metrics Calculated Across Timeframe
+  
   const totalEmployees = rawMrUsers.length;
   const activeCompletedTasks = filteredTasksByTimeframe.filter((t: any) => t.status === 'COMPLETED');
   const activePendingTasks = filteredTasksByTimeframe.filter(
@@ -373,7 +368,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
   const totalCallsCompleted = activeCompletedTasks.length;
   const callPercentage = totalCallsTarget > 0 ? Math.round((totalCallsCompleted / totalCallsTarget) * 100) : 0;
 
-  // Real Attendance Metrics by Scope
+  
   const kpiData = useMemo(() => {
     const todayStr = getTodayStr();
 
@@ -400,8 +395,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         approvalsSub: pendingApprovalsCount > 0 ? 'Claims awaiting management review' : 'All claims reviewed & resolved',
       };
     } else if (timeframe === 'WEEKLY') {
-      // 7 days window
-      const expectedPunches = totalEmployees * 6; // 6 working days
+      
+      const expectedPunches = totalEmployees * 6; 
       const actualPunches = filteredAttendanceByTimeframe.length;
       const attPct = expectedPunches > 0 ? Math.min(100, Math.round((actualPunches / expectedPunches) * 100)) : 0;
 
@@ -421,7 +416,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
         approvalsSub: `${resolvedApprovalsCount} resolved this cycle`,
       };
     } else {
-      // Monthly window
+      
       const daysSoFar = Math.max(1, new Date().getDate());
       const expectedPunches = totalEmployees * Math.min(26, daysSoFar);
       const actualPunches = filteredAttendanceByTimeframe.length;

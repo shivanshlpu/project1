@@ -77,7 +77,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     }
   };
 
-  // Live auto-fetch from backend
+  
   const fetchDoctors = async () => {
     try {
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -119,7 +119,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     fetchMRs();
   }, []);
 
-  // Map state
+  
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -140,7 +140,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     }
   };
 
-  // New Doctor Form State
+  
   const [newDocName, setNewDocName] = useState('');
   const [newDocQual, setNewDocQual] = useState('MBBS, MD');
   const [newDocSpec, setNewDocSpec] = useState('Cardiologist');
@@ -153,7 +153,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   const [newDocLat, setNewDocLat] = useState<number>(23.2953);
   const [newDocLng, setNewDocLng] = useState<number>(81.3586);
 
-  // Filter Doctors
+  
   const filteredDoctors = doctors.filter((d) => {
     const matchesClass = selectedClass === 'ALL' ? true : d.class === selectedClass;
     const matchesSearch =
@@ -164,7 +164,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     return matchesClass && matchesSearch;
   });
 
-  // Initialize Map
+  
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -193,14 +193,14 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     }, 200);
   }, []);
 
-  // Update map tile layer when satellite mode changes
+  
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Update markers on doctor list or filter change
+  
   useEffect(() => {
     renderDoctorMarkers();
   }, [doctors, selectedClass, searchQuery]);
@@ -366,12 +366,12 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
       }).catch(() => {});
     } catch {}
 
-    // Reset Form
+    
     setNewDocName('');
     setNewDocClinic('');
     setNewDocPhone('');
 
-    // Focus on new doctor
+    
     setTimeout(() => {
       handleFocusDoctor(created);
     }, 100);

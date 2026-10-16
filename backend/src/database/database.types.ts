@@ -130,7 +130,7 @@ export interface Task {
   time: string;
   latitude: number;
   longitude: number;
-  geofence_radius_m: number; // default 20m
+  geofence_radius_m: number; 
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   status: TaskStatus;
   created_at: string;
@@ -138,21 +138,21 @@ export interface Task {
   started_at?: string;
   completed_at?: string;
   order_pending_at?: string;
-  duration_seconds?: number; // Secret tracked on-site duration in seconds
+  duration_seconds?: number; 
   location_name?: string;
   hq_id?: string;
   hq_name?: string;
   stocker_id?: string;
   stocker_name?: string;
-  outcome?: string; // Meeting summary / doctor reaction
-  orders?: TaskOrderItem[]; // Immediate orders captured
+  outcome?: string; 
+  orders?: TaskOrderItem[]; 
   order_id?: string;
   delivery_status?: OrderDeliveryStatus;
   hq_accepted?: boolean;
   inventory_deducted?: boolean;
   verification_photo_key?: string;
   verification_photo_source?: 'CAMERA' | 'GALLERY';
-  visit_photo?: string | null; // Compressed base64 clinic/detailing proof photo
+  visit_photo?: string | null; 
   visit_photo_captured_at?: string;
   device_integrity_status?: string;
   suspended_at?: string;
@@ -236,14 +236,14 @@ export interface VisitDetail {
 export interface Attendance {
   id: string;
   user_id: string;
-  date: string; // YYYY-MM-DD
+  date: string; 
   check_in_at: string;
   check_in_lat: number;
   check_in_lng: number;
   check_in_location_name?: string;
-  check_in_photo?: string | null; // Compressed photo data URL or URL (< 24h)
+  check_in_photo?: string | null; 
   photo_captured_at?: string;
-  photo_purged?: boolean; // True when photo is auto-deleted after 24 hours
+  photo_purged?: boolean; 
   check_out_at?: string;
   check_out_lat?: number;
   check_out_lng?: number;
@@ -269,7 +269,7 @@ export interface Attendance {
 export interface DCR {
   id: string;
   mr_id: string;
-  date: string; // YYYY-MM-DD
+  date: string; 
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CORRECTION_REQUESTED';
   submitted_at?: string;
   approved_by?: string;
@@ -326,7 +326,7 @@ export interface LeaveQuota {
 export interface TourPlan {
   id: string;
   mr_id: string;
-  month: string; // YYYY-MM
+  month: string; 
   plan_json: any;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
@@ -376,15 +376,13 @@ export interface DeviceAuthorizationRequest {
   device_id: string;
   device_model: string;
   ip_address?: string;
-  otp: string; // 6-digit verification code
+  otp: string; 
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
   created_at: string;
   expires_at: string;
   approved_at?: string;
   approved_by?: string;
 }
-
-// === NEW ENHANCEMENT MODELS ===
 
 export interface Headquarter {
   id: string;
@@ -408,8 +406,8 @@ export interface RouteBatch {
   mr_id?: string;
   mr_name?: string;
   territory_name?: string;
-  route_stops: string[]; // Ordered route stops e.g. ['Shahdol', 'Gohparu', 'Jaisinghnagar']
-  areas: string[]; // Aliased for backward compatibility
+  route_stops: string[]; 
+  areas: string[]; 
   distance_km: number;
   standard_reimbursement_rate?: number;
   status: 'ACTIVE' | 'INACTIVE';
@@ -441,16 +439,16 @@ export interface MedicinePackagingVariant {
   id: string;
   medicine_id: string;
   variant_name?: string;
-  package_size: number; // e.g. 30, 60, 200, 50, 10
-  package_unit: string; // e.g. "ml", "gm", "tablets", "units", "strips"
+  package_size: number; 
+  package_unit: string; 
   size?: number;
   unit?: string;
-  display_label?: string; // e.g. "200 ml", "30 gm", "10*1*10"
+  display_label?: string; 
   display_name?: string;
   packing?: string;
-  pts_rate: number; // Price to Stockist (authoritative order price)
-  ptr_rate?: number; // Price to Retailer
-  mrp: number; // Maximum Retail Price (doctor reference)
+  pts_rate: number; 
+  ptr_rate?: number; 
+  mrp: number; 
   status: 'ACTIVE' | 'INACTIVE';
   is_active?: boolean;
   created_at: string;
@@ -467,12 +465,12 @@ export interface Medicine {
   category?: string;
   unit: string;
   packing?: string;
-  base_price?: number | null; // legacy price or primary PTS rate
-  pts_rate?: number; // Primary PTS rate
+  base_price?: number | null; 
+  pts_rate?: number; 
   pts?: number;
-  ptr?: number; // Primary PTR (Price to Retailer)
+  ptr?: number; 
   ptr_rate?: number;
-  mrp?: number; // Primary MRP
+  mrp?: number; 
   packaging_variants?: MedicinePackagingVariant[];
   low_stock_threshold?: number;
   status: 'ACTIVE' | 'INACTIVE';
@@ -493,9 +491,9 @@ export interface MonthlyStockagePermission {
   hq_name?: string;
   stocker_id?: string;
   stocker_name?: string;
-  year: number; // e.g. 2026
-  month: number; // 1 to 12
-  month_str: string; // "2026-10"
+  year: number; 
+  month: number; 
+  month_str: string; 
   status: StockagePermissionStatus;
   submission_id?: string;
   granted_by_id: string;
@@ -543,8 +541,8 @@ export interface StockageSubmissionRequest {
   hq_name: string;
   stocker_id: string;
   stocker_name: string;
-  month: string; // "2026-10"
-  month_year?: string; // "2026-10" compatibility alias
+  month: string; 
+  month_year?: string; 
   year: number;
   month_num: number;
   status: StockageSubmissionStatus;
@@ -556,7 +554,7 @@ export interface StockageSubmissionRequest {
   reviewed_by_name?: string;
   reviewed_at?: string;
   admin_comment?: string;
-  admin_notes?: string; // alias for admin_comment
+  admin_notes?: string; 
   applied_at?: string;
   created_at: string;
   updated_at: string;
@@ -568,8 +566,8 @@ export interface MonthlyStockEntry {
   hq_name?: string;
   stocker_id: string;
   stocker_name?: string;
-  month: string; // e.g. "2026-10"
-  entry_date: string; // "2026-10-01"
+  month: string; 
+  entry_date: string; 
   invoice_no?: string;
   medicine_id: string;
   medicine_name: string;
@@ -591,7 +589,7 @@ export interface StockerInventory {
   medicine_id: string;
   variant_id?: string;
   packaging_display?: string;
-  quantity: number; // Can be negative for backorder / shortage per §17
+  quantity: number; 
   low_stock_threshold: number;
   updated_at: string;
 }
@@ -630,26 +628,26 @@ export interface VerificationPhoto {
 
 export interface MonthlyTpItem {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string; 
   hq_id: string;
   hq_name: string;
   planned_area: string;
-  work_type: string; // "Transit" | "Induction" | "Doctor Visit" | "Order Collection" | "Follow-up" | "Other"
+  work_type: string; 
   planned_kol_drs: string;
   planned_activity: string;
 
-  // Predefined Route Batch & Reimbursement Integration
+  
   route_batch_id?: string;
   route_batch_code?: string;
   route_batch_name?: string;
-  route?: string; // e.g. "Shahdol → Gohparu → Jaisinghnagar"
+  route?: string; 
   route_stops?: string[];
-  is_round_trip?: boolean; // Whether distance & fare are calculated as round trip (two-way)
-  one_way_distance_km?: number; // One-way distance from center/route
-  round_trip_distance_km?: number; // Two-way distance (2 * one_way_distance_km)
-  distance_km?: number; // Billable round-trip distance in km
-  reimbursement_rate?: number; // Snapshot of rate per km applied
-  reimbursement_amount?: number; // Calculated two-way fare: round_trip_distance_km * rate
+  is_round_trip?: boolean; 
+  one_way_distance_km?: number; 
+  round_trip_distance_km?: number; 
+  distance_km?: number; 
+  reimbursement_rate?: number; 
+  reimbursement_amount?: number; 
   reimbursement_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   calculation_basis?: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL';
 }
@@ -658,7 +656,7 @@ export interface MonthlyTourPlan {
   id: string;
   mr_id: string;
   mr_name: string;
-  month: string; // YYYY-MM
+  month: string; 
   status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   entries: MonthlyTpItem[];
   submitted_at: string;
@@ -670,19 +668,19 @@ export interface MonthlyTourPlan {
 
 export interface AttendanceSettings {
   id: string;
-  expected_punch_in_time: string; // e.g. "10:00:00"
-  allowed_punch_in_window_minutes: number; // e.g. 30
-  expected_punch_out_time: string; // e.g. "18:00:00"
-  allowed_punch_out_window_minutes: number; // e.g. 30
-  reimbursement_rate_per_km?: number; // Admin-configured reimbursement policy rate (e.g. 2.50)
+  expected_punch_in_time: string; 
+  allowed_punch_in_window_minutes: number; 
+  expected_punch_out_time: string; 
+  allowed_punch_out_window_minutes: number; 
+  reimbursement_rate_per_km?: number; 
   updated_at: string;
 }
 
 export interface Competition {
   id: string;
   name: string;
-  start_date: string; // YYYY-MM-DD
-  end_date: string; // YYYY-MM-DD
+  start_date: string; 
+  end_date: string; 
   hq_id: string;
   hq_name: string;
   medicine_id: string;
@@ -713,5 +711,4 @@ export interface RewardClaim {
   admin_comment?: string;
   order_ids: string[];
 }
-
 

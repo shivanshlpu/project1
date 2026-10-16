@@ -22,7 +22,7 @@ describe('DCR Auto-Population (Node 8 DoD Verification)', () => {
   });
 
   it('should auto-populate today DCR draft from doctor visits and allow MR submission', async () => {
-    // 1. Simulate MR conducting a doctor visit today
+    
     const visitRes = await visitsService.startVisit('usr-mr-01', {
       doctor_id: 'doc-01',
       latitude: 28.5245,
@@ -35,7 +35,7 @@ describe('DCR Auto-Population (Node 8 DoD Verification)', () => {
       signature_file_key: 'sig-01.png',
     });
 
-    // 2. Fetch today's DCR draft (PRD §16 auto-population)
+    
     const draft = await dcrService.getTodayDcrDraft('usr-mr-01');
     expect(draft.visit_count).toBeGreaterThanOrEqual(1);
     expect(draft.dcr.status).toBe('DRAFT');
@@ -44,7 +44,7 @@ describe('DCR Auto-Population (Node 8 DoD Verification)', () => {
     expect(draftItem).toBeDefined();
     expect(draftItem?.doctor_name).toBe('Dr. Rajesh Sharma');
 
-    // 3. MR submits subjective fields
+    
     const submitRes = await dcrService.submitDcr(draft.dcr.id, 'usr-mr-01', {
       items: [
         {
@@ -61,7 +61,7 @@ describe('DCR Auto-Population (Node 8 DoD Verification)', () => {
     expect(submitRes.items[0].order_taken).toBe(true);
     expect(submitRes.items[0].samples).toBe(5);
 
-    // 4. Manager reviews and approves
+    
     const approveRes = await dcrService.approveDcr(draft.dcr.id, 'usr-mgr-01', {
       comment: 'Excellent field coverage today.',
     });

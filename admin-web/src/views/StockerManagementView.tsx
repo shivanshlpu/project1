@@ -165,7 +165,7 @@ const NON_HQ_NAMES = new Set([
 const getMergedHqs = (): Headquarter[] => {
   const map = new Map<string, Headquarter>();
 
-  // 1. Always seed the 4 canonical baseline headquarters
+  
   for (const hq of DEFAULT_HQS) {
     const key = (hq.name || '').toLowerCase().trim();
     if (key && !NON_HQ_NAMES.has(key)) {
@@ -173,7 +173,7 @@ const getMergedHqs = (): Headquarter[] => {
     }
   }
 
-  // 2. Merge from Settings > HQ & Territory Manager (ahtri_inventory_hqs)
+  
   try {
     const saved = localStorage.getItem('ahtri_inventory_hqs');
     if (saved) {
@@ -197,7 +197,7 @@ const getMergedHqs = (): Headquarter[] => {
     }
   } catch {}
 
-  // 3. Merge from Settings > Operating Cities & Branches (ahtri_operating_cities)
+  
   try {
     const savedCities = localStorage.getItem('ahtri_operating_cities');
     if (savedCities) {
@@ -331,7 +331,7 @@ export const StockerManagementView: React.FC = () => {
   const initialHqs = getMergedHqs();
   const defaultSelectedHq = initialHqs.find((h) => h.isHeadquarters) || initialHqs[0];
 
-  // PDF Generation State (§1.7)
+  
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfHqId, setPdfHqId] = useState('ALL');
   const [pdfStockerId, setPdfStockerId] = useState('ALL');
@@ -356,9 +356,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   }, [selectedHqId]);
 
-
-
-  // Stockers state
+  
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [selectedSubAreaFilter, setSelectedSubAreaFilter] = useState<string>('ALL');
@@ -370,7 +368,7 @@ export const StockerManagementView: React.FC = () => {
   const [newStockerPhone, setNewStockerPhone] = useState<string>('');
   const [newStockerAddress, setNewStockerAddress] = useState<string>('');
 
-  // Edit Stocker Modal state
+  
   const [isEditStockerModalOpen, setIsEditStockerModalOpen] = useState<boolean>(false);
   const [editingStocker, setEditingStocker] = useState<StockerItem | null>(null);
   const [editStockerSubArea, setEditStockerSubArea] = useState<string>('');
@@ -380,7 +378,7 @@ export const StockerManagementView: React.FC = () => {
   const [editStockerAddress, setEditStockerAddress] = useState<string>('');
   const [editStockerStatus, setEditStockerStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
-  // Helper to dynamically resolve Sub-Areas / Markets for an HQ
+  
   const getSubAreasForHq = (hqId: string): string[] => {
     const list: string[] = [];
     const normalizedHqId = (hqId || '').toLowerCase().trim();
@@ -418,14 +416,14 @@ export const StockerManagementView: React.FC = () => {
     return list;
   };
 
-  // Inventory state
+  
   const [inventory, setInventory] = useState<StockerProductItem[]>([]);
   const [isUpdateStockModalOpen, setIsUpdateStockModalOpen] = useState<boolean>(false);
   const [stockEditTarget, setStockEditTarget] = useState<StockerProductItem | null>(null);
   const [stockAdjustmentQty, setStockAdjustmentQty] = useState<string>('0');
   const [stockAdjustmentReason, setStockAdjustmentReason] = useState<string>('Warehouse replenishment');
 
-  // Monthly Stock Inward state
+  
   const [monthlyEntries, setMonthlyEntries] = useState<MonthlyStockEntryItem[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const d = new Date();
@@ -444,7 +442,7 @@ export const StockerManagementView: React.FC = () => {
   const [inwardSuccessMsg, setInwardSuccessMsg] = useState<string>('');
   const [monthlyFilterMonth, setMonthlyFilterMonth] = useState<string>('ALL');
 
-  // Medicines state
+  
   const [medicines, setMedicines] = useState<MedicineItem[]>([]);
   const [isAddMedicineModalOpen, setIsAddMedicineModalOpen] = useState<boolean>(false);
   const [newMedName, setNewMedName] = useState<string>('');
@@ -456,7 +454,7 @@ export const StockerManagementView: React.FC = () => {
   const [newMedMrp, setNewMedMrp] = useState<string>('');
   const [newMedThreshold, setNewMedThreshold] = useState<string>('15');
 
-  // Edit Medicine Modal state
+  
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState<boolean>(false);
   const [editingMedicine, setEditingMedicine] = useState<MedicineItem | null>(null);
   const [editMedName, setEditMedName] = useState<string>('');
@@ -469,7 +467,7 @@ export const StockerManagementView: React.FC = () => {
   const [editMedThreshold, setEditMedThreshold] = useState<string>('15');
   const [editMedStatus, setEditMedStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
-  // Alerts & Audit
+  
   const [alerts, setAlerts] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<InventoryAuditItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -489,7 +487,7 @@ export const StockerManagementView: React.FC = () => {
     };
   };
 
-  // Load HQs on mount and sync with settings
+  
   const fetchHqs = async () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/hqs`, {
@@ -499,7 +497,7 @@ export const StockerManagementView: React.FC = () => {
         const data = await res.json();
         const map = new Map<string, Headquarter>();
 
-        // 1. Canonical defaults
+        
         DEFAULT_HQS.forEach((dh) => {
           const key = dh.name.toLowerCase().trim();
           if (!map.has(key)) {
@@ -507,7 +505,7 @@ export const StockerManagementView: React.FC = () => {
           }
         });
 
-        // 2. Backend HQs
+        
         if (Array.isArray(data)) {
           data.forEach((h: any) => {
             if (!h || !h.name) return;
@@ -524,7 +522,7 @@ export const StockerManagementView: React.FC = () => {
           });
         }
 
-        // 3. Settings > HQ & Territory Manager (ahtri_inventory_hqs)
+        
         try {
           const savedHqsRaw = localStorage.getItem('ahtri_inventory_hqs');
           if (savedHqsRaw) {
@@ -548,7 +546,7 @@ export const StockerManagementView: React.FC = () => {
           }
         } catch {}
 
-        // 4. Settings > Operating Cities (ahtri_operating_cities)
+        
         try {
           const savedCitiesRaw = localStorage.getItem('ahtri_operating_cities');
           if (savedCitiesRaw) {
@@ -610,7 +608,7 @@ export const StockerManagementView: React.FC = () => {
     }
   }, [hqs, selectedHqId]);
 
-  // Load stockers when HQ changes (§10)
+  
   const fetchStockers = async () => {
     if (!selectedHqId) return;
 
@@ -622,7 +620,7 @@ export const StockerManagementView: React.FC = () => {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setStockers(data);
-          // Sync localStorage for this HQ so stale deleted stockers are purged
+          
           try {
             const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
             const otherStockers = savedStkRaw
@@ -636,7 +634,7 @@ export const StockerManagementView: React.FC = () => {
       }
     } catch {}
 
-    // Fallback 1: check localStorage with normalized HQ matching
+    
     try {
       const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
       if (savedStkRaw) {
@@ -652,7 +650,7 @@ export const StockerManagementView: React.FC = () => {
       }
     } catch {}
 
-    // Fallback 2: Default authentic stockers for this HQ
+    
     const fallbackForHq = DEFAULT_AUTHENTIC_STOCKERS.filter((s) => matchesHqId(s.hq_id, selectedHqId));
     if (fallbackForHq.length > 0) {
       setStockers(fallbackForHq);
@@ -668,7 +666,7 @@ export const StockerManagementView: React.FC = () => {
     fetchStockers();
   }, [selectedHqId]);
 
-  // Load stocker inventory when selectedStockerId changes (§12)
+  
   const fetchInventory = async () => {
     if (!selectedStockerId) {
       setInventory([]);
@@ -696,7 +694,7 @@ export const StockerManagementView: React.FC = () => {
     fetchInventory();
   }, [selectedStockerId]);
 
-  // Fetch medicines master (§11)
+  
   const fetchMedicines = async () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/medicines`, {
@@ -714,7 +712,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   };
 
-  // Fetch monthly inward records
+  
   const fetchMonthlyEntries = async () => {
     try {
       const params = new URLSearchParams();
@@ -735,7 +733,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   };
 
-  // Fetch alerts (§18)
+  
   const fetchAlerts = async () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/alerts`, {
@@ -750,7 +748,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   };
 
-  // Fetch audit trail (§19)
+  
   const fetchAuditLogs = async () => {
     try {
       const res = await fetch(`${apiUrl}/inventory/transactions`, {
@@ -776,9 +774,7 @@ export const StockerManagementView: React.FC = () => {
     if (activeTab === 'AUDIT') fetchAuditLogs();
   }, [activeTab, selectedHqId, selectedStockerId, monthlyFilterMonth]);
 
-
-
-  // === STOCKER CRUD HANDLERS ===
+  
   const handleAddStocker = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newStockerName.trim()) {
@@ -951,7 +947,7 @@ export const StockerManagementView: React.FC = () => {
     } catch {}
   };
 
-  // === MEDICINE CRUD HANDLERS ===
+  
   const handleAddMedicine = async () => {
     if (!newMedName.trim()) {
       alert('Please enter medicine name.');
@@ -1096,7 +1092,7 @@ export const StockerManagementView: React.FC = () => {
     }
   };
 
-  // Handler: Save Monthly Stock Inward Entry
+  
   const handleSaveMonthlyInward = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedHqId) {
@@ -1148,7 +1144,7 @@ export const StockerManagementView: React.FC = () => {
         fetchInventory();
         fetchAlerts();
         syncInStockProductsWithBackend();
-        // Reset quantity & batch for quick sequential entries
+        
         setInwardQuantity('50');
         setInwardBatchNo('');
         setInwardNotes('');
@@ -1163,7 +1159,7 @@ export const StockerManagementView: React.FC = () => {
     }
   };
 
-  // Handler: Adjust Stock Quantity (§12, §13, §19)
+  
   const handleSaveStockAdjustment = async () => {
     if (!stockEditTarget || !selectedStockerId) return;
     const targetQty = parseInt(stockAdjustmentQty) || 0;
@@ -3099,8 +3095,6 @@ export const StockerManagementView: React.FC = () => {
           </form>
         </div>
       )}
-
-
 
       {/* MODAL: Add Stocker under HQ (§10) */}
       {isAddStockerModalOpen && (

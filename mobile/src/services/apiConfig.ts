@@ -6,7 +6,6 @@ const STORAGE_KEYS = {
   SERVER_URL: '@ahtri_custom_server_url',
 };
 
-// Permanent Production Render Backend Endpoint (overridable via EXPO_PUBLIC_API_URL)
 export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://ahtri-backend.onrender.com';
 
 export const PRESET_SERVER_URLS = [
@@ -30,7 +29,7 @@ export const ApiConfig = {
   },
 
   async setBaseUrl(_url: string): Promise<void> {
-    // Locked: always maintain Render production server
+    
     await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, DEFAULT_API_URL);
   },
 
@@ -41,7 +40,7 @@ export const ApiConfig = {
 
   async getToken(): Promise<string | null> {
     try {
-      // Clean up legacy local dev IP if previously stored
+      
       await AsyncStorage.removeItem(STORAGE_KEYS.SERVER_URL);
       return await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
     } catch {
@@ -91,9 +90,7 @@ export const ApiConfig = {
     return headers;
   },
 
-  /**
-   * Fire a silent background warm-up request to wake up Render container from cold sleep
-   */
+  
   warmupServer(): void {
     const baseUrl = DEFAULT_API_URL;
     try {
@@ -111,9 +108,7 @@ export const ApiConfig = {
     }
   },
 
-  /**
-   * Resilient fetch helper with automatic retry for Render spin-up tolerance
-   */
+  
   async fetchWithRetry(
     url: string,
     options: RequestInit = {},
@@ -132,7 +127,7 @@ export const ApiConfig = {
         });
         clearTimeout(timeoutId);
 
-        // If Render is waking up and returns 502/503/504, retry after short pause
+        
         if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
@@ -143,7 +138,7 @@ export const ApiConfig = {
         clearTimeout(timeoutId);
         lastError = err;
         if (attempt < maxRetries) {
-          // Wait 2s before retry on cold-start abort or connection drop
+          
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
@@ -156,7 +151,7 @@ export const ApiConfig = {
     const start = Date.now();
 
     try {
-      // 18-second tolerance for Render free-tier cold starts with retry
+      
       const res = await this.fetchWithRetry(
         `${baseUrl}/health`,
         {

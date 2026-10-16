@@ -66,7 +66,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  // Inject Leaflet CSS on Web
+  
   useEffect(() => {
     if (typeof document !== 'undefined' && !document.getElementById('leaflet-css-bundle')) {
       const link = document.createElement('link');
@@ -77,7 +77,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   }, []);
 
-  // Update Pin Icon helper
+  
   const getCustomPinIcon = (cat: PinCategory) => {
     return L.divIcon({
       className: 'ahtri-leaflet-pin',
@@ -88,7 +88,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     });
   };
 
-  // Initialize Leaflet Map
+  
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current) return;
 
@@ -100,20 +100,20 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       }).setView([initialLat, initialLng], 17);
       mapInstanceRef.current = map;
 
-      // Add Zoom Control at top right
+      
       L.control.zoom({ position: 'topright' }).addTo(map);
 
-      // Add Resilient Multi-CDN Tile Layer
+      
       tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
 
-      // Draggable 3D Pin Marker
+      
       const marker = L.marker([initialLat, initialLng], {
         icon: getCustomPinIcon(category),
         draggable: true,
       }).addTo(map);
       markerRef.current = marker;
 
-      // When pin is dragged, update coordinates with 100% precision
+      
       marker.on('dragend', async () => {
         const pos = marker.getLatLng();
         const lat = Number(pos.lat.toFixed(6));
@@ -131,7 +131,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         }
       });
 
-      // When map is clicked anywhere, move pin directly there
+      
       map.on('click', async (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
         const nLat = Number(lat.toFixed(6));
@@ -178,7 +178,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     };
   }, [isOpen]);
 
-  // Handle Tile Mode Switch (Street / Satellite)
+  
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     if (tileLayerRef.current) {
@@ -187,14 +187,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(mapInstanceRef.current);
   }, [mapMode]);
 
-  // Handle Category Change (updates 3D pin on map)
+  
   useEffect(() => {
     if (markerRef.current) {
       markerRef.current.setIcon(getCustomPinIcon(category));
     }
   }, [category]);
 
-  // Acquire Live Device GPS and center map
+  
   const handleAcquireDeviceGps = async () => {
     setIsLocatingGps(true);
     try {
@@ -208,7 +208,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         lng = Number(coords.longitude.toFixed(6));
         acc = coords.accuracy ? Number(coords.accuracy.toFixed(1)) : 6.5;
       } else {
-        // Local offset
+        
         lat = Number((23.2962 + (Math.random() - 0.5) * 0.002).toFixed(6));
         lng = Number((81.3537 + (Math.random() - 0.5) * 0.002).toFixed(6));
         acc = 8.5;
@@ -225,7 +225,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           markerRef.current.setLatLng([lat, lng]);
         }
 
-        // Draw accuracy circle
+        
         if (accuracyCircleRef.current) {
           mapInstanceRef.current.removeLayer(accuracyCircleRef.current);
         }
@@ -244,12 +244,12 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   };
 
-  // High-accuracy live POI search for hospitals, clinics, medical stores, and landmarks
+  
   const handleSearchLandmark = async () => {
     const q = searchQuery.trim();
     if (!q) return;
 
-    // Check direct GPS coordinates (e.g. "28.5245, 77.2066")
+    
     const coordMatch = q.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -264,7 +264,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
 
     try {
-      // 1. Query Photon POI search
+      
       const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
       if (photonRes.ok) {
         const pData = await photonRes.json();
@@ -287,7 +287,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         }
       }
 
-      // 2. Fallback to Nominatim
+      
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
         { headers: { 'User-Agent': 'AHTRI-FFA-Mobile/2.0' } }

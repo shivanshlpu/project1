@@ -47,12 +47,12 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Date range filters
+  
   const [datePreset, setDatePreset] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Response state
+  
   const [history, setHistory] = useState<Array<{ type: 'user' | 'ai'; text: string; data?: AiQueryResponse }>>([
     {
       type: 'ai',
@@ -62,7 +62,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
-  // Preset date handler
+  
   const handleDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'custom') => {
     setDatePreset(preset);
     const today = new Date();
@@ -88,12 +88,12 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
     }
   };
 
-  // Query executor
+  
   const handleSendQuery = async (queryText?: string) => {
     const q = (queryText || query).trim();
     if (!q) return;
 
-    // Add user query to thread
+    
     setHistory((prev) => [...prev, { type: 'user', text: q }]);
     setQuery('');
     setIsLoading(true);
@@ -140,7 +140,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
     }
   };
 
-  // Export Excel handler
+  
   const handleExportExcel = async () => {
     setIsExportingExcel(true);
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -174,7 +174,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
     }
   };
 
-  // Export PDF / Print handler
+  
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');

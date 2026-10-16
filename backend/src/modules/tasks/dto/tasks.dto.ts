@@ -23,11 +23,11 @@ export class CreateTaskDto {
 
   @IsString()
   @IsNotEmpty()
-  date: string; // YYYY-MM-DD
+  date: string; 
 
   @IsString()
   @IsNotEmpty()
-  time: string; // HH:mm:ss
+  time: string; 
 
   @IsNumber()
   latitude: number;
@@ -41,7 +41,7 @@ export class CreateTaskDto {
 
   @IsNumber()
   @IsOptional()
-  geofence_radius_m?: number; // default 20m
+  geofence_radius_m?: number; 
 
   @IsEnum(['LOW', 'MEDIUM', 'HIGH'])
   @IsOptional()

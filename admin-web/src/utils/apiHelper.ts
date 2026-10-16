@@ -1,21 +1,16 @@
-/**
- * Unified API Helper for AHTRI FFA Admin Web
- * Automatically detects whether local development server (http://localhost:3000)
- * is available or falls back to the live Render cloud backend (https://ahtri-backend.onrender.com).
- * Also synchronizes and merges device authorizations across both endpoints so OTPs always go through.
- */
+
 
 export const RENDER_BACKEND_URL = 'https://ahtri-backend.onrender.com';
 export const LOCAL_BACKEND_URL = 'http://localhost:3000';
 
 export function getApiBaseUrl(): string {
-  // 1. Custom backend URL configured in Settings
+  
   const saved = localStorage.getItem('ahtri_backend_url');
   if (saved && saved.trim()) {
     return saved.trim().replace(/\/+$/, '');
   }
 
-  // 2. Prioritize local backend server when running locally in browser
+  
   if (
     typeof window !== 'undefined' &&
     window.location &&
@@ -24,13 +19,13 @@ export function getApiBaseUrl(): string {
     return LOCAL_BACKEND_URL;
   }
 
-  // 3. Vite environment variable if provided
+  
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl && envUrl.trim() && !envUrl.includes('localhost:3000') && !envUrl.includes('127.0.0.1:3000')) {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // 4. Fallback to production Render backend (ensures live cloud and mobile device connectivity)
+  
   return RENDER_BACKEND_URL;
 }
 
@@ -76,16 +71,12 @@ async function tryRefreshToken(baseUrl: string): Promise<string | null> {
   return null;
 }
 
-/**
- * Resilient fetch that tries primary server, and immediately falls back
- * to live Render server if local/primary is unreachable.
- */
 export async function resilientFetch(
   endpoint: string,
   init?: RequestInit,
   timeoutMs = 8000
 ): Promise<Response> {
-  // Strip protocol and hostname if absolute URL was passed
+  
   let cleanEndpoint = endpoint;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     try {
@@ -109,7 +100,7 @@ export async function resilientFetch(
     },
   };
 
-  // Try primary
+  
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -137,7 +128,7 @@ export async function resilientFetch(
     }
   } catch {}
 
-  // If primary was not Render and failed or returned 5xx/401, retry with Render
+  
   if (primaryBase !== RENDER_BACKEND_URL) {
     try {
       const controller = new AbortController();
@@ -167,7 +158,7 @@ export async function resilientFetch(
     }
   }
 
-  // Also try local if primary was Render and failed
+  
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
@@ -182,18 +173,13 @@ export async function resilientFetch(
   throw new Error(`Failed to fetch from ${cleanEndpoint}`);
 }
 
-/**
- * Dual Device Authorization Fetcher
- * Queries both local backend and live Render cloud backend, merging and deduplicating
- * all pending OTP requests so an OTP requested on mobile is 100% guaranteed to appear in the Admin Panel.
- */
 export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[]; history: any[] }> {
   const pendingMap = new Map<string, any>();
   const historyMap = new Map<string, any>();
 
   const headers = getAuthHeaders();
 
-  // Fetch from Render Cloud Backend
+  
   try {
     const renderRes = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(6000) });
     if (renderRes.ok) {
@@ -203,7 +189,7 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
     }
   } catch {}
 
-  // Also fetch from Local Backend if running
+  
   try {
     const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(2000) });
     if (localRes.ok) {
@@ -227,9 +213,6 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
   return { pending, history };
 }
 
-/**
- * Dual Approval / Rejection: sends action to both local and Render backends
- */
 export async function approveDeviceAuthorizationDual(id: string): Promise<boolean> {
   const headers = getAuthHeaders();
   let ok = false;

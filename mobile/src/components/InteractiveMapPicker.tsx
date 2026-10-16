@@ -65,23 +65,23 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(8.0);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
 
-  // Fullscreen state
+  
   const [isFullscreenMap, setIsFullscreenMap] = useState<boolean>(false);
   const [isScrollEnabled, setIsScrollEnabled] = useState<boolean>(true);
 
-  // Search State
+  
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  // Loading flags
+  
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState<boolean>(false);
 
   const webViewRef = useRef<WebView | null>(null);
   const reverseGeocodeTimer = useRef<any>(null);
 
-  // Reset state on open
+  
   useEffect(() => {
     if (isOpen) {
       setSelectedLat(initialLat);
@@ -97,7 +97,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   }, [isOpen]);
 
-  // Debounced reverse geocode on coordinate change
+  
   const resolveAddressFromCoords = (lat: number, lng: number) => {
     if (reverseGeocodeTimer.current) {
       clearTimeout(reverseGeocodeTimer.current);
@@ -132,7 +132,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             return;
           }
         }
-        // Fallback: Photon Reverse
+        
         const photonRes = await fetch(
           `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`
         );
@@ -155,14 +155,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }, 350);
   };
 
-  // Live POI & Address Search
+  
   const handleSearch = async () => {
     const query = searchQuery.trim();
     if (!query) return;
 
     setIsSearching(true);
 
-    // Direct coords check (e.g., "28.5245, 77.2066")
+    
     const coordMatch = query.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -265,7 +265,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     flyMapTo(item.lat, item.lon);
   };
 
-  // Device GPS
+  
   const handleGetCurrentLocation = async () => {
     setIsLocatingGps(true);
     try {
@@ -290,7 +290,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     }
   };
 
-  // Fly Leaflet Map to coordinates
+  
   const flyMapTo = (lat: number, lng: number) => {
     const js = `
       if (window.leafletMap && window.marker) {
@@ -302,7 +302,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     webViewRef.current?.injectJavaScript(js);
   };
 
-  // Toggle map mode
+  
   const handleToggleMapMode = (mode: 'street' | 'satellite') => {
     setMapMode(mode);
     const js = `
@@ -314,7 +314,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     webViewRef.current?.injectJavaScript(js);
   };
 
-  // Handle messages from Leaflet inside WebView
+  
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -352,10 +352,10 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     onClose();
   };
 
-  // Dynamic 3D Pin HTML based on category
+  
   const pinHtml = create3DMapPinHtml({ category, isSelected: true });
 
-  // Full Leaflet HTML page rendered inside WebView
+  
   const leafletHtml = `
 <!DOCTYPE html>
 <html>
@@ -497,7 +497,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         </View>
 
         {isFullscreenMap ? (
-          /* FULLSCREEN MAP VIEW */
+          
           <View style={styles.fullscreenContainer}>
             {/* Top Toolbar in Fullscreen */}
             <View style={styles.fullscreenTopBar}>
@@ -594,7 +594,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             </View>
           </View>
         ) : (
-          /* STANDARD FORM VIEW */
+          
           <ScrollView
             style={styles.scrollBody}
             contentContainerStyle={styles.scrollContent}

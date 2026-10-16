@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    legalComments: 'none',
+  },
   build: {
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {

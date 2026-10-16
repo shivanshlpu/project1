@@ -25,7 +25,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   currentUser,
   onLocationSaved,
 }) => {
-  // Default coordinates based on field territory (Shahdol & Central Division)
+  
   const defaultCoords =
     (currentUser as any)?.hq_code === 'KOT'
       ? { lat: 23.2015, lng: 81.9682 }
@@ -35,7 +35,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
       ? { lat: 22.0797, lng: 82.1409 }
       : { lat: 23.2962, lng: 81.3537 };
 
-  // Current GPS coordinates captured by the phone
+  
   const [currentLat, setCurrentLat] = useState<number>(defaultCoords.lat);
   const [currentLng, setCurrentLng] = useState<number>(defaultCoords.lng);
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(10.0);
@@ -43,11 +43,11 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // Assigned Doctors list to link geotag (dynamically fetched from backend)
+  
   const [assignedDoctors, setAssignedDoctors] = useState<any[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
-  // Form Fields
+  
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
   const [specialization, setSpecialization] = useState('General Physician');
@@ -55,7 +55,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Continuous active GPS watching on mount
+  
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     LocationService.startWatching((coords) => {
@@ -74,7 +74,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
     };
   }, []);
 
-  // Fetch assigned doctors from backend
+  
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
@@ -149,7 +149,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
         body: JSON.stringify(payload),
       });
 
-      // If linked to an assigned doctor, update doctor's geotag as well
+      
       if (selectedDoctorId) {
         await fetch(`${baseUrl}/doctors/${selectedDoctorId}`, {
           method: 'PATCH',

@@ -46,7 +46,7 @@ export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [
 ];
 
 export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
-  // Shahdol District Sub-Areas & Villages
+  
   { id: 'area-shd-01', hq_id: 'HQ-SHD-001', name: 'Burhar', status: 'ACTIVE' },
   { id: 'area-shd-02', hq_id: 'HQ-SHD-001', name: 'Gohparu', status: 'ACTIVE' },
   { id: 'area-shd-03', hq_id: 'HQ-SHD-001', name: 'Beohari', status: 'ACTIVE' },
@@ -60,7 +60,7 @@ export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   { id: 'area-shd-11', hq_id: 'HQ-SHD-001', name: 'Amlai', status: 'ACTIVE' },
   { id: 'area-shd-12', hq_id: 'HQ-SHD-001', name: 'Bakaho', status: 'ACTIVE' },
 
-  // Ambikapur District Sub-Areas & Villages
+  
   { id: 'area-amb-01', hq_id: 'HQ-AMB-001', name: 'Sitapur', status: 'ACTIVE' },
   { id: 'area-amb-02', hq_id: 'HQ-AMB-001', name: 'Lundra', status: 'ACTIVE' },
   { id: 'area-amb-03', hq_id: 'HQ-AMB-001', name: 'Batoli', status: 'ACTIVE' },
@@ -71,7 +71,7 @@ export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   { id: 'area-amb-08', hq_id: 'HQ-AMB-001', name: 'Ramanujganj', status: 'ACTIVE' },
   { id: 'area-amb-09', hq_id: 'HQ-AMB-001', name: 'Ambikapur Central', status: 'ACTIVE' },
 
-  // Bilaspur District Sub-Areas & Villages
+  
   { id: 'area-bsp-01', hq_id: 'HQ-BSP-001', name: 'Kota', status: 'ACTIVE' },
   { id: 'area-bsp-02', hq_id: 'HQ-BSP-001', name: 'Takhatpur', status: 'ACTIVE' },
   { id: 'area-bsp-03', hq_id: 'HQ-BSP-001', name: 'Masturi', status: 'ACTIVE' },
@@ -81,7 +81,7 @@ export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
   { id: 'area-bsp-07', hq_id: 'HQ-BSP-001', name: 'Sakri', status: 'ACTIVE' },
   { id: 'area-bsp-08', hq_id: 'HQ-BSP-001', name: 'Bilaspur City', status: 'ACTIVE' },
 
-  // Kotma Sub-Areas & Villages
+  
   { id: 'area-ktm-01', hq_id: 'HQ-KOT-001', name: 'Kotma Town', status: 'ACTIVE' },
   { id: 'area-ktm-02', hq_id: 'HQ-KOT-001', name: 'Anuppur', status: 'ACTIVE' },
   { id: 'area-ktm-03', hq_id: 'HQ-KOT-001', name: 'Jaithari', status: 'ACTIVE' },
@@ -101,7 +101,7 @@ export const HqTerritoryManager: React.FC = () => {
     };
   };
 
-  // State: Headquarters (Cleaned up - Jaisinghnagar & Burhar are sub-areas under Shahdol, NOT HQs)
+  
   const [hqs, setHqs] = useState<HeadquarterItem[]>(() => {
     try {
       const saved = localStorage.getItem('ahtri_inventory_hqs');
@@ -121,7 +121,7 @@ export const HqTerritoryManager: React.FC = () => {
 
   const [selectedHqId, setSelectedHqId] = useState<string>('hq-shahdol');
 
-  // State: Sub-Areas (Sub-areas for Jaisinghnagar & Burhar normalized under hq-shahdol)
+  
   const [areas, setAreas] = useState<SubAreaItem[]>(() => {
     try {
       const saved = localStorage.getItem('ahtri_hq_subareas');
@@ -140,13 +140,13 @@ export const HqTerritoryManager: React.FC = () => {
     return DEFAULT_MANAGED_AREAS;
   });
 
-  // Filters & Notices
+  
   const [hqSearch, setHqSearch] = useState('');
   const [areaSearch, setAreaSearch] = useState('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // HQ Modal States
+  
   const [isAddHqModalOpen, setIsAddHqModalOpen] = useState(false);
   const [newHqName, setNewHqName] = useState('');
   const [newHqCode, setNewHqCode] = useState('');
@@ -170,7 +170,7 @@ export const HqTerritoryManager: React.FC = () => {
     else setIsDetectingEditCoords(true);
 
     try {
-      // 1. Instant local index lookup
+      
       const local = findKnownCityCoordinates(clean);
       if (local) {
         if (target === 'new') {
@@ -184,7 +184,7 @@ export const HqTerritoryManager: React.FC = () => {
         return;
       }
 
-      // 2. Fallback to OpenStreetMap Nominatim
+      
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean + ', India')}&limit=1`);
       if (res.ok) {
         const data = await res.json();
@@ -222,22 +222,22 @@ export const HqTerritoryManager: React.FC = () => {
     }
   };
 
-  // Sub-Area Form States
+  
   const [newAreaName, setNewAreaName] = useState('');
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkAreaText, setBulkAreaText] = useState('');
 
-  // Inline Sub-Area Edit
+  
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [editingAreaName, setEditingAreaName] = useState('');
 
-  // Show notice helper
+  
   const showNotice = (type: 'success' | 'error', message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 4000);
   };
 
-  // Sync to localStorage and dispatch events
+  
   const persistHqs = (updated: HeadquarterItem[]) => {
     setHqs(updated);
     try {
@@ -255,11 +255,11 @@ export const HqTerritoryManager: React.FC = () => {
     } catch {}
   };
 
-  // Fetch from backend
+  
   const fetchBackendData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch HQs
+      
       const resHqs = await fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() });
       if (resHqs.ok) {
         const dataHqs = await resHqs.json();
@@ -293,7 +293,7 @@ export const HqTerritoryManager: React.FC = () => {
         }
       }
 
-      // 2. Fetch Areas
+      
       const resAreas = await fetch(`${apiUrl}/inventory/areas`, { headers: getAuthHeaders() });
       if (resAreas.ok) {
         const dataAreas = await resAreas.json();
@@ -324,7 +324,7 @@ export const HqTerritoryManager: React.FC = () => {
     fetchBackendData();
   }, []);
 
-  // Selected HQ object
+  
   const activeHq = hqs.find((h) => h.id === selectedHqId || h.hq_id === selectedHqId || h.code === selectedHqId) || hqs[0] || {
     id: 'HQ-SHD-001',
     name: 'Shahdol',
@@ -335,7 +335,7 @@ export const HqTerritoryManager: React.FC = () => {
     hq_code: 'SHD',
   };
 
-  // Filtered HQs for left list
+  
   const filteredHqs = hqs.filter((h) =>
     h.name.toLowerCase().includes(hqSearch.toLowerCase()) ||
     h.state.toLowerCase().includes(hqSearch.toLowerCase()) ||
@@ -343,7 +343,7 @@ export const HqTerritoryManager: React.FC = () => {
     (h.hq_id && h.hq_id.toLowerCase().includes(hqSearch.toLowerCase()))
   );
 
-  // Sub-areas belonging to the selected HQ
+  
   const hqSubAreas = areas.filter((a) =>
     a.hq_id === activeHq.id ||
     a.hq_id === activeHq.code ||
@@ -354,12 +354,12 @@ export const HqTerritoryManager: React.FC = () => {
     (activeHq.id === 'HQ-BSP-001' && a.hq_id === 'hq-bilaspur')
   );
 
-  // Filtered sub-areas for right list
+  
   const filteredSubAreas = hqSubAreas.filter((a) =>
     a.name.toLowerCase().includes(areaSearch.toLowerCase())
   );
 
-  // === HQ ACTIONS ===
+  
   const handleAddHq = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHqName.trim()) {
@@ -372,7 +372,7 @@ export const HqTerritoryManager: React.FC = () => {
     const state = newHqState.trim() || 'Madhya Pradesh';
     const id = `hq-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
-    // Resolve accurate geographic coordinates (not hardcoded Shahdol!)
+    
     const resolvedCoords = (newHqLat && newHqLng && !isNaN(Number(newHqLat)) && !isNaN(Number(newHqLng)))
       ? { lat: Number(newHqLat), lng: Number(newHqLng) }
       : (findKnownCityCoordinates(name) || { lat: 23.2953, lng: 81.3586 });
@@ -394,12 +394,12 @@ export const HqTerritoryManager: React.FC = () => {
       latitude: resolvedCoords.lat,
       longitude: resolvedCoords.lng,
     };
-    // Deduplicate by id and name
+    
     const updated = [...hqs.filter((h) => h.id !== id && h.name.toLowerCase().trim() !== name.toLowerCase().trim()), newHqObj];
     persistHqs(updated);
     setSelectedHqId(id);
 
-    // Sync with operating cities with genuine coordinates and no duplicate name entries
+    
     try {
       const citiesRaw = localStorage.getItem('ahtri_operating_cities');
       const cities = citiesRaw ? JSON.parse(citiesRaw) : [];
@@ -465,7 +465,7 @@ export const HqTerritoryManager: React.FC = () => {
     );
     persistHqs(updated);
 
-    // Sync with operating cities
+    
     try {
       const citiesRaw = localStorage.getItem('ahtri_operating_cities');
       if (citiesRaw) {
@@ -518,7 +518,7 @@ export const HqTerritoryManager: React.FC = () => {
     persistHqs(updatedHqs);
     persistAreas(updatedAreas);
 
-    // Also remove from ahtri_operating_cities
+    
     try {
       const citiesRaw = localStorage.getItem('ahtri_operating_cities');
       if (citiesRaw) {
@@ -538,7 +538,7 @@ export const HqTerritoryManager: React.FC = () => {
     showNotice('success', `Headquarters "${target.name}" deleted.`);
   };
 
-  // === SUB-AREA ACTIONS ===
+  
   const handleAddSingleArea = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newAreaName.trim()) {
@@ -547,7 +547,7 @@ export const HqTerritoryManager: React.FC = () => {
     }
 
     const name = newAreaName.trim();
-    // Prevent duplicate under same HQ
+    
     if (hqSubAreas.some((a) => a.name.toLowerCase() === name.toLowerCase())) {
       showNotice('error', `Sub-area "${name}" already exists under ${activeHq.name}.`);
       return;
