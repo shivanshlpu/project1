@@ -474,7 +474,7 @@ function normalizeTaskOrders(raw: any) {
                           </Text>
                         </View>
                       )}
-                      {task.orders && task.orders.length > 0 && (
+                      {Array.isArray(task.orders) && task.orders.length > 0 && (
                         <View style={styles.taskMeta}>
                           <Text style={styles.taskMetaIcon}>🛒</Text>
                           <Text style={styles.taskMetaText}>
