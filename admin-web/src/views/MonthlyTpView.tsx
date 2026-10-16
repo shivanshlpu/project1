@@ -2240,7 +2240,8 @@ export const MonthlyTpView: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    step="any"
+                    min="0.01"
                     required
                     value={batchFormData.distance_km}
                     onChange={(e) => setBatchFormData({ ...batchFormData, distance_km: Number(e.target.value) })}
@@ -2254,7 +2255,7 @@ export const MonthlyTpView: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="any"
                     min="0"
                     value={batchFormData.standard_reimbursement_rate}
                     onChange={(e) => setBatchFormData({ ...batchFormData, standard_reimbursement_rate: Number(e.target.value) })}
@@ -2473,7 +2474,7 @@ export const MonthlyTpView: React.FC = () => {
                   <span style={{ fontSize: 16, fontWeight: 800, color: '#1A3C6E' }}>₹</span>
                   <input
                     type="number"
-                    step="0.05"
+                    step="any"
                     min="0"
                     required
                     value={rateInput}
