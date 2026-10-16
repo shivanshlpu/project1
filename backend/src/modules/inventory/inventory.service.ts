@@ -1598,6 +1598,7 @@ export class InventoryService {
       stocker_id: stocker?.id || 'stk-shd-01',
       stocker_name: stocker?.name || 'Central Pharma Stockist',
       month: perm.month_str,
+      month_year: perm.month_str,
       year: perm.year,
       month_num: perm.month,
       status: 'PENDING',
@@ -1639,7 +1640,15 @@ export class InventoryService {
     month?: string;
     hq_id?: string;
   }): Promise<StockageSubmissionRequest[]> {
-    let list = [...this.db.stockageSubmissionRequests];
+    let list = this.db.stockageSubmissionRequests.map((r) => {
+      const stocker = this.db.stockers.find((s) => s.id === r.stocker_id);
+      return {
+        ...r,
+        month_year: r.month_year || r.month,
+        stocker_name: r.stocker_name || stocker?.name || r.stocker_id,
+        admin_notes: r.admin_notes || r.admin_comment,
+      };
+    });
 
     if (query?.status && query.status !== 'ALL') {
       list = list.filter((r) => r.status === query.status);
@@ -1696,6 +1705,7 @@ export class InventoryService {
     if (effectiveAction === 'REJECT') {
       request.status = 'REJECTED';
       request.admin_comment = reviewComment || 'Rejected by Administrator';
+      request.admin_notes = request.admin_comment;
       request.reviewed_by_id = adminUser.id;
       request.reviewed_by_name = adminUser.name || 'System Admin';
       request.reviewed_at = new Date().toISOString();
@@ -1825,6 +1835,7 @@ export class InventoryService {
     request.reviewed_by_name = adminUser.name || 'System Admin';
     request.reviewed_at = new Date().toISOString();
     request.admin_comment = dto.comment || 'Approved and added to official Stockage';
+    request.admin_notes = request.admin_comment;
     request.updated_at = new Date().toISOString();
 
     if (perm) {

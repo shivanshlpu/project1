@@ -544,6 +544,7 @@ export interface StockageSubmissionRequest {
   stocker_id: string;
   stocker_name: string;
   month: string; // "2026-10"
+  month_year?: string; // "2026-10" compatibility alias
   year: number;
   month_num: number;
   status: StockageSubmissionStatus;
@@ -555,6 +556,7 @@ export interface StockageSubmissionRequest {
   reviewed_by_name?: string;
   reviewed_at?: string;
   admin_comment?: string;
+  admin_notes?: string; // alias for admin_comment
   applied_at?: string;
   created_at: string;
   updated_at: string;

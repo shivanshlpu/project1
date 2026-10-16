@@ -107,10 +107,13 @@ interface StockageRequest {
   permission_id: string;
   mr_id: string;
   mr_name: string;
-  month_year: string;
+  month?: string;
+  month_year?: string;
   stocker_id: string;
+  stocker_name?: string;
   hq_id: string;
-  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'APPLIED';
+  hq_name?: string;
+  status: 'PENDING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'APPLIED';
   total_items: number;
   total_quantity: number;
   notes?: string;
@@ -170,6 +173,10 @@ const DEFAULT_MRS_FALLBACK = [
   const [itemApprovedQuantities, setItemApprovedQuantities] = useState<Record<string, number>>({});
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState<boolean>(false);
+  const [requestToApprove, setRequestToApprove] = useState<StockageRequest | null>(null);
+  const [quickApproveNotes, setQuickApproveNotes] = useState<string>('');
+  const [requestToReject, setRequestToReject] = useState<StockageRequest | null>(null);
+  const [quickRejectNotes, setQuickRejectNotes] = useState<string>('');
 
   // --- Packaging Variants State ---
   const [variants, setVariants] = useState<PackagingVariant[]>([]);
@@ -440,28 +447,44 @@ const DEFAULT_MRS_FALLBACK = [
   };
 
   // Review & Approve Request (Additive Rule)
-  const handleReviewRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!selectedRequest) return;
+  const handleReviewRequest = async (
+    status: 'APPROVED' | 'REJECTED',
+    targetRequest?: StockageRequest,
+    customNotes?: string,
+    customAdjustments?: Array<{ item_id: string; approved_quantity: number }>
+  ) => {
+    const req = targetRequest || selectedRequest;
+    if (!req) return;
 
-    if (status === 'REJECTED' && !approvalNotes.trim()) {
+    const notesToSubmit = (customNotes !== undefined ? customNotes : approvalNotes).trim();
+    if (status === 'REJECTED' && !notesToSubmit) {
       showToast('error', 'Please provide a reason / review notes for rejecting the submission');
       return;
     }
 
     setIsReviewing(true);
     try {
-      const adjustments = Object.entries(itemApprovedQuantities).map(([item_id, approved_qty]) => ({
-        item_id,
-        approved_quantity: approved_qty,
-      }));
+      let adjustments = customAdjustments;
+      if (!adjustments && targetRequest && targetRequest.id !== selectedRequest?.id) {
+        // Direct card action: approve all submitted quantities as submitted
+        adjustments = (targetRequest.items || []).map((it) => ({
+          item_id: it.id,
+          approved_quantity: it.approved_quantity != null ? it.approved_quantity : it.submitted_quantity,
+        }));
+      } else if (!adjustments) {
+        adjustments = Object.entries(itemApprovedQuantities).map(([item_id, approved_qty]) => ({
+          item_id,
+          approved_quantity: approved_qty,
+        }));
+      }
 
-      const res = await fetch(`${apiUrl}/inventory/stockage/requests/${selectedRequest.id}/review`, {
+      const res = await fetch(`${apiUrl}/inventory/stockage/requests/${req.id}/review`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           status,
-          admin_notes: approvalNotes.trim() || undefined,
-          item_adjustments: adjustments.length > 0 ? adjustments : undefined,
+          admin_notes: notesToSubmit || undefined,
+          item_adjustments: adjustments && adjustments.length > 0 ? adjustments : undefined,
         }),
       });
 
@@ -474,16 +497,22 @@ const DEFAULT_MRS_FALLBACK = [
       if (status === 'APPROVED') {
         showToast(
           'success',
-          `Request APPROVED! Additive Stockage rule applied: approved quantities added to stock. Permission CONSUMED.`,
+          `Request for ${req.mr_name} APPROVED! Additive Stockage rule applied: approved quantities added to stock. Permission CONSUMED.`,
         );
       } else {
-        showToast('success', `Request REJECTED. Official Stockage was not changed.`);
+        showToast('success', `Request for ${req.mr_name} REJECTED. Official Stockage was not changed.`);
       }
 
-      setSelectedRequest(null);
+      if (selectedRequest?.id === req.id) {
+        setSelectedRequest(null);
+        setItemApprovedQuantities({});
+      }
       setApprovalNotes('');
-      setItemApprovedQuantities({});
       setShowRejectConfirm(false);
+      setRequestToApprove(null);
+      setRequestToReject(null);
+      setQuickApproveNotes('');
+      setQuickRejectNotes('');
       await fetchRequests();
       await fetchPermissions();
       if (onRefreshInventory) onRefreshInventory();
@@ -559,12 +588,20 @@ const DEFAULT_MRS_FALLBACK = [
     return true;
   });
 
+  const isPendingStatus = (st: string) => st === 'PENDING' || st === 'SUBMITTED' || st === 'UNDER_REVIEW';
+
   const filteredRequests = requests.filter((r) => {
-    if (requestStatusFilter !== 'ALL' && r.status !== requestStatusFilter) return false;
-    return true;
+    if (requestStatusFilter === 'ALL') return true;
+    if (requestStatusFilter === 'SUBMITTED') {
+      return isPendingStatus(r.status);
+    }
+    if (requestStatusFilter === 'APPLIED') {
+      return r.status === 'APPLIED' || r.status === 'APPROVED';
+    }
+    return r.status === requestStatusFilter;
   });
 
-  const pendingRequestsCount = requests.filter((r) => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW').length;
+  const pendingRequestsCount = requests.filter((r) => isPendingStatus(r.status)).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -806,7 +843,7 @@ const DEFAULT_MRS_FALLBACK = [
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {filteredRequests.map((req) => {
-                const isPending = req.status === 'SUBMITTED' || req.status === 'UNDER_REVIEW';
+                const isPending = isPendingStatus(req.status);
                 const isSelected = selectedRequest?.id === req.id;
 
                 return (
@@ -854,16 +891,16 @@ const DEFAULT_MRS_FALLBACK = [
                           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)' }}>
                             {req.mr_name}
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginLeft: 8 }}>
-                              Month: <strong>{req.month_year}</strong>
+                              Month: <strong>{req.month_year || req.month || (req as any).month_str || 'Current Month'}</strong>
                             </span>
                           </div>
                           <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
-                            Stocker: <strong>{req.stocker_id}</strong> &bull; Total Items: <strong>{req.total_items}</strong> &bull; Total Units: <strong>{req.total_quantity}</strong> &bull; Submitted: {new Date(req.submitted_at).toLocaleString()}
+                            Stocker: <strong>{req.stocker_name ? `${req.stocker_name} (${req.stocker_id})` : req.stocker_id}</strong> &bull; Total Items: <strong>{req.total_items}</strong> &bull; Total Units: <strong>{req.total_quantity}</strong> &bull; Submitted: {new Date(req.submitted_at).toLocaleString()}
                           </div>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span
                           style={{
                             padding: '4px 10px',
@@ -871,13 +908,13 @@ const DEFAULT_MRS_FALLBACK = [
                             fontSize: 11.5,
                             fontWeight: 800,
                             background:
-                              req.status === 'APPLIED'
+                              req.status === 'APPLIED' || req.status === 'APPROVED'
                                 ? '#DCFCE7'
                                 : req.status === 'REJECTED'
                                 ? '#FEE2E2'
                                 : '#FEF3C7',
                             color:
-                              req.status === 'APPLIED'
+                              req.status === 'APPLIED' || req.status === 'APPROVED'
                                 ? '#166534'
                                 : req.status === 'REJECTED'
                                 ? '#991B1B'
@@ -887,7 +924,66 @@ const DEFAULT_MRS_FALLBACK = [
                           {req.status === 'APPLIED' ? 'APPLIED (APPROVED)' : req.status}
                         </span>
 
+                        {/* Direct Accept / Reject Action Buttons on the Card Row */}
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isReviewing}
+                              onClick={() => {
+                                setRequestToApprove(req);
+                                setQuickApproveNotes('');
+                              }}
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: 6,
+                                border: 'none',
+                                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                color: '#FFFFFF',
+                                fontWeight: 700,
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.25)',
+                              }}
+                              title="Accept & Apply: Add approved quantities directly to stock"
+                            >
+                              <CheckCircle size={14} />
+                              <span>Accept &amp; Apply</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={isReviewing}
+                              onClick={() => {
+                                setRequestToReject(req);
+                                setQuickRejectNotes('');
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                border: '1.5px solid #EF4444',
+                                background: '#FEF2F2',
+                                color: '#DC2626',
+                                fontWeight: 700,
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                              }}
+                              title="Reject this submission without modifying inventory"
+                            >
+                              <XCircle size={14} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
                         <button
+                          type="button"
                           onClick={() => {
                             if (isSelected) {
                               setSelectedRequest(null);
@@ -905,7 +1001,7 @@ const DEFAULT_MRS_FALLBACK = [
                           style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
                         >
                           <Eye size={13} />
-                          <span>{isSelected ? 'Hide Details' : 'Inspect & Review'}</span>
+                          <span>{isSelected ? 'Hide Details' : isPending ? 'Inspect & Adjust Qty' : 'View Details'}</span>
                         </button>
                       </div>
                     </div>
@@ -913,6 +1009,80 @@ const DEFAULT_MRS_FALLBACK = [
                     {/* Expandable Review & Inspection Panel */}
                     {isSelected && (
                       <div style={{ padding: '16px 18px', background: '#FFFFFF' }}>
+                        {/* Top Action Bar for Immediate Review */}
+                        {isPending && (
+                          <div
+                            style={{
+                              marginBottom: 14,
+                              padding: '12px 16px',
+                              background: '#F0FDF4',
+                              border: '1.5px solid #86EFAC',
+                              borderRadius: 8,
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: 10,
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 13, color: '#166534' }}>
+                                Reviewing Submission: {req.total_items} Items ({req.total_quantity} Units)
+                              </div>
+                              <div style={{ fontSize: 11.5, color: '#15803D', marginTop: 2 }}>
+                                Additive Rule: Approved units will be added to existing stock. You can edit quantities below or approve now.
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                disabled={isReviewing}
+                                onClick={() => handleReviewRequest('APPROVED', req)}
+                                style={{
+                                  padding: '7px 16px',
+                                  borderRadius: 6,
+                                  border: 'none',
+                                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                  color: '#FFFFFF',
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  boxShadow: '0 2px 4px rgba(5, 150, 105, 0.25)',
+                                }}
+                              >
+                                <CheckCircle size={14} />
+                                <span>{isReviewing ? 'Applying...' : 'Accept & Apply All'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isReviewing}
+                                onClick={() => setShowRejectConfirm(true)}
+                                style={{
+                                  padding: '7px 14px',
+                                  borderRadius: 6,
+                                  border: '1.5px solid #EF4444',
+                                  background: '#FFFFFF',
+                                  color: '#DC2626',
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                }}
+                              >
+                                <XCircle size={14} />
+                                <span>Reject</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Note from MR if any */}
                         {req.notes && (
                           <div style={{ marginBottom: 12, padding: '8px 12px', background: '#F1F5F9', borderRadius: 6, fontSize: 12, color: '#334155' }}>
@@ -1930,6 +2100,212 @@ const DEFAULT_MRS_FALLBACK = [
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Quick Modal: Accept & Apply Request */}
+      {requestToApprove && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              maxWidth: 500,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle size={20} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
+                  Approve &amp; Apply Stockage
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequestToApprove(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 6, fontSize: 13, border: '1px solid #E2E8F0' }}>
+                <div>MR: <strong>{requestToApprove.mr_name}</strong></div>
+                <div>Month: <strong>{requestToApprove.month_year || requestToApprove.month || 'Current Month'}</strong></div>
+                <div>Stocker: <strong>{requestToApprove.stocker_name ? `${requestToApprove.stocker_name} (${requestToApprove.stocker_id})` : requestToApprove.stocker_id}</strong></div>
+                <div style={{ marginTop: 6, color: '#059669', fontWeight: 700 }}>
+                  Total: {requestToApprove.total_items} Medicines &bull; {requestToApprove.total_quantity} Units
+                </div>
+              </div>
+
+              <div style={{ padding: '10px 14px', background: '#ECFDF5', borderRadius: 6, fontSize: 12, color: '#065F46', border: '1px solid #A7F3D0' }}>
+                <strong>Additive Stockage Rule:</strong> These quantities will be safely <em>added</em> on top of existing stock (New = Existing + Approved). Nothing will be overwritten or erased.
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  ADMIN VERIFICATION NOTE (OPTIONAL)
+                </label>
+                <input
+                  type="text"
+                  value={quickApproveNotes}
+                  onChange={(e) => setQuickApproveNotes(e.target.value)}
+                  placeholder="e.g. Verified with stockist physical register..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  disabled={isReviewing}
+                  onClick={() => setRequestToApprove(null)}
+                  style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--color-border)', background: '#FFFFFF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isReviewing}
+                  onClick={() => handleReviewRequest('APPROVED', requestToApprove, quickApproveNotes)}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <CheckCircle size={15} />
+                  <span>{isReviewing ? 'Applying to Stock...' : 'Confirm Accept & Apply'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Modal: Reject Request */}
+      {requestToReject && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 10,
+              maxWidth: 500,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <XCircle size={20} color="#DC2626" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#991B1B' }}>
+                  Reject Stockage Submission
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequestToReject(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: 6, fontSize: 13, border: '1px solid #FECACA' }}>
+                <div>MR: <strong>{requestToReject.mr_name}</strong></div>
+                <div>Month: <strong>{requestToReject.month_year || requestToReject.month || 'Current Month'}</strong></div>
+                <div>Stocker: <strong>{requestToReject.stocker_name ? `${requestToReject.stocker_name} (${requestToReject.stocker_id})` : requestToReject.stocker_id}</strong></div>
+                <div style={{ marginTop: 6, color: '#DC2626', fontWeight: 600 }}>
+                  Official inventory will remain unchanged (+0 units).
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  REASON FOR REJECTION * (Sent to MR via push notification)
+                </label>
+                <textarea
+                  value={quickRejectNotes}
+                  onChange={(e) => setQuickRejectNotes(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Quantity mismatch with stockist monthly statement..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  disabled={isReviewing}
+                  onClick={() => setRequestToReject(null)}
+                  style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--color-border)', background: '#FFFFFF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isReviewing}
+                  onClick={() => handleReviewRequest('REJECTED', requestToReject, quickRejectNotes)}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <XCircle size={15} />
+                  <span>{isReviewing ? 'Rejecting...' : 'Confirm Reject'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
