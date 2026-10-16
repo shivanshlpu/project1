@@ -1047,11 +1047,13 @@ export const StockerManagementView: React.FC = () => {
         }),
       });
       if (res.ok) {
+        const updated = await res.json().catch(() => ({}));
         setIsEditMedicineModalOpen(false);
         setEditingMedicine(null);
-        fetchMedicines();
-        if (selectedStockerId) fetchInventory();
+        await fetchMedicines();
+        if (selectedStockerId) await fetchInventory();
         syncInStockProductsWithBackend();
+        setInwardSuccessMsg(`✅ Medicine "${updated.name || editMedName}" updated successfully in database!`);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || 'Failed to update medicine.');
@@ -1066,7 +1068,7 @@ export const StockerManagementView: React.FC = () => {
     if (!target) return;
     const ok = await showConfirmModal({
       title: `Delete Medicine "${target.name}"`,
-      message: `Are you sure you want to delete "${target.name}" from the master catalog?\n\nStock and inventory records referencing this medicine will be affected.`,
+      message: `Are you sure you want to delete "${target.name}" from the master catalog?\n\nStock and inventory records referencing this medicine will be permanently removed.`,
       isDestructive: true,
       confirmText: 'Yes, Delete Medicine',
       cancelText: 'Cancel',
@@ -1079,11 +1081,19 @@ export const StockerManagementView: React.FC = () => {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
-        fetchMedicines();
-        if (selectedStockerId) fetchInventory();
+        setMedicines((prev) => prev.filter((m) => m.id !== medId));
+        setInventory((prev) => prev.filter((i) => i.medicine_id !== medId));
+        await fetchMedicines();
+        if (selectedStockerId) await fetchInventory();
         syncInStockProductsWithBackend();
+        setInwardSuccessMsg(`🗑️ Medicine "${target.name}" deleted and removed from database.`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to delete medicine from database.');
       }
-    } catch {}
+    } catch (err: any) {
+      alert('Error deleting medicine: ' + err.message);
+    }
   };
 
   // Handler: Save Monthly Stock Inward Entry
@@ -1156,25 +1166,34 @@ export const StockerManagementView: React.FC = () => {
   // Handler: Adjust Stock Quantity (§12, §13, §19)
   const handleSaveStockAdjustment = async () => {
     if (!stockEditTarget || !selectedStockerId) return;
+    const targetQty = parseInt(stockAdjustmentQty) || 0;
     try {
       const res = await fetch(`${apiUrl}/inventory/stockers/${selectedStockerId}/adjust`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           medicine_id: stockEditTarget.medicine_id,
-          quantity: parseInt(stockAdjustmentQty) || 0,
+          quantity: targetQty,
+          new_quantity: targetQty,
+          mode: 'SET',
           transaction_type: 'ADJUSTMENT',
-          reason: stockAdjustmentReason.trim(),
+          reason: stockAdjustmentReason.trim() || 'Admin manual stock adjustment',
         }),
       });
       if (res.ok) {
         setIsUpdateStockModalOpen(false);
         setStockEditTarget(null);
-        fetchInventory();
+        await fetchInventory();
         fetchAlerts();
         syncInStockProductsWithBackend();
+        setInwardSuccessMsg(`✅ Stock for "${stockEditTarget.medicine_name}" successfully set to ${targetQty} units in database!`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to adjust stock quantity.');
       }
-    } catch {}
+    } catch (err: any) {
+      alert('Error updating stock: ' + err.message);
+    }
   };
 
   const selectedStocker = stockers.find((s) => s.id === selectedStockerId);

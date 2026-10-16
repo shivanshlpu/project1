@@ -32,9 +32,14 @@ backend/data/ffa_db_store.json
 # Private Internal Documentation, Plans & AI Prompts (Local Retention)
 *.md
 **/*.md
+!docs/API_AUDIT.md
+!docs/FUNCTIONALITY_AUDIT.md
 *.pdf
 **/*.pdf
 docs/
+!docs/
+!docs/API_AUDIT.md
+!docs/FUNCTIONALITY_AUDIT.md
 build-system/skills/
 generate_audit_pdf.py
 

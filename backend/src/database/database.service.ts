@@ -457,8 +457,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.hqAreas = data.hqAreas;
         }
         if (Array.isArray(data.medicines) && data.medicines.length > 0) {
-          // Preserve disk medicines (which include user edits, new medicines, price updates)
-          const mergedMedicines = [...data.medicines];
+          // Filter out dummy/test medicines from disk
+          const validDiskMeds = data.medicines.filter(
+            (dm: any) => dm.id && dm.name && dm.name.trim().toLowerCase() !== 'dd' && dm.name.trim().toLowerCase() !== 'ss'
+          );
+          const mergedMedicines = [...validDiskMeds];
           for (const sm of this.medicines) {
             const diskMed = mergedMedicines.find((dm: any) => dm.id === sm.id);
             if (!diskMed) {
@@ -756,44 +759,73 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               .order('id', { ascending: true });
             if (!medsErr && remoteMeds && remoteMeds.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
+              const remoteMedIds = new Set(remoteMeds.map((m) => m.id));
+
+              // Supabase is authoritative: remove deleted medicines not present in Supabase
+              this.medicines = this.medicines.filter((m) => remoteMedIds.has(m.id));
+              this.stockerInventory = this.stockerInventory.filter((inv) => remoteMedIds.has(inv.medicine_id));
+              this.medicinePackagingVariants = this.medicinePackagingVariants.filter((v) => remoteMedIds.has(v.medicine_id));
+
               for (const rm of remoteMeds) {
                 const existing = this.medicines.find((m) => m.id === rm.id);
+                const price =
+                  rm.pts_rate !== undefined && rm.pts_rate !== null
+                    ? Number(rm.pts_rate)
+                    : rm.unit_price !== undefined && rm.unit_price !== null
+                    ? Number(rm.unit_price)
+                    : undefined;
+
                 if (existing) {
                   if (rm.name) existing.name = rm.name;
-                  if (rm.sku) existing.code = rm.sku;
+                  if (rm.sku) {
+                    existing.code = rm.sku;
+                    existing.product_code = rm.sku;
+                    existing.sku = rm.sku;
+                  }
                   if (rm.pack_size) {
                     existing.packing = rm.pack_size;
                     existing.unit = rm.pack_size;
                   }
                   if (rm.category) existing.category = rm.category;
-                  if (rm.unit_price !== undefined && rm.unit_price !== null) {
-                    existing.base_price = Number(rm.unit_price);
-                    (existing as any).pts = Number(rm.unit_price);
-                    (existing as any).pts_rate = Number(rm.unit_price);
+                  if (price !== undefined) {
+                    existing.base_price = price;
+                    (existing as any).pts = price;
+                    (existing as any).pts_rate = price;
                   }
                   if (rm.mrp !== undefined && rm.mrp !== null) {
                     existing.mrp = Number(rm.mrp);
                   }
-                  if (rm.is_active === false) existing.status = 'INACTIVE';
+                  if (rm.is_active === false) {
+                    existing.status = 'INACTIVE';
+                    existing.is_active = false;
+                  } else {
+                    existing.status = 'ACTIVE';
+                    existing.is_active = true;
+                  }
                 } else if (rm.is_active !== false) {
+                  const resolvedPrice = price !== undefined ? price : 0;
                   const newMed: Medicine = {
                     id: rm.id,
                     name: rm.name,
                     code: rm.sku || rm.id,
+                    product_code: rm.sku || rm.id,
+                    sku: rm.sku || rm.id,
                     category: rm.category || 'General',
                     unit: rm.pack_size || 'Units',
                     packing: rm.pack_size || 'Units',
-                    base_price: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : null,
-                    pts: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : 0,
-                    pts_rate: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : 0,
+                    base_price: resolvedPrice,
+                    pts: resolvedPrice,
+                    pts_rate: resolvedPrice,
                     mrp: rm.mrp !== undefined && rm.mrp !== null ? Number(rm.mrp) : 0,
                     low_stock_threshold: 15,
                     status: 'ACTIVE',
+                    is_active: true,
                     created_at: rm.created_at || new Date().toISOString(),
                   };
                   this.medicines.push(newMed);
                 }
               }
+              this.persistToDisk();
             }
 
             const { data: remoteVariants, error: varErr } = await client
@@ -1532,20 +1564,30 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
-      await client.from('medicines').upsert({
-        id: med.id,
-        name: med.name,
-        sku: med.code || med.sku || med.id,
-        composition: med.composition || null,
-        category: med.category || null,
-        pack_size: med.packing || med.unit || 'Units',
-        unit_price: med.pts ?? med.base_price ?? null,
-        mrp: med.mrp ?? null,
-        is_active: med.status !== 'INACTIVE',
-        created_at: med.created_at || new Date().toISOString(),
-      }, { onConflict: 'id' });
+      const ptsVal = med.pts_rate ?? med.pts ?? med.base_price ?? null;
+      const { error } = await client.from('medicines').upsert(
+        {
+          id: med.id,
+          name: med.name,
+          sku: med.code || med.sku || med.id,
+          composition: med.composition || null,
+          category: med.category || null,
+          pack_size: med.packing || med.unit || 'Units',
+          unit_price: ptsVal,
+          pts_rate: ptsVal,
+          mrp: med.mrp ?? null,
+          is_active: med.status !== 'INACTIVE',
+          created_at: med.created_at || new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      if (error) {
+        console.error(`[SupabaseSync] Error syncing medicine ${med.id}:`, error.message);
+        throw new Error(error.message);
+      }
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync medicine ${med.id}:`, err?.message);
+      throw err;
     }
   }
 
@@ -1556,7 +1598,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       if (!client) return;
       await client.from('stocker_inventory').delete().eq('medicine_id', id);
       await client.from('medicine_packaging_variants').delete().eq('medicine_id', id);
-      await client.from('medicines').delete().eq('id', id);
+      const { error } = await client.from('medicines').delete().eq('id', id);
+      if (error) {
+        // If hard delete is restricted due to order items or historical records, soft-delete
+        console.warn(`[SupabaseSync] Hard delete failed on medicines for ${id}, soft-deleting:`, error.message);
+        await client.from('medicines').update({ is_active: false }).eq('id', id);
+      }
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete medicine ${id} from Supabase:`, err?.message);
     }
@@ -1567,19 +1614,27 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
-      await client.from('stocker_inventory').upsert({
-        id: inv.id,
-        hq_id: inv.hq_id,
-        stocker_id: inv.stocker_id,
-        medicine_id: inv.medicine_id,
-        variant_id: inv.variant_id || null,
-        packaging_display: inv.packaging_display || null,
-        quantity: inv.quantity || 0,
-        low_stock_threshold: inv.low_stock_threshold || 15,
-        updated_at: inv.updated_at || new Date().toISOString(),
-      }, { onConflict: 'id' });
+      const { error } = await client.from('stocker_inventory').upsert(
+        {
+          id: inv.id,
+          hq_id: inv.hq_id,
+          stocker_id: inv.stocker_id,
+          medicine_id: inv.medicine_id,
+          variant_id: inv.variant_id || null,
+          packaging_display: inv.packaging_display || null,
+          quantity: inv.quantity || 0,
+          low_stock_threshold: inv.low_stock_threshold || 15,
+          updated_at: inv.updated_at || new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      if (error) {
+        console.error(`[SupabaseSync] Error syncing stocker inventory ${inv.id}:`, error.message);
+        throw new Error(error.message);
+      }
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync stocker inventory ${inv.id}:`, err?.message);
+      throw err;
     }
   }
 

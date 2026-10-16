@@ -255,7 +255,15 @@ export class AdjustStockDto {
   medicine_id: string;
 
   @IsNumber()
-  quantity: number; // positive to add, negative to deduct
+  quantity: number; // positive to add, negative to deduct, or target stock if mode === 'SET'
+
+  @IsNumber()
+  @IsOptional()
+  new_quantity?: number;
+
+  @IsString()
+  @IsOptional()
+  mode?: 'SET' | 'DELTA';
 
   @IsEnum(['INITIAL', 'RESTOCK', 'ORDER_DEDUCTION', 'ADJUSTMENT', 'RETURN'])
   transaction_type: 'INITIAL' | 'RESTOCK' | 'ORDER_DEDUCTION' | 'ADJUSTMENT' | 'RETURN';

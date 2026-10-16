@@ -694,8 +694,22 @@ export class InventoryService {
     const med = this.db.medicines.find((m) => m.id === id);
     if (!med) throw new NotFoundException('Medicine not found');
 
-    if (dto.name) med.name = dto.name;
-    if (dto.code) med.code = dto.code.toUpperCase();
+    if (dto.code) {
+      const codeUpper = dto.code.trim().toUpperCase();
+      const existingWithCode = this.db.medicines.find(
+        (m) => m.id !== id && (m.code?.toUpperCase() === codeUpper || m.product_code?.toUpperCase() === codeUpper)
+      );
+      if (existingWithCode) {
+        throw new BadRequestException(
+          `Medicine SKU / Code "${codeUpper}" already exists for "${existingWithCode.name}"`
+        );
+      }
+      med.code = codeUpper;
+      med.product_code = codeUpper;
+      med.sku = codeUpper;
+    }
+
+    if (dto.name) med.name = dto.name.trim();
     if (dto.unit) med.unit = dto.unit;
     if (dto.packing) {
       med.packing = dto.packing;
@@ -720,7 +734,10 @@ export class InventoryService {
     }
     if (dto.mrp !== undefined) med.mrp = Number(dto.mrp);
     if (dto.low_stock_threshold !== undefined) med.low_stock_threshold = Number(dto.low_stock_threshold);
-    if (dto.status) med.status = dto.status;
+    if (dto.status) {
+      med.status = dto.status;
+      med.is_active = dto.status !== 'INACTIVE';
+    }
     if (dto.packaging_variants && Array.isArray(dto.packaging_variants)) {
       med.packaging_variants = dto.packaging_variants;
       this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
@@ -732,20 +749,29 @@ export class InventoryService {
     med.updated_at = new Date().toISOString();
 
     this.db.persistToDisk();
-    this.db.syncMedicineToSupabase(med).catch(() => null);
-    return med;
+    await this.db.syncMedicineToSupabase(med).catch((err) => {
+      console.warn('[InventoryService] Supabase medicine sync warning:', err.message);
+    });
+
+    return {
+      ...med,
+      product_code: med.code,
+      is_active: med.status !== 'INACTIVE',
+    };
   }
 
   async deleteMedicine(id: string): Promise<{ success: boolean; message: string }> {
     const index = this.db.medicines.findIndex((m) => m.id === id);
     if (index === -1) throw new NotFoundException('Medicine not found');
 
-    this.db.medicines.splice(index, 1);
+    const [deletedMed] = this.db.medicines.splice(index, 1);
     this.db.stockerInventory = this.db.stockerInventory.filter((inv) => inv.medicine_id !== id);
     this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
     this.db.persistToDisk();
-    this.db.deleteMedicineFromSupabase(id).catch(() => null);
-    return { success: true, message: 'Medicine deleted successfully' };
+    await this.db.deleteMedicineFromSupabase(id).catch((err) => {
+      console.warn('[InventoryService] Supabase medicine deletion warning:', err.message);
+    });
+    return { success: true, message: `Medicine "${deletedMed?.name || id}" deleted successfully` };
   }
 
   async getPackagingVariants(medicineId?: string): Promise<MedicinePackagingVariant[]> {
@@ -906,7 +932,15 @@ export class InventoryService {
     }
 
     const previousStock = inventory.quantity;
-    inventory.quantity += dto.quantity;
+    let delta = 0;
+    if (dto.mode === 'SET' || dto.new_quantity !== undefined) {
+      const targetStock = dto.new_quantity !== undefined ? dto.new_quantity : dto.quantity;
+      delta = targetStock - previousStock;
+      inventory.quantity = targetStock;
+    } else {
+      inventory.quantity += dto.quantity;
+      delta = dto.quantity;
+    }
     inventory.updated_at = new Date().toISOString();
 
     // Create Audit Transaction record (§19)
@@ -915,16 +949,18 @@ export class InventoryService {
       hq_id: stocker.hq_id,
       stocker_id: stockerId,
       medicine_id: med.id,
-      quantity: dto.quantity,
+      quantity: delta,
       balance_after: inventory.quantity,
       transaction_type: dto.transaction_type,
       user_id: userId,
-      reason: dto.reason || `Stock adjustment by admin (${dto.transaction_type})`,
+      reason: dto.reason || `Stock adjustment (${dto.transaction_type})`,
       timestamp: new Date().toISOString(),
     };
     this.db.inventoryTransactions.push(tx);
     this.db.persistToDisk();
-    this.db.syncStockerInventoryToSupabase(inventory).catch(() => null);
+    await this.db.syncStockerInventoryToSupabase(inventory).catch((err) => {
+      console.warn('[InventoryService] Supabase stocker inventory sync warning:', err.message);
+    });
 
     return {
       message: 'Stock updated successfully',

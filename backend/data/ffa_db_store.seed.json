@@ -2985,51 +2985,6 @@
           "created_at": "2026-10-14T12:30:47.389Z"
         }
       ]
-    },
-    {
-      "id": "med-3461bc17",
-      "name": "ss",
-      "code": "MED-2985",
-      "category": "General",
-      "unit": "30 GM",
-      "packing": "30 GM",
-      "base_price": 12,
-      "pts": 12,
-      "pts_rate": 12,
-      "mrp": 15,
-      "low_stock_threshold": 15,
-      "status": "ACTIVE",
-      "created_at": "2026-10-16T10:14:02.008+00:00"
-    },
-    {
-      "id": "med-8deb5734",
-      "name": "dd",
-      "code": "MED-3501",
-      "category": "General",
-      "unit": "200 ML",
-      "packing": "200 ML",
-      "base_price": 92,
-      "pts": 92,
-      "pts_rate": 92,
-      "mrp": 50,
-      "low_stock_threshold": 15,
-      "status": "ACTIVE",
-      "created_at": "2026-10-16T10:44:52.321+00:00"
-    },
-    {
-      "id": "med-7b5eddff",
-      "name": "dd",
-      "code": "MED-8400",
-      "category": "General",
-      "unit": "200 ML",
-      "packing": "200 ML",
-      "base_price": null,
-      "pts": 0,
-      "pts_rate": 0,
-      "mrp": 0,
-      "low_stock_threshold": 15,
-      "status": "ACTIVE",
-      "created_at": "2026-10-16T12:00:17.154+00:00"
     }
   ],
   "monthlyStockagePermissions": [],
