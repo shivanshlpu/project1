@@ -273,20 +273,26 @@ export class InventoryService {
     this.db.stockers.push(stocker);
 
     // Initialize inventory records for all active medicines with 0 stock
+    const newInvs: StockerInventory[] = [];
     for (const med of this.db.medicines.filter((m) => m.status === 'ACTIVE')) {
-      this.db.stockerInventory.push({
+      const inv: StockerInventory = {
         id: `inv-${stocker.id}-${med.id}`,
         hq_id: dto.hq_id,
         stocker_id: stocker.id,
         medicine_id: med.id,
         quantity: 0,
-        low_stock_threshold: 10,
+        low_stock_threshold: 15,
         updated_at: new Date().toISOString(),
-      });
+      };
+      this.db.stockerInventory.push(inv);
+      newInvs.push(inv);
     }
 
     this.db.persistToDisk();
     this.db.syncStockerToSupabase(stocker).catch(() => null);
+    if (newInvs.length > 0) {
+      this.db.syncBatchStockerInventoryToSupabase(newInvs).catch(() => null);
+    }
     return stocker;
   }
 
@@ -653,8 +659,9 @@ export class InventoryService {
     this.db.medicinePackagingVariants.push(...variants);
 
     // Initialize stock records across all existing active stockers
+    const newInvs: StockerInventory[] = [];
     for (const stk of this.db.stockers) {
-      this.db.stockerInventory.push({
+      const inv: StockerInventory = {
         id: `inv-${stk.id}-${med.id}`,
         hq_id: stk.hq_id,
         stocker_id: stk.id,
@@ -662,11 +669,19 @@ export class InventoryService {
         quantity: 0,
         low_stock_threshold: threshold,
         updated_at: new Date().toISOString(),
-      });
+      };
+      this.db.stockerInventory.push(inv);
+      newInvs.push(inv);
     }
 
     this.db.persistToDisk();
     this.db.syncMedicineToSupabase(med).catch(() => null);
+    for (const v of variants) {
+      this.db.syncPackagingVariantToSupabase(v).catch(() => null);
+    }
+    if (newInvs.length > 0) {
+      this.db.syncBatchStockerInventoryToSupabase(newInvs).catch(() => null);
+    }
 
     return {
       ...med,
@@ -710,6 +725,9 @@ export class InventoryService {
       med.packaging_variants = dto.packaging_variants;
       this.db.medicinePackagingVariants = this.db.medicinePackagingVariants.filter((v) => v.medicine_id !== id);
       this.db.medicinePackagingVariants.push(...dto.packaging_variants);
+      for (const v of dto.packaging_variants) {
+        this.db.syncPackagingVariantToSupabase(v).catch(() => null);
+      }
     }
     med.updated_at = new Date().toISOString();
 
@@ -768,6 +786,7 @@ export class InventoryService {
     med.packaging_variants.push(variant);
     this.db.medicinePackagingVariants.push(variant);
     this.db.persistToDisk();
+    this.db.syncPackagingVariantToSupabase(variant).catch(() => null);
     return variant;
   }
 
@@ -794,6 +813,7 @@ export class InventoryService {
     }
 
     this.db.persistToDisk();
+    this.db.syncPackagingVariantToSupabase(variant).catch(() => null);
     return variant;
   }
 
@@ -808,6 +828,7 @@ export class InventoryService {
       med.packaging_variants = med.packaging_variants.filter((v) => v.id !== id);
     }
     this.db.persistToDisk();
+    this.db.deletePackagingVariantFromSupabase(id).catch(() => null);
     return { success: true, message: 'Packaging variant deleted successfully' };
   }
 
@@ -902,6 +923,8 @@ export class InventoryService {
       timestamp: new Date().toISOString(),
     };
     this.db.inventoryTransactions.push(tx);
+    this.db.persistToDisk();
+    this.db.syncStockerInventoryToSupabase(inventory).catch(() => null);
 
     return {
       message: 'Stock updated successfully',
@@ -999,6 +1022,8 @@ export class InventoryService {
         timestamp: new Date().toISOString(),
       };
       this.db.inventoryTransactions.push(tx);
+      this.db.persistToDisk();
+      this.db.syncStockerInventoryToSupabase(inv).catch(() => null);
 
       // Trigger Stock Alert if stock reaches zero, becomes negative, or falls below threshold (§18)
       if (inv.quantity <= 0 || inv.quantity <= inv.low_stock_threshold) {
@@ -1086,6 +1111,8 @@ export class InventoryService {
         timestamp: new Date().toISOString(),
       };
       this.db.inventoryTransactions.push(tx);
+      this.db.persistToDisk();
+      this.db.syncStockerInventoryToSupabase(inv).catch(() => null);
 
       results.push({
         medicine_id: med.id,
@@ -1245,6 +1272,8 @@ export class InventoryService {
       created_at: new Date().toISOString(),
     };
     this.db.monthlyStockEntries.push(entry);
+    this.db.persistToDisk();
+    this.db.syncStockerInventoryToSupabase(inventory).catch(() => null);
 
     return {
       message: 'Monthly medicine entry recorded successfully',
@@ -1749,7 +1778,9 @@ export class InventoryService {
         created_at: new Date().toISOString(),
       };
       this.db.monthlyStockEntries.push(monthlyEntry);
+      this.db.syncStockerInventoryToSupabase(inv).catch(() => null);
     }
+    this.db.persistToDisk();
 
     // Only after successful Stockage application: mark Applied & Consume permission
     request.status = 'APPLIED';

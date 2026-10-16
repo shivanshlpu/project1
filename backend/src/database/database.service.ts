@@ -145,6 +145,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         tourPlans: this.tourPlans,
         monthlyTourPlans: this.monthlyTourPlans,
         stockerInventory: this.stockerInventory,
+        monthlyStockEntries: this.monthlyStockEntries,
+        inventoryTransactions: this.inventoryTransactions,
         verificationPhotos: this.verificationPhotos,
         deviceAuthorizations: this.deviceAuthorizations,
         routeBatches: this.routeBatches,
@@ -377,18 +379,6 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
-        if (Array.isArray(data.stockerInventory)) {
-          const validMedIds = new Set(this.medicines.map((m) => m.id));
-          const existingInventory = data.stockerInventory.filter((inv: any) => validMedIds.has(inv.medicine_id));
-          const invMap = new Map<string, StockerInventory>();
-          for (const inv of this.stockerInventory) {
-            invMap.set(`${inv.stocker_id}-${inv.medicine_id}`, inv);
-          }
-          for (const inv of existingInventory) {
-            invMap.set(`${inv.stocker_id}-${inv.medicine_id}`, inv);
-          }
-          this.stockerInventory = Array.from(invMap.values());
-        }
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;
@@ -452,8 +442,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               !h.hq_id?.toLowerCase().includes('delhi')
           );
         }
-        if (Array.isArray(data.stockers)) {
-          this.stockers = data.stockers;
+        if (Array.isArray(data.stockers) && data.stockers.length > 0) {
+          const stkMap = new Map(this.stockers.map((s) => [s.id, s]));
+          for (const s of data.stockers) {
+            stkMap.set(s.id, s);
+          }
+          this.stockers = Array.from(stkMap.values());
         }
         if (Array.isArray(data.hqAreas)) {
           this.hqAreas = data.hqAreas;
@@ -516,6 +510,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.rewardClaims)) {
           this.rewardClaims = data.rewardClaims;
+        }
+        if (Array.isArray(data.monthlyStockEntries)) {
+          this.monthlyStockEntries = data.monthlyStockEntries;
+        }
+        if (Array.isArray(data.inventoryTransactions)) {
+          this.inventoryTransactions = data.inventoryTransactions;
         }
         console.log(
           `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.monthlyStockagePermissions.length} stockage permissions, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
@@ -706,40 +706,157 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
-          // Sync medicines with Supabase - only update or initialize, do not resurrect deleted ones
-          const { data: remoteMeds, error: medsErr } = await client
-            .from('medicines')
-            .select('*')
-            .order('id', { ascending: true });
-          if (!medsErr && remoteMeds && remoteMeds.length > 0) {
-            if (this.medicines.length === 0) {
-              console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
-              this.medicines = remoteMeds.map((rm: any) => ({
-                id: rm.id,
-                name: rm.name,
-                code: rm.sku || rm.code || rm.id,
-                unit: rm.pack_size || rm.unit || 'Units',
-                base_price:
-                  rm.unit_price !== undefined && rm.unit_price !== null
-                    ? Number(rm.unit_price)
-                    : null,
-                low_stock_threshold: 15,
-                status: rm.is_active === false ? 'INACTIVE' : 'ACTIVE',
-                created_at: rm.created_at || new Date().toISOString(),
-              }));
-            } else {
-              // Update existing medicines without resurrecting locally deleted ones
-              for (const rm of remoteMeds) {
-                const existing = this.medicines.find((m) => m.id === rm.id);
-                if (existing) {
-                  if (rm.unit_price !== undefined && rm.unit_price !== null) {
-                    existing.base_price = Number(rm.unit_price);
-                    (existing as any).pts = Number(rm.unit_price);
-                  }
-                  if (rm.is_active === false) existing.status = 'INACTIVE';
+          // Authoritative sync: load stockers (pharmacies) from Supabase
+          try {
+            const { data: remoteStockers, error: stkErr } = await client.from('stockers').select('*');
+            if (!stkErr && Array.isArray(remoteStockers) && remoteStockers.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteStockers.length} stockers from Supabase.`);
+              for (const rs of remoteStockers) {
+                const cleanStk: Stocker = {
+                  id: rs.id,
+                  name: rs.name,
+                  hq_id: rs.hq_id,
+                  sub_area: rs.sub_area || rs.address || '',
+                  address: rs.address || '',
+                  phone: rs.phone || '',
+                  status: rs.is_active === false ? 'INACTIVE' : 'ACTIVE',
+                  created_at: rs.created_at || new Date().toISOString(),
+                };
+                const idx = this.stockers.findIndex((s) => s.id === cleanStk.id);
+                if (idx >= 0) {
+                  this.stockers[idx] = { ...this.stockers[idx], ...cleanStk };
+                } else {
+                  this.stockers.push(cleanStk);
                 }
               }
             }
+          } catch (stkNotice: any) {
+            console.warn('[DatabaseService] Notice syncing stockers from Supabase:', stkNotice?.message);
+          }
+
+          // Authoritative sync: load medicines and packaging variants from Supabase
+          try {
+            const { data: remoteMeds, error: medsErr } = await client
+              .from('medicines')
+              .select('*')
+              .order('id', { ascending: true });
+            if (!medsErr && remoteMeds && remoteMeds.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteMeds.length} medicines from Supabase.`);
+              for (const rm of remoteMeds) {
+                const existing = this.medicines.find((m) => m.id === rm.id);
+                if (existing) {
+                  if (rm.name) existing.name = rm.name;
+                  if (rm.sku) existing.code = rm.sku;
+                  if (rm.pack_size) {
+                    existing.packing = rm.pack_size;
+                    existing.unit = rm.pack_size;
+                  }
+                  if (rm.category) existing.category = rm.category;
+                  if (rm.unit_price !== undefined && rm.unit_price !== null) {
+                    existing.base_price = Number(rm.unit_price);
+                    (existing as any).pts = Number(rm.unit_price);
+                    (existing as any).pts_rate = Number(rm.unit_price);
+                  }
+                  if (rm.mrp !== undefined && rm.mrp !== null) {
+                    existing.mrp = Number(rm.mrp);
+                  }
+                  if (rm.is_active === false) existing.status = 'INACTIVE';
+                } else if (rm.is_active !== false) {
+                  const newMed: Medicine = {
+                    id: rm.id,
+                    name: rm.name,
+                    code: rm.sku || rm.id,
+                    category: rm.category || 'General',
+                    unit: rm.pack_size || 'Units',
+                    packing: rm.pack_size || 'Units',
+                    base_price: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : null,
+                    pts: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : 0,
+                    pts_rate: rm.unit_price !== undefined && rm.unit_price !== null ? Number(rm.unit_price) : 0,
+                    mrp: rm.mrp !== undefined && rm.mrp !== null ? Number(rm.mrp) : 0,
+                    low_stock_threshold: 15,
+                    status: 'ACTIVE',
+                    created_at: rm.created_at || new Date().toISOString(),
+                  };
+                  this.medicines.push(newMed);
+                }
+              }
+            }
+
+            const { data: remoteVariants, error: varErr } = await client
+              .from('medicine_packaging_variants')
+              .select('*');
+            if (!varErr && Array.isArray(remoteVariants) && remoteVariants.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteVariants.length} packaging variants from Supabase.`);
+              for (const rv of remoteVariants) {
+                const variant: MedicinePackagingVariant = {
+                  id: rv.id,
+                  medicine_id: rv.medicine_id,
+                  variant_name: rv.display_name || `${rv.size} ${rv.unit}`,
+                  package_size: rv.size,
+                  package_unit: rv.unit,
+                  size: rv.size,
+                  unit: rv.unit,
+                  display_label: rv.display_name || `${rv.size} ${rv.unit}`,
+                  display_name: rv.display_name || `${rv.size} ${rv.unit}`,
+                  packing: rv.display_name || `${rv.size} ${rv.unit}`,
+                  pts_rate: Number(rv.pts_rate || 0),
+                  mrp: Number(rv.mrp || 0),
+                  status: rv.is_active === false ? 'INACTIVE' : 'ACTIVE',
+                  is_active: rv.is_active !== false,
+                  created_at: rv.created_at || new Date().toISOString(),
+                };
+                const vIdx = this.medicinePackagingVariants.findIndex((v) => v.id === variant.id);
+                if (vIdx >= 0) {
+                  this.medicinePackagingVariants[vIdx] = variant;
+                } else {
+                  this.medicinePackagingVariants.push(variant);
+                }
+
+                const targetMed = this.medicines.find((m) => m.id === variant.medicine_id);
+                if (targetMed) {
+                  if (!targetMed.packaging_variants) targetMed.packaging_variants = [];
+                  const existingVarIdx = targetMed.packaging_variants.findIndex((v) => v.id === variant.id);
+                  if (existingVarIdx >= 0) {
+                    targetMed.packaging_variants[existingVarIdx] = variant;
+                  } else {
+                    targetMed.packaging_variants.push(variant);
+                  }
+                }
+              }
+            }
+          } catch (medNotice: any) {
+            console.warn('[DatabaseService] Notice syncing medicines/variants from Supabase:', medNotice?.message);
+          }
+
+          // Authoritative sync: load stocker inventory (storage data) from Supabase
+          try {
+            const { data: remoteInv, error: invErr } = await client.from('stocker_inventory').select('*');
+            if (!invErr && Array.isArray(remoteInv) && remoteInv.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteInv.length} stocker inventory records from Supabase.`);
+              for (const ri of remoteInv) {
+                const invItem: StockerInventory = {
+                  id: ri.id,
+                  hq_id: ri.hq_id,
+                  stocker_id: ri.stocker_id,
+                  medicine_id: ri.medicine_id,
+                  variant_id: ri.variant_id || undefined,
+                  packaging_display: ri.packaging_display || undefined,
+                  quantity: Number(ri.quantity ?? 0),
+                  low_stock_threshold: Number(ri.low_stock_threshold ?? 15),
+                  updated_at: ri.updated_at || new Date().toISOString(),
+                };
+                const idx = this.stockerInventory.findIndex(
+                  (i) => i.id === invItem.id || (i.stocker_id === invItem.stocker_id && i.medicine_id === invItem.medicine_id),
+                );
+                if (idx >= 0) {
+                  this.stockerInventory[idx] = { ...this.stockerInventory[idx], ...invItem };
+                } else {
+                  this.stockerInventory.push(invItem);
+                }
+              }
+            }
+          } catch (invNotice: any) {
+            console.warn('[DatabaseService] Notice syncing stocker inventory from Supabase:', invNotice?.message);
           }
 
           // Authoritative sync: load monthly tour plans from Supabase
@@ -882,6 +999,113 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 this.orders.push(reconstructed);
               }
             }
+          }
+
+          // Authoritative sync: load route batches from Supabase
+          try {
+            const { data: remoteBatches, error: rbErr } = await client.from('route_batches').select('*');
+            if (!rbErr && Array.isArray(remoteBatches) && remoteBatches.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteBatches.length} route batches from Supabase.`);
+              for (const rb of remoteBatches) {
+                const batch: RouteBatch = {
+                  id: rb.id,
+                  batch_code: rb.batch_code,
+                  name: rb.name,
+                  hq_id: rb.hq_id,
+                  hq_code: rb.hq_code || '',
+                  hq_name: rb.hq_name || '',
+                  mr_id: rb.mr_id || undefined,
+                  mr_name: rb.mr_name || undefined,
+                  territory_name: rb.territory_name || '',
+                  route_stops: Array.isArray(rb.route_stops)
+                    ? rb.route_stops
+                    : typeof rb.route_stops === 'string'
+                    ? JSON.parse(rb.route_stops)
+                    : [],
+                  areas: Array.isArray(rb.areas)
+                    ? rb.areas
+                    : typeof rb.areas === 'string'
+                    ? JSON.parse(rb.areas)
+                    : [],
+                  distance_km: Number(rb.distance_km || 0),
+                  standard_reimbursement_rate: Number(rb.standard_reimbursement_rate ?? 2.5),
+                  status: rb.status || 'ACTIVE',
+                  created_at: rb.created_at || new Date().toISOString(),
+                  updated_at: rb.updated_at || new Date().toISOString(),
+                };
+                const idx = this.routeBatches.findIndex((b) => b.id === batch.id || b.batch_code === batch.batch_code);
+                if (idx >= 0) {
+                  this.routeBatches[idx] = { ...this.routeBatches[idx], ...batch };
+                } else {
+                  this.routeBatches.push(batch);
+                }
+              }
+            }
+          } catch (rbNotice: any) {
+            console.warn('[DatabaseService] Notice syncing route batches from Supabase:', rbNotice?.message);
+          }
+
+          // Authoritative sync: load competitions and reward claims from Supabase
+          try {
+            const { data: remoteComps, error: compErr } = await client.from('competitions').select('*');
+            if (!compErr && Array.isArray(remoteComps) && remoteComps.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteComps.length} competitions from Supabase.`);
+              for (const rc of remoteComps) {
+                const comp: Competition = {
+                  id: rc.id,
+                  name: rc.title || rc.name,
+                  description: rc.description || '',
+                  hq_id: rc.target_hq_id || rc.hq_id,
+                  hq_name: rc.target_hq_name || rc.hq_name,
+                  medicine_id: rc.target_product_id || rc.medicine_id,
+                  medicine_name: rc.target_product_name || rc.medicine_name,
+                  target_quantity: Number(rc.target_units ?? rc.target_quantity ?? 0),
+                  reward_amount: Number(rc.reward_amount || 0),
+                  start_date: rc.start_date,
+                  end_date: rc.end_date,
+                  status: rc.status || 'ACTIVE',
+                  created_at: rc.created_at || new Date().toISOString(),
+                };
+                const idx = this.competitions.findIndex((c) => c.id === comp.id);
+                if (idx >= 0) {
+                  this.competitions[idx] = { ...this.competitions[idx], ...comp };
+                } else {
+                  this.competitions.push(comp);
+                }
+              }
+            }
+
+            const { data: remoteClaims, error: claimErr } = await client.from('reward_claims').select('*');
+            if (!claimErr && Array.isArray(remoteClaims) && remoteClaims.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteClaims.length} reward claims from Supabase.`);
+              for (const rcl of remoteClaims) {
+                const targetComp = this.competitions.find((c) => c.id === rcl.competition_id);
+                const claim: RewardClaim = {
+                  id: rcl.id,
+                  competition_id: rcl.competition_id,
+                  competition_name: targetComp?.name || 'Sales Incentive',
+                  mr_id: rcl.mr_id,
+                  mr_name: rcl.mr_name || 'Field MR',
+                  achieved_quantity: Number(rcl.units_sold || 0),
+                  target_quantity: targetComp?.target_quantity || 0,
+                  reward_amount: Number(rcl.reward_amount || 0),
+                  eligible_at: rcl.claimed_at || new Date().toISOString(),
+                  claimed_at: rcl.claimed_at || new Date().toISOString(),
+                  status: (rcl.status || 'APPLIED') as any,
+                  order_ids: [],
+                  reviewed_at: rcl.decided_at,
+                  reviewed_by: rcl.decided_by,
+                };
+                const idx = this.rewardClaims.findIndex((c) => c.id === claim.id);
+                if (idx >= 0) {
+                  this.rewardClaims[idx] = { ...this.rewardClaims[idx], ...claim };
+                } else {
+                  this.rewardClaims.push(claim);
+                }
+              }
+            }
+          } catch (compNotice: any) {
+            console.warn('[DatabaseService] Notice syncing competitions/claims from Supabase:', compNotice?.message);
           }
 
           // Flush synchronized state to disk store immediately
@@ -1248,6 +1472,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
+      await client.from('stocker_inventory').delete().eq('stocker_id', id);
       await client.from('stockers').delete().eq('id', id);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete stocker ${id} from Supabase:`, err?.message);
@@ -1281,9 +1506,129 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
+      await client.from('stocker_inventory').delete().eq('medicine_id', id);
+      await client.from('medicine_packaging_variants').delete().eq('medicine_id', id);
       await client.from('medicines').delete().eq('id', id);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete medicine ${id} from Supabase:`, err?.message);
+    }
+  }
+
+  public async syncStockerInventoryToSupabase(inv: StockerInventory) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('stocker_inventory').upsert({
+        id: inv.id,
+        hq_id: inv.hq_id,
+        stocker_id: inv.stocker_id,
+        medicine_id: inv.medicine_id,
+        variant_id: inv.variant_id || null,
+        packaging_display: inv.packaging_display || null,
+        quantity: inv.quantity || 0,
+        low_stock_threshold: inv.low_stock_threshold || 15,
+        updated_at: inv.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync stocker inventory ${inv.id}:`, err?.message);
+    }
+  }
+
+  public async syncBatchStockerInventoryToSupabase(invList: StockerInventory[]) {
+    if (!this.supabase || !this.supabase.isConnected || !invList || invList.length === 0) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      const records = invList.map((inv) => ({
+        id: inv.id,
+        hq_id: inv.hq_id,
+        stocker_id: inv.stocker_id,
+        medicine_id: inv.medicine_id,
+        variant_id: inv.variant_id || null,
+        packaging_display: inv.packaging_display || null,
+        quantity: inv.quantity || 0,
+        low_stock_threshold: inv.low_stock_threshold || 15,
+        updated_at: inv.updated_at || new Date().toISOString(),
+      }));
+      await client.from('stocker_inventory').upsert(records, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync batch inventory (${invList.length} items):`, err?.message);
+    }
+  }
+
+  public async syncPackagingVariantToSupabase(v: MedicinePackagingVariant) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      const sizeVal = v.package_size ?? v.size ?? 1;
+      const unitVal = v.package_unit ?? v.unit ?? 'units';
+      const dispVal = v.display_name ?? v.display_label ?? `${sizeVal} ${unitVal}`;
+      await client.from('medicine_packaging_variants').upsert({
+        id: v.id,
+        medicine_id: v.medicine_id,
+        size: sizeVal,
+        unit: unitVal,
+        display_name: dispVal,
+        pts_rate: v.pts_rate ?? null,
+        mrp: v.mrp ?? null,
+        is_active: v.is_active !== undefined ? v.is_active : v.status !== 'INACTIVE',
+        created_at: v.created_at || new Date().toISOString(),
+        updated_at: v.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync packaging variant ${v.id}:`, err?.message);
+    }
+  }
+
+  public async deletePackagingVariantFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('medicine_packaging_variants').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete packaging variant ${id}:`, err?.message);
+    }
+  }
+
+  public async syncRouteBatchToSupabase(batch: RouteBatch) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('route_batches').upsert({
+        id: batch.id,
+        batch_code: batch.batch_code,
+        name: batch.name,
+        hq_id: batch.hq_id,
+        hq_code: batch.hq_code || null,
+        hq_name: batch.hq_name || null,
+        mr_id: batch.mr_id || null,
+        mr_name: batch.mr_name || null,
+        territory_name: batch.territory_name || null,
+        route_stops: batch.route_stops || [],
+        areas: batch.areas || [],
+        distance_km: batch.distance_km || 0,
+        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 2.5,
+        status: batch.status || 'ACTIVE',
+        created_at: batch.created_at || new Date().toISOString(),
+        updated_at: batch.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync route batch ${batch.id}:`, err?.message);
+    }
+  }
+
+  public async deleteRouteBatchFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('route_batches').delete().or(`id.eq.${id},batch_code.eq.${id}`);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete route batch ${id}:`, err?.message);
     }
   }
 
@@ -1317,9 +1662,32 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
+      await client.from('reward_claims').delete().eq('competition_id', id);
       await client.from('competitions').delete().eq('id', id);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Notice deleting competition ${id}:`, err?.message);
+    }
+  }
+
+  public async syncRewardClaimToSupabase(claim: RewardClaim) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('reward_claims').upsert({
+        id: claim.id,
+        competition_id: claim.competition_id,
+        mr_id: claim.mr_id,
+        mr_name: claim.mr_name,
+        status: claim.status || 'PENDING',
+        units_sold: claim.achieved_quantity || 0,
+        reward_amount: claim.reward_amount || 0,
+        claimed_at: claim.claimed_at || new Date().toISOString(),
+        decided_at: claim.reviewed_at || null,
+        decided_by: claim.reviewed_by || null,
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync reward claim ${claim.id}:`, err?.message);
     }
   }
 

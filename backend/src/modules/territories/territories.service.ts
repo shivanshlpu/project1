@@ -349,6 +349,7 @@ export class TerritoriesService {
     }
 
     this.db.persistToDisk();
+    this.db.syncRouteBatchToSupabase(newBatch).catch(() => null);
     return newBatch;
   }
 
@@ -393,6 +394,7 @@ export class TerritoriesService {
 
     rb.updated_at = new Date().toISOString();
     this.db.persistToDisk();
+    this.db.syncRouteBatchToSupabase(rb).catch(() => null);
     return rb;
   }
 
@@ -402,6 +404,7 @@ export class TerritoriesService {
 
     const removed = this.db.routeBatches.splice(idx, 1)[0];
     this.db.persistToDisk();
+    this.db.deleteRouteBatchFromSupabase(removed.id).catch(() => null);
     return { success: true, message: `Route Batch ${removed.batch_code} deleted successfully` };
   }
 

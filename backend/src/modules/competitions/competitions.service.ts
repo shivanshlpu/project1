@@ -247,6 +247,8 @@ export class CompetitionsService {
     };
 
     this.db.rewardClaims.push(claim);
+    this.db.persistToDisk();
+    this.db.syncRewardClaimToSupabase(claim).catch(() => null);
 
     // Notify Admins about the new claim
     const admins = this.db.users.filter(
@@ -316,6 +318,8 @@ export class CompetitionsService {
     claim.reviewed_by = adminId;
     claim.reviewed_at = new Date().toISOString();
     if (dto.comment) claim.admin_comment = dto.comment;
+    this.db.persistToDisk();
+    this.db.syncRewardClaimToSupabase(claim).catch(() => null);
 
     // Notify MR
     this.notificationsService.sendPushNotification(
