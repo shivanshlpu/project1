@@ -408,6 +408,14 @@ export class TerritoriesService {
     return { success: true, message: `Route Batch ${removed.batch_code} deleted successfully` };
   }
 
+  getStandardRate(): number {
+    return (
+      this.db.attendanceSettings?.reimbursement_rate_per_km ??
+      this.db.routeBatches[0]?.standard_reimbursement_rate ??
+      2.5
+    );
+  }
+
   async updateStandardRate(rate: number): Promise<{ success: boolean; rate: number; updatedCount: number }> {
     const numRate = Number(rate);
     if (isNaN(numRate) || numRate < 0) {
@@ -427,6 +435,8 @@ export class TerritoriesService {
     }
 
     this.db.persistToDisk();
+    await this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches);
     return { success: true, rate: numRate, updatedCount: count };
   }
 }
+

@@ -29,7 +29,10 @@ export class TourPlansService {
     effectiveHqId: string,
     effectiveHqName: string,
   ): MonthlyTpItem {
-    const policyRate = this.db.attendanceSettings?.reimbursement_rate_per_km ?? 2.5;
+    const policyRate =
+      this.db.attendanceSettings?.reimbursement_rate_per_km ??
+      this.db.routeBatches[0]?.standard_reimbursement_rate ??
+      2.5;
 
     // 1. Check if route batch is explicitly specified or if we can match one
     let batch = null;

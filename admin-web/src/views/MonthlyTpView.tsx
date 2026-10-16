@@ -601,6 +601,24 @@ export const MonthlyTpView: React.FC = () => {
     fetchMetadata();
   }, [apiUrl]);
 
+  // Fetch active reimbursement rate setting on mount
+  useEffect(() => {
+    const fetchActiveRate = async () => {
+      try {
+        const res = await resilientFetch('/territories/route-batches/settings/rate');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data.rate === 'number' && !isNaN(data.rate)) {
+            setGlobalRate(data.rate);
+            setRateInput(String(data.rate));
+            localStorage.setItem('ahtri_reimbursement_rate', String(data.rate));
+          }
+        }
+      } catch {}
+    };
+    fetchActiveRate();
+  }, []);
+
   // Fetch Route Batches
   const fetchRouteBatches = async () => {
     setIsBatchesLoading(true);
@@ -610,6 +628,12 @@ export const MonthlyTpView: React.FC = () => {
         const data = await res.json();
         if (Array.isArray(data)) {
           setRouteBatches(data);
+          if (data.length > 0 && typeof data[0].standard_reimbursement_rate === 'number' && !isNaN(data[0].standard_reimbursement_rate)) {
+            const serverRate = data[0].standard_reimbursement_rate;
+            setGlobalRate(serverRate);
+            setRateInput(String(serverRate));
+            localStorage.setItem('ahtri_reimbursement_rate', String(serverRate));
+          }
         }
       }
     } catch {

@@ -14,13 +14,7 @@ import {
   UpdateAttendanceSettingsDto,
 } from './dto/attendance.dto';
 import { Attendance, AttendanceSettings } from '../../database/database.types';
-
-function parseTimeToDate(dateStr: string, timeStr: string): Date {
-  const [hours, minutes, seconds] = timeStr.split(':').map((s) => parseInt(s, 10) || 0);
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setHours(hours, minutes, seconds || 0, 0);
-  return d;
-}
+import { computeAttendanceDeviations } from './attendance.utils';
 
 @Injectable()
 export class AttendanceService implements OnModuleInit {
@@ -110,9 +104,32 @@ export class AttendanceService implements OnModuleInit {
     }
     if (dto.reimbursement_rate_per_km !== undefined) {
       this.db.attendanceSettings.reimbursement_rate_per_km = dto.reimbursement_rate_per_km;
+      for (const rb of this.db.routeBatches) {
+        rb.standard_reimbursement_rate = dto.reimbursement_rate_per_km;
+        rb.updated_at = new Date().toISOString();
+      }
+      this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => null);
     }
     this.db.attendanceSettings.updated_at = new Date().toISOString();
+
+    // Recompute late & early deviations for all existing attendance records against the newly saved settings
+    for (const record of this.db.attendance) {
+      const dev = computeAttendanceDeviations(
+        record.check_in_at,
+        record.check_out_at,
+        this.db.attendanceSettings,
+      );
+      record.late_minutes = dev.lateMinutes;
+      record.early_minutes = dev.earlyMinutes;
+      if (record.status !== 'INCOMPLETE') {
+        record.status = dev.isLate ? 'LATE' : 'PRESENT';
+      }
+      // Asynchronously sync recomputed attendance record to Supabase
+      this.db.syncAttendanceToSupabase(record).catch(() => null);
+    }
+
     this.db.persistToDisk();
+    await this.db.syncAttendanceSettingsToSupabase(this.db.attendanceSettings);
     return this.db.attendanceSettings;
   }
 
@@ -175,19 +192,10 @@ export class AttendanceService implements OnModuleInit {
     const now = new Date();
     const settings = this.db.attendanceSettings;
 
-    // Calculate Late Entry (§24)
-    const expectedInDate = parseTimeToDate(todayStr, settings.expected_punch_in_time || '10:00:00');
-    const lateDiffMs = now.getTime() - expectedInDate.getTime();
-    let lateMinutes = 0;
-    let isLate = false;
-
-    if (lateDiffMs > 0) {
-      lateMinutes = Math.round(lateDiffMs / 60000);
-      // If beyond allowed window, mark as LATE
-      if (lateMinutes > (settings.allowed_punch_in_window_minutes || 30)) {
-        isLate = true;
-      }
-    }
+    // Calculate Late Entry accurately in IST (§24)
+    const dev = computeAttendanceDeviations(now.toISOString(), null, settings);
+    const lateMinutes = dev.lateMinutes;
+    const isLate = dev.isLate;
 
     let hqName = '';
     if (dto.hq_id) {
@@ -270,14 +278,9 @@ export class AttendanceService implements OnModuleInit {
     const now = new Date();
     const settings = this.db.attendanceSettings;
 
-    // Calculate Early Punch-Out (§24)
-    const expectedOutDate = parseTimeToDate(todayStr, settings.expected_punch_out_time || '18:00:00');
-    const earlyDiffMs = expectedOutDate.getTime() - now.getTime();
-    let earlyMinutes = 0;
-
-    if (earlyDiffMs > 0) {
-      earlyMinutes = Math.round(earlyDiffMs / 60000);
-    }
+    // Calculate Early Punch-Out accurately in IST (§24)
+    const dev = computeAttendanceDeviations(record.check_in_at, now.toISOString(), settings);
+    const earlyMinutes = dev.earlyMinutes;
 
     // Calculate total working hours
     const inDate = new Date(record.check_in_at);
@@ -319,10 +322,13 @@ export class AttendanceService implements OnModuleInit {
       .map((a) => {
         // Missing Punch-out detection (§23)
         const isMissingPunchOut = !a.check_out_at && a.date < todayStr;
+        const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.db.attendanceSettings);
         return {
           ...a,
+          late_minutes: dev.lateMinutes,
+          early_minutes: dev.earlyMinutes,
           is_missing_punchout: isMissingPunchOut,
-          status: isMissingPunchOut ? 'INCOMPLETE' : a.status,
+          status: isMissingPunchOut ? 'INCOMPLETE' : dev.isLate ? 'LATE' : 'PRESENT',
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -354,17 +360,21 @@ export class AttendanceService implements OnModuleInit {
         if (filter.status === 'MISSING_PUNCH_OUT') {
           return a.check_in_at && !a.check_out_at && a.date < todayStr;
         }
-        return a.status === filter.status;
+        const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.db.attendanceSettings);
+        const dynamicStatus = dev.isLate ? 'LATE' : 'PRESENT';
+        return filter.status === dynamicStatus;
       })
       .filter((a) => {
+        const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.db.attendanceSettings);
         if (isLateFilter) {
-          return (a.late_minutes || 0) > (this.db.attendanceSettings.allowed_punch_in_window_minutes || 30);
+          return dev.lateMinutes > (this.db.attendanceSettings.allowed_punch_in_window_minutes || 30);
         }
         return true;
       })
       .filter((a) => {
+        const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.db.attendanceSettings);
         if (isEarlyFilter) {
-          return (a.early_minutes || 0) > (this.db.attendanceSettings.allowed_punch_out_window_minutes || 30);
+          return dev.earlyMinutes > (this.db.attendanceSettings.allowed_punch_out_window_minutes || 30);
         }
         return true;
       })
@@ -384,6 +394,7 @@ export class AttendanceService implements OnModuleInit {
         const user = this.db.users.find((u) => u.id === a.user_id);
         const isMissingPunchOut = !a.check_out_at && a.date < todayStr;
         const isActiveShift = !!(a.check_in_at && !a.check_out_at && a.date === todayStr);
+        const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.db.attendanceSettings);
 
         let workingHours = a.working_hours || 0;
         if (isActiveShift && a.check_in_at) {
@@ -416,13 +427,17 @@ export class AttendanceService implements OnModuleInit {
           punch_in_photo_key: photoKey || photoProof,
           is_missing_punchout: isMissingPunchOut,
           is_active_shift: isActiveShift,
+          late_minutes: dev.lateMinutes,
+          early_minutes: dev.earlyMinutes,
           working_hours: a.working_hours !== undefined && a.working_hours > 0 ? a.working_hours : workingHours,
           total_working_hours: a.working_hours !== undefined && a.working_hours > 0 ? a.working_hours : workingHours,
           status: isMissingPunchOut
             ? 'INCOMPLETE'
             : isActiveShift
             ? 'PRESENT'
-            : a.status,
+            : dev.isLate
+            ? 'LATE'
+            : 'PRESENT',
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date));

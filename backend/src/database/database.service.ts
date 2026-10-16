@@ -47,6 +47,7 @@ import {
   MedicinePackagingVariant,
 } from './database.types';
 import { SupabaseService } from './supabase.service';
+import { computeAttendanceDeviations } from '../modules/attendance/attendance.utils';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
@@ -361,7 +362,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.attendanceSettings = {
             ...this.attendanceSettings,
             ...data.attendanceSettings,
-            reimbursement_rate_per_km: data.attendanceSettings.reimbursement_rate_per_km ?? 2.5,
+            reimbursement_rate_per_km:
+              data.attendanceSettings.reimbursement_rate_per_km !== undefined
+                ? Number(data.attendanceSettings.reimbursement_rate_per_km)
+                : this.attendanceSettings.reimbursement_rate_per_km,
           };
         }
         if (Array.isArray(data.doctorVisits)) this.doctorVisits = data.doctorVisits;
@@ -706,6 +710,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
+          // Normalize deviations for all attendance records using active settings in IST
+          for (const a of this.attendance) {
+            const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.attendanceSettings);
+            a.late_minutes = dev.lateMinutes;
+            a.early_minutes = dev.earlyMinutes;
+            if (a.status !== 'INCOMPLETE' && (!a.check_in_at || a.check_out_at)) {
+              a.status = dev.isLate ? 'LATE' : 'PRESENT';
+            }
+          }
+
           // Authoritative sync: load stockers (pharmacies) from Supabase
           try {
             const { data: remoteStockers, error: stkErr } = await client.from('stockers').select('*');
@@ -1028,7 +1042,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     ? JSON.parse(rb.areas)
                     : [],
                   distance_km: Number(rb.distance_km || 0),
-                  standard_reimbursement_rate: Number(rb.standard_reimbursement_rate ?? 2.5),
+                  standard_reimbursement_rate: Number(rb.standard_reimbursement_rate ?? this.attendanceSettings?.reimbursement_rate_per_km ?? 2.5),
                   status: rb.status || 'ACTIVE',
                   created_at: rb.created_at || new Date().toISOString(),
                   updated_at: rb.updated_at || new Date().toISOString(),
@@ -1040,9 +1054,43 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   this.routeBatches.push(batch);
                 }
               }
+              if (this.routeBatches.length > 0 && this.routeBatches[0].standard_reimbursement_rate !== undefined) {
+                this.attendanceSettings.reimbursement_rate_per_km = this.routeBatches[0].standard_reimbursement_rate;
+              }
             }
           } catch (rbNotice: any) {
             console.warn('[DatabaseService] Notice syncing route batches from Supabase:', rbNotice?.message);
+          }
+
+          // Authoritative sync: load attendance settings from Supabase
+          try {
+            const { data: remoteAttSettings, error: asErr } = await client.from('attendance_settings').select('*').limit(1);
+            if (!asErr && Array.isArray(remoteAttSettings) && remoteAttSettings.length > 0) {
+              const remote = remoteAttSettings[0];
+              console.log(`[DatabaseService] Synced attendance settings from Supabase: punch_in=${remote.expected_punch_in_time}, punch_out=${remote.expected_punch_out_time}`);
+              this.attendanceSettings = {
+                ...this.attendanceSettings,
+                id: remote.id,
+                expected_punch_in_time: remote.expected_punch_in_time || this.attendanceSettings.expected_punch_in_time,
+                allowed_punch_in_window_minutes: Number(remote.allowed_punch_in_window_minutes ?? this.attendanceSettings.allowed_punch_in_window_minutes),
+                expected_punch_out_time: remote.expected_punch_out_time || this.attendanceSettings.expected_punch_out_time,
+                allowed_punch_out_window_minutes: Number(remote.allowed_punch_out_window_minutes ?? this.attendanceSettings.allowed_punch_out_window_minutes),
+                updated_at: remote.updated_at || new Date().toISOString(),
+              };
+              // Re-normalize all attendance records against the authoritative Supabase shift settings
+              for (const a of this.attendance) {
+                const dev = computeAttendanceDeviations(a.check_in_at, a.check_out_at, this.attendanceSettings);
+                a.late_minutes = dev.lateMinutes;
+                a.early_minutes = dev.earlyMinutes;
+                if (a.status !== 'INCOMPLETE' && (!a.check_in_at || a.check_out_at)) {
+                  a.status = dev.isLate ? 'LATE' : 'PRESENT';
+                }
+              }
+            } else if (this.attendanceSettings) {
+              await this.syncAttendanceSettingsToSupabase(this.attendanceSettings);
+            }
+          } catch (asNotice: any) {
+            console.warn('[DatabaseService] Notice syncing attendance settings from Supabase:', asNotice?.message);
           }
 
           // Authoritative sync: load competitions and reward claims from Supabase
@@ -1629,6 +1677,54 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       await client.from('route_batches').delete().or(`id.eq.${id},batch_code.eq.${id}`);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete route batch ${id}:`, err?.message);
+    }
+  }
+
+  public async syncAllRouteBatchesToSupabase(batches: RouteBatch[]) {
+    if (!this.supabase || !this.supabase.isConnected || !batches || batches.length === 0) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      const records = batches.map((b) => ({
+        id: b.id,
+        batch_code: b.batch_code,
+        name: b.name,
+        hq_id: b.hq_id,
+        hq_code: b.hq_code || null,
+        hq_name: b.hq_name || null,
+        mr_id: b.mr_id || null,
+        mr_name: b.mr_name || null,
+        territory_name: b.territory_name || null,
+        route_stops: b.route_stops || [],
+        areas: b.areas || [],
+        distance_km: b.distance_km || 0,
+        standard_reimbursement_rate: b.standard_reimbursement_rate,
+        status: b.status || 'ACTIVE',
+        created_at: b.created_at || new Date().toISOString(),
+        updated_at: b.updated_at || new Date().toISOString(),
+      }));
+      await client.from('route_batches').upsert(records, { onConflict: 'id' });
+      console.log(`[DatabaseService] Successfully synced ${records.length} route batches to Supabase with rate policy.`);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to bulk sync route batches:`, err?.message);
+    }
+  }
+
+  public async syncAttendanceSettingsToSupabase(settings: AttendanceSettings) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('attendance_settings').upsert({
+        id: settings.id || 'att-settings-default',
+        expected_punch_in_time: settings.expected_punch_in_time || '10:00:00',
+        allowed_punch_in_window_minutes: Number(settings.allowed_punch_in_window_minutes ?? 30),
+        expected_punch_out_time: settings.expected_punch_out_time || '18:00:00',
+        allowed_punch_out_window_minutes: Number(settings.allowed_punch_out_window_minutes ?? 30),
+        updated_at: settings.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync attendance settings:`, err?.message);
     }
   }
 
