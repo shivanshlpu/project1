@@ -459,31 +459,19 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.hqAreas = data.hqAreas;
         }
         if (Array.isArray(data.medicines) && data.medicines.length > 0) {
-          // Harmonize with authoritative seed list to guarantee official AHT product codes and categories
+          // Preserve disk medicines (which include user edits, new medicines, price updates)
+          const mergedMedicines = [...data.medicines];
           for (const sm of this.medicines) {
-            const diskMed = data.medicines.find((dm: any) => dm.id === sm.id);
-            if (diskMed) {
-              Object.assign(diskMed, {
-                code: sm.code,
-                product_code: sm.product_code,
-                sku: sm.sku,
-                name: sm.name,
-                packing: sm.packing,
-                unit: sm.unit,
-                category: sm.category,
-                composition: sm.composition,
-                pts: sm.pts,
-                pts_rate: sm.pts_rate,
-                ptr: sm.ptr,
-                ptr_rate: sm.ptr_rate,
-                mrp: sm.mrp,
-                is_active: sm.is_active,
-                status: sm.status,
-                packaging_variants: sm.packaging_variants,
-              });
+            const diskMed = mergedMedicines.find((dm: any) => dm.id === sm.id);
+            if (!diskMed) {
+              mergedMedicines.push(sm);
+            } else {
+              // Only backfill missing fields from seed if not present on disk
+              if (!diskMed.product_code && sm.product_code) diskMed.product_code = sm.product_code;
+              if (!diskMed.sku && sm.sku) diskMed.sku = sm.sku;
             }
           }
-          this.medicines = data.medicines;
+          this.medicines = mergedMedicines;
         }
         if (Array.isArray(data.stockerInventory)) {
           this.stockerInventory = data.stockerInventory;
