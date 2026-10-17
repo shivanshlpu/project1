@@ -25,21 +25,22 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.28',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '29', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.29',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '30', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.28/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.29/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Monthly Tour Plan 24-Hour Edit & Delete Lock: Tour Plan punched entries can only be edited or deleted within 24 hours of submission; after 24 hours the edit/delete option is permanently hidden and locked',
-    'Permanent Order Deletion: Orders deleted by Admin are permanently removed with task link safety checks and confirmation warnings',
-    'MR Roster Login Status Sync: Medical Representative accounts correctly display Logged In / Bound status on the Admin Master Roster immediately upon authentication',
+    'Instant Task Assignment Notifications: Newly assigned tasks immediately trigger sound and vibration heads-up notifications in the notification bar across all screens',
+    'Daily Stock Update Reminders: Automatic morning (10:00 AM) and evening (5:30 PM) system reminders to keep stock levels updated',
+    'Management Stock Broadcast: On-demand stock reminder alerts dispatched from the central Stockage dashboard directly to Field Representatives',
+    'Direct Agenda Routing: Tapping notifications opens directly into the assigned Tasks agenda or Stocklist screen',
   ],
 };
 
