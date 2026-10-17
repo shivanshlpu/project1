@@ -10,7 +10,7 @@ import { DatabaseService } from '../../database/database.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { NotificationsService } from '../notifications/notifications.module';
 import { Order, OrderDeliveryStatus, Task } from '../../database/database.types';
-import { CreateOrderDto, UpdateOrderDeliveryDto } from './orders.dto';
+import { CreateOrderDto, UpdateOrderDeliveryDto, UpdateOrderDto } from './orders.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -673,5 +673,40 @@ export class OrdersService {
     );
 
     return order;
+  }
+
+  async deleteOrder(
+    id: string,
+    user: any,
+  ): Promise<{ success: boolean; message: string; deleted_id: string }> {
+    const order = this.db.orders.find((o) => o.id === id);
+    if (!order) {
+      throw new NotFoundException(`Order ${id} not found`);
+    }
+
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
+    if (!isAdmin) {
+      throw new ForbiddenException(
+        'Access denied: Only Administrators and Owners have authority to permanently delete orders from the database.',
+      );
+    }
+
+    // 1. Purge matching task references so order cannot be reconstructed upon updates/restarts
+    const matchingTasks = this.db.tasks.filter(
+      (t) => (t.order_id && t.order_id === id) || t.id === order.task_id,
+    );
+    for (const t of matchingTasks) {
+      t.order_id = undefined;
+      t.orders = undefined;
+    }
+
+    // 2. Perform authoritative deletion in DatabaseService (removes from memory, purges from Supabase, flushes immediately to disk)
+    await this.db.deleteOrder(id);
+
+    return {
+      success: true,
+      message: `Order #${order.order_number || id} for ${order.customer_name} has been permanently deleted from the database.`,
+      deleted_id: id,
+    };
   }
 }

@@ -11,6 +11,7 @@ import {
   Eye,
   RefreshCw,
   AlertCircle,
+  AlertTriangle,
   Truck,
   Check,
   Building2,
@@ -18,6 +19,7 @@ import {
   FileSpreadsheet,
   ArrowRight,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 import { OrderItemRecord, OrderProductItem } from '../types';
 import { getApiBaseUrl, getAuthHeaders, resilientFetch } from '../utils/apiHelper';
@@ -44,6 +46,8 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   
   const [selectedOrderForItems, setSelectedOrderForItems] = useState<OrderItemRecord | null>(null);
   const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<OrderItemRecord | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<OrderItemRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const getApiUrl = () => getApiBaseUrl();
 
@@ -234,6 +238,47 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
       });
     } finally {
       setIsProcessingAction(null);
+    }
+  };
+
+  const handleExecuteDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await resilientFetch(`/orders/${orderToDelete.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (res.ok) {
+        const deletedId = orderToDelete.id;
+        const deletedNum = orderToDelete.order_number;
+        setOrders((prev) => prev.filter((o) => o.id !== deletedId));
+        if (selectedOrderForItems?.id === deletedId) {
+          setSelectedOrderForItems(null);
+        }
+        setOrderToDelete(null);
+        showCenteredNotice({
+          type: 'success',
+          title: 'Order Deleted Permanently',
+          message: `Order #${deletedNum} has been permanently deleted from the database and disk store.`,
+        });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showCenteredNotice({
+          type: 'error',
+          title: 'Deletion Failed',
+          message: err.message || 'Could not delete order from database.',
+        });
+      }
+    } catch (err: any) {
+      showCenteredNotice({
+        type: 'error',
+        title: 'Network / Deletion Error',
+        message: err.message || 'Error occurred while deleting order.',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -965,23 +1010,48 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                         )}
                       </td>
 
-                      {/* Detail View Action */}
+                      {/* Detail View Action & Admin Permanent Delete */}
                       <td style={{ padding: '14px 16px', verticalAlign: 'top', textAlign: 'right' }}>
-                        <button
-                          onClick={() => setSelectedOrderForItems(ord)}
-                          style={{
-                            padding: '6px 10px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#0F172A',
-                            backgroundColor: '#F8FAFC',
-                            border: '1px solid #CBD5E1',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          View Details
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForItems(ord)}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: '#0F172A',
+                              backgroundColor: '#F8FAFC',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            View Details
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOrderToDelete(ord)}
+                            title="Delete Order Permanently (Database Purge)"
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: '#DC2626',
+                              backgroundColor: '#FEF2F2',
+                              border: '1px solid #FECACA',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1188,7 +1258,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                     </button>
                   )}
 
-                  {/* Details Button */}
+                  {/* Details & Delete Buttons */}
                   <button
                     onClick={() => setSelectedOrderForItems(ord)}
                     style={{
@@ -1203,6 +1273,26 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                     }}
                   >
                     Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderToDelete(ord)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #FECACA',
+                      backgroundColor: '#FEF2F2',
+                      fontSize: '11.5px',
+                      fontWeight: '600',
+                      color: '#DC2626',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
@@ -1526,8 +1616,28 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             </div>
           </div>
 
-          {/* Close Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          {/* Action Buttons: Delete and Close */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setOrderToDelete(selectedOrderForItems)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '9px 18px',
+                borderRadius: '8px',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#DC2626',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Delete Order</span>
+            </button>
             <button
               onClick={() => setSelectedOrderForItems(null)}
               style={{
@@ -1548,6 +1658,177 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
       </div>
     )
   }
+
+
+
+      {/* Confirmation Dialog for Permanent Order Deletion */}
+      {orderToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: '20px',
+          }}
+          onClick={() => !isDeleting && setOrderToDelete(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '14px',
+              maxWidth: '520px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #FCA5A5',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  backgroundColor: '#FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#DC2626',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#991B1B', margin: 0 }}>
+                  ⚠️ Confirm Permanent Order Deletion
+                </h3>
+                <div style={{ fontSize: '12px', color: '#7F1D1D', marginTop: '2px', fontWeight: 600 }}>
+                  Authoritative Database Purge Action
+                </div>
+              </div>
+            </div>
+
+            {/* Warning Banner */}
+            <div
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1.5px solid #F87171',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                fontSize: '12.5px',
+                color: '#991B1B',
+                lineHeight: '1.5',
+              }}
+            >
+              <div style={{ fontWeight: '800', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <AlertCircle size={14} />
+                <span>POTENTIAL DATA LOSS WARNING:</span>
+              </div>
+              <div>
+                Deleting this order will <strong>permanently purge</strong> it from the server database, persistent JSON disk store, and Supabase cloud. It will <strong>NOT</strong> reappear upon synchronisation, update, or server reload.
+              </div>
+            </div>
+
+            {/* Order Summary Details */}
+            <div
+              style={{
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                marginBottom: '18px',
+                fontSize: '12.5px',
+                color: '#334155',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>Order Number:</span>
+                <span style={{ fontWeight: '700', color: '#0F172A' }}>#{orderToDelete.order_number}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>Field Rep (MR):</span>
+                <span style={{ fontWeight: '600' }}>{orderToDelete.mr_name} ({orderToDelete.mr_id})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>Customer / Doctor:</span>
+                <span style={{ fontWeight: '600' }}>{orderToDelete.customer_name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>HQ & Stocker:</span>
+                <span style={{ fontWeight: '600' }}>{orderToDelete.hq_name} • {orderToDelete.stocker_name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>Total Value:</span>
+                <span style={{ fontWeight: '800', color: '#0F8B5A', fontSize: '13.5px' }}>
+                  ₹{(orderToDelete.total_amount || 0).toLocaleString('en-IN')} ({orderToDelete.total_units} units)
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>Stock Deduction Status:</span>
+                <span style={{ fontWeight: '700', color: orderToDelete.hq_accepted ? '#166534' : '#D97706' }}>
+                  {orderToDelete.hq_accepted ? 'Deducted & Counted at HQ' : 'Not yet deducted'}
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#64748B', lineHeight: '1.4', margin: '0 0 20px' }}>
+              ✓ <strong>Admin Action Privilege:</strong> As an Administrator, your confirmation will remove this order entirely from all central databases and unbind any connected task items.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setOrderToDelete(null)}
+                disabled={isDeleting}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#475569',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel / Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteDeleteOrder}
+                disabled={isDeleting}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.35)',
+                }}
+              >
+                <Trash2 size={14} />
+                <span>{isDeleting ? 'Deleting Permanently from DB...' : 'Permanently Delete Order'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
   {/* Confirmation Dialog for HQ Acceptance */ }
   {

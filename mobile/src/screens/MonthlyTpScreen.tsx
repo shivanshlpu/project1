@@ -1062,7 +1062,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     return {
       canEdit: true,
       remainingHours,
-      badgeText: `⏳ Editable (${wholeHours}h ${wholeMinutes}m left)`,
+      badgeText: `⏳ Editable / Deletable (${wholeHours}h ${wholeMinutes}m left)`,
       badgeColor: '#0F8B5A',
       badgeBg: '#DCFCE7',
     };
@@ -1190,6 +1190,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
   
   const handleDeletePunchedEntry = (plan: any, entry: any) => {
+    const editStatus = getPlanEditStatus(plan);
+    if (!editStatus.canEdit) {
+      setStatusNotice({
+        type: 'error',
+        message: 'The 24-hour window has expired for this Tour Plan. It can no longer be deleted or modified.',
+      });
+      setTimeout(() => setStatusNotice(null), 5000);
+      return;
+    }
+
     Alert.alert(
       'Remove Tour Plan Entry',
       `Are you sure you want to remove this punched TP entry for ${entry.planned_area || entry.destination || 'Visit'} on ${formatDateDDMMYYYY(entry.date)}?`,
@@ -1653,7 +1663,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         <View style={styles.card}>
           <Text style={styles.cardHeader}>My Punched Tour Plans ({submittedPlans.length})</Text>
           <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 12 }}>
-            ⏱️ 24-Hour Rule: Any Tour Plan or punched visit can be edited/changed within 24 hours of submission. After 1 day, the edit option locks permanently.
+            ⏱️ 24-Hour Rule: Any Tour Plan or punched visit can be edited or deleted within 24 hours of submission. After 24 hours, editing and deletion lock permanently.
           </Text>
 
           {submittedPlans.length === 0 ? (
@@ -1752,23 +1762,25 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         </View>
 
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          {/* 24-HOUR EDIT BUTTON: ONLY APPEARS IF WITHIN 24 HOURS */}
+                          {/* 24-HOUR EDIT & REMOVE BUTTONS: ONLY APPEAR IF WITHIN 24 HOURS */}
                           {editStatus.canEdit && (
-                            <TouchableOpacity
-                              style={styles.editVisitBtn}
-                              onPress={() => handleOpenEditModal(plan, e)}
-                            >
-                              <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
-                            </TouchableOpacity>
-                          )}
+                            <>
+                              <TouchableOpacity
+                                style={styles.editVisitBtn}
+                                onPress={() => handleOpenEditModal(plan, e)}
+                              >
+                                <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                              </TouchableOpacity>
 
-                          {/* REMOVE PUNCHED ENTRY BUTTON */}
-                          <TouchableOpacity
-                            style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
-                            onPress={() => handleDeletePunchedEntry(plan, e)}
-                          >
-                            <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
-                          </TouchableOpacity>
+                              {/* REMOVE PUNCHED ENTRY BUTTON */}
+                              <TouchableOpacity
+                                style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
+                                onPress={() => handleDeletePunchedEntry(plan, e)}
+                              >
+                                <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
                         </View>
                       </View>
                     ))}

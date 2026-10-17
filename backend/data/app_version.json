@@ -1,20 +1,19 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.27",
-  "latestVersionCode": 28,
+  "latestVersion": "1.0.28",
+  "latestVersionCode": 29,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.27/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.28/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-16",
-  "publishedAt": "2026-10-16T10:35:00.000Z",
+  "releaseDate": "2026-10-17",
+  "publishedAt": "2026-10-17T18:18:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Fix Submitted Task White Screen: Defensive parsing for task orders, safe date formatting, and guarded image rendering prevent white screens on the completed/history tasks page",
-    "App-Wide ErrorBoundary: Wrap all mobile screens in a graceful error boundary with a reload button so unexpected exceptions never cause blank screens",
-    "Live HQ Inventory Stock Visibility: Medical Representatives can view real-time depot stock indicators directly on product chips and order forms",
-    "Dual Out-of-Stock Notification System: When an order contains low or depleted stock at the HQ depot, both the MR and Headquarter Admin receive immediate alert notifications for rapid replenishment",
+    "Monthly Tour Plan 24-Hour Edit & Delete Lock: Tour Plan punched entries can only be edited or deleted within 24 hours of submission; after 24 hours the option is permanently hidden and locked for data integrity",
+    "Permanent Database Order Deletion: Orders deleted by Admin are permanently removed from PostgreSQL database and cache with task link safety checks and confirmation warnings",
+    "MR Roster Login Status Sync: Medical Representative accounts correctly display Logged In / Bound status on the Admin Master Roster immediately upon authentication",
     "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
   ]
 }

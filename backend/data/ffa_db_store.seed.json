@@ -3311,7 +3311,9 @@
       "area_id": null,
       "manager_id": null,
       "biometric_enabled": false,
-      "created_at": "2026-10-14T09:08:02.420Z"
+      "created_at": "2026-10-14T09:08:02.420Z",
+      "last_login_at": "2026-10-17T17:40:00.000Z",
+      "logged_out": false
     },
     {
       "id": "usr-mr-01",
@@ -3353,7 +3355,13 @@
       ],
       "manager_id": null,
       "biometric_enabled": true,
-      "created_at": "2026-10-14T09:08:02.421Z"
+      "created_at": "2026-10-14T09:08:02.421Z",
+      "device_id": "dev-hw-s22-9f8a2c",
+      "device_model": "Samsung Galaxy S22 (SM-S901B)",
+      "device_bound_at": "2026-10-10T08:00:00.000Z",
+      "last_login_at": "2026-10-10T08:30:00.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     },
     {
       "id": "usr-mr-02",
@@ -3387,7 +3395,13 @@
       ],
       "manager_id": null,
       "biometric_enabled": true,
-      "created_at": "2026-10-14T09:08:02.421Z"
+      "created_at": "2026-10-14T09:08:02.421Z",
+      "device_id": "dev-hw-oneplus-71b4e0",
+      "device_model": "OnePlus 11 5G (CPH2449)",
+      "device_bound_at": "2026-10-14T09:15:00.000Z",
+      "last_login_at": "2026-10-15T06:37:35.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     },
     {
       "id": "usr-mr-03",
@@ -3421,7 +3435,13 @@
       ],
       "manager_id": null,
       "biometric_enabled": true,
-      "created_at": "2026-10-14T09:08:02.421Z"
+      "created_at": "2026-10-14T09:08:02.421Z",
+      "device_id": "dev-hw-pixel7-5a2e1d",
+      "device_model": "Google Pixel 7 (GVU6C)",
+      "device_bound_at": "2026-10-08T00:15:00.000Z",
+      "last_login_at": "2026-10-08T00:32:30.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     }
   ],
   "userCredentials": [
@@ -3452,16 +3472,33 @@
   ],
   "userDeviceStates": [
     {
-      "id": "usr-admin-01"
+      "id": "usr-admin-01",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     },
     {
-      "id": "usr-mr-01"
+      "id": "usr-mr-01",
+      "device_id": "dev-hw-s22-9f8a2c",
+      "device_model": "Samsung Galaxy S22 (SM-S901B)",
+      "device_bound_at": "2026-10-10T08:00:00.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     },
     {
-      "id": "usr-mr-02"
+      "id": "usr-mr-02",
+      "device_id": "dev-hw-oneplus-71b4e0",
+      "device_model": "OnePlus 11 5G (CPH2449)",
+      "device_bound_at": "2026-10-14T09:15:00.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     },
     {
-      "id": "usr-mr-03"
+      "id": "usr-mr-03",
+      "device_id": "dev-hw-pixel7-5a2e1d",
+      "device_model": "Google Pixel 7 (GVU6C)",
+      "device_bound_at": "2026-10-08T00:15:00.000Z",
+      "logged_out": false,
+      "requires_device_otp_on_login": false
     }
   ],
   "saved_at": "2026-10-14T12:30:56.005Z"

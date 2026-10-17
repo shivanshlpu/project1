@@ -272,6 +272,40 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
+   * Delete an order completely from in-memory cache, task references, persistent disk store, and Supabase PostgreSQL.
+   */
+  public async deleteOrder(orderId: string): Promise<boolean> {
+    const idx = this.orders.findIndex((o) => o.id === orderId);
+    if (idx >= 0) {
+      this.orders.splice(idx, 1);
+    }
+    // Purge task references so the order cannot be reconstructed upon disk reload or cloud sync
+    for (const t of this.tasks) {
+      if (t.order_id === orderId) {
+        t.order_id = undefined;
+        t.orders = undefined;
+      }
+    }
+    await this.flushToDisk();
+    if (this.supabase && this.supabase.isConnected) {
+      try {
+        const client = this.supabase.getClient();
+        if (client) {
+          const { error } = await client.from('orders').delete().eq('id', orderId);
+          if (error) {
+            console.warn(`[DatabaseService] Notice deleting order ${orderId} from Supabase:`, error.message);
+          }
+          await client.from('tasks').update({ order_id: null, orders: null }).eq('order_id', orderId);
+        }
+      } catch (err: any) {
+        console.warn(`[DatabaseService] Notice deleting order ${orderId} from Supabase:`, err?.message);
+      }
+    }
+    return true;
+  }
+
+
+  /**
    * Authoritative monthly tour plan persistence: updates in-memory cache, triggers debounced
    * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
    */
@@ -422,11 +456,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           data.userDeviceStates.forEach((state: any) => {
             const user = this.users.find((u) => u.id === state.id);
             if (user) {
-              user.device_id = state.device_id;
-              user.device_model = state.device_model;
-              user.device_bound_at = state.device_bound_at;
-              user.logged_out = state.logged_out;
-              user.requires_device_otp_on_login = state.requires_device_otp_on_login;
+              if (state.device_id) user.device_id = state.device_id;
+              if (state.device_model) user.device_model = state.device_model;
+              if (state.device_bound_at) user.device_bound_at = state.device_bound_at;
+              if (state.logged_out !== undefined) user.logged_out = state.logged_out;
+              if (state.requires_device_otp_on_login !== undefined) user.requires_device_otp_on_login = state.requires_device_otp_on_login;
             }
           });
         }
@@ -944,8 +978,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           // Authoritative sync: load orders from Supabase
           try {
             const { data: remoteOrders, error: ordErr } = await client.from('orders').select('*');
-            if (!ordErr && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+            if (!ordErr && Array.isArray(remoteOrders)) {
               console.log(`[DatabaseService] Synced ${remoteOrders.length} orders from Supabase.`);
+              const remoteOrderIds = new Set(remoteOrders.map((ro) => ro.id));
+              // Supabase is authoritative: purge orders that were deleted in Supabase
+              this.orders = this.orders.filter((o) => remoteOrderIds.has(o.id));
+
               for (const ro of remoteOrders) {
                 const ord: Order = {
                   id: ro.id,
@@ -1004,7 +1042,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 taskOrders = JSON.parse(t.orders);
               } catch {}
             }
-            if (taskOrders.length > 0) {
+            if (taskOrders.length > 0 && t.order_id) {
               const existing = this.orders.find(
                 (o) => (t.order_id && o.id === t.order_id) || o.task_id === t.id,
               );

@@ -113,7 +113,10 @@ export class AuthService {
       }
 
       // 2. Device ID hardware lock & Owner OTP verification
-      const targetDeviceId = dto.device_id;
+      const targetDeviceId =
+        dto.device_id ||
+        user.device_id ||
+        `dev-hw-${user.id.replace('usr-', '')}-${Date.now().toString(36)}`;
       if (targetDeviceId) {
         // Auto-pair device on initial login if no device has been registered yet
         if (!user.device_id) {
@@ -218,6 +221,8 @@ export class AuthService {
     }
 
     user.last_login_at = new Date().toISOString();
+    user.logged_out = false;
+    this.db.persistToDisk();
     return this.generateAuthPayload(user);
   }
 

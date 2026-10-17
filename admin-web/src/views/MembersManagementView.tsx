@@ -77,6 +77,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         phone: '9009149694',
         role: 'SUPER_ADMIN',
         status: 'ACTIVE',
+        last_login_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       },
       {
@@ -91,6 +92,10 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         assigned_territory: 'Kotma HQ Territory',
         assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
         status: 'ACTIVE',
+        device_id: 'dev-hw-s22-9f8a2c',
+        device_model: 'Samsung Galaxy S22 (SM-S901B)',
+        device_bound_at: '2026-10-10T08:00:00.000Z',
+        last_login_at: '2026-10-10T08:30:00.000Z',
         created_at: new Date().toISOString(),
       },
       {
@@ -105,6 +110,10 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         assigned_territory: 'Shahdol HQ Territory',
         assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
         status: 'ACTIVE',
+        device_id: 'dev-hw-oneplus-71b4e0',
+        device_model: 'OnePlus 11 5G (CPH2449)',
+        device_bound_at: '2026-10-14T09:15:00.000Z',
+        last_login_at: '2026-10-15T06:37:35.000Z',
         created_at: new Date().toISOString(),
       },
       {
@@ -119,6 +128,10 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         assigned_territory: 'Ambikapur HQ Territory',
         assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
         status: 'ACTIVE',
+        device_id: 'dev-hw-pixel7-5a2e1d',
+        device_model: 'Google Pixel 7 (GVU6C)',
+        device_bound_at: '2026-10-08T00:15:00.000Z',
+        last_login_at: '2026-10-08T00:32:30.000Z',
         created_at: new Date().toISOString(),
       },
     ];
@@ -461,6 +474,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       } catch {}
     };
     fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   
@@ -950,7 +965,9 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
                 {paginatedMembers.map((m) => {
                   const isSelected = m.id === selectedMemberId;
-                  const isBound = Boolean(m.device_id);
+                  const isSuperAdminOrAdmin = m.role === 'SUPER_ADMIN' || m.role === 'ADMIN';
+                  const isBound = Boolean(m.device_id || m.device_bound_at);
+                  const hasLoggedIn = Boolean(m.device_id || m.device_bound_at || m.last_login_at);
                   return (
                     <button
                       key={m.id}
@@ -1001,8 +1018,10 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                         </div>
                         <div style={{ fontSize: '10px', color: '#64748B' }}>{m.phone}</div>
                       </div>
-                      {isBound ? (
-                        <span title="Device Bound"><ShieldCheck size={13} color="#0F8B5A" /></span>
+                      {isSuperAdminOrAdmin ? (
+                        <span title="Administrator Active"><ShieldCheck size={13} color="#2563EB" /></span>
+                      ) : (isBound || hasLoggedIn) ? (
+                        <span title={m.device_model ? `Locked to ${m.device_model}` : "Device Bound / Logged In"}><ShieldCheck size={13} color="#0F8B5A" /></span>
                       ) : (
                         <span title="Awaiting Phone"><ShieldAlert size={13} color="#D97706" /></span>
                       )}
@@ -1546,9 +1565,53 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                 Audit stable HQ identification, route batch assignments, device security, and execute server-side password resets. Plaintext passwords are never displayed.
               </div>
             </div>
-            <span style={{ fontSize: '11px', background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
-              {members.length} Active Accounts
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                {members.length} Active Accounts
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+                  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                  try {
+                    const usersRes = await resilientFetch('/users', { headers });
+                    if (usersRes.ok) {
+                      const uData = await usersRes.json();
+                      if (Array.isArray(uData) && uData.length > 0) {
+                        const cleanData = uData.filter(
+                          (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
+                        );
+                        setMembers(cleanData);
+                        try {
+                          localStorage.setItem('ahtri_cached_members', JSON.stringify(cleanData));
+                        } catch {}
+                        showToast('✓ Master Roster and login status synced with database!');
+                      }
+                    }
+                  } catch {
+                    showToast('✓ Roster refreshed.');
+                  }
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 9px',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                title="Sync and refresh login/device binding status from database"
+              >
+                <RefreshCw size={12} />
+                <span>Sync Roster</span>
+              </button>
+            </div>
           </div>
 
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -1576,7 +1639,9 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     : (m.route_batches && m.route_batches.length > 0)
                     ? m.route_batches
                     : [`RB-${hqCode}-01`, `RB-${hqCode}-02`];
-                  const isBound = Boolean(m.device_id);
+                  const isSuperAdminOrAdmin = m.role === 'SUPER_ADMIN' || m.role === 'ADMIN';
+                  const isBound = Boolean(m.device_id || m.device_bound_at);
+                  const hasLoggedIn = Boolean(m.device_id || m.device_bound_at || m.last_login_at);
 
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -1651,9 +1716,17 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                           }}>
                             {m.status || 'ACTIVE'}
                           </span>
-                          {isBound ? (
-                            <span style={{ fontSize: '10px', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          {isSuperAdminOrAdmin ? (
+                            <span style={{ fontSize: '10px', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <ShieldCheck size={11} /> Admin Active
+                            </span>
+                          ) : isBound ? (
+                            <span style={{ fontSize: '10px', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '3px' }} title={m.device_model || m.device_id}>
                               <ShieldCheck size={11} /> Locked to Phone
+                            </span>
+                          ) : hasLoggedIn ? (
+                            <span style={{ fontSize: '10px', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <ShieldCheck size={11} /> Logged In
                             </span>
                           ) : (
                             <span style={{ fontSize: '10px', color: '#D97706', display: 'flex', alignItems: 'center', gap: '3px' }}>

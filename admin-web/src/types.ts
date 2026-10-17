@@ -89,6 +89,8 @@ export interface MRMemberItem {
   device_id?: string;
   device_model?: string;
   device_bound_at?: string;
+  last_login_at?: string;
+  logged_out?: boolean;
   created_at: string;
 }
 

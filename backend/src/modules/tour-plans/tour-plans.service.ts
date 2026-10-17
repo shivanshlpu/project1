@@ -322,6 +322,17 @@ export class TourPlansService {
       throw new BadRequestException('You can only remove entries from your own tour plan');
     }
 
+    // 24-Hour Edit/Delete Window Check for MRs
+    if (!isAdmin) {
+      const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
+      const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+      if (elapsedHours > 24) {
+        throw new BadRequestException(
+          `The 24-Hour Edit/Delete Window has expired (${Math.floor(elapsedHours)} hours since submission). Tour Plan entries cannot be deleted after 24 hours.`,
+        );
+      }
+    }
+
     const initialLength = (plan.entries || []).length;
     plan.entries = (plan.entries || []).filter(
       (e) => e.id !== entryId && e.date !== entryId && String(e.id) !== String(entryId),
@@ -349,6 +360,17 @@ export class TourPlansService {
 
     if (!isAdmin && plan.mr_id !== userId) {
       throw new BadRequestException('You can only delete your own tour plan');
+    }
+
+    // 24-Hour Edit/Delete Window Check for MRs
+    if (!isAdmin) {
+      const submissionTime = new Date(plan.submitted_at || Date.now()).getTime();
+      const elapsedHours = (Date.now() - submissionTime) / (1000 * 60 * 60);
+      if (elapsedHours > 24) {
+        throw new BadRequestException(
+          `The 24-Hour Edit/Delete Window has expired (${Math.floor(elapsedHours)} hours since submission). Tour Plans cannot be deleted after 24 hours.`,
+        );
+      }
     }
 
     await this.db.deleteMonthlyTourPlan(planId);

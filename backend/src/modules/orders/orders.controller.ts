@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -58,5 +59,10 @@ export class OrdersController {
   @Patch(':id/accept')
   async acceptOrder(@Param('id') id: string, @CurrentUser() user: any) {
     return this.ordersService.acceptOrder(id, user);
+  }
+
+  @Delete(':id')
+  async deleteOrder(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.ordersService.deleteOrder(id, user);
   }
 }

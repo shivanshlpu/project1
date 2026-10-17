@@ -25,24 +25,21 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.27',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '28', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.28',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '29', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.27/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.28/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'App Performance & Battery Optimization: Background lifecycle pausing to freeze unnecessary network polling when app is minimized',
-    'Low-End Device Acceleration: Throttled UI intervals across task, order, and leave screens for smooth 60fps interaction',
-    'Network Resilience: Idempotent task completion preventing duplicate submission errors on flaky connectivity',
-    'Task Sync & Deleted Task Purge: Tasks deleted on Admin Dashboard are immediately purged from the mobile app and device storage',
-    'Logout Re-auth Security: When an employee logs out, re-logging in strictly requires entering the 6-Digit Owner OTP or approval from the Admin Dashboard',
-    'Dynamic Territory HQ: Map and locations strictly reflect the assigned headquarters (Shahdol, Ambikapur, Bilaspur, Kotma) with clutter-free markers',
+    'Monthly Tour Plan 24-Hour Edit & Delete Lock: Tour Plan punched entries can only be edited or deleted within 24 hours of submission; after 24 hours the edit/delete option is permanently hidden and locked',
+    'Permanent Database Order Deletion: Orders deleted by Admin are permanently purged from PostgreSQL database and memory with task link safety checks and confirmation warnings',
+    'MR Roster Login Status Sync: Medical Representative accounts correctly display Logged In / Bound status on the Admin Master Roster immediately upon authentication',
   ],
 };
 
