@@ -221,18 +221,156 @@ export default function App() {
   }, [currentUser]);
 
   
+  // ================= GLOBAL TASK & NOTIFICATION SYNC DAEMON =================
+  // Ensures the MR is immediately alerted in their notification bar whenever a task is assigned
+  // or a stock update reminder is sent, across all tabs and upon app wake.
+  const seenTaskIdsRef = React.useRef<Set<string>>(new Set());
+  const seenNotifIdsRef = React.useRef<Set<string>>(new Set());
+  const isSyncingTasksRef = React.useRef<boolean>(false);
+
   useEffect(() => {
-    if (currentUser?.id) {
-      NotificationService.registerForRemotePushNotifications(currentUser.id);
-    }
+    if (!currentUser?.id) return;
+    const currentUserId = currentUser.id;
+    let isMounted = true;
+
+    // Register / refresh push token with backend
+    NotificationService.registerForRemotePushNotifications(currentUserId).catch(() => {});
+
+    // Load existing seen task IDs from disk
+    AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`)
+      .then((raw) => {
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr.forEach((id: string) => seenTaskIdsRef.current.add(id));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // Load existing seen notification IDs from disk
+    AsyncStorage.getItem(`@ahtri_seen_notif_ids_${currentUserId}`)
+      .then((raw) => {
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr.forEach((id: string) => seenNotifIdsRef.current.add(id));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    const syncTasksAndNotifications = async () => {
+      if (isSyncingTasksRef.current || !isMounted) return;
+      isSyncingTasksRef.current = true;
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders();
+
+        // A. Sync tasks assigned to this MR
+        const tasksRes = await fetch(`${baseUrl}/tasks?mr_id=${encodeURIComponent(currentUserId)}`, { headers });
+        if (tasksRes.ok && isMounted) {
+          const tasksData = await tasksRes.json();
+          if (Array.isArray(tasksData)) {
+            const rawStorage = await AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`);
+            const hasExistingSeenStore = !!rawStorage;
+
+            for (const t of tasksData) {
+              const isAssignedToMe = t.assigned_mr_id === currentUserId;
+              const isPending = t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && t.status !== 'SUSPENDED';
+
+              if (isAssignedToMe && isPending) {
+                if (!seenTaskIdsRef.current.has(t.id)) {
+                  seenTaskIdsRef.current.add(t.id);
+                  // Alert in status bar if not initial app install sync
+                  if (hasExistingSeenStore) {
+                    NotificationService.notifyTaskAssigned({
+                      id: t.id,
+                      title: t.title,
+                      location_name: t.location_name,
+                      address: t.address,
+                      time: t.time,
+                      priority: t.priority,
+                    });
+                  }
+                }
+              }
+            }
+
+            await AsyncStorage.setItem(
+              `@ahtri_seen_task_ids_${currentUserId}`,
+              JSON.stringify(Array.from(seenTaskIdsRef.current))
+            ).catch(() => {});
+          }
+        }
+
+        // B. Sync server push notifications (e.g. stock reminders)
+        const notifsRes = await fetch(`${baseUrl}/notifications/my?unread=true`, { headers });
+        if (notifsRes.ok && isMounted) {
+          const notifsData = await notifsRes.json();
+          if (Array.isArray(notifsData)) {
+            for (const notif of notifsData) {
+              if (!seenNotifIdsRef.current.has(notif.id)) {
+                seenNotifIdsRef.current.add(notif.id);
+                const channelId =
+                  notif.data_json?.channelId ||
+                  (notif.type === 'STOCK_REMINDER' ? 'ahtri_stock' : 'ahtri_tasks');
+
+                NotificationService.sendSystemNotification(notif.title, notif.body, channelId, {
+                  ...notif.data_json,
+                  type: notif.type,
+                  id: notif.id,
+                });
+
+                fetch(`${baseUrl}/notifications/read/${encodeURIComponent(notif.id)}`, {
+                  method: 'PATCH',
+                  headers,
+                }).catch(() => {});
+              }
+            }
+            await AsyncStorage.setItem(
+              `@ahtri_seen_notif_ids_${currentUserId}`,
+              JSON.stringify(Array.from(seenNotifIdsRef.current).slice(-200))
+            ).catch(() => {});
+          }
+        }
+      } catch {
+        // Non-blocking background catch
+      } finally {
+        isSyncingTasksRef.current = false;
+      }
+    };
+
+    const initialTimer = setTimeout(syncTasksAndNotifications, 2000);
+    const interval = setInterval(syncTasksAndNotifications, 15000);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        NotificationService.registerForRemotePushNotifications(currentUserId).catch(() => {});
+        syncTasksAndNotifications();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [currentUser?.id]);
 
-  
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response?.notification?.request?.content?.data;
-      if (data?.taskId || data?.type === 'TASK_ASSIGNED') {
+      if (data?.taskId || data?.type === 'TASK_ASSIGNED' || data?.type === 'NEW_TASK') {
         setCurrentTab('tasks');
+      } else if (data?.type === 'STOCK_REMINDER' || data?.type === 'STOCK') {
+        setCurrentTab('more');
+        setMoreSubScreen('stocklist');
       } else if (data?.type === 'APP_UPDATE') {
         setIsUpdateModalOpen(true);
       }

@@ -1874,4 +1874,37 @@ export class InventoryService {
       request,
     };
   }
+
+  /**
+   * Broadcast a Stock Update Reminder to active MRs (or filtered by HQ).
+   * Dispatches high-priority system notifications with sound and vibration.
+   */
+  async broadcastStockReminder(adminUser: any, customMessage?: string, targetHqId?: string) {
+    const mrs = this.db.users.filter(
+      (u) =>
+        u.role === 'MR' &&
+        !u.deleted_at &&
+        u.status === 'ACTIVE' &&
+        (!targetHqId || u.hq_id === targetHqId || u.assigned_territory === targetHqId),
+    );
+
+    const title = '📦 Stock Update Reminder';
+    const body =
+      customMessage?.trim() ||
+      'Please verify and update stock levels for your assigned headquarters and stockers today.';
+
+    for (const mr of mrs) {
+      await this.notificationsService.sendPushNotification(mr.id, title, body, {
+        type: 'STOCK_REMINDER',
+        hq_id: mr.hq_id,
+        sent_by: adminUser?.name || 'Management',
+      });
+    }
+
+    return {
+      message: `Stock update reminder sent to ${mrs.length} Field Representatives.`,
+      recipient_count: mrs.length,
+    };
+  }
 }
+

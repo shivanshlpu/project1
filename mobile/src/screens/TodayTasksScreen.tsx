@@ -359,6 +359,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           ).catch(() => {});
 
           
+          const rawSeen = await AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`).catch(() => null);
+          if (rawSeen) {
+            try {
+              const arr = JSON.parse(rawSeen);
+              if (Array.isArray(arr)) arr.forEach((id: string) => seenTaskIdsRef.current.add(id));
+            } catch {}
+          }
+
           let hasNewTask = false;
           activeBackendTasks.forEach((t: any) => {
             if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED' && !isCancelledTask(t.status)) {

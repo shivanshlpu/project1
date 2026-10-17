@@ -161,6 +161,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         medicinePackagingVariants: this.medicinePackagingVariants,
         competitions: this.competitions,
         rewardClaims: this.rewardClaims,
+        notifications: this.notifications,
+        fcmTokens: Array.from(this.fcmTokens.entries()),
         users: this.users.map((u) => ({
           id: u.id,
           name: u.name,
@@ -555,6 +557,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.inventoryTransactions)) {
           this.inventoryTransactions = data.inventoryTransactions;
+        }
+        if (Array.isArray(data.notifications)) {
+          this.notifications = data.notifications;
+        }
+        if (Array.isArray(data.fcmTokens)) {
+          this.fcmTokens = new Map(data.fcmTokens);
         }
         console.log(
           `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.monthlyStockagePermissions.length} stockage permissions, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,

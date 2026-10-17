@@ -19,6 +19,7 @@ import {
   X,
   Calendar,
   Printer,
+  Bell,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { syncInStockFromInventoryItems, syncInStockProductsWithBackend } from '../utils/inventoryStore';
@@ -1192,6 +1193,56 @@ export const StockerManagementView: React.FC = () => {
     }
   };
 
+  
+  const [isSendingReminder, setIsSendingReminder] = useState<boolean>(false);
+
+  const handleSendStockReminder = async () => {
+    const confirmed = await showConfirmModal({
+      title: 'Remind Field Representatives to Update Stock',
+      message: 'This will dispatch a high-priority system notification to the notification bar of all active Field Representatives reminding them to verify and update stock levels.',
+      confirmText: 'Send Notification',
+      cancelText: 'Cancel',
+    });
+    if (!confirmed) return;
+
+    setIsSendingReminder(true);
+    try {
+      const res = await fetch(`${apiUrl}/inventory/stock/remind`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Please review and update stock levels for your assigned headquarters and stockers.',
+          hq_id: selectedHqId && selectedHqId !== 'ALL' ? selectedHqId : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showCenteredNotice({
+          title: 'Stock Reminder Sent',
+          message: data.message || 'Notification successfully dispatched to Field Representatives.',
+          type: 'success',
+        });
+      } else {
+        showCenteredNotice({
+          title: 'Dispatch Failed',
+          message: data.message || 'Could not send reminder notification.',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      showCenteredNotice({
+        title: 'Network Error',
+        message: 'Could not connect to server: ' + (err?.message || 'Unknown error'),
+        type: 'error',
+      });
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
   const selectedStocker = stockers.find((s) => s.id === selectedStockerId);
   const selectedHq = hqs.find((h) => h.id === selectedHqId || matchesHqId(h.id, selectedHqId));
 
@@ -1218,6 +1269,27 @@ export const StockerManagementView: React.FC = () => {
           >
             <Printer size={14} />
             <span>Print / Stockage PDF</span>
+          </button>
+
+          
+          <button
+            className="btn-enterprise"
+            onClick={handleSendStockReminder}
+            disabled={isSendingReminder}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+              background: '#D97706',
+              borderColor: '#B45309',
+              color: '#FFFFFF',
+              fontWeight: 700,
+            }}
+            title="Dispatch a notification bar alert to all MRs to verify and update stock"
+          >
+            <Bell size={14} className={isSendingReminder ? 'animate-bounce' : ''} />
+            <span>{isSendingReminder ? 'Sending...' : '🔔 Remind MRs to Update Stock'}</span>
           </button>
 
           <button

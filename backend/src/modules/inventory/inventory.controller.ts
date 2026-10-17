@@ -335,4 +335,18 @@ export class InventoryController {
   ) {
     return this.inventoryService.reviewStockageRequest(id, dto, user);
   }
+
+  @Post('stock/remind')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async broadcastStockReminder(
+    @CurrentUser() user: any,
+    @Body() body: { message?: string; hq_id?: string },
+  ) {
+    return this.inventoryService.broadcastStockReminder(
+      user,
+      body?.message,
+      body?.hq_id,
+    );
+  }
 }
+
