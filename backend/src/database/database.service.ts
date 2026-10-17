@@ -65,6 +65,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
 
   public tasks: Task[] = [];
   public orders: Order[] = [];
+  public deletedOrderIds: Set<string> = new Set();
   public taskAssignments: TaskAssignment[] = [];
   public locationVerifications: LocationVerification[] = [];
 
@@ -135,6 +136,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       const payload = {
         tasks: this.tasks,
         orders: this.orders,
+        deletedOrderIds: Array.from(this.deletedOrderIds),
         attendance: this.attendance,
         attendanceSettings: this.attendanceSettings,
         doctorVisits: this.doctorVisits,
@@ -256,9 +258,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
 
   /**
    * Authoritative order persistence: updates in-memory cache, triggers debounced
-   * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
+   * disk store write, and asynchronously synchronizes directly to cloud database.
    */
   public async persistOrder(order: Order): Promise<void> {
+    if (order.id) this.deletedOrderIds.delete(order.id);
+    if (order.order_number) this.deletedOrderIds.delete(order.order_number);
     const idx = this.orders.findIndex((o) => o.id === order.id);
     if (idx >= 0) {
       this.orders[idx] = order;
@@ -274,33 +278,91 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
-   * Delete an order completely from in-memory cache, task references, persistent disk store, and Supabase PostgreSQL.
+   * Delete an order completely from in-memory cache, task references, persistent disk store, seed data, and cloud database.
    */
   public async deleteOrder(orderId: string): Promise<boolean> {
-    const idx = this.orders.findIndex((o) => o.id === orderId);
-    if (idx >= 0) {
-      this.orders.splice(idx, 1);
-    }
+    const order = this.orders.find((o) => o.id === orderId || o.order_number === orderId);
+    const idToDelete = order ? order.id : orderId;
+    const numToDelete = order ? order.order_number : undefined;
+
+    this.deletedOrderIds.add(idToDelete);
+    if (numToDelete) this.deletedOrderIds.add(numToDelete);
+
+    this.orders = this.orders.filter(
+      (o) => o.id !== idToDelete && (!numToDelete || o.order_number !== numToDelete),
+    );
+
     // Purge task references so the order cannot be reconstructed upon disk reload or cloud sync
     for (const t of this.tasks) {
-      if (t.order_id === orderId) {
+      if (
+        t.order_id === idToDelete ||
+        (numToDelete && t.order_id === numToDelete) ||
+        (order && t.id === order.task_id)
+      ) {
         t.order_id = undefined;
         t.orders = undefined;
       }
     }
+
     await this.flushToDisk();
+
+    // Also purge from seed file if present so fresh git deployments never resurrect it
+    try {
+      const seedPath = path.join(path.dirname(this.getStorageFilePath()), 'ffa_db_store.seed.json');
+      if (fs.existsSync(seedPath)) {
+        const seedRaw = fs.readFileSync(seedPath, 'utf8');
+        const seedData = JSON.parse(seedRaw);
+        let modified = false;
+        if (Array.isArray(seedData.orders)) {
+          const prevLen = seedData.orders.length;
+          seedData.orders = seedData.orders.filter(
+            (o: any) => o.id !== idToDelete && (!numToDelete || o.order_number !== numToDelete),
+          );
+          if (seedData.orders.length !== prevLen) modified = true;
+        }
+        if (Array.isArray(seedData.tasks)) {
+          seedData.tasks.forEach((t: any) => {
+            if (
+              t.order_id === idToDelete ||
+              (numToDelete && t.order_id === numToDelete) ||
+              (order && t.id === order.task_id)
+            ) {
+              delete t.order_id;
+              delete t.orders;
+              modified = true;
+            }
+          });
+        }
+        const existingDeleted = Array.isArray(seedData.deletedOrderIds) ? seedData.deletedOrderIds : [];
+        if (!existingDeleted.includes(idToDelete)) {
+          existingDeleted.push(idToDelete);
+          if (numToDelete) existingDeleted.push(numToDelete);
+          seedData.deletedOrderIds = existingDeleted;
+          modified = true;
+        }
+        if (modified) {
+          fs.writeFileSync(seedPath, JSON.stringify(seedData, null, 2), 'utf8');
+        }
+      }
+    } catch (err: any) {
+      console.warn('[DatabaseService] Notice updating seed file upon order deletion:', err?.message);
+    }
+
     if (this.supabase && this.supabase.isConnected) {
       try {
         const client = this.supabase.getClient();
         if (client) {
-          const { error } = await client.from('orders').delete().eq('id', orderId);
-          if (error) {
-            console.warn(`[DatabaseService] Notice deleting order ${orderId} from Supabase:`, error.message);
+          await client.from('orders').delete().eq('id', idToDelete);
+          if (numToDelete) {
+            await client.from('orders').delete().eq('order_number', numToDelete);
           }
-          await client.from('tasks').update({ order_id: null, orders: null }).eq('order_id', orderId);
+          await client.from('tasks').update({ order_id: null, orders: null }).eq('order_id', idToDelete);
+          if (numToDelete) {
+            await client.from('tasks').update({ order_id: null, orders: null }).eq('order_id', numToDelete);
+          }
         }
       } catch (err: any) {
-        console.warn(`[DatabaseService] Notice deleting order ${orderId} from Supabase:`, err?.message);
+        console.warn(`[DatabaseService] Notice deleting order ${idToDelete} from cloud database:`, err?.message);
       }
     }
     return true;
@@ -390,7 +452,23 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.tasks)) {
         this.tasks = data.tasks;
-        if (Array.isArray(data.orders)) this.orders = data.orders;
+        if (Array.isArray(data.deletedOrderIds)) {
+          data.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+        }
+        for (const t of this.tasks) {
+          if (this.deletedOrderIds.has(t.order_id || '') || this.deletedOrderIds.has(t.id)) {
+            t.order_id = undefined;
+            t.orders = undefined;
+          }
+        }
+        if (Array.isArray(data.deletedOrderIds)) {
+          data.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+        }
+        if (Array.isArray(data.orders)) {
+          this.orders = data.orders.filter(
+            (o: any) => !this.deletedOrderIds.has(o.id) && !this.deletedOrderIds.has(o.order_number)
+          );
+        }
         if (Array.isArray(data.attendance)) this.attendance = data.attendance;
         if (data.attendanceSettings) {
           this.attendanceSettings = {
@@ -993,6 +1071,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               this.orders = this.orders.filter((o) => remoteOrderIds.has(o.id));
 
               for (const ro of remoteOrders) {
+                if (this.deletedOrderIds.has(ro.id) || this.deletedOrderIds.has(ro.order_number)) {
+                  // Purge from cloud database as it was deleted by administrator
+                  client
+                    .from('orders')
+                    .delete()
+                    .eq('id', ro.id)
+                    .then(null, () => {});
+                  continue;
+                }
                 const ord: Order = {
                   id: ro.id,
                   order_number: ro.order_number,
@@ -1049,6 +1136,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               try {
                 taskOrders = JSON.parse(t.orders);
               } catch {}
+            }
+            if (
+              this.deletedOrderIds.has(t.order_id || '') ||
+              this.deletedOrderIds.has(t.id) ||
+              this.deletedOrderIds.has(`ORD-${t.date?.replace(/-/g, '') || 'AUTO'}-${t.id.slice(-4)}`)
+            ) {
+              t.order_id = undefined;
+              t.orders = undefined;
+              continue;
             }
             if (taskOrders.length > 0 && t.order_id) {
               const existing = this.orders.find(

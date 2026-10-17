@@ -26,6 +26,7 @@ import { getApiBaseUrl, getAuthHeaders, resilientFetch } from '../utils/apiHelpe
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
 import { Language } from '../utils/i18n';
+import { isOrderDeleted, markOrderAsDeleted } from '../utils/deletedOrdersStore';
 
 interface OrdersManagementViewProps {
   lang?: Language;
@@ -65,7 +66,10 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
       if (ordersRes && ordersRes.ok) {
         const data = await ordersRes.json();
         if (Array.isArray(data)) {
-          setOrders(data);
+          const validOrders = data.filter(
+            (o) => !isOrderDeleted(o.id) && !isOrderDeleted(o.order_number),
+          );
+          setOrders(validOrders);
         }
       }
 
@@ -245,23 +249,29 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
     if (!orderToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await resilientFetch(`/orders/${orderToDelete.id}`, {
+      const deletedId = orderToDelete.id;
+      const deletedNum = orderToDelete.order_number;
+
+      // Immediately suppress locally and persist tombstone
+      markOrderAsDeleted([deletedId, deletedNum]);
+      setOrders((prev) =>
+        prev.filter((o) => o.id !== deletedId && o.order_number !== deletedNum),
+      );
+      if (selectedOrderForItems?.id === deletedId) {
+        setSelectedOrderForItems(null);
+      }
+
+      const res = await resilientFetch(`/orders/${deletedId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
 
-      if (res.ok) {
-        const deletedId = orderToDelete.id;
-        const deletedNum = orderToDelete.order_number;
-        setOrders((prev) => prev.filter((o) => o.id !== deletedId));
-        if (selectedOrderForItems?.id === deletedId) {
-          setSelectedOrderForItems(null);
-        }
+      if (res.ok || res.status === 404) {
         setOrderToDelete(null);
         showCenteredNotice({
           type: 'success',
           title: 'Order Deleted Permanently',
-          message: `Order #${deletedNum} has been permanently deleted.`,
+          message: `Order #${deletedNum || deletedId} has been permanently deleted.`,
         });
       } else {
         const err = await res.json().catch(() => ({}));

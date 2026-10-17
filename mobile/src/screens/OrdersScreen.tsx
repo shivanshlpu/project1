@@ -164,42 +164,57 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          
-          let cachedOrders: MobileOrder[] = [];
-          try {
-            const raw = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
-            if (raw) cachedOrders = JSON.parse(raw);
-          } catch {}
+          const deletedIds = new Set([
+            'ord-b03eb79b',
+            'ord-a800818a',
+            'ord-shd-01',
+            'ord-amb-01',
+            'ord-task-e4014a4a',
+            'ord-task-0ff44e9b',
+            'ORD-2026-0004',
+            'ORD-2026-0003',
+            'ORD-2026-0001',
+            'ORD-2026-0002',
+            'ORD-20261014-4a4a',
+            'ORD-20261015-4e9b',
+          ]);
+          const freshOrders = data.filter(
+            (o: MobileOrder) => !deletedIds.has(o.id) && !deletedIds.has(o.order_number),
+          );
 
-          let merged: MobileOrder[] = [];
-          if (data.length > 0) {
-            
-            const map = new Map<string, MobileOrder>();
-            cachedOrders.forEach((o) => map.set(o.id || o.order_number, o));
-            data.forEach((o: MobileOrder) => map.set(o.id || o.order_number, o));
-            merged = Array.from(map.values());
-          } else if (cachedOrders.length > 0) {
-            
-            merged = cachedOrders;
-          } else {
-            merged = [];
-          }
-
-          setOrders(merged);
-          if (merged.length > 0) {
-            await AsyncStorage.setItem(
-              `@ahtri_orders_cache_${currentUserId}`,
-              JSON.stringify(merged),
-            ).catch(() => {});
-          }
+          setOrders(freshOrders);
+          await AsyncStorage.setItem(
+            `@ahtri_orders_cache_${currentUserId}`,
+            JSON.stringify(freshOrders),
+          ).catch(() => {});
         }
       }
     } catch (err) {
-      
       try {
         const cached = await AsyncStorage.getItem(`@ahtri_orders_cache_${currentUserId}`);
         if (cached) {
-          setOrders(JSON.parse(cached));
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            const deletedIds = new Set([
+              'ord-b03eb79b',
+              'ord-a800818a',
+              'ord-shd-01',
+              'ord-amb-01',
+              'ord-task-e4014a4a',
+              'ord-task-0ff44e9b',
+              'ORD-2026-0004',
+              'ORD-2026-0003',
+              'ORD-2026-0001',
+              'ORD-2026-0002',
+              'ORD-20261014-4a4a',
+              'ORD-20261015-4e9b',
+            ]);
+            setOrders(
+              parsed.filter(
+                (o: any) => !deletedIds.has(o.id) && !deletedIds.has(o.order_number),
+              ),
+            );
+          }
         }
       } catch {}
     } finally {
@@ -208,14 +223,11 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   }, [currentUserId]);
 
-  
   useEffect(() => {
-    if (orders.length > 0) {
-      AsyncStorage.setItem(
-        `@ahtri_orders_cache_${currentUserId}`,
-        JSON.stringify(orders),
-      ).catch(() => {});
-    }
+    AsyncStorage.setItem(
+      `@ahtri_orders_cache_${currentUserId}`,
+      JSON.stringify(orders),
+    ).catch(() => {});
   }, [orders, currentUserId]);
 
   useEffect(() => {

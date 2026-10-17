@@ -41,7 +41,9 @@ export class OrdersService {
       task_id?: string;
     },
   ): Promise<Order[]> {
-    let list = [...this.db.orders];
+    let list = this.db.orders.filter(
+      (ord) => !this.db.deletedOrderIds.has(ord.id) && !this.db.deletedOrderIds.has(ord.order_number),
+    );
 
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
 
@@ -679,11 +681,6 @@ export class OrdersService {
     id: string,
     user: any,
   ): Promise<{ success: boolean; message: string; deleted_id: string }> {
-    const order = this.db.orders.find((o) => o.id === id);
-    if (!order) {
-      throw new NotFoundException(`Order ${id} not found`);
-    }
-
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
     if (!isAdmin) {
       throw new ForbiddenException(
@@ -691,22 +688,35 @@ export class OrdersService {
       );
     }
 
+    const order = this.db.orders.find((o) => o.id === id || o.order_number === id);
+    if (!order && !this.db.deletedOrderIds.has(id)) {
+      throw new NotFoundException(`Order ${id} not found`);
+    }
+    const idToDelete = order ? order.id : id;
+    const numToDelete = order ? order.order_number : undefined;
+
     // 1. Purge matching task references so order cannot be reconstructed upon updates/restarts
     const matchingTasks = this.db.tasks.filter(
-      (t) => (t.order_id && t.order_id === id) || t.id === order.task_id,
+      (t) =>
+        t.order_id === idToDelete ||
+        (numToDelete && t.order_id === numToDelete) ||
+        (order && t.id === order.task_id),
     );
     for (const t of matchingTasks) {
       t.order_id = undefined;
       t.orders = undefined;
     }
 
-    // 2. Perform authoritative deletion in DatabaseService (removes from memory, purges from Supabase, flushes immediately to disk)
-    await this.db.deleteOrder(id);
+    // 2. Perform authoritative deletion in DatabaseService (removes from memory, purges from seed data, cloud database, flushes to disk)
+    await this.db.deleteOrder(idToDelete);
+    if (numToDelete) {
+      await this.db.deleteOrder(numToDelete);
+    }
 
     return {
       success: true,
-      message: `Order #${order.order_number || id} for ${order.customer_name} has been permanently deleted.`,
-      deleted_id: id,
+      message: `Order #${numToDelete || idToDelete} has been permanently deleted.`,
+      deleted_id: idToDelete,
     };
   }
 }
