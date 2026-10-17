@@ -727,7 +727,7 @@ export const ApprovalsView: React.FC = () => {
 
             <div className="modal-body">
               <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '14px' }}>
-                Confirm your decision. This action updates the record in PostgreSQL and transmits a real-time notification to the field representative.
+                Confirm your decision. This action updates the record and transmits a real-time notification to the field representative.
               </p>
 
               <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '6px' }}>

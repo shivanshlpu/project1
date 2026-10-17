@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
-  Database,
   ArrowRight,
   AlertCircle,
   Loader2,

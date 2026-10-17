@@ -1049,7 +1049,7 @@ export const StockerManagementView: React.FC = () => {
         await fetchMedicines();
         if (selectedStockerId) await fetchInventory();
         syncInStockProductsWithBackend();
-        setInwardSuccessMsg(`✅ Medicine "${updated.name || editMedName}" updated successfully in database!`);
+        setInwardSuccessMsg(`✅ Medicine "${updated.name || editMedName}" updated successfully!`);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || 'Failed to update medicine.');
@@ -1082,10 +1082,10 @@ export const StockerManagementView: React.FC = () => {
         await fetchMedicines();
         if (selectedStockerId) await fetchInventory();
         syncInStockProductsWithBackend();
-        setInwardSuccessMsg(`🗑️ Medicine "${target.name}" deleted and removed from database.`);
+        setInwardSuccessMsg(`🗑️ Medicine "${target.name}" deleted successfully.`);
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Failed to delete medicine from database.');
+        alert(err.message || 'Failed to delete medicine.');
       }
     } catch (err: any) {
       alert('Error deleting medicine: ' + err.message);
@@ -1182,7 +1182,7 @@ export const StockerManagementView: React.FC = () => {
         await fetchInventory();
         fetchAlerts();
         syncInStockProductsWithBackend();
-        setInwardSuccessMsg(`✅ Stock for "${stockEditTarget.medicine_name}" successfully set to ${targetQty} units in database!`);
+        setInwardSuccessMsg(`✅ Stock for "${stockEditTarget.medicine_name}" successfully set to ${targetQty} units!`);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || 'Failed to adjust stock quantity.');

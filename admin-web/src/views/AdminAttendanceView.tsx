@@ -349,7 +349,7 @@ export const AdminAttendanceView: React.FC = () => {
   const handleClearAllAttendance = async () => {
     const ok = await showConfirmModal({
       title: 'Clear All Attendance Records',
-      message: 'Are you sure you want to remove ALL attendance records from the database?\n\nThis will purge attendance history across all employees and cannot be undone.',
+      message: 'Are you sure you want to remove ALL attendance records?\n\nThis will clear attendance history across all employees and cannot be undone.',
       isDestructive: true,
       confirmText: 'Yes, Clear All Records',
       cancelText: 'Cancel',
@@ -434,7 +434,7 @@ export const AdminAttendanceView: React.FC = () => {
             className="btn-enterprise secondary"
             onClick={handleClearAllAttendance}
             style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap', color: '#DC2626', borderColor: '#FCA5A5' }}
-            title="Clear all attendance records from database"
+            title="Clear all attendance records"
           >
             <Trash2 size={14} color="#DC2626" />
             <span>Clear All Data</span>

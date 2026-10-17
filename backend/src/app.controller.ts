@@ -38,7 +38,7 @@ const defaultAppVersion: AppVersionData = {
   publishedBy: 'System Admin',
   releaseNotes: [
     'Monthly Tour Plan 24-Hour Edit & Delete Lock: Tour Plan punched entries can only be edited or deleted within 24 hours of submission; after 24 hours the edit/delete option is permanently hidden and locked',
-    'Permanent Database Order Deletion: Orders deleted by Admin are permanently purged from PostgreSQL database and memory with task link safety checks and confirmation warnings',
+    'Permanent Order Deletion: Orders deleted by Admin are permanently removed with task link safety checks and confirmation warnings',
     'MR Roster Login Status Sync: Medical Representative accounts correctly display Logged In / Bound status on the Admin Master Roster immediately upon authentication',
   ],
 };

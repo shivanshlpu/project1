@@ -217,8 +217,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
       id: 'msg-welcome',
       sender: 'ai',
       text: voiceLang === 'en-IN'
-        ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show total orders captured today"*!`
-        : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"Show total orders captured today"*!`,
+        ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show total orders captured today"*!`
+        : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"Show total orders captured today"*!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       relatedQuestions: voiceLang === 'en-IN'
         ? ['How much work was done today?', 'Who marked attendance today?', 'Show total orders captured today']
@@ -240,8 +240,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
             id: 'msg-welcome',
             sender: 'ai',
             text: newLang === 'en-IN'
-              ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show active monthly MR stockage permissions"*!`
-              : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations database. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*!`,
+              ? `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations. Ask questions by typing or speaking in **English** or **Hindi (हिंदी)**.\n\nTry asking: *"How much work was done today?"*, *"Who marked attendance today?"*, or *"Show active monthly MR stockage permissions"*!`
+              : `**Welcome to Aura — Your AI Operations Command Hub.**\n\nI am connected directly to your live field operations. Ask questions by typing or speaking in **Hindi (हिंदी)** or **English**.\n\nTry asking: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, or *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*!`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             relatedQuestions: newLang === 'en-IN'
               ? ['How much work was done today?', 'Who marked attendance today?', 'Show active monthly MR stockage permissions']
@@ -750,8 +750,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: isHindi
-            ? `मैंने आपके प्रश्न **"${textToSend}"** के लिए ऑपरेशंस डेटाबेस चेक किया।\n\nसभी फील्ड सिस्टम और GPS ट्रैकिंग 100% जियोफेंस अनुपालन के साथ सक्रिय हैं। आप मुझसे पूछ सकते हैं: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, या *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*।`
-            : `I queried your operations database regarding **"${textToSend}"**.\n\nAll systems are operational. Field GPS tracking is active with 100% geofence compliance. You can ask me: *"How much work was done today?"*, *"Show attendance status"*, or *"Show active monthly MR stockage permissions"*.`,
+            ? `मैंने आपके प्रश्न **"${textToSend}"** के लिए लाइव ऑपरेशंस रिकॉर्ड्स चेक किए।\n\nसभी फील्ड सिस्टम और GPS ट्रैकिंग 100% जियोफेंस अनुपालन के साथ सक्रिय हैं। आप मुझसे पूछ सकते हैं: *"आज कितना काम हुआ?"*, *"आज किसकी हाजिरी लगी है?"*, या *"मंथली स्टॉकेज परमिशन स्थिति दिखाओ"*।`
+            : `I checked your operational records regarding **"${textToSend}"**.\n\nAll systems are operational. Field GPS tracking is active with 100% geofence compliance. You can ask me: *"How much work was done today?"*, *"Show attendance status"*, or *"Show active monthly MR stockage permissions"*.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
       }

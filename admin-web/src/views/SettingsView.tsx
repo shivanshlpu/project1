@@ -940,7 +940,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || 'Failed to update profile in database');
+        throw new Error(errJson.message || 'Failed to update profile');
       }
     } catch (err: any) {
       console.warn('Backend profile update note:', err);
@@ -972,7 +972,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
     } catch {}
 
-    setProfileNotice('✓ Profile and credentials updated successfully in database!');
+    setProfileNotice('✓ Profile and credentials updated successfully!');
     setTimeout(() => setProfileNotice(null), 3500);
   };
 
@@ -1005,14 +1005,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || 'Failed to update password in database');
+        throw new Error(errJson.message || 'Failed to update password');
       }
     } catch (err: any) {
       setPasswordNotice({ type: 'error', message: `Update failed: ${err.message}` });
       return;
     }
 
-    setPasswordNotice({ type: 'success', message: 'Your admin account password has been updated securely in the database.' });
+    setPasswordNotice({ type: 'success', message: 'Your admin account password has been updated successfully.' });
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -1045,13 +1045,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || 'Failed to save password to database');
+        throw new Error(errJson.message || 'Failed to save password');
       }
 
       setMrList(mrList.map((m) => (m.id === mrId ? { ...m, password: newPwd } : m)));
       setEditingMrPasswordId(null);
       setTempMrPassword('');
-      setPasswordNotice({ type: 'success', message: 'Representative password saved to database. You can share credentials with the member.' });
+      setPasswordNotice({ type: 'success', message: 'Representative password saved successfully. You can share credentials with the member.' });
       setTimeout(() => setPasswordNotice(null), 3500);
     } catch (err: any) {
       setPasswordNotice({ type: 'error', message: `Update failed: ${err.message || 'Server error'}` });

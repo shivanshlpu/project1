@@ -687,7 +687,7 @@ export class OrdersService {
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
     if (!isAdmin) {
       throw new ForbiddenException(
-        'Access denied: Only Administrators and Owners have authority to permanently delete orders from the database.',
+        'Access denied: Only Administrators and Owners have authority to permanently delete orders.',
       );
     }
 
@@ -705,7 +705,7 @@ export class OrdersService {
 
     return {
       success: true,
-      message: `Order #${order.order_number || id} for ${order.customer_name} has been permanently deleted from the database.`,
+      message: `Order #${order.order_number || id} for ${order.customer_name} has been permanently deleted.`,
       deleted_id: id,
     };
   }

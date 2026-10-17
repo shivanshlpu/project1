@@ -175,7 +175,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       });
 
       if (res.ok) {
-        showToast(`✓ Password securely reset for ${resettingMember.name} (bcrypt hashed server-side & synced to database).`);
+        showToast(`✓ Password securely reset for ${resettingMember.name}.`);
       } else {
         showToast(`✓ Password reset request processed for ${resettingMember.name}.`);
       }
@@ -574,12 +574,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         const updated: LeaveQuotaData = await res.json();
         setLeaveQuota(updated);
         localStorage.setItem(`ahtri_quota_${selectedMemberId}`, JSON.stringify(updated));
-        showToast(`✓ Leave allowances updated for ${memberName}! Synced to database & mobile.`);
+        showToast(`✓ Leave allowances updated for ${memberName}!`);
       } else {
-        showToast(`✓ Leave allowances updated for ${memberName}! Synced to database & mobile.`);
+        showToast(`✓ Leave allowances updated for ${memberName}!`);
       }
     } catch {
-      showToast(`✓ Leave allowances updated for ${memberName}! Synced to database & mobile.`);
+      showToast(`✓ Leave allowances updated for ${memberName}!`);
     } finally {
       setIsSavingQuota(false);
     }
@@ -1586,7 +1586,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                         try {
                           localStorage.setItem('ahtri_cached_members', JSON.stringify(cleanData));
                         } catch {}
-                        showToast('✓ Master Roster and login status synced with database!');
+                        showToast('✓ Master Roster and login status updated!');
                       }
                     }
                   } catch {
@@ -1606,7 +1606,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
-                title="Sync and refresh login/device binding status from database"
+                title="Refresh member roster and device status"
               >
                 <RefreshCw size={12} />
                 <span>Sync Roster</span>

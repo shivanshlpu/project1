@@ -261,14 +261,14 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         showCenteredNotice({
           type: 'success',
           title: 'Order Deleted Permanently',
-          message: `Order #${deletedNum} has been permanently deleted from the database and disk store.`,
+          message: `Order #${deletedNum} has been permanently deleted.`,
         });
       } else {
         const err = await res.json().catch(() => ({}));
         showCenteredNotice({
           type: 'error',
           title: 'Deletion Failed',
-          message: err.message || 'Could not delete order from database.',
+          message: err.message || 'Could not delete order.',
         });
       }
     } catch (err: any) {
@@ -1032,7 +1032,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                           <button
                             type="button"
                             onClick={() => setOrderToDelete(ord)}
-                            title="Delete Order Permanently (Database Purge)"
+                            title="Delete Order Permanently"
                             style={{
                               padding: '6px 10px',
                               fontSize: '12px',
@@ -1709,7 +1709,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                   ⚠️ Confirm Permanent Order Deletion
                 </h3>
                 <div style={{ fontSize: '12px', color: '#7F1D1D', marginTop: '2px', fontWeight: 600 }}>
-                  Authoritative Database Purge Action
+                  Permanent Action
                 </div>
               </div>
             </div>
@@ -1732,7 +1732,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                 <span>POTENTIAL DATA LOSS WARNING:</span>
               </div>
               <div>
-                Deleting this order will <strong>permanently purge</strong> it from the server database, persistent JSON disk store, and Supabase cloud. It will <strong>NOT</strong> reappear upon synchronisation, update, or server reload.
+                Deleting this order will <strong>permanently remove</strong> it. This action cannot be undone, and the order will <strong>NOT</strong> be recoverable upon synchronisation or page refresh.
               </div>
             </div>
 
@@ -1782,7 +1782,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             </div>
 
             <p style={{ fontSize: '12px', color: '#64748B', lineHeight: '1.4', margin: '0 0 20px' }}>
-              ✓ <strong>Admin Action Privilege:</strong> As an Administrator, your confirmation will remove this order entirely from all central databases and unbind any connected task items.
+              ✓ <strong>Admin Action Privilege:</strong> As an Administrator, your confirmation will permanently remove this order and unbind any connected task items.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -1823,7 +1823,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                 }}
               >
                 <Trash2 size={14} />
-                <span>{isDeleting ? 'Deleting Permanently from DB...' : 'Permanently Delete Order'}</span>
+                <span>{isDeleting ? 'Deleting Permanently...' : 'Permanently Delete Order'}</span>
               </button>
             </div>
           </div>

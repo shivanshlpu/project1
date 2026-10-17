@@ -250,7 +250,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           onPress: async () => {
             const photo = await CameraService.captureLivePhoto({
               aspect: [4, 4],
-              quality: 0.5, // Compressed to conserve 512MB database storage
+              quality: 0.5, // Compressed for fast upload and storage efficiency
             });
             if (photo) {
               setSelfiePhoto(photo);

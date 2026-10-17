@@ -705,7 +705,7 @@ export const CompetitionsView: React.FC = () => {
                   Participating MR Progress for "{selectedComp?.name || 'Selected Campaign'}"
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 8 }}>
-                  Single source of truth: calculated directly from valid, completed orders in database
+                  Calculated directly from verified, completed orders
                 </span>
               </div>
             </div>

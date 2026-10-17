@@ -3762,7 +3762,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     <div style={{ fontWeight: '700', marginBottom: '4px' }}>⚠️ Photo Stored Only on Local Phone Storage (Old App Build)</div>
                     <div>
                       This call was recorded using an older mobile app session where the photo remained only in the phone's temporary local cache (<code style={{ fontSize: '11px', background: '#FEF3C7', padding: '1px 4px', borderRadius: '3px' }}>{selectedCompletedTask.verification_photo_key.slice(0, 55)}...</code>).
-                      With the updated mobile app build, all photos are converted to verified compressed base64 data and transmitted directly to the server database.
+                      With the updated mobile app build, all photos are verified and securely transmitted directly to the server.
                     </div>
                   </div>
                 ) : (

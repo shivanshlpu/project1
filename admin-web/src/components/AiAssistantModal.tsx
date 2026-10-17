@@ -56,7 +56,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   const [history, setHistory] = useState<Array<{ type: 'user' | 'ai'; text: string; data?: AiQueryResponse }>>([
     {
       type: 'ai',
-      text: '**Hello! I am your Aura — Enterprise Intelligence Agent.**\n\nI query the ground-truth database directly to give you accurate operational insights. You can ask me questions like:\n- *"How many tasks are completed?"*\n- *"What is the work status across all MRs?"*\n- *"Show doctor visit summary for this week"*\n\nOr choose a quick prompt below to begin.',
+      text: '**Hello! I am your Aura — Enterprise Intelligence Agent.**\n\nI analyze live operational records directly to give you accurate insights. You can ask me questions like:\n- *"How many tasks are completed?"*\n- *"What is the work status across all MRs?"*\n- *"Show doctor visit summary for this week"*\n\nOr choose a quick prompt below to begin.',
     },
   ]);
 
@@ -287,11 +287,11 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
                     letterSpacing: '0.5px',
                   }}
                 >
-                  AURA COPILOT • DB CONNECTED
+                  AURA COPILOT • LIVE CONNECTED
                 </span>
               </div>
               <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
-                Direct database intelligence, ground-truth analytics & executive reports
+                Enterprise intelligence, operational analytics & executive reports
               </p>
             </div>
           </div>
@@ -580,7 +580,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
           {isLoading && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1A3C6E', fontSize: '12.5px', fontWeight: '600', padding: '12px' }}>
               <Loader2 size={16} className="animate-spin" />
-              <span>Querying ground-truth database & calculating real-time metrics...</span>
+              <span>Analyzing operational records & calculating real-time metrics...</span>
             </div>
           )}
         </div>
