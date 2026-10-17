@@ -230,9 +230,11 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const targetUrl = hqId && hqId !== 'ALL'
-      ? `${apiUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hqId)}`
-      : `${apiUrl}/inventory/medicines?all=true`;
+    const effectiveHq = hqId && hqId !== 'ALL'
+      ? hqId
+      : (typeof localStorage !== 'undefined' ? (localStorage.getItem('ahtri_active_hq') || 'HQ-SHD-001') : 'HQ-SHD-001');
+
+    const targetUrl = `${apiUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(effectiveHq)}`;
 
     const res = await fetch(targetUrl, { headers });
     if (res.ok) {

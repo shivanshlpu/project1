@@ -3226,7 +3226,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
                           const match = mrList.find((m) => m.id === id);
                           if (match) {
                             setAssignedMr(match.name);
-                            syncInStockProductsWithBackend(match.hq_id).then((items) => {
+                            const effectiveHq = match.hq_id || (matchedSavedLocation as any)?.hq_id || 'HQ-SHD-001';
+                            syncInStockProductsWithBackend(effectiveHq).then((items) => {
                               if (items && items.length > 0) setInStockProducts(items);
                             });
                           }

@@ -3133,7 +3133,10 @@
       "biometric_enabled": false,
       "created_at": "2026-10-14T09:08:02.420Z",
       "last_login_at": "2026-10-17T17:40:00.000Z",
-      "logged_out": false
+      "logged_out": false,
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "territory": "Shahdol HQ Territory"
     },
     {
       "id": "usr-mr-01",

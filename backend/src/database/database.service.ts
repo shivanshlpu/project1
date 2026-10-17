@@ -2260,6 +2260,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       password_hash: adminPasswordHash,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
+      hq_id: 'HQ-SHD-001',
+      hq_code: 'SHD',
+      hq_name: 'Shahdol',
+      territory: 'Shahdol HQ Territory',
       biometric_enabled: false,
       created_at: new Date().toISOString(),
     };
@@ -3304,22 +3308,57 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       is_active: v.is_active !== undefined ? v.is_active : v.status === 'ACTIVE',
     }));
 
-    // 14. Stocker Inventory - Initial Inventory Records for every Stocker & Listed Medicine (all quantity = 0)
-    this.stockerInventory = [];
-    for (const stk of this.stockers) {
-      for (const med of this.medicines) {
-        const variant = med.packaging_variants?.[0];
-        this.stockerInventory.push({
-          id: `inv-${stk.id}-${med.id}`,
-          hq_id: stk.hq_id,
-          stocker_id: stk.id,
-          medicine_id: med.id,
-          variant_id: variant?.id,
-          packaging_display: med.packing || med.unit,
-          quantity: 0,
-          low_stock_threshold: 15,
-          updated_at: new Date().toISOString(),
-        });
+    // 14. Stocker Inventory - Initial Inventory Records for every Stocker & Listed Medicine
+    const defaultQtyMap: Record<string, Record<string, number>> = {
+      'stk-shd-01': {
+        'med-01': 60,
+        'med-02': 8,
+        'med-04': 40,
+        'med-05': 120,
+        'med-06': 5,
+        'med-08': 50,
+        'med-10': 25,
+        'med-11': 4,
+        'med-13': 35,
+        'med-15': 18,
+        'med-16': 6,
+      },
+      'stk-ktm-01': {
+        'med-01': 30,
+        'med-04': 30,
+        'med-05': 30,
+        'med-08': 30,
+        'med-10': 30,
+        'med-13': 30,
+      },
+      'stk-amb-01': {
+        'med-01': 25,
+        'med-04': 25,
+        'med-05': 25,
+        'med-08': 25,
+        'med-10': 25,
+        'med-13': 25,
+        'med-15': 25,
+      },
+    };
+
+    if (this.stockerInventory.length === 0) {
+      for (const stk of this.stockers) {
+        for (const med of this.medicines) {
+          const variant = med.packaging_variants?.[0];
+          const initialQty = defaultQtyMap[stk.id]?.[med.id] ?? 0;
+          this.stockerInventory.push({
+            id: `inv-${stk.id}-${med.id}`,
+            hq_id: stk.hq_id,
+            stocker_id: stk.id,
+            medicine_id: med.id,
+            variant_id: variant?.id,
+            packaging_display: med.packing || med.unit,
+            quantity: initialQty,
+            low_stock_threshold: 15,
+            updated_at: new Date().toISOString(),
+          });
+        }
       }
     }
   }
