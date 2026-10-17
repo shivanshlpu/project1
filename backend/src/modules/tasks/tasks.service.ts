@@ -82,11 +82,18 @@ export class TasksService {
     }
     if (!mr) throw new NotFoundException(`No active Field MR found in system`);
 
+    const taskHqId = dto.hq_id || mr.hq_id;
+    const taskHq = taskHqId ? this.db.findHeadquarter(taskHqId) : undefined;
+
     const task: Task = {
       id: `task-${uuidv4().substring(0, 8)}`,
       title: dto.title,
       description: dto.description || '',
       assigned_mr_id: mr.id,
+      assigned_mr_name: mr.name,
+      hq_id: taskHqId,
+      hq_name: taskHq?.name || mr.hq_name,
+      products: dto.products || [],
       created_by: createdBy,
       date: dto.date,
       time: dto.time,
@@ -578,6 +585,13 @@ export class TasksService {
       });
     } else if (dto.assigned_mr_name) {
       task.assigned_mr_name = dto.assigned_mr_name;
+    }
+
+    if (dto.products !== undefined) task.products = dto.products;
+    if (dto.hq_id !== undefined) {
+      task.hq_id = dto.hq_id;
+      const hq = this.db.findHeadquarter(dto.hq_id);
+      if (hq) task.hq_name = hq.name;
     }
 
     this.db.persistToDisk();

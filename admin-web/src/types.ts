@@ -19,6 +19,9 @@ export interface TaskItem {
   latitude: number;
   longitude: number;
   location_name?: string;
+  products?: string[];
+  hq_id?: string;
+  hq_name?: string;
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';

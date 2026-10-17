@@ -369,7 +369,7 @@ export default function App() {
       if (data?.taskId || data?.type === 'TASK_ASSIGNED' || data?.type === 'NEW_TASK') {
         setCurrentTab('tasks');
       } else if (data?.type === 'STOCK_REMINDER' || data?.type === 'STOCK') {
-        setCurrentTab('more');
+        setCurrentTab('profile');
         setMoreSubScreen('stocklist');
       } else if (data?.type === 'APP_UPDATE') {
         setIsUpdateModalOpen(true);

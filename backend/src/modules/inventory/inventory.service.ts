@@ -385,11 +385,11 @@ export class InventoryService {
     const hqId = hq?.id || hqIdentifier || 'HQ-ALL';
     const hqName = hq?.name || 'All Headquarters';
 
+    const isAll = !hqIdentifier || hqIdentifier === 'ALL';
     const activeMeds = this.db.medicines.filter((m) => m.status === 'ACTIVE');
-
     const medicineStockList = activeMeds.map((med) => {
       const relevantInv = this.db.stockerInventory.filter(
-        (inv) => inv.medicine_id === med.id && (stockerIds.size === 0 || stockerIds.has(inv.stocker_id)),
+        (inv) => inv.medicine_id === med.id && (isAll ? true : stockerIds.has(inv.stocker_id)),
       );
 
       const totalStock = relevantInv.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
@@ -544,21 +544,19 @@ export class InventoryService {
       const mrp = m.mrp ?? 0;
       const packing = m.packing || m.unit;
 
-      let availableStock: number | undefined = undefined;
-      let stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | undefined = undefined;
-      let isOutOfStock: boolean | undefined = undefined;
-      let isLowStock: boolean | undefined = undefined;
-
-      if (hqId && hqId !== 'ALL') {
-        const invList = this.db.stockerInventory.filter(
-          (inv) => inv.medicine_id === m.id && (stockerIds.size === 0 || stockerIds.has(inv.stocker_id)),
-        );
-        availableStock = invList.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
-        const threshold = m.low_stock_threshold || 10;
-        isOutOfStock = availableStock <= 0;
-        isLowStock = availableStock > 0 && availableStock <= threshold;
-        stockStatus = isOutOfStock ? 'OUT_OF_STOCK' : isLowStock ? 'LOW_STOCK' : 'IN_STOCK';
-      }
+      const isAll = !hqId || hqId === 'ALL';
+      const invList = this.db.stockerInventory.filter(
+        (inv) => inv.medicine_id === m.id && (isAll ? true : stockerIds.has(inv.stocker_id)),
+      );
+      const availableStock = invList.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+      const threshold = m.low_stock_threshold || 10;
+      const isOutOfStock = availableStock <= 0;
+      const isLowStock = availableStock > 0 && availableStock <= threshold;
+      const stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' = isOutOfStock
+        ? 'OUT_OF_STOCK'
+        : isLowStock
+        ? 'LOW_STOCK'
+        : 'IN_STOCK';
 
       return {
         ...m,

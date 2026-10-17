@@ -131,8 +131,9 @@ export class InventoryController {
   async getMedicines(
     @Query('all') all?: string,
     @Query('hq_id') hqId?: string,
+    @Query('hqId') hqIdCamel?: string,
   ) {
-    return this.inventoryService.getMedicines(all === 'true', hqId);
+    return this.inventoryService.getMedicines(all === 'true', hqId || hqIdCamel);
   }
 
   @Get('hq-stock')

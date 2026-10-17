@@ -140,6 +140,7 @@ export interface Task {
   order_pending_at?: string;
   duration_seconds?: number; 
   location_name?: string;
+  products?: string[];
   hq_id?: string;
   hq_name?: string;
   stocker_id?: string;

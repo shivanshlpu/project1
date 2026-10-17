@@ -1,20 +1,19 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.29",
-  "latestVersionCode": 30,
+  "latestVersion": "1.0.30",
+  "latestVersionCode": 31,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.29/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.30/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-18",
-  "publishedAt": "2026-10-17T19:30:00.000Z",
+  "publishedAt": "2026-10-17T20:22:34.203Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Instant Task Assignment Notifications: Newly assigned tasks immediately trigger sound and vibration heads-up notifications in the notification bar across all screens",
-    "Daily Stock Update Reminders: Automatic morning (10:00 AM) and evening (5:30 PM) system reminders to keep stock levels updated",
-    "Management Stock Broadcast: On-demand stock reminder alerts dispatched from the central Stockage dashboard directly to Field Representatives",
-    "Direct Agenda Routing: Tapping notifications opens directly into the assigned Tasks agenda or Stocklist screen",
-    "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
+    "Fixed Stock & Medicine Accuracy: Isolated inventory queries strictly by the selected MR's assigned Headquarters depot, eliminating cross-HQ stock summation errors",
+    "Full 17-Medicine Catalog Visibility: All company products are now visible during task creation with accurate live stock pills (In Stock, Low Stock, or Out of Stock) and filter toggles",
+    "Product Detailing Focus Sync: Selected focus medicines are now saved on task assignment and prominently highlighted on the MR mobile task card",
+    "Dynamic In-App Medicine Chips: Real-time depot stock indicators and exact medicine matching in the duty order recording screen"
   ]
 }

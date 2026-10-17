@@ -6,7 +6,9 @@ export interface InStockProduct {
   code?: string;
   quantity: number;
   unit?: string;
-  status: 'Available' | 'Low Stock';
+  status: 'Available' | 'Low Stock' | 'Out of Stock';
+  is_out_of_stock?: boolean;
+  is_low_stock?: boolean;
 }
 
 export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [
@@ -167,7 +169,7 @@ export function getStoredInStockProducts(): InStockProduct[] {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((p) => p && typeof p.quantity === 'number' && p.quantity > 0);
+        return parsed.filter((p) => p && typeof p.quantity === 'number');
       }
     }
   } catch {}
@@ -176,7 +178,7 @@ export function getStoredInStockProducts(): InStockProduct[] {
 
 export function persistInStockProducts(products: InStockProduct[]) {
   try {
-    const validInStock = products.filter((p) => p && typeof p.quantity === 'number' && p.quantity > 0);
+    const validInStock = products.filter((p) => p && typeof p.quantity === 'number');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(validInStock));
     window.dispatchEvent(
       new CustomEvent('ahtri_inventory_updated', {
@@ -228,66 +230,54 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    
-    const medUrl = hqId ? `${apiUrl}/inventory/medicines?hqId=${encodeURIComponent(hqId)}` : `${apiUrl}/inventory/medicines`;
-    const medRes = await fetch(medUrl, { headers });
-    let medicines: any[] = [];
-    if (medRes.ok) {
-      medicines = await medRes.json();
-    }
+    const targetUrl = hqId && hqId !== 'ALL'
+      ? `${apiUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hqId)}`
+      : `${apiUrl}/inventory/medicines?all=true`;
 
-    
-    const stkRes = await fetch(`${apiUrl}/inventory/stockers`, { headers });
-    let stockers: any[] = [];
-    if (stkRes.ok) {
-      stockers = await stkRes.json();
-    }
-
-    const medicineQtyMap = new Map<string, number>();
-
-    
-    if (Array.isArray(stockers) && stockers.length > 0) {
-      for (const stk of stockers.slice(0, 10)) {
-        try {
-          const invRes = await fetch(`${apiUrl}/inventory/stockers/${stk.id}/inventory`, { headers });
-          if (invRes.ok) {
-            const invList: any[] = await invRes.json();
-            if (Array.isArray(invList)) {
-              for (const item of invList) {
-                const current = medicineQtyMap.get(item.medicine_id) || 0;
-                medicineQtyMap.set(item.medicine_id, current + (item.quantity || 0));
-              }
-            }
-          }
-        } catch {}
+    const res = await fetch(targetUrl, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      let medicines: any[] = [];
+      if (Array.isArray(data)) {
+        medicines = data;
+      } else if (data && Array.isArray(data.medicines)) {
+        medicines = data.medicines;
       }
-    }
 
-    if (Array.isArray(medicines) && medicines.length > 0) {
-      const inStockList: InStockProduct[] = [];
-      for (const med of medicines) {
-        if (med.status === 'INACTIVE' || med.is_active === false) continue;
-        const totalQty = medicineQtyMap.get(med.id) ?? 0;
-        
-        if (totalQty > 0) {
-          inStockList.push({
-            id: med.id,
-            name: med.name,
-            code: med.code || med.product_code,
-            quantity: totalQty,
-            unit: med.unit || 'Units',
-            status: totalQty <= (med.low_stock_threshold || 15) ? 'Low Stock' : 'Available',
+      if (medicines.length > 0) {
+        const fullList: InStockProduct[] = [];
+        for (const med of medicines) {
+          if (med.status === 'INACTIVE' || med.is_active === false) continue;
+          const id = med.id || med.medicine_id;
+          const name = med.name || med.medicine_name;
+          const code = med.code || med.product_code || med.medicine_code;
+          const qty = typeof med.available_stock === 'number' ? med.available_stock : 0;
+          const unit = med.unit || med.packing || 'Units';
+          const threshold = med.low_stock_threshold || 10;
+          const isOut = qty <= 0;
+          const isLow = qty > 0 && qty <= threshold;
+          const status = isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'Available';
+
+          fullList.push({
+            id,
+            name,
+            code,
+            quantity: qty,
+            unit,
+            status,
+            is_out_of_stock: isOut,
+            is_low_stock: isLow,
           });
         }
-      }
 
-      if (inStockList.length > 0) {
-        persistInStockProducts(inStockList);
-        return inStockList;
+        if (fullList.length > 0) {
+          persistInStockProducts(fullList);
+          return fullList;
+        }
       }
     }
   } catch (err) {
-    console.warn('Backend in-stock sync error:', err);
+    console.warn('Backend stock sync error:', err);
   }
 
   return getStoredInStockProducts();

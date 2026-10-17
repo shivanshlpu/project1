@@ -45,11 +45,12 @@ export interface MobileTaskItem {
   visit_photo?: string;
   suspended_at?: string;
   suspended_reason?: string;
+  products?: string[];
 }
 
 const COMPANY_MEDICINES_CHIPS = [
   { name: 'AHTRI-S (200 ML)', short: 'AHTRI-S', price: 38.40 },
-  { name: 'AHTRI-A A2Z (200 ML)', short: 'AHTRI-A A2Z', price: 36.80 },
+  { name: 'AHTRI-A2Z (200 ML)', short: 'AHTRI-A2Z', price: 36.80 },
   { name: 'AHTYME (200 ML)', short: 'AHTYME', price: 36.80 },
   { name: 'ATHRIMOX CV 625 (10*1*10)', short: 'ATHRIMOX CV 625', price: 68.00 },
   { name: 'AHTRI-P (20*10)', short: 'AHTRI-P', price: 12.00 },
@@ -107,6 +108,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);
   
   const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
+  const [dynamicMedicines, setDynamicMedicines] = useState<any[]>([]);
 
   
   const [deviceCoords, setDeviceCoords] = useState<{
@@ -142,18 +144,39 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const hq = targetHqId || currentUserHqId || 'hq-shahdol';
+      const hq = targetHqId || currentUserHqId || 'HQ-SHD-001';
       const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hq)}`, { headers });
       if (res.ok) {
         const data = await res.json();
         const map: Record<string, any> = {};
+        const medList: any[] = [];
+        const normKey = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
         (data.medicines || []).forEach((m: any) => {
+          const fullName = `${m.medicine_name} (${m.packing || m.unit || ''})`;
           map[m.medicine_name.toLowerCase().trim()] = m;
           map[m.medicine_id] = m;
+          map[fullName.toLowerCase().trim()] = m;
+          map[normKey(m.medicine_name)] = m;
+          map[normKey(fullName)] = m;
           const short = m.medicine_name.split(' (')[0].toLowerCase().trim();
           map[short] = m;
+          map[normKey(short)] = m;
+
+          medList.push({
+            name: fullName,
+            short: m.medicine_name,
+            price: m.pts_rate || m.base_price || 0,
+            available_stock: m.available_stock,
+            is_out_of_stock: m.is_out_of_stock,
+            is_low_stock: m.is_low_stock,
+            stock_status: m.stock_status,
+          });
         });
         setHqStockMap(map);
+        if (medList.length > 0) {
+          setDynamicMedicines(medList);
+        }
       }
     } catch {
       // Offline fallback
@@ -319,6 +342,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               orders: t.orders,
               suspended_at: t.suspended_at,
               suspended_reason: t.suspended_reason,
+              products: t.products || [],
             };
           });
 
@@ -1085,6 +1109,13 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                   <Text style={styles.taskTitle}>{task.title}</Text>
                   <Text style={styles.locationName}>{task.location_name}</Text>
                   <Text style={styles.addressText}>{task.address}</Text>
+                  {task.products && task.products.length > 0 && (
+                    <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, marginTop: 4, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#1E40AF', fontWeight: '700' }}>
+                        🎯 Product Focus: {task.products.join(', ')}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* SUSPENDED LOCKOUT ALERT */}
                   {task.status === 'SUSPENDED' && (
@@ -1516,7 +1547,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                           {(() => {
                             const cleanName = (ord.product_name || '').toLowerCase().trim();
                             const shortName = cleanName.split(' (')[0];
-                            const stock = hqStockMap[cleanName] || hqStockMap[shortName];
+                            const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)] || hqStockMap[norm(shortName)];
                             if (!stock) return null;
                             const effectiveHq = completingTask?.hq_name || currentUserHqName || 'HQ';
                             if (stock.is_out_of_stock) {
@@ -1547,9 +1579,10 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                           })()}
 
                           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6, marginBottom: 2 }}>
-                            {COMPANY_MEDICINES_CHIPS.map((med, mIdx) => {
-                              const isSelected = ord.product_name === med.name;
-                              const stock = hqStockMap[med.name.toLowerCase().trim()] || hqStockMap[med.short.toLowerCase().trim()];
+                            {(dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS).map((med, mIdx) => {
+                              const isSelected = ord.product_name === med.name || ord.product_name === med.short;
+                              const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                              const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)] || (med.short && hqStockMap[norm(med.short)]);
                               const isOut = stock?.is_out_of_stock;
                               const isLow = stock?.is_low_stock;
 

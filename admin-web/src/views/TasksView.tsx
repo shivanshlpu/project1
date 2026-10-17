@@ -93,7 +93,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [verificationLogs] = useState<VerificationLogItem[]>([]);
 
   
-  const [mrList, setMrList] = useState<Array<{ id: string; name: string; territory: string }>>([]);
+  const [mrList, setMrList] = useState<Array<{ id: string; name: string; territory: string; hq_id?: string; hq_name?: string }>>([]);
+  const [productFilterMode, setProductFilterMode] = useState<'all' | 'in_stock'>('all');
 
   useEffect(() => {
     const fetchMRs = async () => {
@@ -109,11 +110,16 @@ export const TasksView: React.FC<TasksViewProps> = ({
               id: u.id,
               name: u.name,
               territory: u.territory || (u.hq_name ? `${u.hq_name} HQ Territory` : 'HQ Territory'),
+              hq_id: u.hq_id,
+              hq_name: u.hq_name,
             }));
             setMrList(mapped);
             if (mapped.length > 0) {
               setAssignedMrId(mapped[0].id);
               setAssignedMr(mapped[0].name);
+              syncInStockProductsWithBackend(mapped[0].hq_id).then((items) => {
+                if (items && items.length > 0) setInStockProducts(items);
+              });
             }
           }
         }
@@ -956,6 +962,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
 
     setIsCreatingOnServer(true);
+    const targetMr = mrList.find((m) => m.id === assignedMrId);
     const payload = {
       title: taskTitle.trim(),
       description: taskDescription.trim(),
@@ -967,6 +974,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
       location_name: taskLocationName,
       geofence_radius_m: taskRadius,
       priority: taskPriority,
+      products: selectedProducts,
+      hq_id: targetMr?.hq_id,
     };
 
     try {
@@ -1006,6 +1015,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
           priority: taskPriority,
           status: 'ASSIGNED',
           distance_verified: false,
+          products: selectedProducts,
+          hq_id: targetMr?.hq_id,
+          hq_name: targetMr?.hq_name,
         };
         setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
         setIsCreateModalOpen(false);
@@ -1017,20 +1029,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
     } catch (err) {
       console.warn('Backend unavailable, falling back to local state:', err);
       const newTask: TaskItem = {
-        id: `task-${Date.now().toString().slice(-4)}`,
-        title: taskTitle,
-        date: taskDate,
-        time: taskTime,
-        assigned_mr_name: assignedMr,
-        assigned_mr_id: assignedMrId,
-        location_name: taskLocationName,
-        latitude: taskLat,
-        longitude: taskLng,
-        geofence_radius_m: taskRadius,
-        priority: taskPriority,
-        status: 'ASSIGNED',
-        distance_verified: false,
-      };
+          id: `task-${Date.now().toString().slice(-4)}`,
+          title: taskTitle,
+          date: taskDate,
+          time: taskTime,
+          assigned_mr_name: assignedMr,
+          assigned_mr_id: assignedMrId,
+          location_name: taskLocationName,
+          latitude: taskLat,
+          longitude: taskLng,
+          geofence_radius_m: taskRadius,
+          priority: taskPriority,
+          status: 'ASSIGNED',
+          distance_verified: false,
+          products: selectedProducts,
+          hq_id: targetMr?.hq_id,
+          hq_name: targetMr?.hq_name,
+        };
       setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
       setIsCreateModalOpen(false);
       if (onClearPrefilledLocation) onClearPrefilledLocation();
@@ -2363,6 +2378,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 <MapPin size={13} color="#0F8B5A" />
                 <span>{task.location_name || `${task.latitude.toFixed(4)}, ${task.longitude.toFixed(4)}`} ({task.geofence_radius_m}m geofence)</span>
               </div>
+              {task.products && task.products.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#1E40AF', background: '#EFF6FF', padding: '2px 8px', borderRadius: '4px', border: '1px solid #BFDBFE' }}>
+                    🎯 Detailing: {task.products.join(', ')}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* SECRET ON-SITE DURATION */}
@@ -3202,7 +3224,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
                           const id = e.target.value;
                           setAssignedMrId(id);
                           const match = mrList.find((m) => m.id === id);
-                          if (match) setAssignedMr(match.name);
+                          if (match) {
+                            setAssignedMr(match.name);
+                            syncInStockProductsWithBackend(match.hq_id).then((items) => {
+                              if (items && items.length > 0) setInStockProducts(items);
+                            });
+                          }
                         }}
                         style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFFFFF', boxSizing: 'border-box', fontWeight: '600' }}
                       >
@@ -3280,63 +3307,109 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
                   {/* Product Detailing Focus Multi-Select Chips */}
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
                       <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>
                         {t.productFocus} (Click to toggle)
                       </label>
-                      <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#0F8B5A', background: '#DCFCE7', padding: '2px 8px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
-                        ● Store In-Stock Only ({inStockProducts.length})
-                      </span>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setProductFilterMode('all')}
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            color: productFilterMode === 'all' ? '#1E40AF' : '#64748B',
+                            background: productFilterMode === 'all' ? '#DBEAFE' : '#F1F5F9',
+                            border: '1px solid',
+                            borderColor: productFilterMode === 'all' ? '#93C5FD' : '#E2E8F0',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          All Catalog ({inStockProducts.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProductFilterMode('in_stock')}
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            color: productFilterMode === 'in_stock' ? '#0F8B5A' : '#64748B',
+                            background: productFilterMode === 'in_stock' ? '#DCFCE7' : '#F1F5F9',
+                            border: '1px solid',
+                            borderColor: productFilterMode === 'in_stock' ? '#BBF7D0' : '#E2E8F0',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ● Store In-Stock Only ({inStockProducts.filter((p) => p.quantity > 0).length})
+                        </button>
+                      </div>
                     </div>
 
-                    {inStockProducts.length === 0 ? (
-                      <div style={{ padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '11.5px', color: '#92400E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <AlertTriangle size={14} color="#D97706" />
-                        <span>No medicines currently in stock in store. Please inward stock in HQ Stocker &amp; Medicine Inventory.</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {inStockProducts.map((prod) => {
-                          const isSelected = selectedProducts.includes(prod.name);
-                          return (
-                            <button
-                              key={prod.id || prod.name}
-                              type="button"
-                              onClick={() => toggleProduct(prod.name)}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '16px',
-                                border: isSelected ? '1.5px solid #1A3C6E' : '1px solid #CBD5E1',
-                                background: isSelected ? '#EFF6FF' : '#FFFFFF',
-                                color: isSelected ? '#1A3C6E' : '#475569',
-                                fontSize: '11px',
-                                fontWeight: isSelected ? '700' : '500',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              {isSelected ? <CheckCircle2 size={12} color="#1A3C6E" /> : <Plus size={12} color="#64748B" />}
-                              <span>{prod.name}</span>
-                              <span
+                    {(() => {
+                      const displayedProducts = productFilterMode === 'in_stock'
+                        ? inStockProducts.filter((p) => p.quantity > 0)
+                        : inStockProducts;
+
+                      if (displayedProducts.length === 0) {
+                        return (
+                          <div style={{ padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '11.5px', color: '#92400E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <AlertTriangle size={14} color="#D97706" />
+                            <span>No medicines found for the selected view.</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto', padding: '2px' }}>
+                          {displayedProducts.map((prod) => {
+                            const isSelected = selectedProducts.includes(prod.name);
+                            const isOut = prod.quantity <= 0;
+                            const isLow = prod.quantity > 0 && prod.quantity <= 15;
+
+                            return (
+                              <button
+                                key={prod.id || prod.name}
+                                type="button"
+                                onClick={() => toggleProduct(prod.name)}
                                 style={{
-                                  fontSize: '9.5px',
-                                  padding: '1px 5px',
-                                  borderRadius: '8px',
-                                  background: prod.quantity <= 15 ? '#FEF3C7' : '#DCFCE7',
-                                  color: prod.quantity <= 15 ? '#B45309' : '#15803D',
-                                  fontWeight: '700',
+                                  padding: '5px 10px',
+                                  borderRadius: '16px',
+                                  border: isSelected ? '1.5px solid #1A3C6E' : '1px solid #CBD5E1',
+                                  background: isSelected ? '#EFF6FF' : '#FFFFFF',
+                                  color: isSelected ? '#1A3C6E' : '#475569',
+                                  fontSize: '11px',
+                                  fontWeight: isSelected ? '700' : '500',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  transition: 'all 0.15s ease',
                                 }}
                               >
-                                {prod.quantity} in stock
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                                {isSelected ? <CheckCircle2 size={12} color="#1A3C6E" /> : <Plus size={12} color="#64748B" />}
+                                <span>{prod.name}</span>
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '1px 5px',
+                                    borderRadius: '8px',
+                                    background: isOut ? '#FEE2E2' : isLow ? '#FEF3C7' : '#DCFCE7',
+                                    color: isOut ? '#DC2626' : isLow ? '#B45309' : '#15803D',
+                                    fontWeight: '700',
+                                  }}
+                                >
+                                  {isOut ? 'Out of stock' : isLow ? `${prod.quantity} low stock` : `${prod.quantity} in stock`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Geofence Perimeter Radius Controller */}

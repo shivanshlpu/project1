@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsEnum,
+  IsArray,
   Min,
   Max,
 } from 'class-validator';
@@ -46,6 +47,14 @@ export class CreateTaskDto {
   @IsEnum(['LOW', 'MEDIUM', 'HIGH'])
   @IsOptional()
   priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+
+  @IsArray()
+  @IsOptional()
+  products?: string[];
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
 }
 
 export class VerifyLocationDto {
@@ -217,5 +226,13 @@ export class UpdateTaskDto {
   @IsEnum(['ASSIGNED', 'IN_PROGRESS', 'ORDER_PENDING', 'COMPLETED', 'MISSED', 'CANCELLED', 'SUSPENDED'])
   @IsOptional()
   status?: 'ASSIGNED' | 'IN_PROGRESS' | 'ORDER_PENDING' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
+
+  @IsArray()
+  @IsOptional()
+  products?: string[];
+
+  @IsString()
+  @IsOptional()
+  hq_id?: string;
 }
 
