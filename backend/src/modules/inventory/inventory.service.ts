@@ -49,7 +49,65 @@ export class InventoryService {
   ) {}
 
   
+  public ensureHqStockers() {
+    let changed = false;
+    for (const hq of this.db.headquarters.filter((h) => h.status === 'ACTIVE')) {
+      const { stockers } = this.resolveHqAndStockers(hq.id);
+      if (stockers.length === 0) {
+        let area = this.db.hqAreas.find((a) => a.hq_id === hq.id || (hq.legacy_id && a.hq_id === hq.legacy_id));
+        if (!area) {
+          area = {
+            id: `area-${uuidv4().substring(0, 8)}`,
+            hq_id: hq.id,
+            name: `${hq.name} Central`,
+            status: 'ACTIVE',
+            created_at: new Date().toISOString(),
+          };
+          this.db.hqAreas.push(area);
+        }
+
+        const stocker: Stocker = {
+          id: `stk-${uuidv4().substring(0, 8)}`,
+          hq_id: hq.id,
+          name: `${hq.name} Main Depot`,
+          sub_area: area.name,
+          contact_person: '',
+          phone: '',
+          address: `${hq.name}, ${hq.state || ''}`,
+          status: 'ACTIVE',
+          created_at: new Date().toISOString(),
+        };
+        this.db.stockers.push(stocker);
+
+        const newInvs: StockerInventory[] = [];
+        for (const med of this.db.medicines.filter((m) => m.status === 'ACTIVE')) {
+          const inv: StockerInventory = {
+            id: `inv-${stocker.id}-${med.id}`,
+            hq_id: hq.id,
+            stocker_id: stocker.id,
+            medicine_id: med.id,
+            quantity: 0,
+            low_stock_threshold: med.low_stock_threshold || 15,
+            updated_at: new Date().toISOString(),
+          };
+          this.db.stockerInventory.push(inv);
+          newInvs.push(inv);
+        }
+
+        changed = true;
+        this.db.syncStockerToSupabase(stocker).catch(() => null);
+        if (newInvs.length > 0) {
+          this.db.syncBatchStockerInventoryToSupabase(newInvs).catch(() => null);
+        }
+      }
+    }
+    if (changed) {
+      this.db.persistToDisk();
+    }
+  }
+
   async getHeadquarters(): Promise<Headquarter[]> {
+    this.ensureHqStockers();
     return this.db.headquarters.filter((h) => h.status === 'ACTIVE');
   }
 
@@ -89,8 +147,53 @@ export class InventoryService {
     };
 
     this.db.headquarters.push(hq);
+
+    // Auto-create default HQ Area
+    const area: HqArea = {
+      id: `area-${uuidv4().substring(0, 8)}`,
+      hq_id: hq.id,
+      name: `${hq.name} Central`,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.db.hqAreas.push(area);
+
+    // Auto-create default Stocker for this new HQ
+    const stocker: Stocker = {
+      id: `stk-${uuidv4().substring(0, 8)}`,
+      hq_id: hq.id,
+      name: `${hq.name} Main Depot`,
+      sub_area: area.name,
+      contact_person: '',
+      phone: '',
+      address: `${hq.name}, ${hq.state || ''}`,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+    };
+    this.db.stockers.push(stocker);
+
+    // Initialize inventory records for all active medicines with 0 stock
+    const newInvs: StockerInventory[] = [];
+    for (const med of this.db.medicines.filter((m) => m.status === 'ACTIVE')) {
+      const inv: StockerInventory = {
+        id: `inv-${stocker.id}-${med.id}`,
+        hq_id: hq.id,
+        stocker_id: stocker.id,
+        medicine_id: med.id,
+        quantity: 0,
+        low_stock_threshold: med.low_stock_threshold || 15,
+        updated_at: new Date().toISOString(),
+      };
+      this.db.stockerInventory.push(inv);
+      newInvs.push(inv);
+    }
+
     this.db.persistToDisk();
     this.db.syncHeadquarterToSupabase(hq).catch(() => null);
+    this.db.syncStockerToSupabase(stocker).catch(() => null);
+    if (newInvs.length > 0) {
+      this.db.syncBatchStockerInventoryToSupabase(newInvs).catch(() => null);
+    }
     return hq;
   }
 
@@ -367,6 +470,7 @@ export class InventoryService {
     hq_id: string;
     hq_name: string;
     stocker_count: number;
+    hqs: Array<{ id: string; name: string; code: string }>;
     medicines: Array<{
       medicine_id: string;
       medicine_name: string;
@@ -379,14 +483,25 @@ export class InventoryService {
       stock_status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
       is_out_of_stock: boolean;
       is_low_stock: boolean;
+      hq_breakdown: Array<{ hq_id: string; hq_name: string; hq_code: string; stock: number; is_out_of_stock: boolean; is_low_stock: boolean }>;
     }>;
   }> {
+    this.ensureHqStockers();
     const { hq, stockers, stockerIds } = this.resolveHqAndStockers(hqIdentifier);
     const hqId = hq?.id || hqIdentifier || 'HQ-ALL';
     const hqName = hq?.name || 'All Headquarters';
 
+    const activeHqs = this.db.headquarters.filter((h) => h.status === 'ACTIVE');
     const isAll = !hqIdentifier || hqIdentifier === 'ALL';
     const activeMeds = this.db.medicines.filter((m) => m.status === 'ACTIVE');
+
+    // Precalculate stockers per active HQ for instant cross-HQ stock lookup
+    const hqStockerIdMap = new Map<string, Set<string>>();
+    for (const h of activeHqs) {
+      const hStockers = this.resolveHqAndStockers(h.id).stockers;
+      hqStockerIdMap.set(h.id, new Set(hStockers.map((s) => s.id)));
+    }
+
     const medicineStockList = activeMeds.map((med) => {
       const relevantInv = this.db.stockerInventory.filter(
         (inv) => inv.medicine_id === med.id && (isAll ? true : stockerIds.has(inv.stocker_id)),
@@ -402,6 +517,23 @@ export class InventoryService {
         ? 'LOW_STOCK'
         : 'IN_STOCK';
 
+      // Build breakdown of stock in each HQ for this medicine
+      const hqBreakdown = activeHqs.map((h) => {
+        const hStkIds = hqStockerIdMap.get(h.id) || new Set();
+        const hInv = this.db.stockerInventory.filter(
+          (inv) => inv.medicine_id === med.id && hStkIds.has(inv.stocker_id),
+        );
+        const hStock = hInv.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+        return {
+          hq_id: h.id,
+          hq_name: h.name,
+          hq_code: h.code || h.hq_code || '',
+          stock: hStock,
+          is_out_of_stock: hStock <= 0,
+          is_low_stock: hStock > 0 && hStock <= threshold,
+        };
+      });
+
       return {
         medicine_id: med.id,
         medicine_name: med.name,
@@ -414,6 +546,7 @@ export class InventoryService {
         stock_status: stockStatus,
         is_out_of_stock: isOutOfStock,
         is_low_stock: isLowStock,
+        hq_breakdown: hqBreakdown,
       };
     });
 
@@ -421,6 +554,7 @@ export class InventoryService {
       hq_id: hqId,
       hq_name: hqName,
       stocker_count: stockers.length,
+      hqs: activeHqs.map((h) => ({ id: h.id, name: h.name, code: h.code || h.hq_code || '' })),
       medicines: medicineStockList,
     };
   }

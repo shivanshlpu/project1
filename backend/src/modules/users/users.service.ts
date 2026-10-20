@@ -29,11 +29,12 @@ export class UsersService {
       .filter((u) => (filter.status ? u.status === filter.status : true))
       .map(({ password_hash, ...userWithoutPassword }) => {
         const u = { ...userWithoutPassword } as any;
-        if (!u.hq_id && u.hq_name) {
-          const hq = this.db.findHeadquarter(u.hq_name);
+        if (u.hq_id || u.hq_name || u.hq_code) {
+          const hq = this.db.findHeadquarter(u.hq_id || u.hq_name || u.hq_code);
           if (hq) {
-            u.hq_id = hq.hq_id;
+            u.hq_id = hq.id;
             u.hq_code = hq.code;
+            u.hq_name = hq.name;
           }
         }
         u.assigned_territory = u.assigned_territory || u.territory || '';
@@ -49,11 +50,12 @@ export class UsersService {
     }
     const { password_hash, ...userWithoutPassword } = user;
     const u = { ...userWithoutPassword } as any;
-    if (!u.hq_id && u.hq_name) {
-      const hq = this.db.findHeadquarter(u.hq_name);
+    if (u.hq_id || u.hq_name || u.hq_code) {
+      const hq = this.db.findHeadquarter(u.hq_id || u.hq_name || u.hq_code);
       if (hq) {
-        u.hq_id = hq.hq_id;
+        u.hq_id = hq.id;
         u.hq_code = hq.code;
+        u.hq_name = hq.name;
       }
     }
     u.assigned_territory = u.assigned_territory || u.territory || '';
@@ -95,12 +97,15 @@ export class UsersService {
       created_at: new Date().toISOString(),
     };
 
-    if (dto.hq_id && !dto.hq_code) {
-      const hq = this.db.findHeadquarter(dto.hq_id);
-      if (hq) {
-        newUser.hq_code = hq.code;
-        newUser.hq_name = hq.name;
-      }
+    const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || '');
+    if (foundHq) {
+      newUser.hq_id = foundHq.id;
+      newUser.hq_code = foundHq.code;
+      newUser.hq_name = foundHq.name;
+    }
+    if (!newUser.territory && newUser.hq_name) {
+      newUser.territory = `${newUser.hq_name} HQ Territory`;
+      newUser.assigned_territory = newUser.territory;
     }
 
     this.db.users.push(newUser);
@@ -141,9 +146,18 @@ export class UsersService {
     if (dto.status) user.status = dto.status;
     if (dto.role) user.role = dto.role;
     if (dto.area_id) user.area_id = dto.area_id;
-    if (dto.hq_id) user.hq_id = dto.hq_id;
-    if (dto.hq_code) user.hq_code = dto.hq_code;
-    if (dto.hq_name) user.hq_name = dto.hq_name;
+    if (dto.hq_id || dto.hq_name || dto.hq_code) {
+      const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || '');
+      if (foundHq) {
+        user.hq_id = foundHq.id;
+        user.hq_code = foundHq.code;
+        user.hq_name = foundHq.name;
+      } else {
+        if (dto.hq_id) user.hq_id = dto.hq_id;
+        if (dto.hq_code) user.hq_code = dto.hq_code;
+        if (dto.hq_name) user.hq_name = dto.hq_name;
+      }
+    }
     if (dto.territory) user.territory = dto.territory;
     if (dto.assigned_territory) user.assigned_territory = dto.assigned_territory;
     if (dto.assigned_route_batches) {

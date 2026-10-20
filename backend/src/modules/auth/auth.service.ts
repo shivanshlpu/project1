@@ -541,6 +541,15 @@ export class AuthService {
   }
 
   private generateAuthPayload(user: any) {
+    if (user.hq_id || user.hq_name || user.hq_code) {
+      const hq = this.db.findHeadquarter(user.hq_id || user.hq_name || user.hq_code);
+      if (hq) {
+        user.hq_id = hq.id;
+        user.hq_code = hq.code;
+        user.hq_name = hq.name;
+      }
+    }
+
     const payload = {
       sub: user.id,
       email: user.email,

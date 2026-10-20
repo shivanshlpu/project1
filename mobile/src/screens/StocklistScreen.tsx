@@ -307,6 +307,35 @@ const resolveInitialHqId = (hqId?: string): string => {
   return hqId;
 };
 
+const matchHq = (
+  hqList: Array<{ id: string; name: string; code?: string; hq_id?: string }>,
+  targetId?: string,
+  targetName?: string,
+): string => {
+  if (!targetId && !targetName) return hqList[0]?.id || 'HQ-SHD-001';
+  const cleanId = (targetId || '').toLowerCase().trim();
+  const cleanName = (targetName || '').toLowerCase().trim();
+
+  const exact = hqList.find(
+    (h) =>
+      h.id.toLowerCase() === cleanId ||
+      (h.hq_id && h.hq_id.toLowerCase() === cleanId) ||
+      (h.code && h.code.toLowerCase() === cleanId) ||
+      h.name.toLowerCase() === cleanName ||
+      h.name.toLowerCase() === cleanId,
+  );
+  if (exact) return exact.id;
+
+  const sub = hqList.find(
+    (h) =>
+      (cleanId && (h.id.toLowerCase().includes(cleanId) || cleanId.includes(h.name.toLowerCase()))) ||
+      (cleanName && (h.name.toLowerCase().includes(cleanName) || cleanName.includes(h.name.toLowerCase()))),
+  );
+  if (sub) return sub.id;
+
+  return hqList[0]?.id || 'HQ-SHD-001';
+};
+
 export const StocklistScreen: React.FC<StocklistScreenProps> = ({
   currentUserId = 'usr-mr-02',
   currentUserName = 'Aman Rathore',
@@ -320,7 +349,8 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
     { id: 'HQ-AMB-001', name: 'Ambikapur' },
   ]);
 
-  const [selectedHqId, setSelectedHqId] = useState<string>(() => resolveInitialHqId(currentUserHqId));
+  const [selectedHqId, setSelectedHqId] = useState<string>(() => resolveInitialHqId(currentUserHqId || currentUserHqName));
+  const [hqBreakdownMap, setHqBreakdownMap] = useState<Record<string, any>>({});
   const [stockers, setStockers] = useState<StockerItem[]>([]);
   const [selectedStockerId, setSelectedStockerId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryProductItem[]>([]);
@@ -330,10 +360,14 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    if (currentUserHqId) {
-      setSelectedHqId(resolveInitialHqId(currentUserHqId));
+    if (currentUserHqId || currentUserHqName) {
+      if (hqs.length > 0) {
+        setSelectedHqId(matchHq(hqs, currentUserHqId, currentUserHqName));
+      } else {
+        setSelectedHqId(resolveInitialHqId(currentUserHqId || currentUserHqName));
+      }
     }
-  }, [currentUserHqId]);
+  }, [currentUserHqId, currentUserHqName, hqs]);
 
   
   const [activePermission, setActivePermission] = useState<any>(null);
@@ -572,9 +606,8 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
             });
             if (filtered.length > 0) {
               setHqs(filtered);
-              if (!filtered.some((h) => h.id === selectedHqId)) {
-                setSelectedHqId(filtered[0].id);
-              }
+              const matched = matchHq(filtered, currentUserHqId, currentUserHqName);
+              setSelectedHqId(matched);
             }
           }
         }
@@ -590,12 +623,24 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         const headers = await ApiConfig.getAuthHeaders();
 
         
-        const res = await fetch(`${baseUrl}/inventory/stockers?hq_id=${selectedHqId}`, { headers });
-        if (res.ok) {
-          const list: StockerItem[] = await res.json();
+        const [stockersRes, hqStockRes] = await Promise.all([
+          fetch(`${baseUrl}/inventory/stockers?hq_id=${selectedHqId}`, { headers }),
+          fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(selectedHqId)}`, { headers }),
+        ]);
+        if (stockersRes.ok) {
+          const list: StockerItem[] = await stockersRes.json();
           if (Array.isArray(list)) {
             setStockers(list);
           }
+        }
+        if (hqStockRes.ok) {
+          const hqStockData = await hqStockRes.json();
+          const bdMap: Record<string, any> = {};
+          (hqStockData.medicines || []).forEach((m: any) => {
+            bdMap[m.medicine_id] = m;
+            bdMap[m.medicine_name.toLowerCase().trim()] = m;
+          });
+          setHqBreakdownMap(bdMap);
         }
       } catch {}
     })();
@@ -623,11 +668,33 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
-        const res = await fetch(`${baseUrl}/inventory/stockers/${selectedStockerId}/inventory`, { headers });
-        if (res.ok) {
-          const items = await res.json();
-          if (Array.isArray(items)) {
-            setInventory(items);
+        if (selectedStockerId === 'ALL_DEPOTS') {
+          const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(selectedHqId)}`, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            const mapped: InventoryProductItem[] = (data.medicines || []).map((m: any) => ({
+              id: m.medicine_id,
+              medicine_id: m.medicine_id,
+              medicine_name: m.medicine_name,
+              medicine_code: m.medicine_code,
+              unit: m.packing || m.unit,
+              price: m.pts_rate,
+              pts_rate: m.pts_rate,
+              ptr_rate: m.ptr_rate || (m.pts_rate ? m.pts_rate * 1.15 : 0),
+              mrp: m.mrp || (m.pts_rate ? m.pts_rate * 1.4 : 0),
+              quantity: m.available_stock,
+              status: m.is_out_of_stock ? 'Out of Stock' : m.is_low_stock ? 'Low Stock' : 'Available',
+              low_stock_threshold: m.low_stock_threshold,
+            }));
+            setInventory(mapped);
+          }
+        } else {
+          const res = await fetch(`${baseUrl}/inventory/stockers/${selectedStockerId}/inventory`, { headers });
+          if (res.ok) {
+            const items = await res.json();
+            if (Array.isArray(items)) {
+              setInventory(items);
+            }
           }
         }
       } catch {} finally {
@@ -1096,6 +1163,16 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
                 </Text>
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                  {filteredStockers.length > 1 && (
+                    <TouchableOpacity
+                      style={[styles.chip, selectedStockerId === 'ALL_DEPOTS' && styles.chipActiveSecondary]}
+                      onPress={() => setSelectedStockerId('ALL_DEPOTS')}
+                    >
+                      <Text style={[styles.chipText, selectedStockerId === 'ALL_DEPOTS' && styles.chipTextActive]}>
+                        📦 All Depots in HQ ({filteredStockers.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {filteredStockers.map((stk) => {
                     const isSelected = selectedStockerId === stk.id;
                     return (
@@ -1243,6 +1320,50 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
                         </Text>
                       </View>
                     </View>
+
+                    {/* Multi-HQ Stock Breakdown (§10 & §14) */}
+                    {(() => {
+                      const overview = hqBreakdownMap[item.medicine_id] || hqBreakdownMap[item.medicine_name.toLowerCase().trim()];
+                      if (!overview || !Array.isArray(overview.hq_breakdown) || overview.hq_breakdown.length <= 1) return null;
+                      return (
+                        <View style={{ width: '100%', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+                          <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#64748B', marginBottom: 4 }}>
+                            🏥 Stock in Other HQs:
+                          </Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              {overview.hq_breakdown.map((hb: any) => {
+                                const isCurrentHq = hb.hq_id === selectedHqId || (selectedHq && hb.hq_name === selectedHq.name);
+                                return (
+                                  <TouchableOpacity
+                                    key={hb.hq_id}
+                                    onPress={() => setSelectedHqId(hb.hq_id)}
+                                    style={{
+                                      paddingHorizontal: 7,
+                                      paddingVertical: 3,
+                                      borderRadius: 6,
+                                      backgroundColor: isCurrentHq ? '#1A3C6E' : hb.stock <= 0 ? '#FEE2E2' : hb.is_low_stock ? '#FEF3C7' : '#EFF6FF',
+                                      borderWidth: 1,
+                                      borderColor: isCurrentHq ? '#1A3C6E' : hb.stock <= 0 ? '#FCA5A5' : hb.is_low_stock ? '#FCD34D' : '#BFDBFE',
+                                    }}
+                                  >
+                                    <Text
+                                      style={{
+                                        fontSize: 9.5,
+                                        fontWeight: '700',
+                                        color: isCurrentHq ? '#FFFFFF' : hb.stock <= 0 ? '#991B1B' : hb.is_low_stock ? '#92400E' : '#1D4ED8',
+                                      }}
+                                    >
+                                      {hb.hq_name}: {hb.stock} {hb.stock <= 0 ? '(Out)' : 'units'} {isCurrentHq ? '✓' : '→'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </ScrollView>
+                        </View>
+                      );
+                    })()}
                   </View>
                 );
               })

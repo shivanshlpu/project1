@@ -140,14 +140,44 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   >([]);
 
   
+  const [activeHqId, setActiveHqId] = useState<string>(currentUserHqId || 'HQ-SHD-001');
+  const [activeHqName, setActiveHqName] = useState<string>(currentUserHqName || 'Headquarters');
+  const [availableHqs, setAvailableHqs] = useState<Array<{ id: string; name: string; code?: string }>>([
+    { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT' },
+    { id: 'HQ-SHD-001', name: 'Shahdol', code: 'SHD' },
+    { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'AMB' },
+    { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'BSP' },
+  ]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const baseUrl = await ApiConfig.getBaseUrl();
+        const headers = await ApiConfig.getAuthHeaders();
+        const res = await fetch(`${baseUrl}/inventory/hqs`, { headers });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            setAvailableHqs(list);
+          }
+        }
+      } catch {}
+    })();
+  }, []);
+
   const loadHqStock = async (targetHqId?: string) => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const hq = targetHqId || currentUserHqId || 'HQ-SHD-001';
+      const hq = targetHqId || activeHqId || currentUserHqId || 'HQ-SHD-001';
       const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hq)}`, { headers });
       if (res.ok) {
         const data = await res.json();
+        if (data.hq_id) setActiveHqId(data.hq_id);
+        if (data.hq_name) setActiveHqName(data.hq_name);
+        if (Array.isArray(data.hqs) && data.hqs.length > 0) {
+          setAvailableHqs(data.hqs);
+        }
         const map: Record<string, any> = {};
         const medList: any[] = [];
         const normKey = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -171,6 +201,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             is_out_of_stock: m.is_out_of_stock,
             is_low_stock: m.is_low_stock,
             stock_status: m.stock_status,
+            hq_breakdown: m.hq_breakdown || [],
           });
         });
         setHqStockMap(map);
@@ -184,8 +215,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   };
 
   useEffect(() => {
-    loadHqStock(completingTask?.hq_id || currentUserHqId);
-  }, [completingTask?.hq_id, currentUserHqId]);
+    const target = completingTask?.hq_id || currentUserHqId;
+    if (target) {
+      setActiveHqId(target);
+      if (completingTask?.hq_name) setActiveHqName(completingTask.hq_name);
+      else if (currentUserHqName) setActiveHqName(currentUserHqName);
+    }
+    loadHqStock(target);
+  }, [completingTask?.hq_id, completingTask?.hq_name, currentUserHqId, currentUserHqName]);
 
   const handleAddModalOrder = () => {
     const nextIdx = modalOrders.length + 1;
@@ -1550,30 +1587,61 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                             const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)] || hqStockMap[norm(shortName)];
                             if (!stock) return null;
-                            const effectiveHq = completingTask?.hq_name || currentUserHqName || 'HQ';
-                            if (stock.is_out_of_stock) {
-                              return (
-                                <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
-                                  <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '700' }}>
-                                    🔴 OUT OF STOCK at {effectiveHq} (0 available in depot)
-                                  </Text>
-                                </View>
-                              );
-                            }
-                            if (stock.is_low_stock) {
-                              return (
-                                <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
-                                  <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>
-                                    🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units remaining)
-                                  </Text>
-                                </View>
-                              );
-                            }
+                            const effectiveHq = activeHqName || completingTask?.hq_name || currentUserHqName || 'HQ';
                             return (
-                              <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, marginTop: 4 }}>
-                                <Text style={{ fontSize: 11, color: '#166534', fontWeight: '700' }}>
-                                  🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units available)
-                                </Text>
+                              <View style={{ marginTop: 4 }}>
+                                {stock.is_out_of_stock ? (
+                                  <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                    <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '700' }}>
+                                      🔴 OUT OF STOCK at {effectiveHq} (0 available in depot)
+                                    </Text>
+                                  </View>
+                                ) : stock.is_low_stock ? (
+                                  <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                    <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>
+                                      🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units remaining)
+                                    </Text>
+                                  </View>
+                                ) : (
+                                  <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                    <Text style={{ fontSize: 11, color: '#166534', fontWeight: '700' }}>
+                                      🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units available)
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* Cross-HQ Stock Overview Breakdown */}
+                                {Array.isArray(stock.hq_breakdown) && stock.hq_breakdown.length > 1 && (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#64748B' }}>Stock in Other HQs:</Text>
+                                    {stock.hq_breakdown.map((hb: any) => {
+                                      const isCur = hb.hq_id === activeHqId || hb.hq_name === activeHqName;
+                                      if (isCur) return null;
+                                      return (
+                                        <TouchableOpacity
+                                          key={hb.hq_id}
+                                          onPress={() => {
+                                            setActiveHqId(hb.hq_id);
+                                            setActiveHqName(hb.hq_name);
+                                            loadHqStock(hb.hq_id);
+                                          }}
+                                          style={{
+                                            backgroundColor: hb.stock <= 0 ? '#FEE2E2' : hb.is_low_stock ? '#FEF3C7' : '#EFF6FF',
+                                            borderWidth: 1,
+                                            borderColor: hb.stock <= 0 ? '#FCA5A5' : hb.is_low_stock ? '#FCD34D' : '#BFDBFE',
+                                            borderRadius: 8,
+                                            paddingHorizontal: 6,
+                                            paddingVertical: 2,
+                                          }}
+                                        >
+                                          <Text style={{ fontSize: 9.5, fontWeight: '700', color: hb.stock <= 0 ? '#991B1B' : hb.is_low_stock ? '#92400E' : '#1D4ED8' }}>
+                                            {hb.hq_name}: {hb.stock} {hb.stock <= 0 ? '(Out)' : 'units'} →
+                                          </Text>
+                                        </TouchableOpacity>
+                                      );
+                                    })}
+                                  </View>
+                                )}
                               </View>
                             );
                           })()}

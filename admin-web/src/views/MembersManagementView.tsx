@@ -209,6 +209,38 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [isGrantingLeave, setIsGrantingLeave] = useState(false);
 
   
+    // Dynamic Active Headquarters from inventory system
+  const [activeHqs, setActiveHqs] = useState<Array<{ id: string; name: string; code: string; state?: string }>>([
+    { id: 'HQ-SHD-001', name: 'Shahdol', code: 'SHD' },
+    { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT' },
+    { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'AMB' },
+    { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'BSP' },
+  ]);
+
+  // Controlled form state for registering a new Field Representative
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regHqId, setRegHqId] = useState('HQ-KOT-001');
+  const [regHqName, setRegHqName] = useState('Kotma');
+  const [regHqCode, setRegHqCode] = useState('KOT');
+  const [regTerritory, setRegTerritory] = useState('Kotma HQ Territory');
+  const [regPassword, setRegPassword] = useState('');
+  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
+
+  const handleOpenRegisterModal = () => {
+    setRegName('');
+    setRegPhone('');
+    setRegEmail('');
+    setRegPassword('');
+    const defaultHq = activeHqs.find((h) => h.code === 'KOT') || activeHqs[0] || { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT' };
+    setRegHqId(defaultHq.id);
+    setRegHqName(defaultHq.name);
+    setRegHqCode(defaultHq.code);
+    setRegTerritory(`${defaultHq.name} HQ Territory`);
+    setIsRegisterOpen(true);
+  };
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MRMemberItem | null>(null);
   const [editName, setEditName] = useState('');
@@ -789,7 +821,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
 
           <button
             type="button"
-            onClick={() => setIsRegisterOpen(true)}
+            onClick={handleOpenRegisterModal}
             style={{
               padding: '8px 14px',
               background: '#1A3C6E',
@@ -831,7 +863,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
           </p>
           <button
             type="button"
-            onClick={() => setIsRegisterOpen(true)}
+            onClick={handleOpenRegisterModal}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -2017,7 +2049,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
             style={{
               background: '#FFFFFF',
               borderRadius: '10px',
-              maxWidth: '460px',
+              maxWidth: '480px',
               width: '100%',
               border: '1px solid #E2E8F0',
               overflow: 'hidden',
@@ -2037,63 +2069,151 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '80vh', overflowY: 'auto' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Full Name *</label>
-                <input type="text" id="reg-name" placeholder="e.g. Amar Dwivedi" style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                <input
+                  type="text"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Amar Dwivedi"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Assigned Phone *</label>
-                  <input type="tel" id="reg-phone" placeholder="e.g. 9876543212" style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="e.g. 9876543212"
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Login Email *</label>
-                  <input type="email" id="reg-email" placeholder="e.g. amar@ahtri.com" style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="e.g. amar@ahtri.com"
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                  />
                 </div>
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#0F172A' }}>
+                  Assign Headquarters (HQ) *
+                </label>
+                <select
+                  value={regHqId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    setRegHqId(selectedId);
+                    const matched = activeHqs.find((h) => h.id === selectedId);
+                    if (matched) {
+                      setRegHqName(matched.name);
+                      setRegHqCode(matched.code);
+                      setRegTerritory(`${matched.name} HQ Territory`);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1.5px solid #1A3C6E',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    background: '#F0FDF4',
+                    color: '#0F172A',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {activeHqs.map((hq) => (
+                    <option key={hq.id} value={hq.id}>
+                      {hq.name} ({hq.code}) — {hq.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>HQ Name *</label>
-                  <input type="text" id="reg-hq-name" defaultValue="Shahdol" placeholder="e.g. Kotma" style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                  <input
+                    type="text"
+                    value={regHqName}
+                    onChange={(e) => setRegHqName(e.target.value)}
+                    placeholder="e.g. Kotma"
+                    style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>HQ Code *</label>
-                  <input type="text" id="reg-hq-code" defaultValue="SHD" placeholder="e.g. KOT" style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', textTransform: 'uppercase' }} />
+                  <input
+                    type="text"
+                    value={regHqCode}
+                    onChange={(e) => setRegHqCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. KOT"
+                    style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', textTransform: 'uppercase' }}
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>HQ ID *</label>
-                  <input type="text" id="reg-hq-id" defaultValue="HQ-SHD-001" placeholder="HQ-KOT-001" style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                  <input
+                    type="text"
+                    value={regHqId}
+                    onChange={(e) => setRegHqId(e.target.value)}
+                    placeholder="HQ-KOT-001"
+                    style={{ width: '100%', padding: '7px 8px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                  />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Assigned Territory / Area</label>
-                <input type="text" id="reg-territory" defaultValue="Shahdol HQ Territory" placeholder="e.g. Kotma HQ Territory" style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                <input
+                  type="text"
+                  value={regTerritory}
+                  onChange={(e) => setRegTerritory(e.target.value)}
+                  placeholder="e.g. Kotma HQ Territory"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Initial Password (Hashed server-side)</label>
-                <input type="password" id="reg-password" placeholder="e.g. AmarDwivediKOT" style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }} />
+                <input
+                  type="password"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="e.g. AmarDwivediKOT"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
                 <button type="button" onClick={() => setIsRegisterOpen(false)} style={{ padding: '6px 12px', background: '#F1F5F9', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>Cancel</button>
                 <button
                   type="button"
+                  disabled={isSubmittingRegister}
                   onClick={async () => {
-                    const name = (document.getElementById('reg-name') as HTMLInputElement)?.value;
-                    const phone = (document.getElementById('reg-phone') as HTMLInputElement)?.value;
-                    const email = (document.getElementById('reg-email') as HTMLInputElement)?.value;
-                    const hqName = (document.getElementById('reg-hq-name') as HTMLInputElement)?.value || 'Shahdol';
-                    const hqCode = ((document.getElementById('reg-hq-code') as HTMLInputElement)?.value || 'SHD').toUpperCase();
-                    const hqId = (document.getElementById('reg-hq-id') as HTMLInputElement)?.value || `HQ-${hqCode}-001`;
-                    const territory = (document.getElementById('reg-territory') as HTMLInputElement)?.value || `${hqName} HQ Territory`;
-                    const pwd = (document.getElementById('reg-password') as HTMLInputElement)?.value;
+                    const name = regName.trim();
+                    const phone = regPhone.trim();
+                    const email = regEmail.trim();
+                    const hqName = regHqName.trim() || 'Kotma';
+                    const hqCode = (regHqCode.trim() || 'KOT').toUpperCase();
+                    const hqId = regHqId.trim() || `HQ-${hqCode}-001`;
+                    const territory = regTerritory.trim() || `${hqName} HQ Territory`;
+                    const pwd = regPassword.trim();
 
                     if (!name || !phone || !email) {
                       showCenteredNotice({
                         title: 'Required Information',
-                        message: 'Please fill in all required fields.',
+                        message: 'Please fill in all required fields (Name, Phone, Email).',
                         type: 'warning',
                       });
                       return;
                     }
 
+                    setIsSubmittingRegister(true);
                     const newM: MRMemberItem = {
                       id: `usr-mr-${Date.now().toString().slice(-4)}`,
                       name,
@@ -2131,13 +2251,14 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     try {
                       localStorage.setItem('ahtri_cached_members', JSON.stringify(updatedMembers));
                     } catch {}
+                    setIsSubmittingRegister(false);
                     setIsRegisterOpen(false);
                     setSelectedMemberId(newM.id);
-                    showToast(`✓ Registered ${newM.name} with HQ ${hqCode} (${hqId})`);
+                    showToast(`✓ Registered ${newM.name} with HQ ${hqName} (${hqCode})`);
                   }}
                   style={{ padding: '6px 14px', background: '#1A3C6E', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >
-                  Register
+                  {isSubmittingRegister ? 'Registering...' : 'Register'}
                 </button>
               </div>
             </div>
