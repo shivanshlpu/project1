@@ -188,7 +188,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-01",
       "packaging_display": "200 ML",
-      "quantity": 60,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -198,7 +198,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-02",
       "packaging_display": "200 ML",
-      "quantity": 8,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -218,7 +218,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-04",
       "packaging_display": "10*1*10",
-      "quantity": 40,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -228,7 +228,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-05",
       "packaging_display": "20*10",
-      "quantity": 120,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -238,7 +238,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-06",
       "packaging_display": "10*10",
-      "quantity": 5,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -258,7 +258,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-08",
       "packaging_display": "30 GM",
-      "quantity": 50,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -278,7 +278,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-10",
       "packaging_display": "10*1*10",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -288,7 +288,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-11",
       "packaging_display": "30 GM",
-      "quantity": 4,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -308,7 +308,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-13",
       "packaging_display": "200 ML",
-      "quantity": 35,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -328,7 +328,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-15",
       "packaging_display": "30 ML",
-      "quantity": 18,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -338,7 +338,7 @@
       "stocker_id": "stk-shd-01",
       "medicine_id": "med-16",
       "packaging_display": "60 ML",
-      "quantity": 6,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -528,7 +528,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-01",
       "packaging_display": "200 ML",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -558,7 +558,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-04",
       "packaging_display": "10*1*10",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -568,7 +568,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-05",
       "packaging_display": "20*10",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -598,7 +598,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-08",
       "packaging_display": "30 GM",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -618,7 +618,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-10",
       "packaging_display": "10*1*10",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -648,7 +648,7 @@
       "stocker_id": "stk-ktm-01",
       "medicine_id": "med-13",
       "packaging_display": "200 ML",
-      "quantity": 30,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -698,7 +698,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-01",
       "packaging_display": "200 ML",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -728,7 +728,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-04",
       "packaging_display": "10*1*10",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -738,7 +738,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-05",
       "packaging_display": "20*10",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -768,7 +768,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-08",
       "packaging_display": "30 GM",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -788,7 +788,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-10",
       "packaging_display": "10*1*10",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -818,7 +818,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-13",
       "packaging_display": "200 ML",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
@@ -838,7 +838,7 @@
       "stocker_id": "stk-amb-01",
       "medicine_id": "med-15",
       "packaging_display": "30 ML",
-      "quantity": 25,
+      "quantity": 0,
       "low_stock_threshold": 15,
       "updated_at": "2026-10-13T09:00:32.170Z"
     },
