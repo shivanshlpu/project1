@@ -1117,6 +1117,7 @@ export class InventoryService {
       timestamp: new Date().toISOString(),
     };
     this.db.inventoryTransactions.push(tx);
+    this.db.refreshPendingOrdersStock();
     this.db.persistToDisk();
     await this.db.syncStockerInventoryToSupabase(inventory).catch((err) => {
       console.warn('[InventoryService] Supabase stocker inventory sync warning:', err.message);
@@ -1468,6 +1469,7 @@ export class InventoryService {
       created_at: new Date().toISOString(),
     };
     this.db.monthlyStockEntries.push(entry);
+    this.db.refreshPendingOrdersStock();
     this.db.persistToDisk();
     this.db.syncStockerInventoryToSupabase(inventory).catch(() => null);
 

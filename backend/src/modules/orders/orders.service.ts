@@ -141,6 +141,7 @@ export class OrdersService {
         this.db.orders.push(orderObj);
       }
     }
+    this.db.refreshPendingOrdersStock();
   }
 
   async getOrders(
@@ -154,6 +155,7 @@ export class OrdersService {
     },
   ): Promise<Order[]> {
     this.ensureOrdersFromTasks();
+    this.db.refreshPendingOrdersStock();
 
     let list = this.db.orders.filter(
       (ord) => !this.db.deletedOrderIds.has(ord.id) && !this.db.deletedOrderIds.has(ord.order_number),
@@ -204,6 +206,7 @@ export class OrdersService {
 
   async getOrderById(id: string, user: any): Promise<Order> {
     this.ensureOrdersFromTasks();
+    this.db.refreshPendingOrdersStock();
     const order = this.db.orders.find((o) => o.id === id || o.order_number === id);
     if (!order) throw new NotFoundException(`Order ${id} not found`);
 

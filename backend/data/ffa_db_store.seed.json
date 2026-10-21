@@ -51,7 +51,7 @@
       "inventory_deducted": false,
       "has_stock_warning": true,
       "stock_warning_type": "OUT_OF_STOCK",
-      "stock_warning_summary": "AHTYME (200 ML), AHTRI-A2Z (200 ML), AHTRI-A2Z (200 ML) out of stock at Shahdol",
+      "stock_warning_summary": "AHTYME (200 ML), AHTRI-A2Z (200 ML) out of stock at Shahdol",
       "created_at": "2026-10-21T16:47:54.265+00:00",
       "updated_at": "2026-10-21T16:49:54.972+00:00"
     },

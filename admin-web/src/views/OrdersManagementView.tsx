@@ -70,6 +70,11 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             (o) => !isOrderDeleted(o.id) && !isOrderDeleted(o.order_number),
           );
           setOrders(validOrders);
+          setSelectedOrderForItems((prev) => {
+            if (!prev) return null;
+            const updated = validOrders.find((o) => o.id === prev.id || o.order_number === prev.order_number);
+            return updated || prev;
+          });
         }
       }
 
@@ -1578,7 +1583,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                                 fontWeight: '700',
                               }}
                             >
-                              🟢 In Stock
+                              🟢 In Stock{typeof item.available_stock === 'number' && item.available_stock > 0 ? ` (${item.available_stock} avail)` : ''}
                             </span>
                           )}
                         </td>

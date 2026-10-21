@@ -378,6 +378,123 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     return true;
   }
 
+  /**
+   * Dynamically re-evaluates and synchronizes stock levels, stock warning flags,
+   * and per-item stock statuses for all pending (unaccepted) orders against the current
+   * live Stocker Inventory.
+   */
+  public refreshPendingOrdersStock(): void {
+    if (!this.orders || !Array.isArray(this.orders)) return;
+
+    for (const order of this.orders) {
+      if (!order || order.hq_accepted) continue;
+
+      const effectiveHqId = order.hq_id || 'HQ-SHD-001';
+      const cleanHqId = effectiveHqId.trim().toLowerCase();
+      const hq = this.findHeadquarter(effectiveHqId);
+      const hqName = order.hq_name || hq?.name || 'HQ';
+
+      const stockers = this.stockers.filter((s) => {
+        if (s.status === 'INACTIVE') return false;
+        if (hq && (s.hq_id === hq.id || s.hq_id === hq.hq_id || (hq.code && s.hq_id === hq.code))) {
+          return true;
+        }
+        const sHq = (s.hq_id || '').toLowerCase();
+        if (sHq === cleanHqId) return true;
+        if (cleanHqId.includes('shd') || cleanHqId.includes('shahdol')) return sHq.includes('shd') || sHq.includes('shahdol');
+        if (cleanHqId.includes('amb') || cleanHqId.includes('ambikapur')) return sHq.includes('amb');
+        if (cleanHqId.includes('bsp') || cleanHqId.includes('bilaspur')) return sHq.includes('bsp');
+        if (cleanHqId.includes('ktm') || cleanHqId.includes('kotma')) return sHq.includes('ktm') || sHq.includes('kot');
+        return false;
+      });
+
+      const specificStockerId = order.stocker_id;
+      const outNames: string[] = [];
+      const lowNames: string[] = [];
+      let hasOutOfStock = false;
+      let hasLowStock = false;
+
+      // Group requested qty by matched med
+      const reqByMed = new Map<string, number>();
+      for (const item of (order.items || [])) {
+        const cleanName = (item.product_name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+        const med = this.medicines.find(
+          (m) =>
+            (item.product_id && m.id === item.product_id) ||
+            m.code.toLowerCase() === (item.product_id || '').toLowerCase() ||
+            m.name.toLowerCase().trim() === cleanName ||
+            m.name.toLowerCase().trim() === (item.product_name || '').toLowerCase().trim(),
+        );
+        if (med) {
+          reqByMed.set(med.id, (reqByMed.get(med.id) || 0) + (Number(item.quantity) || 0));
+        }
+      }
+
+      order.items = (order.items || []).map((item) => {
+        const cleanName = (item.product_name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+        const med = this.medicines.find(
+          (m) =>
+            (item.product_id && m.id === item.product_id) ||
+            m.code.toLowerCase() === (item.product_id || '').toLowerCase() ||
+            m.name.toLowerCase().trim() === cleanName ||
+            m.name.toLowerCase().trim() === (item.product_name || '').toLowerCase().trim(),
+        );
+
+        let availableStock = 0;
+        let threshold = med?.low_stock_threshold || 10;
+
+        if (med) {
+          const invList = this.stockerInventory.filter((inv) => {
+            if (inv.medicine_id !== med.id) return false;
+            if (specificStockerId && (inv.stocker_id === specificStockerId || inv.hq_id === effectiveHqId)) {
+              return inv.stocker_id === specificStockerId;
+            }
+            return stockers.some((s) => s.id === inv.stocker_id);
+          });
+          availableStock = invList.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+        }
+
+        const totalReq = med ? (reqByMed.get(med.id) || Number(item.quantity) || 0) : (Number(item.quantity) || 0);
+
+        let itemStatus: 'IN_STOCK' | 'LOW_STOCK' | 'INSUFFICIENT_STOCK' | 'OUT_OF_STOCK' = 'IN_STOCK';
+        if (availableStock <= 0) {
+          itemStatus = 'OUT_OF_STOCK';
+          hasOutOfStock = true;
+          if (!outNames.includes(item.product_name)) outNames.push(item.product_name);
+        } else if (availableStock < totalReq) {
+          itemStatus = 'INSUFFICIENT_STOCK';
+          hasOutOfStock = true;
+          if (!outNames.includes(item.product_name)) outNames.push(item.product_name);
+        } else if (availableStock <= threshold || (availableStock - totalReq) <= threshold) {
+          itemStatus = 'LOW_STOCK';
+          hasLowStock = true;
+          if (!lowNames.includes(item.product_name)) lowNames.push(item.product_name);
+        }
+
+        return {
+          ...item,
+          available_stock: availableStock,
+          stock_status: itemStatus,
+        };
+      });
+
+      order.has_stock_warning = hasOutOfStock || hasLowStock;
+      order.stock_warning_type = hasOutOfStock ? 'OUT_OF_STOCK' : hasLowStock ? 'LOW_STOCK' : null;
+      order.stock_warning_summary = hasOutOfStock
+        ? `${outNames.join(', ')} out of stock at ${hqName}`
+        : hasLowStock
+        ? `${lowNames.join(', ')} low in stock at ${hqName}`
+        : undefined;
+
+      // Sync with linked task if present
+      if (order.task_id) {
+        const task = this.tasks.find((t) => t.id === order.task_id);
+        if (task) {
+          task.orders = order.items;
+        }
+      }
+    }
+  }
 
   /**
    * Authoritative monthly tour plan persistence: updates in-memory cache, triggers debounced
@@ -717,6 +834,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         console.log(
           `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.monthlyStockagePermissions.length} stockage permissions, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
         );
+        this.refreshPendingOrdersStock();
         return true;
       }
     } catch (err) {
@@ -1765,6 +1883,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       else if (a.hq_id === 'hq-ambikapur') a.hq_id = 'HQ-AMB-001';
       else if (a.hq_id === 'hq-bilaspur') a.hq_id = 'HQ-BSP-001';
     }
+
+    // Synchronize pending orders stock levels against live inventory
+    this.refreshPendingOrdersStock();
   }
 
   public findHeadquarter(identifier: string): Headquarter | undefined {
