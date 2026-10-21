@@ -1128,103 +1128,92 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         </View>
       ) : (
         <>
-          {/* 1. HQ Selector (§10 & §14) */}
+          {/* 1. HQ & Depot Selector Header Panel */}
           {viewMode === 'stockist' && (
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>1. Select Headquarters (HQ):</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-                {hqs.map((hq) => {
-                  const isSelected = selectedHqId === hq.id;
-                  return (
-                    <TouchableOpacity
-                      key={hq.id}
-                      style={[styles.chip, isSelected && styles.chipActive]}
-                      onPress={() => setSelectedHqId(hq.id)}
-                    >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                        {hq.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* 2. Stockage Depot Selector under HQ */}
-          {viewMode === 'stockist' && (
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>
-                2. Select Stockage / Storage Depot:
-              </Text>
-              {filteredStockers.length === 0 ? (
-                <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', paddingVertical: 6 }}>
-                  No Stockage depots registered in this HQ yet. Showing company catalog below.
-                </Text>
-              ) : (
+            <View style={styles.filterPanel}>
+              {/* HQ Selection Tabs */}
+              <View style={{ marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={styles.sectionHeaderTitle}>📍 Select Headquarters (HQ):</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1A3C6E' }}>
+                    {hqs.find((h) => h.id === selectedHqId)?.name || 'HQ'}
+                  </Text>
+                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-                  {filteredStockers.length > 1 && (
-                    <TouchableOpacity
-                      style={[styles.chip, selectedStockerId === 'ALL_DEPOTS' && styles.chipActiveSecondary]}
-                      onPress={() => setSelectedStockerId('ALL_DEPOTS')}
-                    >
-                      <Text style={[styles.chipText, selectedStockerId === 'ALL_DEPOTS' && styles.chipTextActive]}>
-                        📦 All Depots in HQ ({filteredStockers.length})
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {filteredStockers.map((stk) => {
-                    const isSelected = selectedStockerId === stk.id;
+                  {hqs.map((hq) => {
+                    const isSelected = selectedHqId === hq.id;
                     return (
                       <TouchableOpacity
-                        key={stk.id}
-                        style={[styles.chip, isSelected && styles.chipActiveSecondary]}
-                        onPress={() => setSelectedStockerId(stk.id)}
+                        key={hq.id}
+                        activeOpacity={0.7}
+                        style={[styles.chip, isSelected && styles.chipActive]}
+                        onPress={() => setSelectedHqId(hq.id)}
                       >
                         <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                          {stk.name}
+                          {hq.name}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
-              )}
+              </View>
 
-              {selectedStocker && (
-                <View style={styles.stockerInfoBox}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E293B', flex: 1 }}>
-                      📦 {selectedStocker.name}
-                    </Text>
-                    {selectedStocker.address ? (
-                      <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
-                        <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#3730A3' }}>
-                          📍 {selectedStocker.address}
-                        </Text>
-                      </View>
-                    ) : null}
+              {/* Depot Selection */}
+              {filteredStockers.length > 0 && (
+                <View style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={styles.sectionHeaderTitle}>📦 Storage / Depot:</Text>
+                    {selectedStocker && (
+                      <Text style={{ fontSize: 10.5, fontWeight: '600', color: '#64748B' }}>
+                        {selectedStocker.name}
+                      </Text>
+                    )}
                   </View>
-                  {selectedStocker.contact_person ? (
-                    <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 3 }}>
-                      Contact: {selectedStocker.contact_person} {selectedStocker.phone ? `(${selectedStocker.phone})` : ''}
-                    </Text>
-                  ) : null}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                    {filteredStockers.length > 1 && (
+                      <TouchableOpacity
+                        style={[styles.chip, selectedStockerId === 'ALL_DEPOTS' && styles.chipActiveSecondary]}
+                        onPress={() => setSelectedStockerId('ALL_DEPOTS')}
+                      >
+                        <Text style={[styles.chipText, selectedStockerId === 'ALL_DEPOTS' && styles.chipTextActive]}>
+                          📦 All Depots ({filteredStockers.length})
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {filteredStockers.map((stk) => {
+                      const isSelected = selectedStockerId === stk.id;
+                      return (
+                        <TouchableOpacity
+                          key={stk.id}
+                          style={[styles.chip, isSelected && styles.chipActiveSecondary]}
+                          onPress={() => setSelectedStockerId(stk.id)}
+                        >
+                          <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                            {stk.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
               )}
             </View>
           )}
 
-          {/* 3. Medicines Inventory Table / Cards */}
-          <View style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={styles.cardLabel}>
+          {/* 2. Medicines Inventory Cards Container */}
+          <View style={styles.inventoryContainer}>
+            <View style={styles.inventoryHeader}>
+              <Text style={styles.inventoryTitle}>
                 {viewMode === 'catalog'
                   ? `💊 All Company Medicines Catalog (${filteredInventory.length})`
-                  : `📦 Available Stockage Medicines (${filteredInventory.length})`}
+                  : `📦 Available Storage Stock • ${hqs.find((h) => h.id === selectedHqId)?.name || 'HQ'} (${filteredInventory.length})`}
+              </Text>
+              <Text style={styles.inventorySubtitle}>
+                Check medical stock availability and switch between Headquarters
               </Text>
             </View>
 
-            {/* Search */}
+            {/* Search Input */}
             <TextInput
               style={styles.searchInput}
               value={searchQuery}
@@ -1234,136 +1223,151 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
             />
 
             {isLoading ? (
-              <ActivityIndicator style={{ padding: 20 }} color="#1A3C6E" />
+              <ActivityIndicator style={{ padding: 24 }} color="#1A3C6E" />
             ) : filteredInventory.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>No medicines found in this Stockage depot's storage.</Text>
+                <Text style={styles.emptyText}>No medicines found in this storage depot.</Text>
               </View>
             ) : (
               filteredInventory.map((item) => {
                 const isOutOfStock = item.quantity <= 0;
                 const isLowStock = !isOutOfStock && item.status === 'Low Stock';
+                const overview = hqBreakdownMap[item.medicine_id] || hqBreakdownMap[item.medicine_name.toLowerCase().trim()];
+                const hasOtherHqs = overview && Array.isArray(overview.hq_breakdown) && overview.hq_breakdown.length > 1;
 
                 return (
                   <View key={item.id} style={styles.productCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.productName}>{item.medicine_name}</Text>
-                      <Text style={styles.productCode}>
-                        Code: {item.medicine_code} • {item.unit}
-                      </Text>
-                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
-                          PTS: ₹{Number(item.pts_rate ?? item.price ?? 0).toFixed(2)}
+                    {/* Top Row: Medicine Info on Left; Stock Quantity on Right */}
+                    <View style={styles.productHeaderRow}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={styles.productName} numberOfLines={2}>
+                          {item.medicine_name}
                         </Text>
-                        {item.ptr_rate != null ? (
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#2563EB' }}>
-                            PTR: ₹{Number(item.ptr_rate).toFixed(2)}
-                          </Text>
-                        ) : null}
-                        {item.mrp != null ? (
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748B' }}>
-                            MRP: ₹{Number(item.mrp).toFixed(2)}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-
-                    {/* Stock Quantity & Status Badge (§17) */}
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                        <Text
-                          style={[
-                            styles.quantityNumber,
-                            item.quantity < 0
-                              ? { color: '#B91C1C' }
-                              : item.quantity === 0
-                              ? { color: '#D97706' }
-                              : { color: '#15803D' },
-                          ]}
-                        >
-                          {item.quantity}
+                        <Text style={styles.productCode}>
+                          Code: {item.medicine_code || 'GEN'} {item.unit ? `• ${item.unit}` : ''}
                         </Text>
-                        <Text style={{ fontSize: 10, color: '#64748B', marginLeft: 2 }}>units</Text>
-                      </View>
-
-                      <View
-                        style={[
-                          styles.stockStatusBadge,
-                          item.quantity < 0
-                            ? { backgroundColor: '#FEE2E2' }
-                            : item.quantity === 0
-                            ? { backgroundColor: '#FEF3C7' }
-                            : isLowStock
-                            ? { backgroundColor: '#FFEDD5' }
-                            : { backgroundColor: '#DCFCE7' },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stockStatusText,
-                            item.quantity < 0
-                              ? { color: '#B91C1C' }
-                              : item.quantity === 0
-                              ? { color: '#B45309' }
-                              : isLowStock
-                              ? { color: '#C2410C' }
-                              : { color: '#15803D' },
-                          ]}
-                        >
-                          {item.quantity < 0
-                            ? `Shortage (${item.quantity})`
-                            : item.quantity === 0
-                            ? 'Out of Stock'
-                            : isLowStock
-                            ? 'Low Stock'
-                            : 'Available'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Multi-HQ Stock Breakdown (§10 & §14) */}
-                    {(() => {
-                      const overview = hqBreakdownMap[item.medicine_id] || hqBreakdownMap[item.medicine_name.toLowerCase().trim()];
-                      if (!overview || !Array.isArray(overview.hq_breakdown) || overview.hq_breakdown.length <= 1) return null;
-                      return (
-                        <View style={{ width: '100%', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
-                          <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#64748B', marginBottom: 4 }}>
-                            🏥 Stock in Other HQs:
-                          </Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={{ flexDirection: 'row', gap: 6 }}>
-                              {overview.hq_breakdown.map((hb: any) => {
-                                const isCurrentHq = hb.hq_id === selectedHqId;
-                                return (
-                                  <TouchableOpacity
-                                    key={hb.hq_id}
-                                    onPress={() => setSelectedHqId(hb.hq_id)}
-                                    style={{
-                                      paddingHorizontal: 7,
-                                      paddingVertical: 3,
-                                      borderRadius: 6,
-                                      backgroundColor: isCurrentHq ? '#1A3C6E' : hb.stock <= 0 ? '#FEE2E2' : hb.is_low_stock ? '#FEF3C7' : '#EFF6FF',
-                                      borderWidth: 1,
-                                      borderColor: isCurrentHq ? '#1A3C6E' : hb.stock <= 0 ? '#FCA5A5' : hb.is_low_stock ? '#FCD34D' : '#BFDBFE',
-                                    }}
-                                  >
-                                    <Text
-                                      style={{
-                                        fontSize: 9.5,
-                                        fontWeight: '700',
-                                        color: isCurrentHq ? '#FFFFFF' : hb.stock <= 0 ? '#991B1B' : hb.is_low_stock ? '#92400E' : '#1D4ED8',
-                                      }}
-                                    >
-                                      {hb.hq_name}: {hb.stock} {hb.stock <= 0 ? '(Out)' : 'units'} {isCurrentHq ? '✓' : '→'}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
+                        <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <View style={styles.ptsBadge}>
+                            <Text style={styles.ptsText}>
+                              PTS: ₹{Number(item.pts_rate ?? item.price ?? 0).toFixed(2)}
+                            </Text>
+                          </View>
+                          {item.ptr_rate != null ? (
+                            <View style={styles.ptrBadge}>
+                              <Text style={styles.ptrText}>
+                                PTR: ₹{Number(item.ptr_rate).toFixed(2)}
+                              </Text>
                             </View>
-                          </ScrollView>
+                          ) : null}
+                          {item.mrp != null ? (
+                            <View style={styles.mrpBadge}>
+                              <Text style={styles.mrpText}>
+                                MRP: ₹{Number(item.mrp).toFixed(2)}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
-                      );
-                    })()}
+                      </View>
+
+                      {/* Stock Quantity & Status Badge */}
+                      <View style={styles.stockQuantityContainer}>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                          <Text
+                            style={[
+                              styles.quantityNumber,
+                              item.quantity < 0
+                                ? { color: '#DC2626' }
+                                : item.quantity === 0
+                                ? { color: '#D97706' }
+                                : { color: '#16A34A' },
+                            ]}
+                          >
+                            {item.quantity}
+                          </Text>
+                          <Text style={styles.quantityUnit}>units</Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.stockStatusBadge,
+                            item.quantity < 0
+                              ? { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }
+                              : item.quantity === 0
+                              ? { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }
+                              : isLowStock
+                              ? { backgroundColor: '#FFEDD5', borderColor: '#FDBA74' }
+                              : { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.stockStatusText,
+                              item.quantity < 0
+                                ? { color: '#991B1B' }
+                                : item.quantity === 0
+                                ? { color: '#92400E' }
+                                : isLowStock
+                                ? { color: '#9A3412' }
+                                : { color: '#166534' },
+                            ]}
+                          >
+                            {item.quantity < 0
+                              ? `Shortage (${item.quantity})`
+                              : item.quantity === 0
+                              ? 'Out of Stock'
+                              : isLowStock
+                              ? 'Low Stock'
+                              : 'Available'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Bottom Row: Multi-HQ Stock Breakdown (Compact Wrap Chips - NEVER stretching vertically) */}
+                    {hasOtherHqs && (
+                      <View style={styles.crossHqContainer}>
+                        <Text style={styles.crossHqLabel}>
+                          🏥 Stock in Other HQs:
+                        </Text>
+                        <View style={styles.crossHqChipsWrap}>
+                          {overview.hq_breakdown.map((hb: any) => {
+                            const isCurrentHq = hb.hq_id === selectedHqId;
+                            return (
+                              <TouchableOpacity
+                                key={hb.hq_id}
+                                onPress={() => setSelectedHqId(hb.hq_id)}
+                                activeOpacity={0.7}
+                                style={[
+                                  styles.crossHqChip,
+                                  isCurrentHq
+                                    ? styles.crossHqChipCurrent
+                                    : hb.stock <= 0
+                                    ? styles.crossHqChipOut
+                                    : hb.is_low_stock
+                                    ? styles.crossHqChipLow
+                                    : styles.crossHqChipAvail,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.crossHqChipText,
+                                    isCurrentHq
+                                      ? { color: '#FFFFFF' }
+                                      : hb.stock <= 0
+                                      ? { color: '#991B1B' }
+                                      : hb.is_low_stock
+                                      ? { color: '#92400E' }
+                                      : { color: '#1D4ED8' },
+                                  ]}
+                                >
+                                  {hb.hq_name}: {hb.stock} {hb.stock <= 0 ? '(Out)' : 'units'} {isCurrentHq ? '✓' : '→'}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 );
               })
@@ -1376,8 +1380,8 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F6FA' },
-  header: { backgroundColor: '#1A3C6E', padding: 16 },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  header: { backgroundColor: '#1A3C6E', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 },
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
   headerSub: { fontSize: 11, color: '#CBD5E1', marginTop: 2 },
   modeTab: {
@@ -1401,6 +1405,211 @@ const styles = StyleSheet.create({
     color: '#1A3C6E',
     fontWeight: '800',
   },
+  filterPanel: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 12,
+    marginTop: 10,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 1,
+  },
+  sectionHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  chipRow: { flexDirection: 'row', marginTop: 2, marginBottom: 2 },
+  chip: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignSelf: 'flex-start',
+  },
+  chipActive: { backgroundColor: '#1A3C6E', borderColor: '#1A3C6E' },
+  chipActiveSecondary: { backgroundColor: '#0F8B5A', borderColor: '#0F8B5A' },
+  chipActiveTertiary: { backgroundColor: '#4338CA', borderColor: '#4338CA' },
+  chipText: { fontSize: 11.5, fontWeight: '600', color: '#334155' },
+  chipTextActive: { color: '#FFFFFF', fontWeight: '800' },
+  inventoryContainer: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 24,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 1,
+  },
+  inventoryHeader: {
+    marginBottom: 10,
+  },
+  inventoryTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  inventorySubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
+    marginBottom: 10,
+  },
+  productCard: {
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  productHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    lineHeight: 18,
+  },
+  productCode: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  ptsBadge: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#A7F3D0',
+  },
+  ptsText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  ptrBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#BFDBFE',
+  },
+  ptrText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  mrpBadge: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+  },
+  mrpText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  stockQuantityContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 76,
+  },
+  quantityNumber: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  quantityUnit: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginLeft: 3,
+    fontWeight: '600',
+  },
+  stockStatusBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 3,
+    alignSelf: 'flex-end',
+  },
+  stockStatusText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  crossHqContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    width: '100%',
+  },
+  crossHqLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  crossHqChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    alignItems: 'center',
+  },
+  crossHqChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 3.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  crossHqChipCurrent: {
+    backgroundColor: '#1A3C6E',
+    borderColor: '#1A3C6E',
+  },
+  crossHqChipOut: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+  },
+  crossHqChipLow: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FCD34D',
+  },
+  crossHqChipAvail: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  crossHqChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   card: {
     backgroundColor: '#FFFFFF',
     margin: 12,
@@ -1411,21 +1620,6 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   cardLabel: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
-  chipRow: { flexDirection: 'row', marginBottom: 4 },
-  chip: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 6,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  chipActive: { backgroundColor: '#1A3C6E', borderColor: '#1A3C6E' },
-  chipActiveSecondary: { backgroundColor: '#0F8B5A', borderColor: '#0F8B5A' },
-  chipActiveTertiary: { backgroundColor: '#4338CA', borderColor: '#4338CA' },
-  chipText: { fontSize: 11.5, fontWeight: '600', color: '#334155' },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '800' },
   stockerInfoBox: {
     backgroundColor: '#F8FAFC',
     borderRadius: 6,
@@ -1434,30 +1628,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    fontSize: 12,
-    backgroundColor: '#FAFAFA',
-    marginBottom: 10,
-  },
-  productCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  productName: { fontSize: 12.5, fontWeight: '800', color: '#0F172A' },
-  productCode: { fontSize: 10.5, color: '#64748B', marginTop: 1 },
-  productPrice: { fontSize: 11, fontWeight: '700', color: '#1A3C6E', marginTop: 2 },
-  quantityNumber: { fontSize: 15, fontWeight: '900' },
-  stockStatusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, marginTop: 3 },
-  stockStatusText: { fontSize: 9.5, fontWeight: '800' },
   emptyBox: { padding: 24, alignItems: 'center' },
   emptyText: { fontSize: 12, color: '#64748B' },
 });

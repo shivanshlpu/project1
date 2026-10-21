@@ -273,10 +273,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.31',
-    latestVersionCode: 32,
+    latestVersion: '1.0.32',
+    latestVersionCode: 33,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://github.com/shivanshlpu/project1/releases/download/v1.0.31/ahtri-ffa-mobile.apk',
+    downloadUrl: 'https://github.com/shivanshlpu/project1/releases/download/v1.0.32/ahtri-ffa-mobile.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -1460,7 +1460,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const shareMsg = `AHTRI FFA Mobile App Update (v${updateData.latestVersion || '1.0.10'}):\nClick here to download and install the new APK:\nhttps://ahtri-backend.onrender.com/api/app/latest-apk`;
+                  const shareMsg = `AHTRI FFA Mobile App Update (v${updateData.latestVersion || '1.0.32'}):\nClick here to download and install the new APK:\nhttps://ahtri-backend.onrender.com/api/app/latest-apk`;
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMsg)}`, '_blank');
                 }}
                 style={{
@@ -1552,7 +1552,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="url"
                 value={updateData.downloadUrl}
                 onChange={(e) => setUpdateData({ ...updateData, downloadUrl: e.target.value })}
-                placeholder="https://github.com/shivanshlpu/project1/releases/download/v1.0.20/ahtri-ffa-mobile.apk"
+                placeholder="https://github.com/shivanshlpu/project1/releases/download/v1.0.32/ahtri-ffa-mobile.apk"
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -1631,8 +1631,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: '500', color: '#15803D', marginTop: '2px' }}>
                       {lang === 'hi'
-                        ? `वर्जन v${updateData.latestVersion || '1.0.10'} का नोटिफिकेशन सभी कर्मचारियों के ऐप्स पर भेज दिया गया है।`
-                        : `Update notification for v${updateData.latestVersion || '1.0.10'} broadcasted to all employee devices.`}
+                        ? `वर्जन v${updateData.latestVersion || '1.0.32'} का नोटिफिकेशन सभी कर्मचारियों के ऐप्स पर भेज दिया गया है।`
+                        : `Update notification for v${updateData.latestVersion || '1.0.32'} broadcasted to all employee devices.`}
                     </div>
                   </div>
                 </div>
