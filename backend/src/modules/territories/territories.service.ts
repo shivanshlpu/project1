@@ -158,6 +158,72 @@ export class TerritoriesService {
     return list;
   }
 
+  async getRouteBatchesWithLocations(
+    user: any,
+    hqId?: string,
+    mrId?: string,
+  ): Promise<any[]> {
+    const batches = await this.getRouteBatches(user, hqId, mrId);
+    const allLocations = this.db.savedLocations || [];
+
+    return batches.map((batch) => {
+      const assigned = allLocations.filter((loc) => {
+        const matchesBatchId = loc.batch_id && (loc.batch_id === batch.id || loc.batch_id === batch.batch_code);
+        const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === batch.batch_code.toLowerCase();
+        const isInList = batch.location_ids && batch.location_ids.includes(loc.id);
+        const isInStops = batch.route_stops && batch.route_stops.some((s) =>
+          (loc.clinic && loc.clinic.toLowerCase().includes(s.toLowerCase())) ||
+          (loc.name && loc.name.toLowerCase().includes(s.toLowerCase())) ||
+          (loc.address && loc.address.toLowerCase().includes(s.toLowerCase()))
+        );
+        return matchesBatchId || matchesCode || isInList || isInStops;
+      });
+
+      return {
+        ...batch,
+        location_ids: assigned.map((l) => l.id),
+        locations: assigned,
+        locations_count: assigned.length,
+      };
+    });
+  }
+
+  async assignLocationToBatch(
+    batchId: string,
+    locationId: string,
+    action: 'ASSIGN' | 'REMOVE' = 'ASSIGN',
+  ): Promise<any> {
+    const batch = this.db.routeBatches.find((b) => b.id === batchId || b.batch_code === batchId);
+    if (!batch) throw new NotFoundException('Route Batch not found');
+
+    const location = (this.db.savedLocations || []).find((l) => l.id === locationId);
+    if (!location) throw new NotFoundException('Location not found');
+
+    if (!batch.location_ids) batch.location_ids = [];
+
+    if (action === 'ASSIGN') {
+      location.batch_id = batch.id;
+      location.batch_code = batch.batch_code;
+      location.batch_name = batch.name;
+      if (!batch.location_ids.includes(location.id)) {
+        batch.location_ids.push(location.id);
+      }
+      if (!batch.route_stops) batch.route_stops = [];
+      const stopName = location.clinic || location.name;
+      if (!batch.route_stops.includes(stopName)) {
+        batch.route_stops.push(stopName);
+      }
+    } else {
+      location.batch_id = undefined;
+      location.batch_code = undefined;
+      location.batch_name = undefined;
+      batch.location_ids = batch.location_ids.filter((id) => id !== location.id);
+    }
+
+    this.db.persistToDisk();
+    return { success: true, batch_id: batch.id, location_id: location.id, action };
+  }
+
   async getRouteBatchById(id: string, user: any): Promise<RouteBatch> {
     const rb = this.db.routeBatches.find((b) => b.id === id || b.batch_code === id);
     if (!rb) throw new NotFoundException('Route Batch not found');
@@ -330,9 +396,20 @@ export class TerritoriesService {
       distance_km: dto.distance_km || 0,
       standard_reimbursement_rate: dto.standard_reimbursement_rate ?? defaultRate,
       status: dto.status || 'ACTIVE',
+      location_ids: dto.location_ids || [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    if (dto.location_ids && Array.isArray(dto.location_ids) && dto.location_ids.length > 0) {
+      (this.db.savedLocations || []).forEach((loc) => {
+        if (dto.location_ids?.includes(loc.id)) {
+          loc.batch_id = newBatch.id;
+          loc.batch_code = newBatch.batch_code;
+          loc.batch_name = newBatch.name;
+        }
+      });
+    }
 
     this.db.routeBatches.push(newBatch);
 
@@ -359,6 +436,16 @@ export class TerritoriesService {
 
     if (dto.batch_code) rb.batch_code = dto.batch_code.trim();
     if (dto.name) rb.name = dto.name.trim();
+    if (dto.location_ids !== undefined) {
+      rb.location_ids = dto.location_ids;
+      (this.db.savedLocations || []).forEach((loc) => {
+        if (dto.location_ids?.includes(loc.id)) {
+          loc.batch_id = rb.id;
+          loc.batch_code = rb.batch_code;
+          loc.batch_name = rb.name;
+        }
+      });
+    }
     if (dto.route_stops) {
       rb.route_stops = dto.route_stops;
       rb.areas = dto.route_stops;

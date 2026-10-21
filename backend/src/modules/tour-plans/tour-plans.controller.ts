@@ -17,6 +17,8 @@ import {
   UpdateTpStatusDto,
   FilterMonthlyTpDto,
   DecideTpReimbursementDto,
+  CreateRouteChangeRequestDto,
+  ReviewRouteChangeRequestDto,
 } from './tour-plans.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -100,6 +102,36 @@ export class TourPlansController {
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getAdminMonthlyTpAlias(@Query() filter: FilterMonthlyTpDto) {
     return this.tourPlansService.getAdminMonthlyTp(filter);
+  }
+
+  @Post('route-change-request')
+  async submitRouteChangeRequest(
+    @CurrentUser() user: any,
+    @Body() dto: CreateRouteChangeRequestDto,
+  ) {
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
+    return this.tourPlansService.submitRouteChangeRequest(user, dto);
+  }
+
+  @Get('route-change-requests')
+  async getRouteChangeRequests(
+    @CurrentUser() user: any,
+    @Query('status') status?: string,
+  ) {
+    const userId = user?.id;
+    if (!userId) throw new UnauthorizedException('User authentication required.');
+    return this.tourPlansService.getRouteChangeRequests(user, status);
+  }
+
+  @Patch('route-change-requests/:id/review')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async reviewRouteChangeRequest(
+    @Param('id') id: string,
+    @Body() dto: ReviewRouteChangeRequestDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.tourPlansService.reviewRouteChangeRequest(id, dto, user);
   }
 
   @Get(':id')

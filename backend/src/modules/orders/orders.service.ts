@@ -249,7 +249,15 @@ export class OrdersService {
     const totalUnits = validItems.reduce((acc, i) => acc + i.quantity, 0);
     const totalAmount = validItems.reduce((acc, i) => acc + i.total_amount, 0);
 
-    const orderNum = `ORD-${new Date().getFullYear()}-${String(this.db.orders.length + 1).padStart(4, '0')}`;
+    const year = new Date().getFullYear();
+    const existingNums = this.db.orders
+      .map((o) => {
+        const match = o.order_number?.match(/^ORD-\d{4}-(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const nextSeq = Math.max(100, (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1);
+    const orderNum = `ORD-${year}-${String(nextSeq).padStart(4, '0')}`;
 
     const newOrder: Order = {
       id: `ord-${uuidv4().substring(0, 8)}`,

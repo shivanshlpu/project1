@@ -7,10 +7,6 @@ const LEGACY_DUMMY_ORDER_IDS = new Set([
   'ord-amb-01',
   'ord-task-e4014a4a',
   'ord-task-0ff44e9b',
-  'ORD-2026-0004',
-  'ORD-2026-0003',
-  'ORD-2026-0001',
-  'ORD-2026-0002',
   'ORD-20261014-4a4a',
   'ORD-20261015-4e9b',
 ]);
@@ -19,7 +15,11 @@ export function getDeletedOrderIds(): Set<string> {
   try {
     const raw = localStorage.getItem(DELETED_ORDERS_KEY);
     const parsed: string[] = raw ? JSON.parse(raw) : [];
-    const set = new Set<string>(parsed);
+    // Ensure active valid order numbers are never treated as deleted
+    const sanitized = parsed.filter(
+      (id) => !id.startsWith('ORD-2026-000') && id !== 'ORD-2026-0001' && id !== 'ORD-2026-0002',
+    );
+    const set = new Set<string>(sanitized);
 
     LEGACY_DUMMY_ORDER_IDS.forEach((id) => set.add(id));
     return set;

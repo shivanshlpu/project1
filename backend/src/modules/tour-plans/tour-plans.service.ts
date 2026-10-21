@@ -10,8 +10,10 @@ import {
   MonthlyTpItemDto,
   UpdateTpStatusDto,
   FilterMonthlyTpDto,
+  CreateRouteChangeRequestDto,
+  ReviewRouteChangeRequestDto,
 } from './tour-plans.dto';
-import { MonthlyTourPlan, MonthlyTpItem } from '../../database/database.types';
+import { MonthlyTourPlan, MonthlyTpItem, RouteChangeRequest, Task } from '../../database/database.types';
 import { NotificationsService } from '../notifications/notifications.module';
 
 import { calculateHqCenterToDestinationDistance } from '../territories/distance-calculator.service';
@@ -114,6 +116,26 @@ export class TourPlansService {
     const reimbursementStatus =
       e.reimbursement_status || (amount !== undefined ? 'PENDING' : undefined);
 
+    let locationIds = e.location_ids || (batch?.location_ids && batch.location_ids.length > 0 ? batch.location_ids : undefined);
+    let selectedLocations = e.selected_locations;
+    if ((!selectedLocations || selectedLocations.length === 0) && locationIds && locationIds.length > 0) {
+      selectedLocations = this.db.savedLocations
+        .filter((l) => locationIds?.includes(l.id))
+        .map((l) => ({
+          id: l.id,
+          name: l.name,
+          category: l.category,
+          address: l.address,
+          latitude: l.latitude,
+          longitude: l.longitude,
+        }));
+    }
+
+    let kolDrs = e.planned_kol_drs?.trim();
+    if (!kolDrs && selectedLocations && selectedLocations.length > 0) {
+      kolDrs = selectedLocations.map((l) => l.name).slice(0, 3).join(', ') + (selectedLocations.length > 3 ? ` +${selectedLocations.length - 3} more` : '');
+    }
+
     return {
       id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
       date: e.date,
@@ -121,13 +143,15 @@ export class TourPlansService {
       hq_name: effectiveHqName,
       planned_area: e.planned_area,
       work_type: e.work_type,
-      planned_kol_drs: e.planned_kol_drs?.trim() || 'General Field Coverage',
+      planned_kol_drs: kolDrs || 'General Field Coverage',
       planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
       route_batch_id: routeBatchId,
       route_batch_code: routeBatchCode,
       route_batch_name: routeBatchName,
       route: routeStr || undefined,
       route_stops: routeStops.length > 0 ? routeStops : undefined,
+      location_ids: locationIds,
+      selected_locations: selectedLocations,
       is_round_trip: true,
       one_way_distance_km: oneWayDistanceKm,
       round_trip_distance_km: roundTripDistanceKm,
@@ -526,6 +550,11 @@ export class TourPlansService {
 
     await this.db.persistMonthlyTourPlan(plan);
 
+    // If approved, automatically generate sequenced geofenced tasks in the MR's agenda
+    if (dto.status === 'APPROVED') {
+      await this.generateTasksForApprovedTp(plan, adminId);
+    }
+
     // Send push notification to MR
     this.notificationsService.sendPushNotification(
       plan.mr_id,
@@ -566,5 +595,270 @@ export class TourPlansService {
     );
 
     return plan;
+  }
+
+  /**
+   * Automatically generate sequenced geofenced tasks in the MR's daily agenda
+   * for an approved Tour Plan.
+   */
+  async generateTasksForApprovedTp(plan: MonthlyTourPlan, adminId: string): Promise<void> {
+    if (!plan.entries || plan.entries.length === 0) return;
+
+    for (const entry of plan.entries) {
+      const workType = (entry.work_type || '').toUpperCase();
+      if (workType.includes('LEAVE') || workType.includes('HOLIDAY') || workType.includes('OFFICE')) {
+        continue;
+      }
+
+      let locs: Array<{ id: string; name: string; category?: string; address?: string; latitude?: number; longitude?: number }> = [];
+
+      if (entry.selected_locations && entry.selected_locations.length > 0) {
+        locs = entry.selected_locations;
+      } else if (entry.location_ids && entry.location_ids.length > 0) {
+        locs = this.db.savedLocations.filter((l) => entry.location_ids?.includes(l.id));
+      } else if (entry.route_batch_id) {
+        const batch = this.db.routeBatches.find(
+          (b) => b.id === entry.route_batch_id || b.batch_code === entry.route_batch_id,
+        );
+        if (batch?.location_ids && batch.location_ids.length > 0) {
+          locs = this.db.savedLocations.filter((l) => batch.location_ids?.includes(l.id));
+        } else if (batch?.route_stops && batch.route_stops.length > 0) {
+          locs = batch.route_stops.map((stop, sIdx) => ({
+            id: `stop-${sIdx + 1}`,
+            name: stop,
+            category: 'CLINIC',
+            address: `${stop}, ${entry.planned_area || 'Field Territory'}`,
+            latitude: 23.298 + sIdx * 0.005,
+            longitude: 81.362 + sIdx * 0.005,
+          }));
+        }
+      }
+
+      // Fallback if no specific locations: create a single visit task for the planned area
+      if (locs.length === 0 && entry.planned_area) {
+        locs = [
+          {
+            id: `area-loc-1`,
+            name: `${entry.planned_area} Main Center`,
+            category: 'CLINIC',
+            address: `${entry.planned_area}, Territory`,
+            latitude: 23.298,
+            longitude: 81.362,
+          },
+        ];
+      }
+
+      // Create sequenced tasks for each location
+      for (let idx = 0; idx < locs.length; idx++) {
+        const loc = locs[idx];
+        const existingTask = this.db.tasks.find(
+          (t) =>
+            !t.deleted_at &&
+            t.assigned_mr_id === plan.mr_id &&
+            t.date === entry.date &&
+            (t.location_name?.toLowerCase() === loc.name.toLowerCase() ||
+              (t.tp_entry_id === entry.id && t.sequence_order === idx + 1)),
+        );
+
+        if (!existingTask) {
+          const hours = 10 + Math.floor(idx * 1.25);
+          const minutes = (idx * 15) % 60;
+          const period = hours >= 12 ? 'PM' : 'AM';
+          const displayHours = hours > 12 ? hours - 12 : hours;
+          const scheduledTime = `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+
+          const newTask: Task = {
+            id: `task-tp-${uuidv4().substring(0, 8)}`,
+            title: `Visit: ${loc.name}`,
+            description: `Scheduled TP call at ${loc.name} (${loc.category || 'Practice'}). Geofenced check-in required.`,
+            assigned_mr_id: plan.mr_id,
+            assigned_mr_name: plan.mr_name,
+            created_by: adminId || 'SYSTEM_ADMIN',
+            date: entry.date,
+            time: scheduledTime,
+            latitude: Number(loc.latitude) || 23.298,
+            longitude: Number(loc.longitude) || 81.362,
+            geofence_radius_m: 50,
+            priority: 'HIGH',
+            status: 'ASSIGNED',
+            location_name: loc.name,
+            route_batch_id: entry.route_batch_id,
+            route_batch_name: entry.route_batch_name || entry.planned_area,
+            tp_entry_id: entry.id,
+            sequence_order: idx + 1,
+            created_at: new Date().toISOString(),
+          };
+
+          this.db.tasks.push(newTask);
+          this.db.taskAssignments.push({
+            id: `ta-${uuidv4().substring(0, 8)}`,
+            task_id: newTask.id,
+            mr_id: plan.mr_id,
+            assigned_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    this.db.persistToDisk();
+  }
+
+  /**
+   * Submit a Route Deviation / Change Request (§MR app)
+   */
+  async submitRouteChangeRequest(user: any, dto: CreateRouteChangeRequestDto): Promise<RouteChangeRequest> {
+    const plan = this.db.monthlyTourPlans.find((tp) => tp.id === dto.tour_plan_id);
+    if (!plan) throw new NotFoundException('Tour Plan not found');
+
+    const entry = plan.entries.find((e) => e.id === dto.tour_plan_item_id || e.date === dto.date);
+    if (!entry) throw new NotFoundException('Tour Plan date entry not found');
+
+    let reqBatch = null;
+    if (dto.requested_batch_id) {
+      reqBatch = this.db.routeBatches.find(
+        (b) => b.id === dto.requested_batch_id || b.batch_code === dto.requested_batch_id,
+      );
+    }
+
+    let requestedLocations = dto.requested_locations || [];
+    if (requestedLocations.length === 0 && reqBatch?.location_ids && reqBatch.location_ids.length > 0) {
+      requestedLocations = this.db.savedLocations
+        .filter((l) => reqBatch.location_ids?.includes(l.id))
+        .map((l) => ({
+          id: l.id,
+          name: l.name,
+          category: l.category,
+          address: l.address,
+          latitude: l.latitude,
+          longitude: l.longitude,
+        }));
+    }
+
+    const requestItem: RouteChangeRequest = {
+      id: `rcr-${uuidv4().substring(0, 8)}`,
+      mr_id: user.id,
+      mr_name: user.name,
+      hq_id: user.hq_id || entry.hq_id,
+      hq_name: user.hq_name || entry.hq_name,
+      date: dto.date,
+      tour_plan_id: dto.tour_plan_id,
+      tour_plan_item_id: entry.id,
+      original_batch_id: entry.route_batch_id,
+      original_batch_code: entry.route_batch_code,
+      original_batch_name: entry.route_batch_name || entry.planned_area || 'Standard Route',
+      original_locations: entry.selected_locations || [],
+      requested_batch_id: dto.requested_batch_id || reqBatch?.id,
+      requested_batch_code: dto.requested_batch_code || reqBatch?.batch_code,
+      requested_batch_name: dto.requested_batch_name || reqBatch?.name || 'Deviation Route',
+      requested_locations: requestedLocations,
+      reason: dto.reason,
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+    };
+
+    this.db.routeChangeRequests.unshift(requestItem);
+    await this.db.flushToDisk();
+
+    // Notify admins
+    const managers = this.db.users.filter(
+      (u) => ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(u.role) && !u.deleted_at,
+    );
+    managers.forEach((m) => {
+      this.notificationsService.sendPushNotification(
+        m.id,
+        '🔄 Route Change Requested',
+        `${user.name} requested route switch for ${dto.date}: ${requestItem.original_batch_name} ➡️ ${requestItem.requested_batch_name}. Reason: "${dto.reason}"`,
+        { requestId: requestItem.id, type: 'ROUTE_CHANGE_REQUEST' },
+      );
+    });
+
+    return requestItem;
+  }
+
+  /**
+   * Get all Route Change Requests (MR sees own, Admin sees all)
+   */
+  async getRouteChangeRequests(user: any, status?: string): Promise<RouteChangeRequest[]> {
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user?.role);
+    let list = this.db.routeChangeRequests;
+    if (!isAdmin) {
+      list = list.filter((r) => r.mr_id === user.id);
+    }
+    if (status && status !== 'ALL') {
+      list = list.filter((r) => r.status === status);
+    }
+    return list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  }
+
+  /**
+   * Admin approves or rejects a route change request
+   */
+  async reviewRouteChangeRequest(
+    id: string,
+    dto: ReviewRouteChangeRequestDto,
+    adminUser: any,
+  ): Promise<RouteChangeRequest> {
+    const request = this.db.routeChangeRequests.find((r) => r.id === id);
+    if (!request) throw new NotFoundException('Route Change Request not found');
+
+    request.status = dto.status;
+    request.admin_id = adminUser.id;
+    request.admin_name = adminUser.name;
+    request.admin_remarks = dto.admin_remarks || '';
+    request.reviewed_at = new Date().toISOString();
+
+    if (dto.status === 'APPROVED') {
+      const plan = this.db.monthlyTourPlans.find((tp) => tp.id === request.tour_plan_id);
+      if (plan) {
+        const entry = plan.entries.find(
+          (e) => e.id === request.tour_plan_item_id || e.date === request.date,
+        );
+        if (entry) {
+          entry.route_batch_id = request.requested_batch_id;
+          entry.route_batch_code = request.requested_batch_code;
+          entry.route_batch_name = request.requested_batch_name;
+          entry.planned_area = request.requested_batch_name;
+          entry.selected_locations = request.requested_locations;
+          entry.location_ids = (request.requested_locations || []).map((l) => l.id);
+
+          if (request.requested_batch_id) {
+            const batch = this.db.routeBatches.find((b) => b.id === request.requested_batch_id);
+            if (batch) {
+              entry.one_way_distance_km = batch.distance_km;
+              entry.round_trip_distance_km = batch.distance_km * 2;
+              entry.distance_km = batch.distance_km * 2;
+              if (entry.reimbursement_rate) {
+                entry.reimbursement_amount = Math.round(batch.distance_km * 2 * entry.reimbursement_rate * 100) / 100;
+              }
+            }
+          }
+
+          await this.db.persistMonthlyTourPlan(plan);
+
+          // Clear previous unstarted assigned tasks for this day and regenerate
+          this.db.tasks = this.db.tasks.filter(
+            (t) =>
+              !(
+                t.assigned_mr_id === request.mr_id &&
+                t.date === request.date &&
+                t.status === 'ASSIGNED'
+              ),
+          );
+
+          await this.generateTasksForApprovedTp(plan, adminUser.id);
+        }
+      }
+    }
+
+    await this.db.flushToDisk();
+
+    this.notificationsService.sendPushNotification(
+      request.mr_id,
+      dto.status === 'APPROVED' ? '✅ Route Change Approved' : '❌ Route Change Rejected',
+      `Your route change for ${request.date} to ${request.requested_batch_name} has been ${dto.status.toLowerCase()}.${dto.admin_remarks ? ` Note: "${dto.admin_remarks}"` : ''}`,
+      { requestId: request.id, status: dto.status, type: 'ROUTE_CHANGE_REVIEW' },
+    );
+
+    return request;
   }
 }

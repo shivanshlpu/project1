@@ -8,6 +8,7 @@ import {
   Body,
   Param,
   Req,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -24,8 +25,9 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @Get()
-  async getAllLocations() {
-    return this.locationsService.getAllLocations();
+  async getAllLocations(@Req() req: any, @Query() query: any) {
+    const user = req.user || null;
+    return this.locationsService.getAllLocations(user, query);
   }
 
   @Get('recent')

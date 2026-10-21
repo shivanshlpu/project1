@@ -77,10 +77,14 @@ export class CreateRouteBatchDto {
   distance_km?: number;
 
   @IsOptional()
+  @IsOptional()
   standard_reimbursement_rate?: number;
 
   @IsOptional()
   status?: 'ACTIVE' | 'INACTIVE';
+
+  @IsOptional()
+  location_ids?: string[];
 }
 
 export class UpdateRouteBatchDto {
@@ -122,6 +126,9 @@ export class UpdateRouteBatchDto {
 
   @IsOptional()
   status?: 'ACTIVE' | 'INACTIVE';
+
+  @IsOptional()
+  location_ids?: string[];
 }
 
 export class SuggestRouteBatchDto {

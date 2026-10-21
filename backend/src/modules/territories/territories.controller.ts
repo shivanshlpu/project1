@@ -87,6 +87,15 @@ export class TerritoriesController {
     return this.territoriesService.getRouteBatches(user, hqId, mrId);
   }
 
+  @Get('route-batches/with-locations')
+  async getRouteBatchesWithLocations(
+    @CurrentUser() user: any,
+    @Query('hq_id') hqId?: string,
+    @Query('mr_id') mrId?: string,
+  ) {
+    return this.territoriesService.getRouteBatchesWithLocations(user, hqId, mrId);
+  }
+
   @Get('route-batches/suggest')
   async suggestRouteBatches(
     @CurrentUser() user: any,
@@ -109,6 +118,15 @@ export class TerritoriesController {
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async createRouteBatch(@Body() dto: CreateRouteBatchDto) {
     return this.territoriesService.createRouteBatch(dto);
+  }
+
+  @Post('route-batches/:id/assign-location')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR')
+  async assignLocationToBatch(
+    @Param('id') id: string,
+    @Body() body: { location_id: string; action?: 'ASSIGN' | 'REMOVE' },
+  ) {
+    return this.territoriesService.assignLocationToBatch(id, body.location_id, body.action);
   }
 
   @Get('route-batches/settings/rate')

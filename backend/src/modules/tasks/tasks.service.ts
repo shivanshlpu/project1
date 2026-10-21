@@ -136,7 +136,14 @@ export class TasksService {
     return this.db.tasks
       .filter((t) => !t.deleted_at && !isCancelledStatus(t.status) && t.assigned_mr_id === mrId)
       .filter((t) => (date ? t.date === date : true))
-      .sort((a, b) => a.time.localeCompare(b.time))
+      .sort((a, b) => {
+        if (a.sequence_order !== undefined && b.sequence_order !== undefined) {
+          return a.sequence_order - b.sequence_order;
+        }
+        if (a.sequence_order !== undefined) return -1;
+        if (b.sequence_order !== undefined) return 1;
+        return (a.time || '').localeCompare(b.time || '');
+      })
       // Secret meeting duration: Strip duration_seconds from MR payload
       .map(({ duration_seconds, ...sanitizedTask }) => {
         const mr = this.db.users.find((u) => u.id === sanitizedTask.assigned_mr_id);

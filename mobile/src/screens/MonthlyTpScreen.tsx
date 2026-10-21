@@ -56,6 +56,8 @@ interface WorkingTpItem {
   route_batch_name?: string;
   route?: string;
   route_stops?: string[];
+  location_ids?: string[];
+  selected_locations?: any[];
   distance_km?: number;
   one_way_distance_km?: number;
   round_trip_distance_km?: number;
@@ -278,6 +280,17 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
   const [batchSuggestionNotice, setBatchSuggestionNotice] = useState<string>('');
   const [isAllBatchesModalOpen, setIsAllBatchesModalOpen] = useState<boolean>(false);
+
+  const [mrLocations, setMrLocations] = useState<any[]>([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+
+  // Route Change Request Modal State
+  const [isRouteChangeModalOpen, setIsRouteChangeModalOpen] = useState<boolean>(false);
+  const [rcTargetPlan, setRcTargetPlan] = useState<any | null>(null);
+  const [rcTargetEntry, setRcTargetEntry] = useState<any | null>(null);
+  const [rcRequestedBatch, setRcRequestedBatch] = useState<RouteBatchSuggestion | null>(null);
+  const [rcReason, setRcReason] = useState<string>('');
+  const [isSubmittingRc, setIsSubmittingRc] = useState<boolean>(false);
 
   
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -952,6 +965,17 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     const finalDoctor = kolDrsName.trim() || 'General Field Detailing';
     const finalActivity = plannedActivity.trim() || 'Routine Field Detailing & Sampling';
 
+    const selectedLocationsList = mrLocations
+      .filter((l) => selectedLocationIds.includes(l.id))
+      .map((l) => ({
+        id: l.id,
+        name: l.name || l.clinic,
+        category: l.category,
+        address: l.address,
+        latitude: l.latitude,
+        longitude: l.longitude,
+      }));
+
     const newItem: WorkingTpItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       date: formDate,
@@ -966,6 +990,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       route_batch_name: selectedBatch?.name,
       route: selectedBatch?.route,
       route_stops: selectedBatch?.route_stops,
+      location_ids: selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
+      selected_locations: selectedLocationsList.length > 0 ? selectedLocationsList : undefined,
       distance_km: selectedBatch?.distance_km,
       reimbursement_rate: selectedBatch?.reimbursement_rate,
       reimbursement_amount: selectedBatch?.reimbursement_amount,
@@ -980,8 +1006,64 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
     setKolDrsName('');
     setPlannedActivity('');
+    setSelectedLocationIds([]);
     advanceFormDate();
     setTimeout(() => setStatusNotice(null), 4000);
+  };
+
+  const handleOpenRouteChangeModal = (plan: any, entry: any) => {
+    setRcTargetPlan(plan);
+    setRcTargetEntry(entry);
+    setRcRequestedBatch(null);
+    setRcReason('');
+    setIsRouteChangeModalOpen(true);
+  };
+
+  const handleSubmitRouteChange = async () => {
+    if (!rcTargetPlan || !rcTargetEntry) return;
+    if (!rcRequestedBatch) {
+      Alert.alert('Selection Required', 'Please select the destination route batch you wish to switch to.');
+      return;
+    }
+    if (!rcReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide a reason for deviating from the approved route.');
+      return;
+    }
+
+    setIsSubmittingRc(true);
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+
+      const res = await fetch(`${baseUrl}/tour-plans/route-change-request`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          tour_plan_id: rcTargetPlan.id,
+          tour_plan_item_id: rcTargetEntry.id || rcTargetEntry.date,
+          date: rcTargetEntry.date,
+          requested_batch_id: rcRequestedBatch.id,
+          requested_batch_code: rcRequestedBatch.batch_code,
+          requested_batch_name: rcRequestedBatch.name,
+          reason: rcReason.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        Alert.alert(
+          'Request Submitted',
+          `Route change request for ${formatDateDDMMYYYY(rcTargetEntry.date)} has been sent to Admin for review. Once approved, your daily tasks will update automatically.`,
+        );
+        setIsRouteChangeModalOpen(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        Alert.alert('Request Failed', err.message || 'Unable to submit route change request.');
+      }
+    } catch (err: any) {
+      Alert.alert('Network Error', err.message);
+    } finally {
+      setIsSubmittingRc(false);
+    }
   };
 
   const handleRemoveWorkingItem = (id: string) => {
@@ -1527,8 +1609,67 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               <Text style={styles.dropdownChevron}>▼</Text>
             </TouchableOpacity>
 
+            {/* Multi-Location Selection per Date */}
+            <View style={{ marginTop: 10, marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
+                  Planned Doctors / Stores for this Date:
+                </Text>
+                <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700' }}>
+                  {selectedLocationIds.length} Selected
+                </Text>
+              </View>
+
+              {mrLocations.length === 0 ? (
+                <Text style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 6 }}>
+                  No saved locations yet. You can mark doctors via "Mark Location".
+                </Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
+                  {mrLocations.map((loc) => {
+                    const isChecked = selectedLocationIds.includes(loc.id);
+                    return (
+                      <TouchableOpacity
+                        key={loc.id}
+                        onPress={() => {
+                          let nextIds: string[];
+                          if (isChecked) {
+                            nextIds = selectedLocationIds.filter((id) => id !== loc.id);
+                          } else {
+                            nextIds = [...selectedLocationIds, loc.id];
+                          }
+                          setSelectedLocationIds(nextIds);
+                          const names = mrLocations
+                            .filter((l) => nextIds.includes(l.id))
+                            .map((l) => l.name || l.clinic);
+                          if (names.length > 0) {
+                            setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
+                          }
+                        }}
+                        style={[
+                          styles.batchOptionCard,
+                          isChecked && styles.batchOptionCardSelected,
+                          { marginRight: 8, paddingHorizontal: 12, paddingVertical: 8, minWidth: 160 },
+                        ]}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 14 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                          <Text style={[{ fontSize: 12, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
+                            {loc.name || loc.clinic}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }} numberOfLines={1}>
+                          {loc.category || 'CLINIC'} • {loc.address || 'Field'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+
             {/* Planned KOL DRS (Optional) */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, marginBottom: 4 }}>
               <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
                 PLANNED KOL DRS (Name):
               </Text>
@@ -1780,6 +1921,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                                 <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
                               </TouchableOpacity>
                             </>
+                          )}
+
+                          {/* ROUTE DEVIATION REQUEST BUTTON: FOR APPROVED TOUR PLANS */}
+                          {plan.status === 'APPROVED' && (
+                            <TouchableOpacity
+                              style={[styles.editVisitBtn, { backgroundColor: '#EFF6FF', borderColor: '#93C5FD', marginLeft: 6 }]}
+                              onPress={() => handleOpenRouteChangeModal(plan, e)}
+                            >
+                              <Text style={[styles.editVisitBtnText, { color: '#2563EB' }]}>🔄 Route Change</Text>
+                            </TouchableOpacity>
                           )}
                         </View>
                       </View>
@@ -2237,6 +2388,86 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                   ))
                 )}
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {/* Route Change Request Modal */}
+      {isRouteChangeModalOpen && rcTargetEntry && (
+        <Modal
+          visible={isRouteChangeModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsRouteChangeModalOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.calendarModalBox, { maxWidth: 390 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
+                  🔄 Request Route Change
+                </Text>
+                <TouchableOpacity onPress={() => setIsRouteChangeModalOpen(false)}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#64748B' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 10 }}>
+                Date: <strong>{formatDateDDMMYYYY(rcTargetEntry.date)}</strong> • Current Route: <strong>{rcTargetEntry.route_batch_name || rcTargetEntry.planned_area}</strong>
+              </Text>
+
+              <Text style={styles.fieldLabel}>Select New Route Batch:</Text>
+              <ScrollView style={{ maxHeight: 160, marginBottom: 10 }}>
+                {allHqBatches.map((b) => {
+                  const isSel = rcRequestedBatch?.id === b.id;
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      style={[
+                        styles.batchOptionCard,
+                        isSel && styles.batchOptionCardSelected,
+                        { marginBottom: 6 },
+                      ]}
+                      onPress={() => setRcRequestedBatch(b)}
+                    >
+                      <Text style={[styles.batchCodeText, isSel && styles.batchCodeTextSelected]}>
+                        [{b.batch_code}] {b.name}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
+                        {b.distance_km} km one-way • {b.route}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={styles.fieldLabel}>Reason for Deviation *:</Text>
+              <TextInput
+                style={[styles.textInput, { height: 56, marginBottom: 12 }]}
+                placeholder="e.g. Doctor unavailable / clinic closed, switching to Manpur circuit"
+                value={rcReason}
+                onChangeText={setRcReason}
+                multiline
+              />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.deleteBtn, { paddingHorizontal: 14, paddingVertical: 8, height: 'auto', width: 'auto' }]}
+                  onPress={() => setIsRouteChangeModalOpen(false)}
+                >
+                  <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '700' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitPlanBtn, { marginTop: 0, paddingHorizontal: 16, paddingVertical: 8 }]}
+                  onPress={handleSubmitRouteChange}
+                  disabled={isSubmittingRc}
+                >
+                  {isSubmittingRc ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.submitPlanBtnText, { fontSize: 12 }]}>Submit Deviation Request</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>

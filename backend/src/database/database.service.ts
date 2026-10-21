@@ -14,6 +14,7 @@ import {
   TaskAssignment,
   LocationVerification,
   Doctor,
+  SavedLocation,
   DoctorVisit,
   VisitDetail,
   Attendance,
@@ -41,6 +42,7 @@ import {
   RewardClaim,
   MonthlyStockEntry,
   RouteBatch,
+  RouteChangeRequest,
   Order,
   MonthlyStockagePermission,
   StockageSubmissionRequest,
@@ -70,6 +72,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public locationVerifications: LocationVerification[] = [];
 
   public doctors: Doctor[] = [];
+  public savedLocations: SavedLocation[] = [];
   public doctorVisits: DoctorVisit[] = [];
   public visitDetails: VisitDetail[] = [];
 
@@ -98,6 +101,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public inventoryTransactions: InventoryTransaction[] = [];
   public verificationPhotos: VerificationPhoto[] = [];
   public monthlyTourPlans: MonthlyTourPlan[] = [];
+  public routeChangeRequests: RouteChangeRequest[] = [];
   public attendanceSettings: AttendanceSettings = {
     id: 'att-settings-default',
     expected_punch_in_time: '10:00:00',
@@ -138,6 +142,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         taskAssignments: this.taskAssignments,
         locationVerifications: this.locationVerifications,
         doctors: this.doctors,
+        savedLocations: this.savedLocations,
         approvals: this.approvals,
         orders: this.orders,
         deletedOrderIds: Array.from(this.deletedOrderIds),
@@ -152,6 +157,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         leaveQuotas: this.leaveQuotas,
         tourPlans: this.tourPlans,
         monthlyTourPlans: this.monthlyTourPlans,
+        routeChangeRequests: this.routeChangeRequests,
         stockerInventory: this.stockerInventory,
         monthlyStockEntries: this.monthlyStockEntries,
         inventoryTransactions: this.inventoryTransactions,
@@ -457,16 +463,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       if (data && Array.isArray(data.tasks)) {
         this.tasks = data.tasks;
         if (Array.isArray(data.deletedOrderIds)) {
-          data.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
+          data.deletedOrderIds
+            .filter((id: string) => !id.startsWith('ORD-2026-000') && id !== 'ORD-2026-0001' && id !== 'ORD-2026-0002')
+            .forEach((id: string) => this.deletedOrderIds.add(id));
         }
         for (const t of this.tasks) {
           if (this.deletedOrderIds.has(t.order_id || '') || this.deletedOrderIds.has(t.id)) {
             t.order_id = undefined;
             t.orders = undefined;
           }
-        }
-        if (Array.isArray(data.deletedOrderIds)) {
-          data.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
         }
         if (Array.isArray(data.orders)) {
           this.orders = data.orders.filter(
@@ -499,6 +504,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
+        if (Array.isArray(data.savedLocations) && data.savedLocations.length > 0) {
+          this.savedLocations = data.savedLocations;
+        }
+        if (Array.isArray(data.routeChangeRequests)) this.routeChangeRequests = data.routeChangeRequests;
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;

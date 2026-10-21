@@ -54,11 +54,29 @@ interface SuspendedTaskItem {
   priority?: string;
 }
 
+interface RouteChangeRequestItem {
+  id: string;
+  mr_id: string;
+  mr_name: string;
+  hq_name: string;
+  date: string;
+  tour_plan_id: string;
+  tour_plan_item_id: string;
+  original_batch_name: string;
+  original_locations?: Array<{ id: string; name: string }>;
+  requested_batch_name: string;
+  requested_locations?: Array<{ id: string; name: string }>;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  admin_remarks?: string;
+  created_at: string;
+}
+
 export const ApprovalsView: React.FC = () => {
-  const [filterType, setFilterType] = useState<'ALL' | 'LEAVE' | 'SUSPENDED_TASK'>(() => {
+  const [filterType, setFilterType] = useState<'ALL' | 'LEAVE' | 'SUSPENDED_TASK' | 'ROUTE_CHANGE'>(() => {
     try {
       const saved = localStorage.getItem('ahtri_approvals_filter_type');
-      if (saved === 'ALL' || saved === 'LEAVE' || saved === 'SUSPENDED_TASK') return saved;
+      if (saved === 'ALL' || saved === 'LEAVE' || saved === 'SUSPENDED_TASK' || saved === 'ROUTE_CHANGE') return saved;
     } catch {}
     return 'ALL';
   });
@@ -86,6 +104,7 @@ export const ApprovalsView: React.FC = () => {
   const [suspendedTasks, setSuspendedTasks] = useState<SuspendedTaskItem[]>([]);
   const [resolvedTasks, setResolvedTasks] = useState<{ id: string; title: string; assigned_mr_name: string; resolvedAt: string }[]>([]);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [routeChangeRequests, setRouteChangeRequests] = useState<RouteChangeRequestItem[]>([]);
 
   const [activeModal, setActiveModal] = useState<{
     id: string;
@@ -145,6 +164,15 @@ export const ApprovalsView: React.FC = () => {
           setSuspendedTasks(susp);
         } else {
           setSuspendedTasks([]);
+        }
+      }
+
+      // Fetch Route Change Requests
+      const rcrRes = await fetch(`${apiUrl}/tour-plans/route-change-requests`, { headers }).catch(() => null);
+      if (rcrRes && rcrRes.ok) {
+        const rcrData = await rcrRes.json();
+        if (Array.isArray(rcrData)) {
+          setRouteChangeRequests(rcrData);
         }
       }
     } catch (err) {
@@ -346,9 +374,43 @@ export const ApprovalsView: React.FC = () => {
   };
 
   
+  const handleReviewRouteChange = async (id: string, action: 'APPROVE' | 'REJECT') => {
+    const defaultRemark = action === 'APPROVE' ? 'Approved by Operations' : 'Route switch declined';
+    const remark = window.prompt(`Enter optional review note for MR:`, defaultRemark);
+    if (remark === null) return;
+
+    try {
+      const apiUrl = getApiBaseUrl();
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/tour-plans/route-change-requests/${id}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+          admin_remarks: remark,
+        }),
+      });
+
+      if (res.ok) {
+        showCenteredNotice({
+          title: action === 'APPROVE' ? 'Route Change Approved' : 'Route Change Rejected',
+          message: `Route change request ${action === 'APPROVE' ? 'approved' : 'rejected'}. Field representative agenda updated.`,
+          type: action === 'APPROVE' ? 'success' : 'info',
+        });
+        fetchData();
+      }
+    } catch (err: any) {
+      alert(`Error reviewing route change: ${err.message}`);
+    }
+  };
+
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
   const pendingSuspendedCount = suspendedTasks.length;
-  const totalPendingActionCount = pendingApprovalsCount + pendingSuspendedCount;
+  const pendingRcrCount = routeChangeRequests.filter((r) => r.status === 'PENDING').length;
+  const totalPendingActionCount = pendingApprovalsCount + pendingSuspendedCount + pendingRcrCount;
 
   return (
     <div className="enterprise-panel">
@@ -415,6 +477,22 @@ export const ApprovalsView: React.FC = () => {
               }}
             >
               Suspended Tasks ({pendingSuspendedCount})
+            </button>
+            <button
+              onClick={() => setFilterType('ROUTE_CHANGE')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                background: filterType === 'ROUTE_CHANGE' ? '#0F8B5A' : 'transparent',
+                color: filterType === 'ROUTE_CHANGE' ? '#FFFFFF' : '#64748B',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Route Changes ({pendingRcrCount})
             </button>
           </div>
 
@@ -693,8 +771,100 @@ export const ApprovalsView: React.FC = () => {
               </>
             )}
 
+            {/* 3. ROUTE CHANGE REQUESTS SECTION */}
+            {(filterType === 'ALL' || filterType === 'ROUTE_CHANGE') && (
+              <>
+                {routeChangeRequests
+                  .filter((r) => {
+                    if (filterStatus === 'PENDING') return r.status === 'PENDING';
+                    if (filterStatus === 'RESOLVED') return r.status === 'APPROVED' || r.status === 'REJECTED';
+                    return true;
+                  })
+                  .map((rc) => (
+                    <tr key={rc.id}>
+                      <td>
+                        <span className="status-pill warning" style={{ backgroundColor: '#FEF3C7', color: '#B45309' }}>
+                          🔄 Route Change
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <User size={13} color="#64748B" />
+                          <span>{rc.mr_name}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{rc.hq_name || 'Shahdol'}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{rc.original_batch_name}</span>
+                          <span style={{ color: '#2563EB', fontWeight: 800 }}>➡️</span>
+                          <span style={{ color: '#0F8B5A' }}>{rc.requested_batch_name}</span>
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#475569', marginTop: 3 }}>
+                          Reason: <em>"{rc.reason}"</em>
+                        </div>
+                        {rc.requested_locations && rc.requested_locations.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#64748B', marginTop: 2 }}>
+                            Planned Stops: {rc.requested_locations.map((l) => l.name).join(', ')}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>
+                        {formatDateDDMMYYYY(rc.date)}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-pill ${
+                            rc.status === 'APPROVED' ? 'success' : rc.status === 'REJECTED' ? 'alert' : 'warning'
+                          }`}
+                        >
+                          <span
+                            className={`status-dot ${
+                              rc.status === 'APPROVED' ? 'success' : rc.status === 'REJECTED' ? 'alert' : 'warning'
+                            }`}
+                          ></span>
+                          {rc.status}
+                        </span>
+                      </td>
+                      <td>
+                        {rc.status === 'PENDING' ? (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              className="btn-enterprise success sm"
+                              onClick={() => handleReviewRouteChange(rc.id, 'APPROVE')}
+                              style={{
+                                background: '#0F8B5A',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="btn-enterprise secondary sm"
+                              style={{ color: 'var(--color-alert)' }}
+                              onClick={() => handleReviewRouteChange(rc.id, 'REJECT')}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                            {rc.status === 'APPROVED' ? 'Approved' : 'Declined'}
+                            {rc.admin_remarks ? ` • "${rc.admin_remarks}"` : ''}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </>
+            )}
+
             {/* Empty State */}
-            {suspendedTasks.length === 0 && approvals.filter((a) => (filterStatus === 'PENDING' ? a.status === 'PENDING' : a.status !== 'PENDING')).length === 0 && (
+            {suspendedTasks.length === 0 &&
+              approvals.filter((a) => (filterStatus === 'PENDING' ? a.status === 'PENDING' : a.status !== 'PENDING')).length === 0 &&
+              routeChangeRequests.filter((r) => (filterStatus === 'PENDING' ? r.status === 'PENDING' : r.status !== 'PENDING')).length === 0 && (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#64748B' }}>
                   <CheckCircle2 size={32} color="#0F8B5A" style={{ marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />

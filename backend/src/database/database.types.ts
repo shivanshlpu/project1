@@ -160,6 +160,10 @@ export interface Task {
   suspended_reason?: string;
   unsuspended_at?: string;
   unsuspended_by?: string;
+  route_batch_id?: string;
+  route_batch_name?: string;
+  tp_entry_id?: string;
+  sequence_order?: number;
 }
 
 export interface TaskAssignment {
@@ -205,6 +209,32 @@ export interface Doctor {
   assigned_mr_name?: string;
   created_at: string;
   deleted_at?: string;
+}
+
+export interface SavedLocation {
+  id: string;
+  name: string;
+  clinic: string;
+  doctor_name?: string;
+  qualification: string;
+  specialization: string;
+  class: 'A' | 'B' | 'C';
+  potential_score: number;
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  created_by: string;
+  created_by_role: 'ADMIN' | 'MR';
+  created_by_name: string;
+  area_name: string;
+  visit_count: number;
+  is_new?: boolean;
+  batch_id?: string;
+  batch_code?: string;
+  batch_name?: string;
+  created_at: string;
 }
 
 export interface DoctorVisit {
@@ -412,6 +442,20 @@ export interface RouteBatch {
   distance_km: number;
   standard_reimbursement_rate?: number;
   status: 'ACTIVE' | 'INACTIVE';
+  location_ids?: string[];
+  locations?: Array<{
+    id: string;
+    name: string;
+    clinic?: string;
+    doctor_name?: string;
+    category?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    phone?: string;
+    created_by?: string;
+    created_by_name?: string;
+  }>;
   created_at: string;
   updated_at?: string;
 }
@@ -643,6 +687,15 @@ export interface MonthlyTpItem {
   route_batch_name?: string;
   route?: string; 
   route_stops?: string[];
+  location_ids?: string[];
+  selected_locations?: Array<{
+    id: string;
+    name: string;
+    category?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }>;
   is_round_trip?: boolean; 
   one_way_distance_km?: number; 
   round_trip_distance_km?: number; 
@@ -651,6 +704,32 @@ export interface MonthlyTpItem {
   reimbursement_amount?: number; 
   reimbursement_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   calculation_basis?: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL';
+}
+
+export interface RouteChangeRequest {
+  id: string;
+  mr_id: string;
+  mr_name: string;
+  hq_id: string;
+  hq_name: string;
+  date: string;
+  tour_plan_id: string;
+  tour_plan_item_id: string;
+  original_batch_id?: string;
+  original_batch_code?: string;
+  original_batch_name: string;
+  original_locations?: Array<{ id: string; name: string; category?: string }>;
+  requested_batch_id?: string;
+  requested_batch_code?: string;
+  requested_batch_name: string;
+  requested_locations?: Array<{ id: string; name: string; category?: string; address?: string; latitude?: number; longitude?: number }>;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  admin_id?: string;
+  admin_name?: string;
+  admin_remarks?: string;
+  reviewed_at?: string;
+  created_at: string;
 }
 
 export interface MonthlyTourPlan {

@@ -62,6 +62,21 @@ export class MonthlyTpItemDto {
   @IsOptional()
   route_stops?: string[];
 
+  @IsArray()
+  @IsOptional()
+  location_ids?: string[];
+
+  @IsArray()
+  @IsOptional()
+  selected_locations?: Array<{
+    id: string;
+    name: string;
+    category?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }>;
+
   @IsOptional()
   distance_km?: number;
 
@@ -111,6 +126,56 @@ export class UpdateTpStatusDto {
   @IsString()
   @IsOptional()
   remarks?: string;
+}
+
+export class CreateRouteChangeRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  tour_plan_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  tour_plan_item_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  date: string;
+
+  @IsString()
+  @IsOptional()
+  requested_batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  requested_batch_code?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  requested_batch_name: string;
+
+  @IsArray()
+  @IsOptional()
+  requested_locations?: Array<{
+    id: string;
+    name: string;
+    category?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }>;
+
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
+}
+
+export class ReviewRouteChangeRequestDto {
+  @IsEnum(['APPROVED', 'REJECTED'])
+  status: 'APPROVED' | 'REJECTED';
+
+  @IsString()
+  @IsOptional()
+  admin_remarks?: string;
 }
 
 export class DecideTpReimbursementDto {

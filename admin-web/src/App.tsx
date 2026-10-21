@@ -18,6 +18,7 @@ const TasksView = lazy(() => import('./views/TasksView').then((m) => ({ default:
 const SubmittedTasksView = lazy(() => import('./views/SubmittedTasksView').then((m) => ({ default: m.SubmittedTasksView })));
 const OrdersManagementView = lazy(() => import('./views/OrdersManagementView').then((m) => ({ default: m.OrdersManagementView })));
 const SavedLocationsView = lazy(() => import('./views/SavedLocationsView').then((m) => ({ default: m.SavedLocationsView })));
+const BatchLocationsView = lazy(() => import('./views/BatchLocationsView').then((m) => ({ default: m.BatchLocationsView })));
 const MembersManagementView = lazy(() => import('./views/MembersManagementView').then((m) => ({ default: m.MembersManagementView })));
 const ApprovalsView = lazy(() => import('./views/ApprovalsView').then((m) => ({ default: m.ApprovalsView })));
 const ReportsView = lazy(() => import('./views/ReportsView').then((m) => ({ default: m.ReportsView })));
@@ -44,6 +45,7 @@ const VALID_MANAGER_TABS: readonly ManagerTab[] = [
   'submitted_tasks',
   'orders',
   'locations',
+  'batch_locations',
   'members',
   'attendance',
   'tp',
@@ -573,6 +575,7 @@ export const App: React.FC = () => {
                   onLocationAcknowledge={handleAcknowledgeLocation}
                 />
               )}
+              {managerTab === 'batch_locations' && <BatchLocationsView />}
               {managerTab === 'members' && (
                 <MembersManagementView
                   onNavigateToLocation={(locId) => {

@@ -55,6 +55,9 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
 
+  const [routeBatches, setRouteBatches] = useState<any[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+
   
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
@@ -86,6 +89,14 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             setAssignedDoctors(data);
+          }
+        }
+
+        const batchRes = await fetch(`${baseUrl}/territories/route-batches?mr_id=${mrId}`, { headers });
+        if (batchRes.ok) {
+          const bData = await batchRes.json();
+          if (Array.isArray(bData) && bData.length > 0) {
+            setRouteBatches(bData);
           }
         }
       } catch {
@@ -126,6 +137,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
     setIsSaving(true);
     const mrName = currentUser?.name ? `${currentUser.name} (Field MR)` : 'Field Representative';
     const mrId = currentUser?.id || 'usr-mr-01';
+    const selectedBatch = routeBatches.find((b) => b.id === selectedBatchId);
 
     const payload = {
       name: clinicName.trim(),
@@ -138,6 +150,9 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
       phone: phone.trim() || 'N/A',
       mr_id: mrId,
       mr_name: mrName,
+      batch_id: selectedBatch?.id || undefined,
+      batch_code: selectedBatch?.batch_code || undefined,
+      batch_name: selectedBatch?.name || undefined,
     };
 
     try {
@@ -450,6 +465,42 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* Route Batch Assignment */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Assign to Route Batch (Optional)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 6 }}>
+            <TouchableOpacity
+              style={[styles.categoryBtn, !selectedBatchId && styles.categoryBtnActive, { marginRight: 6, minWidth: 100 }]}
+              onPress={() => setSelectedBatchId('')}
+            >
+              <Text style={[styles.categoryBtnText, !selectedBatchId && styles.catTextActive]}>
+                Unassigned / Standalone
+              </Text>
+            </TouchableOpacity>
+            {routeBatches.map((batch) => (
+              <TouchableOpacity
+                key={batch.id}
+                style={[
+                  styles.categoryBtn,
+                  selectedBatchId === batch.id && styles.categoryBtnActive,
+                  { marginRight: 6, minWidth: 140 },
+                ]}
+                onPress={() => setSelectedBatchId(batch.id)}
+              >
+                <Text
+                  style={[
+                    styles.categoryBtnText,
+                    selectedBatchId === batch.id && styles.catTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  [{batch.batch_code}] {batch.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Specialization */}

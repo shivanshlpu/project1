@@ -55,6 +55,18 @@ export class CreateLocationDto {
   @IsString()
   @IsOptional()
   area_id?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_name?: string;
 }
 
 export class UpdateLocationDto {
@@ -101,4 +113,16 @@ export class UpdateLocationDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_name?: string;
 }

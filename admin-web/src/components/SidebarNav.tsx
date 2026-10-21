@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   X,
   ShoppingBag,
+  Layers,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { ManagerTab } from './SubNav';
@@ -78,6 +79,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           Icon: Map,
           badge: newLocationsCount,
           badgeColor: '#0F8B5A',
+        },
+        {
+          id: 'batch_locations',
+          label: lang === 'hi' ? 'रूट बैच लोकेशन्स' : 'Batch Locations',
+          Icon: Layers,
         },
         { id: 'members', label: t.tabMembers, Icon: Users },
       ],

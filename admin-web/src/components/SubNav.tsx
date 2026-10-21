@@ -26,6 +26,7 @@ export type ManagerTab =
   | 'submitted_tasks'
   | 'orders'
   | 'locations'
+  | 'batch_locations'
   | 'members'
   | 'attendance'
   | 'tp'

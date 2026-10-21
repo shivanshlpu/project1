@@ -171,10 +171,6 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
             'ord-amb-01',
             'ord-task-e4014a4a',
             'ord-task-0ff44e9b',
-            'ORD-2026-0004',
-            'ORD-2026-0003',
-            'ORD-2026-0001',
-            'ORD-2026-0002',
             'ORD-20261014-4a4a',
             'ORD-20261015-4e9b',
           ]);
@@ -202,10 +198,6 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
               'ord-amb-01',
               'ord-task-e4014a4a',
               'ord-task-0ff44e9b',
-              'ORD-2026-0004',
-              'ORD-2026-0003',
-              'ORD-2026-0001',
-              'ORD-2026-0002',
               'ORD-20261014-4a4a',
               'ORD-20261015-4e9b',
             ]);

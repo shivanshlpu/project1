@@ -46,6 +46,10 @@ export interface MobileTaskItem {
   suspended_at?: string;
   suspended_reason?: string;
   products?: string[];
+  route_batch_id?: string;
+  route_batch_name?: string;
+  tp_entry_id?: string;
+  sequence_order?: number;
 }
 
 const COMPANY_MEDICINES_CHIPS = [
@@ -279,7 +283,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const myTasks = allTasks.filter(
     (t) => t.assigned_mr_id === currentUserId && !isCancelledTask(t.status)
   );
-  const agendaTasks = myTasks.filter((t) => t.status !== 'COMPLETED' && !isCancelledTask(t.status));
+  const agendaTasks = myTasks
+    .filter((t) => t.status !== 'COMPLETED' && !isCancelledTask(t.status))
+    .sort((a, b) => {
+      if (a.sequence_order !== undefined && b.sequence_order !== undefined) {
+        return a.sequence_order - b.sequence_order;
+      }
+      if (a.sequence_order !== undefined) return -1;
+      if (b.sequence_order !== undefined) return 1;
+      return (a.time || '').localeCompare(b.time || '');
+    });
   const historyTasks = myTasks.filter((t) => t.status === 'COMPLETED' && !isCancelledTask(t.status));
 
   
@@ -1115,9 +1128,25 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                 <View key={task.id} style={styles.taskCard}>
                   {/* Header Row */}
                   <View style={styles.taskHeaderRow}>
-                    <Text style={[styles.taskTime, task.status === 'SUSPENDED' ? { color: '#DC2626' } : {}]}>
-                      {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {task.sequence_order !== undefined && (
+                        <View style={{ backgroundColor: '#1A3C6E', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#FFFFFF' }}>
+                            STOP #{task.sequence_order}
+                          </Text>
+                        </View>
+                      )}
+                      {task.route_batch_name ? (
+                        <View style={{ backgroundColor: '#ECFDF5', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: '#A7F3D0' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#047857' }} numberOfLines={1}>
+                            🛣️ {task.route_batch_name}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <Text style={[styles.taskTime, task.status === 'SUSPENDED' ? { color: '#DC2626' } : {}]}>
+                        {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
+                      </Text>
+                    </View>
                     <View
                       style={[
                         styles.statusBadge,
@@ -1174,13 +1203,25 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                     </View>
                   )}
 
-                  {/* Geofence Distance Indicator */}
+                  {/* Geofence Distance Indicator & Locked Alert */}
                   {task.status !== 'SUSPENDED' && (
-                    <DistanceIndicator
-                      distanceMeters={dist !== null ? dist : 99999}
-                      maxGeofenceRadiusM={task.geofence_radius_m}
-                      gpsAccuracyMeters={deviceCoords?.accuracy || 15}
-                    />
+                    <>
+                      {task.status === 'ASSIGNED' && isOutOfRange && (
+                        <View style={{ backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 6, padding: 8, marginTop: 4, marginBottom: 4 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#B45309' }}>
+                            🔒 GEOFENCE LOCKED • VISIT PREVENTED
+                          </Text>
+                          <Text style={{ fontSize: 10.5, color: '#92400E', marginTop: 2 }}>
+                            You are currently {dist !== null ? formatDistance(dist) : 'detecting distance'} away. You must arrive on-site within {task.geofence_radius_m || 50}m of this location to start the visit call.
+                          </Text>
+                        </View>
+                      )}
+                      <DistanceIndicator
+                        distanceMeters={dist !== null ? dist : 99999}
+                        maxGeofenceRadiusM={task.geofence_radius_m}
+                        gpsAccuracyMeters={deviceCoords?.accuracy || 15}
+                      />
+                    </>
                   )}
 
                   {/* Action Buttons Row */}
