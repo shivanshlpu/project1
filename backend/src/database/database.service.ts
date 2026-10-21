@@ -703,6 +703,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     device_id: ru.device_id ?? this.users[idx].device_id,
                     device_model: ru.device_model ?? this.users[idx].device_model,
                     device_bound_at: ru.device_bound_at ?? this.users[idx].device_bound_at,
+                    zone_id: ru.zone_id || this.users[idx].zone_id,
+                    region_id: ru.region_id || this.users[idx].region_id,
+                    area_id: ru.area_id || this.users[idx].area_id,
+                    manager_id: ru.manager_id !== undefined ? ru.manager_id : this.users[idx].manager_id,
+                    hq_id: ru.hq_id || this.users[idx].hq_id,
+                    hq_code: ru.hq_code || this.users[idx].hq_code,
+                    hq_name: ru.hq_name || this.users[idx].hq_name,
+                    territory: ru.territory || this.users[idx].territory,
+                    assigned_territory: ru.assigned_territory || this.users[idx].assigned_territory,
                   };
                 } else {
                   this.users.push(ru as any);
@@ -776,6 +785,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           const { data: remoteHqs, error: hqErr } = await client.from('headquarters').select('*');
           if (!hqErr && Array.isArray(remoteHqs) && remoteHqs.length > 0) {
             console.log(`[DatabaseService] Synced ${remoteHqs.length} headquarters from Supabase.`);
+            const remoteHqIds = new Set(remoteHqs.map((h) => h.id));
+            this.headquarters = this.headquarters.filter((h) => remoteHqIds.has(h.id));
             for (const rh of remoteHqs) {
               const idx = this.headquarters.findIndex((h) => h.id === rh.id || h.name.toLowerCase() === rh.name.toLowerCase());
               const cleanHq: Headquarter = {
@@ -890,6 +901,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             const { data: remoteStockers, error: stkErr } = await client.from('stockers').select('*');
             if (!stkErr && Array.isArray(remoteStockers) && remoteStockers.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteStockers.length} stockers from Supabase.`);
+              const remoteStkIds = new Set(remoteStockers.map((s) => s.id));
+              this.stockers = this.stockers.filter((s) => remoteStkIds.has(s.id));
               for (const rs of remoteStockers) {
                 const cleanStk: Stocker = {
                   id: rs.id,
@@ -995,6 +1008,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               .select('*');
             if (!varErr && Array.isArray(remoteVariants) && remoteVariants.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteVariants.length} packaging variants from Supabase.`);
+              const remoteVarIds = new Set(remoteVariants.map((v) => v.id));
+              this.medicinePackagingVariants = this.medicinePackagingVariants.filter((v) => remoteVarIds.has(v.id));
+              for (const med of this.medicines) {
+                med.packaging_variants = [];
+              }
               for (const rv of remoteVariants) {
                 const variant: MedicinePackagingVariant = {
                   id: rv.id,
@@ -1236,6 +1254,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             const { data: remoteBatches, error: rbErr } = await client.from('route_batches').select('*');
             if (!rbErr && Array.isArray(remoteBatches) && remoteBatches.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteBatches.length} route batches from Supabase.`);
+              const remoteBatchIds = new Set(remoteBatches.map((b) => b.id));
+              this.routeBatches = this.routeBatches.filter((b) => remoteBatchIds.has(b.id));
               for (const rb of remoteBatches) {
                 const batch: RouteBatch = {
                   id: rb.id,
