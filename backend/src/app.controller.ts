@@ -25,22 +25,24 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.34',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '35', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.35',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '36', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.34/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.35/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Instant Task Assignment Notifications: Newly assigned tasks immediately trigger sound and vibration heads-up notifications in the notification bar across all screens',
-    'Daily Stock Update Reminders: Automatic morning (10:00 AM) and evening (5:30 PM) system reminders to keep stock levels updated',
-    'Management Stock Broadcast: On-demand stock reminder alerts dispatched from the central Stockage dashboard directly to Field Representatives',
-    'Direct Agenda Routing: Tapping notifications opens directly into the assigned Tasks agenda or Stocklist screen',
+    'Out-of-Stock Order Visibility: Orders containing out-of-stock items remain visible with warnings instead of being hidden',
+    'MR Location Attribution & Isolation: Field Representatives view and manage their own marked locations with complete author attribution',
+    'Route Batch Location Assignment: Territory route batches allow assigning and grouping multiple verified clinic locations',
+    'Multi-Location Tour Planning: Monthly TP allows selecting multiple pinned locations per day/date with automatic sequence ordering',
+    'Route Change Request Workflow: MRs can request mid-cycle route changes for approved tour plans with instant admin review & approval',
+    'TP-Driven Geofenced Task Sequencing: Approved tour plans automatically generate sequenced daily tasks with 50-meter geofence enforcement',
   ],
 };
 
