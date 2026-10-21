@@ -470,6 +470,7 @@ export class InventoryService {
     hq_id: string;
     hq_name: string;
     stocker_count: number;
+    stockers?: Array<{ id: string; name: string; sub_area?: string; contact_person?: string; phone?: string }>;
     hqs: Array<{ id: string; name: string; code: string }>;
     medicines: Array<{
       medicine_id: string;
@@ -484,6 +485,7 @@ export class InventoryService {
       is_out_of_stock: boolean;
       is_low_stock: boolean;
       hq_breakdown: Array<{ hq_id: string; hq_name: string; hq_code: string; stock: number; is_out_of_stock: boolean; is_low_stock: boolean }>;
+      internal_depots?: Array<{ stocker_id: string; stocker_name: string; sub_area?: string; contact_person?: string; phone?: string; stock: number; is_out_of_stock: boolean; is_low_stock: boolean }>;
     }>;
   }> {
     this.ensureHqStockers();
@@ -534,6 +536,24 @@ export class InventoryService {
         };
       });
 
+      // Build internal depots breakdown for this specific HQ
+      const internalDepots = stockers.map((s) => {
+        const sInv = this.db.stockerInventory.find(
+          (inv) => inv.medicine_id === med.id && inv.stocker_id === s.id,
+        );
+        const sStock = sInv ? (sInv.quantity || 0) : 0;
+        return {
+          stocker_id: s.id,
+          stocker_name: s.name,
+          sub_area: s.sub_area || '',
+          contact_person: s.contact_person || '',
+          phone: s.phone || '',
+          stock: sStock,
+          is_out_of_stock: sStock <= 0,
+          is_low_stock: sStock > 0 && sStock <= threshold,
+        };
+      });
+
       return {
         medicine_id: med.id,
         medicine_name: med.name,
@@ -547,6 +567,7 @@ export class InventoryService {
         is_out_of_stock: isOutOfStock,
         is_low_stock: isLowStock,
         hq_breakdown: hqBreakdown,
+        internal_depots: internalDepots,
       };
     });
 
@@ -554,6 +575,13 @@ export class InventoryService {
       hq_id: hqId,
       hq_name: hqName,
       stocker_count: stockers.length,
+      stockers: stockers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        sub_area: s.sub_area || '',
+        contact_person: s.contact_person || '',
+        phone: s.phone || '',
+      })),
       hqs: activeHqs.map((h) => ({ id: h.id, name: h.name, code: h.code || h.hq_code || '' })),
       medicines: medicineStockList,
     };

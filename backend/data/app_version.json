@@ -1,20 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.32",
-  "latestVersionCode": 33,
+  "latestVersion": "1.0.33",
+  "latestVersionCode": 34,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.32/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.33/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-21",
-  "publishedAt": "2026-10-21T06:24:09.874Z",
+  "publishedAt": "2026-10-21T12:02:54.900Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
+    "Task Modal HQ Stock Isolation: Tasks for MRs now exclusively display the medical stock belonging to that MR's assigned Headquarters, with cross-HQ stock badges removed from the completion modal",
+    "Internal Depot Stock Breakdown: Accurate live stock visibility across all local distribution centers within the HQ (e.g. Tara Pharmacy, Parth Medical Agency in Shahdol)",
+    "1-Tap Stockist Selection: Tapping any internal depot automatically fills and selects that distributor for immediate order entry",
     "Mobile Storage & Inventory UI Optimization: Fully redesigned medicine storage cards for crystal-clear visibility on mobile phone screens",
-    "Medicine Card Structure Fix: High-visibility bold medicine names, clear packaging codes, and pricing badges (PTS, PTR, MRP) without text squishing or layout distortion",
-    "Compact Cross-HQ Badges: Replaced vertical column stretch with neat 1-line auto-wrapping depot stock chips",
-    "Unified HQ & Depot Switcher: Sleek top-panel filter to easily inspect stock across Kotma, Shahdol, Ambikapur, and Bilaspur depots",
     "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
   ]
 }

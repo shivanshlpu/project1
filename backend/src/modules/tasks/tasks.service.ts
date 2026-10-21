@@ -649,7 +649,13 @@ export class TasksService {
       .filter((t) => (filter.endDate ? t.date <= filter.endDate : true))
       .map((t) => {
         const mr = this.db.users.find((u) => u.id === t.assigned_mr_id);
-        return { ...t, assigned_mr_name: mr ? mr.name : 'Unknown' };
+        const hq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
+        return {
+          ...t,
+          assigned_mr_name: mr ? mr.name : 'Unknown',
+          hq_id: t.hq_id || hq?.id || mr?.hq_id,
+          hq_name: t.hq_name || hq?.name || mr?.hq_name,
+        };
       });
   }
 

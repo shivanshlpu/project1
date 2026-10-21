@@ -101,14 +101,15 @@ interface TodayTasksScreenProps {
 export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   currentUserId = 'usr-mr-02',
   currentUserName = 'Aman Rathore',
-  currentUserHqId = 'hq-shahdol',
-  currentUserHqName = 'Shahdol HQ',
+  currentUserHqId = 'HQ-SHD-001',
+  currentUserHqName = 'Shahdol',
 }) => {
   
   const [allTasks, setAllTasks] = useState<MobileTaskItem[]>([]);
   
   const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
   const [dynamicMedicines, setDynamicMedicines] = useState<any[]>([]);
+  const [availableDepots, setAvailableDepots] = useState<Array<{ id: string; name: string; sub_area?: string }>>([]);
 
   
   const [deviceCoords, setDeviceCoords] = useState<{
@@ -175,6 +176,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         const data = await res.json();
         if (data.hq_id) setActiveHqId(data.hq_id);
         if (data.hq_name) setActiveHqName(data.hq_name);
+        if (Array.isArray(data.stockers) && data.stockers.length > 0) {
+          setAvailableDepots(data.stockers);
+        }
         if (Array.isArray(data.hqs) && data.hqs.length > 0) {
           setAvailableHqs(data.hqs);
         }
@@ -202,6 +206,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             is_low_stock: m.is_low_stock,
             stock_status: m.stock_status,
             hq_breakdown: m.hq_breakdown || [],
+            internal_depots: m.internal_depots || [],
           });
         });
         setHqStockMap(map);
@@ -226,7 +231,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
 
   const handleAddModalOrder = () => {
     const nextIdx = modalOrders.length + 1;
-    const defaultDist = modalOrders[0]?.distributor || 'Main Medical Store';
+    const defaultDist = modalOrders[0]?.distributor || availableDepots[0]?.name || 'Main Medical Store';
     setModalOrders((prev) => [
       ...prev,
       {
@@ -1588,58 +1593,84 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)] || hqStockMap[norm(shortName)];
                             if (!stock) return null;
                             const effectiveHq = activeHqName || completingTask?.hq_name || currentUserHqName || 'HQ';
+                            const selDist = (ord.distributor || '').trim().toLowerCase();
+                            const matchedDepot = Array.isArray(stock.internal_depots)
+                              ? stock.internal_depots.find((d: any) => (d.stocker_name || '').toLowerCase().trim() === selDist)
+                              : undefined;
+
                             return (
                               <View style={{ marginTop: 4 }}>
                                 {stock.is_out_of_stock ? (
-                                  <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                  <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
                                     <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '700' }}>
-                                      🔴 OUT OF STOCK at {effectiveHq} (0 available in depot)
+                                      🔴 OUT OF STOCK at {effectiveHq} (0 available across depots)
                                     </Text>
                                   </View>
                                 ) : stock.is_low_stock ? (
-                                  <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                  <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
                                     <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>
-                                      🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units remaining)
+                                      🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units total in HQ)
                                     </Text>
                                   </View>
                                 ) : (
-                                  <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 }}>
+                                  <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
                                     <Text style={{ fontSize: 11, color: '#166534', fontWeight: '700' }}>
-                                      🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units available)
+                                      🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units total in HQ)
                                     </Text>
                                   </View>
                                 )}
 
-                                {/* Cross-HQ Stock Overview Breakdown */}
-                                {Array.isArray(stock.hq_breakdown) && stock.hq_breakdown.length > 1 && (
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#64748B' }}>Stock in Other HQs:</Text>
-                                    {stock.hq_breakdown.map((hb: any) => {
-                                      const isCur = hb.hq_id === activeHqId || hb.hq_name === activeHqName;
-                                      if (isCur) return null;
-                                      return (
-                                        <TouchableOpacity
-                                          key={hb.hq_id}
-                                          onPress={() => {
-                                            setActiveHqId(hb.hq_id);
-                                            setActiveHqName(hb.hq_name);
-                                            loadHqStock(hb.hq_id);
-                                          }}
-                                          style={{
-                                            backgroundColor: hb.stock <= 0 ? '#FEE2E2' : hb.is_low_stock ? '#FEF3C7' : '#EFF6FF',
-                                            borderWidth: 1,
-                                            borderColor: hb.stock <= 0 ? '#FCA5A5' : hb.is_low_stock ? '#FCD34D' : '#BFDBFE',
-                                            borderRadius: 8,
-                                            paddingHorizontal: 6,
-                                            paddingVertical: 2,
-                                          }}
-                                        >
-                                          <Text style={{ fontSize: 9.5, fontWeight: '700', color: hb.stock <= 0 ? '#991B1B' : hb.is_low_stock ? '#92400E' : '#1D4ED8' }}>
-                                            {hb.hq_name}: {hb.stock} {hb.stock <= 0 ? '(Out)' : 'units'} →
-                                          </Text>
-                                        </TouchableOpacity>
-                                      );
-                                    })}
+                                {/* Selected Distributor Live Stock Callout */}
+                                {matchedDepot && (
+                                  <View style={{ marginTop: 4, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#1D4ED8' }}>
+                                      📍 {matchedDepot.stocker_name}:
+                                    </Text>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: matchedDepot.stock <= 0 ? '#DC2626' : matchedDepot.is_low_stock ? '#D97706' : '#15803D' }}>
+                                      {matchedDepot.stock <= 0 ? 'Out of Stock (0)' : `${matchedDepot.stock} units available`}
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* Internal Depots Breakdown for This HQ */}
+                                {Array.isArray(stock.internal_depots) && stock.internal_depots.length > 0 && (
+                                  <View style={{ marginTop: 5, backgroundColor: '#F8FAFC', padding: 6, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#475569', marginBottom: 4 }}>
+                                      📦 Stock in {effectiveHq} Depots:
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+                                      {stock.internal_depots.map((dep: any) => {
+                                        const isDepOut = dep.stock <= 0;
+                                        const isDepLow = dep.is_low_stock;
+                                        const isCurSelected = selDist === (dep.stocker_name || '').toLowerCase().trim();
+                                        return (
+                                          <TouchableOpacity
+                                            key={dep.stocker_id}
+                                            onPress={() => {
+                                              handleUpdateModalOrder(ord.id, 'distributor', dep.stocker_name);
+                                            }}
+                                            style={{
+                                              backgroundColor: isCurSelected ? '#DBEAFE' : isDepOut ? '#FEF2F2' : isDepLow ? '#FFFBEB' : '#F0FDF4',
+                                              borderWidth: 1,
+                                              borderColor: isCurSelected ? '#2563EB' : isDepOut ? '#FCA5A5' : isDepLow ? '#FCD34D' : '#86EFAC',
+                                              borderRadius: 6,
+                                              paddingHorizontal: 7,
+                                              paddingVertical: 3,
+                                              flexDirection: 'row',
+                                              alignItems: 'center',
+                                              gap: 4,
+                                            }}
+                                          >
+                                            <Text style={{ fontSize: 10, fontWeight: isCurSelected ? '800' : '600', color: isDepOut ? '#991B1B' : isDepLow ? '#92400E' : '#166534' }}>
+                                              {dep.stocker_name}: {dep.stock} {dep.stock === 1 ? 'unit' : 'units'} {isDepOut ? '(Out)' : ''}
+                                            </Text>
+                                            {isCurSelected && (
+                                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#1D4ED8' }}>✓</Text>
+                                            )}
+                                          </TouchableOpacity>
+                                        );
+                                      })}
+                                    </View>
                                   </View>
                                 )}
                               </View>
@@ -1697,13 +1728,39 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             </View>
                           </View>
 
-                          <View style={{ marginTop: 4 }}>
+                          <View style={{ marginTop: 6 }}>
                             <Text style={styles.smallLabel}>Stockist / Distributor</Text>
                             <TextInput
                               style={styles.smallInput}
                               value={ord.distributor}
                               onChangeText={(v) => handleUpdateModalOrder(ord.id, 'distributor', v)}
+                              placeholder="Select or enter stockist"
                             />
+                            {availableDepots.length > 0 && (
+                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                                {availableDepots.map((stk) => {
+                                  const isSelected = (ord.distributor || '').toLowerCase().trim() === (stk.name || '').toLowerCase().trim();
+                                  return (
+                                    <TouchableOpacity
+                                      key={stk.id}
+                                      onPress={() => handleUpdateModalOrder(ord.id, 'distributor', stk.name)}
+                                      style={{
+                                        backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
+                                        borderWidth: 1,
+                                        borderColor: isSelected ? '#1E40AF' : '#CBD5E1',
+                                        borderRadius: 6,
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                      }}
+                                    >
+                                      <Text style={{ fontSize: 9.5, fontWeight: '700', color: isSelected ? '#FFFFFF' : '#334155' }}>
+                                        {isSelected ? '✓ ' : ''}{stk.name}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            )}
                           </View>
                         </View>
                       );
