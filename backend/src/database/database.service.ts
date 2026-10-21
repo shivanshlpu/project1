@@ -1208,55 +1208,104 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 taskOrders = JSON.parse(t.orders);
               } catch {}
             }
-            if (
-              this.deletedOrderIds.has(t.order_id || '') ||
-              this.deletedOrderIds.has(t.id) ||
-              this.deletedOrderIds.has(`ORD-${t.date?.replace(/-/g, '') || 'AUTO'}-${t.id.slice(-4)}`)
-            ) {
-              t.order_id = undefined;
-              t.orders = undefined;
+
+            const validTaskItems = (taskOrders || []).filter(
+              (it: any) =>
+                (parseInt(String(it.quantity), 10) || 0) > 0 &&
+                (it.product_name?.trim()?.length > 0 || it.product_id?.trim()?.length > 0),
+            );
+
+            if (validTaskItems.length === 0) continue;
+
+            const orderId = t.order_id || `ord-${t.id.replace(/^task-/, '')}`;
+            t.order_id = orderId;
+
+            if (this.deletedOrderIds.has(orderId) || this.deletedOrderIds.has(t.id)) {
               continue;
             }
-            if (taskOrders.length > 0 && t.order_id) {
-              const existing = this.orders.find(
-                (o) => (t.order_id && o.id === t.order_id) || o.task_id === t.id,
-              );
-              if (!existing) {
-                const reconstructed: Order = {
-                  id: t.order_id || `ord-${t.id}`,
-                  order_number: `ORD-${t.date?.replace(/-/g, '') || 'AUTO'}-${t.id.slice(-4)}`,
-                  task_id: t.id,
-                  mr_id: t.assigned_mr_id,
-                  mr_name: t.assigned_mr_name || 'Field Representative',
-                  customer_name: t.location_name || t.title || 'Clinic Order',
-                  location_name: t.location_name,
-                  hq_id: t.hq_id || 'hq-shahdol',
-                  hq_name: t.hq_name || 'Shahdol',
-                  stocker_id: t.stocker_id || 'stk-shd-01',
-                  stocker_name: t.stocker_name || 'Tara Pharmacy',
-                  items: taskOrders,
-                  total_units: taskOrders.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0),
-                  total_amount: taskOrders.reduce(
-                    (sum, it) =>
-                      sum +
-                      (Number(it.total_amount) ||
-                        (Number(it.quantity) * Number(it.unit_price)) ||
-                        0),
-                    0,
-                  ),
-                  delivery_status:
-                    t.delivery_status || (t.status === 'COMPLETED' ? 'DELIVERED' : 'PENDING'),
-                  delivered_at: t.completed_at || t.started_at,
-                  delivered_by_user_id: t.assigned_mr_id,
-                  hq_accepted: !!t.hq_accepted,
-                  inventory_deducted: !!t.inventory_deducted,
-                  created_at: t.created_at || new Date().toISOString(),
-                  updated_at: t.completed_at || t.created_at || new Date().toISOString(),
-                };
-                this.orders.push(reconstructed);
-              }
+
+            const existing = this.orders.find(
+              (o) => (t.order_id && o.id === t.order_id) || o.task_id === t.id,
+            );
+
+            const mrUser = this.users.find((u) => u.id === t.assigned_mr_id);
+            const effectiveHqId = t.hq_id || mrUser?.hq_id || 'HQ-SHD-001';
+            const hq = this.findHeadquarter ? this.findHeadquarter(effectiveHqId) : null;
+            const hqName = t.hq_name || hq?.name || mrUser?.hq_name || 'Shahdol';
+
+            const taskDate =
+              t.date ||
+              (t.created_at ? t.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
+            const dateCompact = taskDate.replace(/-/g, '');
+            const orderNumber = `ORD-${dateCompact}-${t.id.slice(-4)}`;
+
+            if (this.deletedOrderIds.has(orderNumber)) {
+              continue;
+            }
+
+            const hasOut = validTaskItems.some(
+              (it: any) => it.stock_status === 'OUT_OF_STOCK' || Number(it.available_stock) === 0,
+            );
+            const hasLow = validTaskItems.some((it: any) => it.stock_status === 'LOW_STOCK');
+            const outNames = validTaskItems
+              .filter((it: any) => it.stock_status === 'OUT_OF_STOCK' || Number(it.available_stock) === 0)
+              .map((it: any) => it.product_name)
+              .filter(Boolean);
+
+            const totalUnits = validTaskItems.reduce(
+              (sum, it) => sum + (parseInt(String(it.quantity), 10) || 0),
+              0,
+            );
+            const totalAmount = validTaskItems.reduce(
+              (sum, it) =>
+                sum +
+                (Number(it.total_amount) ||
+                  (parseInt(String(it.quantity), 10) || 0) * (parseFloat(String(it.unit_price)) || 0) ||
+                  0),
+              0,
+            );
+
+            if (!existing) {
+              const reconstructed: Order = {
+                id: orderId,
+                order_number: orderNumber,
+                task_id: t.id,
+                mr_id: t.assigned_mr_id || mrUser?.id || 'usr-mr-02',
+                mr_name: mrUser?.name || t.assigned_mr_name || 'Field Representative',
+                customer_name: t.location_name || t.title || 'Clinic Order',
+                location_name: t.location_name,
+                hq_id: effectiveHqId,
+                hq_name: hqName,
+                stocker_id: t.stocker_id || 'stk-shd-01',
+                stocker_name: t.stocker_name || (effectiveHqId.toLowerCase().includes('kot') ? 'Triyash Medical Agency' : 'Tara Pharmacy'),
+                items: validTaskItems,
+                total_units: totalUnits,
+                total_amount: Math.round(totalAmount * 100) / 100,
+                delivery_status:
+                  t.delivery_status || (t.status === 'COMPLETED' ? 'DELIVERED' : 'PENDING'),
+                delivered_at: t.completed_at || t.started_at,
+                delivered_by_user_id: t.assigned_mr_id,
+                hq_accepted: !!t.hq_accepted,
+                inventory_deducted: !!t.inventory_deducted,
+                has_stock_warning: hasOut || hasLow,
+                stock_warning_type: hasOut ? 'OUT_OF_STOCK' : hasLow ? 'LOW_STOCK' : undefined,
+                stock_warning_summary:
+                  hasOut && outNames.length > 0
+                    ? `${outNames.join(', ')} out of stock at ${hqName}`
+                    : undefined,
+                created_at: t.created_at || new Date().toISOString(),
+                updated_at: t.completed_at || t.created_at || new Date().toISOString(),
+              };
+              this.orders.push(reconstructed);
+            } else {
+              existing.items = validTaskItems;
+              existing.total_units = totalUnits;
+              existing.total_amount = Math.round(totalAmount * 100) / 100;
+              existing.has_stock_warning = hasOut || hasLow;
+              existing.stock_warning_type = hasOut ? 'OUT_OF_STOCK' : hasLow ? 'LOW_STOCK' : undefined;
             }
           }
+          this.persistToDisk();
 
           // Authoritative sync: load route batches from Supabase
           try {

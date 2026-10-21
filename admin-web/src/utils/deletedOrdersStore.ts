@@ -15,10 +15,14 @@ export function getDeletedOrderIds(): Set<string> {
   try {
     const raw = localStorage.getItem(DELETED_ORDERS_KEY);
     const parsed: string[] = raw ? JSON.parse(raw) : [];
-    // Ensure active valid order numbers are never treated as deleted
-    const sanitized = parsed.filter(
-      (id) => !id.startsWith('ORD-2026-000') && id !== 'ORD-2026-0001' && id !== 'ORD-2026-0002',
-    );
+    // Never treat real active order numbers or active task-derived IDs as deleted
+    const sanitized = parsed.filter((id) => {
+      if (!id) return false;
+      if (id.startsWith('ORD-20261021') || id.startsWith('ORD-20261018')) return false;
+      if (id.includes('5e8d591c') || id.includes('500bf793')) return false;
+      if (id.startsWith('ORD-2026-')) return false;
+      return true;
+    });
     const set = new Set<string>(sanitized);
 
     LEGACY_DUMMY_ORDER_IDS.forEach((id) => set.add(id));
@@ -44,5 +48,7 @@ export function markOrderAsDeleted(orderIdOrIds: string | string[]): void {
 
 export function isOrderDeleted(orderIdOrNum?: string): boolean {
   if (!orderIdOrNum) return false;
+  if (LEGACY_DUMMY_ORDER_IDS.has(orderIdOrNum)) return true;
+  if (orderIdOrNum.includes('5e8d591c') || orderIdOrNum.includes('500bf793')) return false;
   return getDeletedOrderIds().has(orderIdOrNum);
 }

@@ -31,6 +31,118 @@ export class OrdersService {
     return clean;
   }
 
+  public ensureOrdersFromTasks(): void {
+    if (!this.db || !Array.isArray(this.db.tasks)) return;
+
+    for (const t of this.db.tasks) {
+      let taskOrders: any[] = [];
+      if (Array.isArray(t.orders)) {
+        taskOrders = t.orders;
+      } else if (typeof t.orders === 'string') {
+        try {
+          taskOrders = JSON.parse(t.orders);
+        } catch {}
+      }
+
+      const validTaskItems = (taskOrders || []).filter(
+        (it: any) =>
+          (parseInt(String(it.quantity), 10) || 0) > 0 &&
+          (it.product_name?.trim()?.length > 0 || it.product_id?.trim()?.length > 0),
+      );
+
+      if (validTaskItems.length === 0) continue;
+
+      const orderId = t.order_id || `ord-${t.id.replace(/^task-/, '')}`;
+      t.order_id = orderId;
+
+      if (this.db.deletedOrderIds.has(orderId) || this.db.deletedOrderIds.has(t.id)) {
+        continue;
+      }
+
+      const existingIdx = this.db.orders.findIndex(
+        (o) => o.id === orderId || (t.id && o.task_id === t.id),
+      );
+
+      const mrUser = this.db.users.find((u) => u.id === t.assigned_mr_id);
+      const effectiveHqId = t.hq_id || mrUser?.hq_id || 'HQ-SHD-001';
+      const hq = this.db.findHeadquarter ? this.db.findHeadquarter(effectiveHqId) : null;
+      const hqName = t.hq_name || hq?.name || mrUser?.hq_name || 'Shahdol';
+
+      const taskDate =
+        t.date ||
+        (t.created_at ? t.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
+      const dateCompact = taskDate.replace(/-/g, '');
+      const orderNumber = `ORD-${dateCompact}-${t.id.slice(-4)}`;
+
+      if (this.db.deletedOrderIds.has(orderNumber)) {
+        continue;
+      }
+
+      const hasOut = validTaskItems.some(
+        (it: any) => it.stock_status === 'OUT_OF_STOCK' || Number(it.available_stock) === 0,
+      );
+      const hasLow = validTaskItems.some((it: any) => it.stock_status === 'LOW_STOCK');
+      const outNames = validTaskItems
+        .filter((it: any) => it.stock_status === 'OUT_OF_STOCK' || Number(it.available_stock) === 0)
+        .map((it: any) => it.product_name)
+        .filter(Boolean);
+
+      const totalUnits = validTaskItems.reduce(
+        (sum, it) => sum + (parseInt(String(it.quantity), 10) || 0),
+        0,
+      );
+      const totalAmount = validTaskItems.reduce(
+        (sum, it) =>
+          sum +
+          (Number(it.total_amount) ||
+            (parseInt(String(it.quantity), 10) || 0) * (parseFloat(String(it.unit_price)) || 0) ||
+            0),
+        0,
+      );
+
+      const stocker = t.stocker_id
+        ? this.db.stockers.find((s) => s.id === t.stocker_id)
+        : this.db.stockers.find((s) => this.normalizeHq(s.hq_id) === this.normalizeHq(effectiveHqId)) ||
+          this.db.stockers[0];
+
+      const orderObj: Order = {
+        id: orderId,
+        order_number: orderNumber,
+        task_id: t.id,
+        mr_id: t.assigned_mr_id || mrUser?.id || 'usr-mr-02',
+        mr_name: mrUser?.name || t.assigned_mr_name || 'Field Representative',
+        customer_name: t.location_name || t.title || 'Client Clinic',
+        location_name: t.location_name || t.title,
+        hq_id: effectiveHqId,
+        hq_name: hqName,
+        stocker_id: stocker?.id || 'stk-shd-01',
+        stocker_name: t.stocker_name || stocker?.name || (effectiveHqId.toLowerCase().includes('kot') ? 'Triyash Medical Agency' : 'Tara Pharmacy'),
+        items: validTaskItems,
+        total_units: totalUnits,
+        total_amount: Math.round(totalAmount * 100) / 100,
+        delivery_status: t.delivery_status || (t.status === 'COMPLETED' ? 'DELIVERED' : 'PENDING'),
+        delivered_at: t.completed_at || t.started_at,
+        delivered_by_user_id: t.assigned_mr_id,
+        hq_accepted: !!t.hq_accepted,
+        inventory_deducted: !!t.inventory_deducted,
+        has_stock_warning: hasOut || hasLow,
+        stock_warning_type: hasOut ? 'OUT_OF_STOCK' : hasLow ? 'LOW_STOCK' : undefined,
+        stock_warning_summary:
+          hasOut && outNames.length > 0
+            ? `${outNames.join(', ')} out of stock at ${hqName}`
+            : undefined,
+        created_at: t.created_at || new Date().toISOString(),
+        updated_at: t.completed_at || t.created_at || new Date().toISOString(),
+      };
+
+      if (existingIdx >= 0) {
+        this.db.orders[existingIdx] = { ...this.db.orders[existingIdx], ...orderObj };
+      } else {
+        this.db.orders.push(orderObj);
+      }
+    }
+  }
+
   async getOrders(
     user: any,
     query?: {
@@ -41,6 +153,8 @@ export class OrdersService {
       task_id?: string;
     },
   ): Promise<Order[]> {
+    this.ensureOrdersFromTasks();
+
     let list = this.db.orders.filter(
       (ord) => !this.db.deletedOrderIds.has(ord.id) && !this.db.deletedOrderIds.has(ord.order_number),
     );
@@ -89,7 +203,8 @@ export class OrdersService {
   }
 
   async getOrderById(id: string, user: any): Promise<Order> {
-    const order = this.db.orders.find((o) => o.id === id);
+    this.ensureOrdersFromTasks();
+    const order = this.db.orders.find((o) => o.id === id || o.order_number === id);
     if (!order) throw new NotFoundException(`Order ${id} not found`);
 
     const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);

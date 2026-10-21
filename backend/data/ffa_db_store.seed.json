@@ -1,6 +1,106 @@
 {
   "tasks": [],
-  "orders": [],
+  "orders": [
+    {
+      "id": "ord-5e8d591c",
+      "order_number": "ORD-20261021-591c",
+      "task_id": "task-5e8d591c",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "customer_name": "tea bhatti",
+      "location_name": "tea bhatti",
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "stocker_id": "stk-shd-01",
+      "stocker_name": "Tara Pharmacy",
+      "items": [
+        {
+          "product_name": "AHTYME (200 ML)",
+          "quantity": 6,
+          "unit_price": 36.8,
+          "total_amount": 220.79999999999998,
+          "distributor": "Tara Pharmacy",
+          "stock_status": "OUT_OF_STOCK",
+          "available_stock": 0
+        },
+        {
+          "product_name": "AHTRI-A2Z (200 ML)",
+          "quantity": 9,
+          "unit_price": 36.8,
+          "total_amount": 331.2,
+          "distributor": "Tara Pharmacy",
+          "stock_status": "OUT_OF_STOCK",
+          "available_stock": 0
+        },
+        {
+          "product_name": "AHTRI-A2Z (200 ML)",
+          "quantity": 9,
+          "unit_price": 36.8,
+          "total_amount": 331.2,
+          "distributor": "Tara Pharmacy",
+          "stock_status": "OUT_OF_STOCK",
+          "available_stock": 0
+        }
+      ],
+      "total_units": 24,
+      "total_amount": 883.2,
+      "delivery_status": "DELIVERED",
+      "delivered_at": "2026-10-21T16:49:54.972+00:00",
+      "delivered_by_user_id": "usr-mr-02",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "has_stock_warning": true,
+      "stock_warning_type": "OUT_OF_STOCK",
+      "stock_warning_summary": "AHTYME (200 ML), AHTRI-A2Z (200 ML), AHTRI-A2Z (200 ML) out of stock at Shahdol",
+      "created_at": "2026-10-21T16:47:54.265+00:00",
+      "updated_at": "2026-10-21T16:49:54.972+00:00"
+    },
+    {
+      "id": "ord-500bf793",
+      "order_number": "ORD-20261021-f793",
+      "task_id": "task-500bf793",
+      "mr_id": "usr-mr-01",
+      "mr_name": "Amar Dwivedi",
+      "customer_name": "Marked Facility",
+      "location_name": "Marked Facility",
+      "hq_id": "HQ-KOT-001",
+      "hq_name": "Kotma",
+      "stocker_id": "stk-shd-01",
+      "stocker_name": "Triyash Medical Agency",
+      "items": [
+        {
+          "product_name": "AHTRI-S (200 ML)",
+          "quantity": 20,
+          "unit_price": 38.4,
+          "total_amount": 768,
+          "distributor": "Triyash Medical Agency",
+          "stock_status": "OUT_OF_STOCK",
+          "available_stock": 0
+        },
+        {
+          "product_name": "AHTRI-A2Z (200 ML)",
+          "quantity": 23,
+          "unit_price": 36.8,
+          "total_amount": 846.4,
+          "distributor": "Triyash Medical Agency",
+          "stock_status": "OUT_OF_STOCK",
+          "available_stock": 0
+        }
+      ],
+      "total_units": 43,
+      "total_amount": 1614.4,
+      "delivery_status": "DELIVERED",
+      "delivered_at": "2026-10-21T16:50:06.974+00:00",
+      "delivered_by_user_id": "usr-mr-01",
+      "hq_accepted": false,
+      "inventory_deducted": false,
+      "has_stock_warning": true,
+      "stock_warning_type": "OUT_OF_STOCK",
+      "stock_warning_summary": "AHTRI-S (200 ML), AHTRI-A2Z (200 ML) out of stock at Kotma",
+      "created_at": "2026-10-18T13:56:48.693+00:00",
+      "updated_at": "2026-10-21T16:50:06.974+00:00"
+    }
+  ],
   "attendance": [],
   "attendanceSettings": {
     "id": "att-settings-default",
