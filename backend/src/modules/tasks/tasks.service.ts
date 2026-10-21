@@ -82,9 +82,10 @@ export class TasksService {
     }
     if (!mr) throw new NotFoundException(`No active Field MR found in system`);
 
-    const taskHq = this.db.findHeadquarter(dto.hq_id || mr.hq_id || mr.hq_name || '');
-    const taskHqId = taskHq?.id || dto.hq_id || mr.hq_id;
-    const taskHqName = taskHq?.name || mr.hq_name;
+    const mrHq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
+    const taskHq = mrHq || (dto.hq_id ? this.db.findHeadquarter(dto.hq_id) : undefined);
+    const taskHqId = mr?.hq_id || mrHq?.id || taskHq?.id || dto.hq_id;
+    const taskHqName = mr?.hq_name || mrHq?.name || taskHq?.name;
 
     const task: Task = {
       id: `task-${uuidv4().substring(0, 8)}`,
@@ -138,12 +139,10 @@ export class TasksService {
       .sort((a, b) => a.time.localeCompare(b.time))
       // Secret meeting duration: Strip duration_seconds from MR payload
       .map(({ duration_seconds, ...sanitizedTask }) => {
-        if (!sanitizedTask.hq_id || !sanitizedTask.hq_name) {
-          const mr = this.db.users.find((u) => u.id === sanitizedTask.assigned_mr_id);
-          const hq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
-          sanitizedTask.hq_id = sanitizedTask.hq_id || hq?.id || mr?.hq_id;
-          sanitizedTask.hq_name = sanitizedTask.hq_name || hq?.name || mr?.hq_name;
-        }
+        const mr = this.db.users.find((u) => u.id === sanitizedTask.assigned_mr_id);
+        const hq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
+        sanitizedTask.hq_id = mr?.hq_id || hq?.id || sanitizedTask.hq_id;
+        sanitizedTask.hq_name = mr?.hq_name || hq?.name || sanitizedTask.hq_name;
         return sanitizedTask;
       });
   }
@@ -152,12 +151,10 @@ export class TasksService {
     this.checkAndSuspendOverdueTasks();
     const task = this.db.tasks.find((t) => t.id === id && !t.deleted_at);
     if (!task) throw new NotFoundException('Task not found');
-    if (!task.hq_id || !task.hq_name) {
-      const mr = this.db.users.find((u) => u.id === task.assigned_mr_id);
-      const hq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
-      task.hq_id = task.hq_id || hq?.id || mr?.hq_id;
-      task.hq_name = task.hq_name || hq?.name || mr?.hq_name;
-    }
+    const mr = this.db.users.find((u) => u.id === task.assigned_mr_id);
+    const hq = mr ? this.db.findHeadquarter(mr.hq_id || mr.hq_name || '') : undefined;
+    task.hq_id = mr?.hq_id || hq?.id || task.hq_id;
+    task.hq_name = mr?.hq_name || hq?.name || task.hq_name;
     const assignments = this.db.taskAssignments.filter((ta) => ta.task_id === id);
     const verifications = this.db.locationVerifications.filter((lv) => lv.task_id === id);
     const photos = this.db.verificationPhotos.filter((vp) => vp.task_id === id);
@@ -653,8 +650,8 @@ export class TasksService {
         return {
           ...t,
           assigned_mr_name: mr ? mr.name : 'Unknown',
-          hq_id: t.hq_id || hq?.id || mr?.hq_id,
-          hq_name: t.hq_name || hq?.name || mr?.hq_name,
+          hq_id: mr?.hq_id || hq?.id || t.hq_id,
+          hq_name: mr?.hq_name || hq?.name || t.hq_name,
         };
       });
   }

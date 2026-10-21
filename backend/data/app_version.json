@@ -1,20 +1,18 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.33",
-  "latestVersionCode": 34,
+  "latestVersion": "1.0.34",
+  "latestVersionCode": 35,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.33/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.34/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-21",
-  "publishedAt": "2026-10-21T12:02:54.900Z",
+  "publishedAt": "2026-10-21T12:50:18.274Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Task Modal HQ Stock Isolation: Tasks for MRs now exclusively display the medical stock belonging to that MR's assigned Headquarters, with cross-HQ stock badges removed from the completion modal",
-    "Internal Depot Stock Breakdown: Accurate live stock visibility across all local distribution centers within the HQ (e.g. Tara Pharmacy, Parth Medical Agency in Shahdol)",
-    "1-Tap Stockist Selection: Tapping any internal depot automatically fills and selects that distributor for immediate order entry",
-    "Mobile Storage & Inventory UI Optimization: Fully redesigned medicine storage cards for crystal-clear visibility on mobile phone screens",
-    "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
+    "Strict Headquarters Stock Isolation: MR task execution and duty order modal strictly isolates stock and depots to the assigned MR's Headquarters",
+    "Cross-HQ Depot Prevention: MRs can only view and select distributors and medicine quantities from their own territory depot",
+    "Enhanced In-App Update: Streamlined APK auto-download and install flow directly from the app"
   ]
 }

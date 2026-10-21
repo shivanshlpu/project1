@@ -170,12 +170,15 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const hq = targetHqId || activeHqId || currentUserHqId || 'HQ-SHD-001';
+      // An MR can ONLY see their assigned HQ stock
+      const hq = currentUserHqId || targetHqId || activeHqId || 'HQ-KOT-001';
       const res = await fetch(`${baseUrl}/inventory/hq-stock?hq_id=${encodeURIComponent(hq)}`, { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data.hq_id) setActiveHqId(data.hq_id);
-        if (data.hq_name) setActiveHqName(data.hq_name);
+        const displayHqId = currentUserHqId || data.hq_id || 'HQ-KOT-001';
+        const displayHqName = currentUserHqName || data.hq_name || 'Kotma';
+        setActiveHqId(displayHqId);
+        setActiveHqName(displayHqName);
         if (Array.isArray(data.stockers) && data.stockers.length > 0) {
           setAvailableDepots(data.stockers);
         }
@@ -220,14 +223,13 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   };
 
   useEffect(() => {
-    const target = completingTask?.hq_id || currentUserHqId;
-    if (target) {
-      setActiveHqId(target);
-      if (completingTask?.hq_name) setActiveHqName(completingTask.hq_name);
-      else if (currentUserHqName) setActiveHqName(currentUserHqName);
-    }
-    loadHqStock(target);
-  }, [completingTask?.hq_id, completingTask?.hq_name, currentUserHqId, currentUserHqName]);
+    // Strictly isolate stock to the logged-in MR's assigned Headquarters
+    const targetHq = currentUserHqId || completingTask?.hq_id || 'HQ-KOT-001';
+    const targetHqName = currentUserHqName || completingTask?.hq_name || 'Kotma';
+    setActiveHqId(targetHq);
+    setActiveHqName(targetHqName);
+    loadHqStock(targetHq);
+  }, [currentUserHqId, currentUserHqName]);
 
   const handleAddModalOrder = () => {
     const nextIdx = modalOrders.length + 1;
@@ -376,8 +378,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               geofence_radius_m: t.geofence_radius_m || 50,
               priority: t.priority || 'MEDIUM',
               status: t.status,
-              hq_id: t.hq_id,
-              hq_name: t.hq_name,
+              hq_id: currentUserHqId || t.hq_id,
+              hq_name: currentUserHqName || t.hq_name,
               started_at: t.started_at,
               completed_at: t.completed_at,
               outcome: t.outcome,
@@ -1592,7 +1594,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                             const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)] || hqStockMap[norm(shortName)];
                             if (!stock) return null;
-                            const effectiveHq = activeHqName || completingTask?.hq_name || currentUserHqName || 'HQ';
+                            const effectiveHq = currentUserHqName || activeHqName || 'HQ';
                             const selDist = (ord.distributor || '').trim().toLowerCase();
                             const matchedDepot = Array.isArray(stock.internal_depots)
                               ? stock.internal_depots.find((d: any) => (d.stocker_name || '').toLowerCase().trim() === selDist)
