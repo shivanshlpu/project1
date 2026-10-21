@@ -21,8 +21,8 @@ export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 
   @Get()
-  async getDoctors(@Query() filter: DoctorFilterDto) {
-    return this.doctorsService.getDoctors(filter);
+  async getDoctors(@Query() filter: DoctorFilterDto, @CurrentUser() user: any) {
+    return this.doctorsService.getDoctors(filter, user);
   }
 
   @Post()
@@ -32,18 +32,22 @@ export class DoctorsController {
   }
 
   @Get(':id')
-  async getDoctorById(@Param('id') id: string) {
-    return this.doctorsService.getDoctorById(id);
+  async getDoctorById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.doctorsService.getDoctorById(id, user);
   }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR')
-  async updateDoctor(@Param('id') id: string, @Body() dto: UpdateDoctorDto) {
-    return this.doctorsService.updateDoctor(id, dto);
+  async updateDoctor(
+    @Param('id') id: string,
+    @Body() dto: UpdateDoctorDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.doctorsService.updateDoctor(id, dto, user);
   }
 
   @Get(':id/visits')
-  async getDoctorVisits(@Param('id') id: string) {
-    return this.doctorsService.getDoctorVisits(id);
+  async getDoctorVisits(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.doctorsService.getDoctorVisits(id, user);
   }
 }

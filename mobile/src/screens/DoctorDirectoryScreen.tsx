@@ -34,6 +34,8 @@ export interface Doctor {
   batch_code?: string;
   batch_name?: string;
   created_by?: string;
+  created_by_name?: string;
+  created_by_role?: string;
   category?: PinCategory;
 }
 
@@ -101,10 +103,13 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     loadRouteBatches();
   }, []);
 
+  const isMr = currentUser.role === 'MR';
+
   const isAssignedToUser = (doc: Doctor) => {
     if (doc.assigned_mr_id === currentUser.id) return true;
     if (doc.created_by === currentUser.id) return true;
     if (currentUser.name && doc.assigned_mr_name?.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
+    if (currentUser.name && doc.created_by_name?.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
     // Area / HQ territory association fallback
     if (currentUser.id === 'usr-mr-01' || currentUser.name?.includes('Amar')) {
       if (doc.name === 'Marked Facility' || doc.name === 'Shree Ram Pharmacy' || doc.clinic === 'Shree Ram Pharmacy') return true;
@@ -112,25 +117,29 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     return false;
   };
 
-  const filteredDoctors = doctors.filter((doc) => {
-    const matchesAssigned =
-      filterMode === 'assigned' ? isAssignedToUser(doc) : true;
+  // For Field MRs: strictly scope everything to locations marked by or assigned to them (§Client Requirement)
+  const scopedDoctors = isMr ? doctors.filter((d) => isAssignedToUser(d)) : doctors;
+
+  const myAssignedCount = doctors.filter((d) => isAssignedToUser(d)).length;
+  const taggedCount = scopedDoctors.filter((d) => d.latitude && d.longitude).length;
+  const needGeotagCount = scopedDoctors.filter((d) => !d.latitude || !d.longitude).length;
+
+  const filteredDoctors = scopedDoctors.filter((doc) => {
+    if (!isMr && filterMode === 'assigned') {
+      if (!isAssignedToUser(doc)) return false;
+    }
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return matchesAssigned;
-    const matchesQuery =
+    if (!query) return true;
+    return (
       doc.name.toLowerCase().includes(query) ||
       doc.clinic.toLowerCase().includes(query) ||
       doc.specialization.toLowerCase().includes(query) ||
       (doc.address && doc.address.toLowerCase().includes(query)) ||
       (doc.area_name && doc.area_name.toLowerCase().includes(query)) ||
       (doc.batch_name && doc.batch_name.toLowerCase().includes(query)) ||
-      (doc.batch_code && doc.batch_code.toLowerCase().includes(query));
-    return matchesAssigned && matchesQuery;
+      (doc.batch_code && doc.batch_code.toLowerCase().includes(query))
+    );
   });
-
-  const myAssignedCount = doctors.filter((d) => isAssignedToUser(d)).length;
-  const taggedCount = doctors.filter((d) => d.latitude && d.longitude).length;
-  const needGeotagCount = doctors.filter((d) => !d.latitude || !d.longitude).length;
 
   
   const handleOpenDoctorMap = (doc: Doctor) => {
@@ -375,32 +384,45 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         {/* Territory Filter & Search */}
         <View style={styles.controlsRow}>
           <View style={styles.filterPills}>
-            <TouchableOpacity
-              style={[styles.filterPill, filterMode === 'assigned' && styles.filterPillActive]}
-              onPress={() => setFilterMode('assigned')}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  filterMode === 'assigned' && styles.filterPillTextActive,
-                ]}
+            {isMr ? (
+              <TouchableOpacity
+                style={[styles.filterPill, styles.filterPillActive]}
+                activeOpacity={0.8}
               >
-                My Assigned ({myAssignedCount})
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterPill, filterMode === 'all' && styles.filterPillActive]}
-              onPress={() => setFilterMode('all')}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  filterMode === 'all' && styles.filterPillTextActive,
-                ]}
-              >
-                All Territory ({doctors.length})
-              </Text>
-            </TouchableOpacity>
+                <Text style={[styles.filterPillText, styles.filterPillTextActive]}>
+                  My Marked Locations ({myAssignedCount})
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.filterPill, filterMode === 'assigned' && styles.filterPillActive]}
+                  onPress={() => setFilterMode('assigned')}
+                >
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      filterMode === 'assigned' && styles.filterPillTextActive,
+                    ]}
+                  >
+                    My Assigned ({myAssignedCount})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterPill, filterMode === 'all' && styles.filterPillActive]}
+                  onPress={() => setFilterMode('all')}
+                >
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      filterMode === 'all' && styles.filterPillTextActive,
+                    ]}
+                  >
+                    All Territory ({doctors.length})
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           <TextInput

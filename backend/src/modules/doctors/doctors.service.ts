@@ -8,24 +8,57 @@ import { Doctor } from '../../database/database.types';
 export class DoctorsService {
   constructor(private readonly db: DatabaseService) {}
 
-  async getDoctors(filter: DoctorFilterDto) {
-    return this.db.doctors
-      .filter((d) => !d.deleted_at)
-      .filter((d) => (filter.area_id ? d.area_id === filter.area_id : true))
-      .filter((d) => (filter.class ? d.class === filter.class : true))
-      .filter((d) => (filter.assigned_mr_id ? d.assigned_mr_id === filter.assigned_mr_id : true))
-      .filter((d) =>
-        filter.search
-          ? d.name.toLowerCase().includes(filter.search.toLowerCase()) ||
-            d.clinic.toLowerCase().includes(filter.search.toLowerCase()) ||
-            (d.specialization && d.specialization.toLowerCase().includes(filter.search.toLowerCase()))
-          : true,
+  async getDoctors(filter: DoctorFilterDto, user?: any) {
+    let list = this.db.doctors.filter((d) => !d.deleted_at);
+
+    // Strict MR Isolation (§Client Requirement): An MR should ONLY see locations/doctors marked by them or assigned to them
+    if (user && user.role === 'MR') {
+      const mrId = user.id || user.sub;
+      list = list.filter((d) => {
+        const isCreatedByMe = d.created_by === mrId;
+        const isAssignedToMe = d.assigned_mr_id === mrId;
+        const matchesName = user.name && d.assigned_mr_name?.toLowerCase().includes(user.name.toLowerCase());
+        const matchesCreatedName = user.name && d.created_by_name?.toLowerCase().includes(user.name.toLowerCase());
+        return isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName;
+      });
+    } else if (filter.assigned_mr_id) {
+      list = list.filter((d) => d.assigned_mr_id === filter.assigned_mr_id || d.created_by === filter.assigned_mr_id);
+    }
+
+    if (filter.area_id) {
+      list = list.filter((d) => d.area_id === filter.area_id);
+    }
+    if (filter.class) {
+      list = list.filter((d) => d.class === filter.class);
+    }
+    if (filter.search) {
+      const q = filter.search.toLowerCase();
+      list = list.filter(
+        (d) =>
+          d.name.toLowerCase().includes(q) ||
+          d.clinic.toLowerCase().includes(q) ||
+          (d.specialization && d.specialization.toLowerCase().includes(q)),
       );
+    }
+
+    return list;
   }
 
-  async getDoctorById(id: string) {
+  async getDoctorById(id: string, user?: any) {
     const doctor = this.db.doctors.find((d) => d.id === id && !d.deleted_at);
     if (!doctor) throw new NotFoundException('Doctor not found');
+
+    if (user && user.role === 'MR') {
+      const mrId = user.id || user.sub;
+      const isCreatedByMe = doctor.created_by === mrId;
+      const isAssignedToMe = doctor.assigned_mr_id === mrId;
+      const matchesName = user.name && doctor.assigned_mr_name?.toLowerCase().includes(user.name.toLowerCase());
+      const matchesCreatedName = user.name && doctor.created_by_name?.toLowerCase().includes(user.name.toLowerCase());
+      if (!isCreatedByMe && !isAssignedToMe && !matchesName && !matchesCreatedName) {
+        throw new NotFoundException('Doctor not found');
+      }
+    }
+
     return doctor;
   }
 
@@ -70,9 +103,8 @@ export class DoctorsService {
     return doctor;
   }
 
-  async updateDoctor(id: string, dto: UpdateDoctorDto) {
-    const doctor = this.db.doctors.find((d) => d.id === id && !d.deleted_at);
-    if (!doctor) throw new NotFoundException('Doctor not found');
+  async updateDoctor(id: string, dto: UpdateDoctorDto, user?: any) {
+    const doctor = await this.getDoctorById(id, user);
 
     if (dto.name) doctor.name = dto.name;
     if (dto.qualification !== undefined) doctor.qualification = dto.qualification;
@@ -102,8 +134,8 @@ export class DoctorsService {
     return doctor;
   }
 
-  async getDoctorVisits(id: string) {
-    await this.getDoctorById(id);
+  async getDoctorVisits(id: string, user?: any) {
+    await this.getDoctorById(id, user);
     return this.db.doctorVisits
       .filter((v) => v.doctor_id === id)
       .sort((a, b) => b.start_time.localeCompare(a.start_time));

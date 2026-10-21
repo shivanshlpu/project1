@@ -254,7 +254,11 @@ export class LocationsService implements OnModuleInit {
     // MR Isolation: If the request is from a Field MR, only display locations they personally marked (§Client Requirement)
     if (user && user.role === 'MR') {
       const mrId = user.id || user.sub;
-      result = result.filter((l) => l.created_by === mrId);
+      result = result.filter(
+        (l) =>
+          l.created_by === mrId ||
+          (user.name && l.created_by_name?.toLowerCase().includes(user.name.toLowerCase())),
+      );
     } else if (query?.mr_id && query.mr_id !== 'ALL') {
       result = result.filter((l) => l.created_by === query.mr_id);
     }
