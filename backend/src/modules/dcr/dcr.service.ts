@@ -26,6 +26,7 @@ export class DcrService {
         status: 'DRAFT',
       };
       this.db.dcrList.push(dcr);
+      this.db.persistToDisk();
     }
 
     // Pull today's visits for this MR
@@ -103,6 +104,7 @@ export class DcrService {
 
     dcr.status = 'SUBMITTED';
     dcr.submitted_at = new Date().toISOString();
+    this.db.persistToDisk();
 
     return {
       message: 'DCR submitted for manager review',
@@ -121,6 +123,7 @@ export class DcrService {
 
     dcr.status = 'CORRECTION_REQUESTED';
     dcr.manager_comment = dto.manager_comment;
+    this.db.persistToDisk();
 
     return { message: 'Correction requested', dcr };
   }
@@ -137,6 +140,7 @@ export class DcrService {
     dcr.approved_by = managerId;
     dcr.approved_at = new Date().toISOString();
     if (dto.comment) dcr.manager_comment = dto.comment;
+    this.db.persistToDisk();
 
     return { message: 'DCR approved successfully', dcr };
   }

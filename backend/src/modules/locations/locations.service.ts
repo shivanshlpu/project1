@@ -342,6 +342,7 @@ export class LocationsService implements OnModuleInit {
       });
     }
 
+    this.db.persistToDisk();
     return newLocation;
   }
 
@@ -407,6 +408,7 @@ export class LocationsService implements OnModuleInit {
       if (dto.class !== undefined) doc.class = dto.class as any;
     }
 
+    this.db.persistToDisk();
     return loc;
   }
 
@@ -438,6 +440,7 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
+    this.db.persistToDisk();
     return { success: true, message: `Location ${id} deleted successfully`, id };
   }
 

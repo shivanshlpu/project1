@@ -36,6 +36,7 @@ export class ExpensesService {
       created_at: new Date().toISOString(),
     };
     this.db.approvals.push(approval);
+    this.db.persistToDisk();
 
     return {
       message: 'Expense submitted for manager approval',
@@ -95,6 +96,7 @@ export class ExpensesService {
       approval.decided_at = new Date().toISOString();
     }
 
+    this.db.persistToDisk();
     return { message: 'Expense approved successfully', expense };
   }
 
@@ -118,6 +120,7 @@ export class ExpensesService {
       approval.decided_at = new Date().toISOString();
     }
 
+    this.db.persistToDisk();
     return { message: 'Expense rejected', expense };
   }
 }

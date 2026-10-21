@@ -37,6 +37,7 @@ export class VisitsService {
     };
 
     this.db.doctorVisits.push(visit);
+    this.db.persistToDisk();
     return {
       message: 'Visit started successfully',
       visit,
@@ -84,6 +85,7 @@ export class VisitsService {
       }
     }
 
+    this.db.persistToDisk();
     return {
       message: 'Visit completed successfully',
       visit,

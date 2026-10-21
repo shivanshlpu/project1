@@ -135,6 +135,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       const filePath = this.getStorageFilePath();
       const payload = {
         tasks: this.tasks,
+        taskAssignments: this.taskAssignments,
+        locationVerifications: this.locationVerifications,
+        doctors: this.doctors,
+        approvals: this.approvals,
         orders: this.orders,
         deletedOrderIds: Array.from(this.deletedOrderIds),
         attendance: this.attendance,
@@ -639,6 +643,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.notifications)) {
           this.notifications = data.notifications;
         }
+        if (Array.isArray(data.doctors)) this.doctors = data.doctors;
+        if (Array.isArray(data.taskAssignments)) this.taskAssignments = data.taskAssignments;
+        if (Array.isArray(data.locationVerifications)) this.locationVerifications = data.locationVerifications;
+        if (Array.isArray(data.approvals)) this.approvals = data.approvals;
         if (Array.isArray(data.fcmTokens)) {
           this.fcmTokens = new Map(data.fcmTokens);
         }
@@ -788,18 +796,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
-          // Sync tasks with Supabase
+          // Sync tasks with Supabase (Authoritative: prune tasks deleted in Supabase)
           const { data: remoteTasks, error: taskErr } = await client.from('tasks').select('*');
           if (!taskErr && remoteTasks && remoteTasks.length > 0) {
             console.log(`[DatabaseService] Synced ${remoteTasks.length} tasks from Supabase.`);
             const DUMMY_IDS = new Set(['task-01', 'task-02', 'task-03', 'task-04', 'task-05']);
-            for (const rt of remoteTasks) {
-              if (DUMMY_IDS.has(rt.id)) {
-                try {
-                  await client.from('tasks').delete().eq('id', rt.id);
-                } catch {}
-                continue;
-              }
+            const cleanRemoteTasks = remoteTasks.filter((rt) => !DUMMY_IDS.has(rt.id));
+            const remoteTaskIds = new Set(cleanRemoteTasks.map((t) => t.id));
+            this.tasks = this.tasks.filter((t) => remoteTaskIds.has(t.id));
+            for (const rt of cleanRemoteTasks) {
               const idx = this.tasks.findIndex((t) => t.id === rt.id);
               if (idx >= 0) {
                 this.tasks[idx] = { ...this.tasks[idx], ...rt };
@@ -811,6 +816,45 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             for (const task of this.tasks) {
               await this.syncTaskToSupabase(task);
             }
+          }
+
+          // Authoritative sync: load doctors / marked locations from Supabase
+          try {
+            const { data: remoteLocations, error: locErr } = await client
+              .from('saved_locations')
+              .select('*')
+              .order('created_at', { ascending: false });
+            if (!locErr && Array.isArray(remoteLocations) && remoteLocations.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteLocations.length} locations/doctors from Supabase.`);
+              for (const loc of remoteLocations) {
+                const doc: Doctor = {
+                  id: loc.id,
+                  name: loc.name,
+                  qualification: loc.category === 'HOSPITAL' ? 'Hospital Facility' : loc.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
+                  specialization: loc.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
+                  class: 'A',
+                  potential_score: 85,
+                  phone: loc.contact_phone || '',
+                  whatsapp: '',
+                  clinic: loc.name,
+                  category: loc.category || 'CLINIC',
+                  address: loc.address || '',
+                  latitude: Number(loc.latitude),
+                  longitude: Number(loc.longitude),
+                  area_id: 'area-shd-07',
+                  created_by: loc.created_by || 'usr-admin-01',
+                  created_at: loc.created_at || new Date().toISOString(),
+                };
+                const idx = this.doctors.findIndex((d) => d.id === doc.id);
+                if (idx >= 0) {
+                  this.doctors[idx] = { ...this.doctors[idx], ...doc };
+                } else {
+                  this.doctors.push(doc);
+                }
+              }
+            }
+          } catch (docNotice: any) {
+            console.warn('[DatabaseService] Notice syncing doctors from Supabase:', docNotice?.message);
           }
 
           // Sync attendance with Supabase

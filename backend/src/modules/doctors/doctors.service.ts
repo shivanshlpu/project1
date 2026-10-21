@@ -92,6 +92,7 @@ export class DoctorsService {
       }
     }
 
+    this.db.persistToDisk();
     return doctor;
   }
 
