@@ -207,6 +207,9 @@ export interface Doctor {
   category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
   assigned_mr_id?: string;
   assigned_mr_name?: string;
+  batch_id?: string;
+  batch_code?: string;
+  batch_name?: string;
   created_at: string;
   deleted_at?: string;
 }

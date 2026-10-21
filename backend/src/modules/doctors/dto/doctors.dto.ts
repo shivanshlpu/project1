@@ -76,6 +76,18 @@ export class CreateDoctorDto {
   @IsString()
   @IsOptional()
   assigned_mr_name?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_name?: string;
 }
 
 export class UpdateDoctorDto {
@@ -132,6 +144,18 @@ export class UpdateDoctorDto {
   @IsString()
   @IsOptional()
   assigned_mr_name?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_id?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_code?: string;
+
+  @IsString()
+  @IsOptional()
+  batch_name?: string;
 }
 
 export class DoctorFilterDto {

@@ -400,6 +400,11 @@ export class LocationsService implements OnModuleInit {
       created_by: creatorId,
       created_by_role: creatorRole,
       created_by_name: creatorName,
+      assigned_mr_id: creatorRole === 'MR' ? creatorId : undefined,
+      assigned_mr_name: creatorRole === 'MR' ? creatorName : undefined,
+      batch_id: batchId,
+      batch_code: batchCode,
+      batch_name: batchName,
       category: newLocation.category,
       created_at: newLocation.created_at,
     });

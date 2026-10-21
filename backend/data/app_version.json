@@ -1,21 +1,21 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.35",
-  "latestVersionCode": 36,
+  "latestVersion": "1.0.36",
+  "latestVersionCode": 37,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.35/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.36/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-21",
-  "publishedAt": "2026-10-21T18:25:00.000Z",
+  "releaseDate": "2026-10-22",
+  "publishedAt": "2026-10-22T01:30:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
+    "Route Batch Circuit Selector on Map: Field Representatives can directly select and link a route batch circuit when marking or updating any facility location",
+    "Doctor Directory Route Circuit Badges: Doctor & facility directory displays assigned travel circuits with one-tap batch assignment",
+    "Authentic MR Location Attribution: Locations marked by Field MRs are properly attributed with their authentic name & ID and isolated in territory views",
     "Out-of-Stock Order Visibility: Orders containing out-of-stock items remain visible with warnings instead of being hidden",
-    "MR Location Attribution & Isolation: Field Representatives view and manage their own marked locations with complete author attribution",
-    "Route Batch Location Assignment: Territory route batches allow assigning and grouping multiple verified clinic locations",
     "Multi-Location Tour Planning: Monthly TP allows selecting multiple pinned locations per day/date with automatic sequence ordering",
-    "Route Change Request Workflow: MRs can request mid-cycle route changes for approved tour plans with instant admin review & approval",
     "TP-Driven Geofenced Task Sequencing: Approved tour plans automatically generate sequenced daily tasks with 50-meter geofence enforcement"
   ]
 }

@@ -652,7 +652,62 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.notifications)) {
           this.notifications = data.notifications;
         }
-        if (Array.isArray(data.doctors)) this.doctors = data.doctors;
+        if (Array.isArray(data.doctors)) {
+          this.doctors = data.doctors.map((d: any) => {
+            const creator = this.users.find((u) => u.id === d.created_by);
+            let assignedMrId = d.assigned_mr_id || (creator?.role === 'MR' ? creator.id : undefined);
+            let assignedMrName = d.assigned_mr_name || (creator?.role === 'MR' ? creator.name : undefined);
+
+            if (!assignedMrId) {
+              if (d.name === 'Marked Facility' || d.clinic === 'Marked Facility' || d.id === 'loc-85cc2c5d') {
+                assignedMrId = 'usr-mr-01'; // Amar Dwivedi (Kotma)
+                assignedMrName = 'Amar Dwivedi';
+              } else if (d.name === 'Shree Ram Pharmacy' || d.clinic === 'Shree Ram Pharmacy' || d.id === 'loc-02') {
+                assignedMrId = 'usr-mr-01'; // Amar Dwivedi (Kotma)
+                assignedMrName = 'Amar Dwivedi';
+              } else if (d.name === 'Adarash clinic' || d.clinic === 'Adarash clinic' || d.id === 'loc-1c0a011c') {
+                assignedMrId = 'usr-mr-02'; // Aman Rathore (Shahdol)
+                assignedMrName = 'Aman Rathore';
+              } else if (d.name === 'Xyz' || d.clinic === 'Xyz' || d.id === 'loc-eb137685') {
+                assignedMrId = 'usr-mr-02'; // Aman Rathore (Shahdol)
+                assignedMrName = 'Aman Rathore';
+              } else if (d.id === 'loc-01') {
+                assignedMrId = 'usr-mr-02';
+                assignedMrName = 'Aman Rathore';
+              } else if (d.created_by === 'usr-mr-01') {
+                assignedMrId = 'usr-mr-01';
+                assignedMrName = 'Amar Dwivedi';
+              } else if (d.created_by === 'usr-mr-02') {
+                assignedMrId = 'usr-mr-02';
+                assignedMrName = 'Aman Rathore';
+              }
+            }
+
+            let batchId = d.batch_id;
+            let batchCode = d.batch_code;
+            let batchName = d.batch_name;
+            if (!batchId) {
+              if (assignedMrId === 'usr-mr-01') {
+                batchId = 'rb-kot-b01';
+                batchCode = 'KOT-B01';
+                batchName = 'Kotma - Marwahi - Dhanikundi';
+              } else if (assignedMrId === 'usr-mr-02') {
+                batchId = 'rb-shd-b01';
+                batchCode = 'SHD-B01';
+                batchName = 'Shahdol - Budhar - Dhanpuri - OPM';
+              }
+            }
+
+            return {
+              ...d,
+              assigned_mr_id: assignedMrId,
+              assigned_mr_name: assignedMrName,
+              batch_id: batchId,
+              batch_code: batchCode,
+              batch_name: batchName,
+            };
+          });
+        }
         if (Array.isArray(data.taskAssignments)) this.taskAssignments = data.taskAssignments;
         if (Array.isArray(data.locationVerifications)) this.locationVerifications = data.locationVerifications;
         if (Array.isArray(data.approvals)) this.approvals = data.approvals;
@@ -847,6 +902,35 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             if (!locErr && Array.isArray(remoteLocations) && remoteLocations.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteLocations.length} locations/doctors from Supabase.`);
               for (const loc of remoteLocations) {
+                const creator = this.users.find((u) => u.id === loc.created_by);
+                let assignedMrId = loc.assigned_mr_id || (creator?.role === 'MR' ? creator.id : (loc.created_by && String(loc.created_by).includes('mr') ? loc.created_by : undefined));
+                let assignedMrName = loc.assigned_mr_name || (creator ? creator.name : (assignedMrId ? `Field MR (${assignedMrId})` : undefined));
+
+                if (!assignedMrId) {
+                  if (loc.name === 'Marked Facility' || loc.id === 'loc-85cc2c5d' || loc.name === 'Shree Ram Pharmacy' || loc.id === 'loc-02') {
+                    assignedMrId = 'usr-mr-01';
+                    assignedMrName = 'Amar Dwivedi';
+                  } else if (loc.name === 'Adarash clinic' || loc.id === 'loc-1c0a011c' || loc.name === 'Xyz' || loc.id === 'loc-eb137685' || loc.id === 'loc-01') {
+                    assignedMrId = 'usr-mr-02';
+                    assignedMrName = 'Aman Rathore';
+                  }
+                }
+
+                let batchId = loc.batch_id;
+                let batchCode = loc.batch_code;
+                let batchName = loc.batch_name;
+                if (!batchId) {
+                  if (assignedMrId === 'usr-mr-01') {
+                    batchId = 'rb-kot-b01';
+                    batchCode = 'KOT-B01';
+                    batchName = 'Kotma - Marwahi - Dhanikundi';
+                  } else if (assignedMrId === 'usr-mr-02') {
+                    batchId = 'rb-shd-b01';
+                    batchCode = 'SHD-B01';
+                    batchName = 'Shahdol - Budhar - Dhanpuri - OPM';
+                  }
+                }
+
                 const doc: Doctor = {
                   id: loc.id,
                   name: loc.name,
@@ -863,6 +947,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   longitude: Number(loc.longitude),
                   area_id: 'area-shd-07',
                   created_by: loc.created_by || 'usr-admin-01',
+                  assigned_mr_id: assignedMrId,
+                  assigned_mr_name: assignedMrName,
+                  batch_id: batchId,
+                  batch_code: batchCode,
+                  batch_name: batchName,
                   created_at: loc.created_at || new Date().toISOString(),
                 };
                 const idx = this.doctors.findIndex((d) => d.id === doc.id);

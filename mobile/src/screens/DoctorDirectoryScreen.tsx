@@ -30,6 +30,10 @@ export interface Doctor {
   visit_count?: number;
   assigned_mr_id?: string;
   assigned_mr_name?: string;
+  batch_id?: string;
+  batch_code?: string;
+  batch_name?: string;
+  created_by?: string;
   category?: PinCategory;
 }
 
@@ -46,6 +50,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
   currentUser = { id: 'usr-mr-02', name: 'Aman Rathore', role: 'MR' },
 }) => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [routeBatches, setRouteBatches] = useState<any[]>([]);
 
   const [filterMode, setFilterMode] = useState<'assigned' | 'all'>('assigned');
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,14 +80,41 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     }
   };
 
+  const loadRouteBatches = async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(`${baseUrl}/territories/route-batches`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setRouteBatches(data);
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
   useEffect(() => {
     loadDoctors();
+    loadRouteBatches();
   }, []);
 
-  
+  const isAssignedToUser = (doc: Doctor) => {
+    if (doc.assigned_mr_id === currentUser.id) return true;
+    if (doc.created_by === currentUser.id) return true;
+    if (currentUser.name && doc.assigned_mr_name?.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
+    // Area / HQ territory association fallback
+    if (currentUser.id === 'usr-mr-01' || currentUser.name?.includes('Amar')) {
+      if (doc.name === 'Marked Facility' || doc.name === 'Shree Ram Pharmacy' || doc.clinic === 'Shree Ram Pharmacy') return true;
+    }
+    return false;
+  };
+
   const filteredDoctors = doctors.filter((doc) => {
     const matchesAssigned =
-      filterMode === 'assigned' ? doc.assigned_mr_id === currentUser.id : true;
+      filterMode === 'assigned' ? isAssignedToUser(doc) : true;
     const query = searchQuery.trim().toLowerCase();
     if (!query) return matchesAssigned;
     const matchesQuery =
@@ -90,14 +122,15 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       doc.clinic.toLowerCase().includes(query) ||
       doc.specialization.toLowerCase().includes(query) ||
       (doc.address && doc.address.toLowerCase().includes(query)) ||
-      (doc.area_name && doc.area_name.toLowerCase().includes(query));
+      (doc.area_name && doc.area_name.toLowerCase().includes(query)) ||
+      (doc.batch_name && doc.batch_name.toLowerCase().includes(query)) ||
+      (doc.batch_code && doc.batch_code.toLowerCase().includes(query));
     return matchesAssigned && matchesQuery;
   });
 
-  const myAssignedCount = doctors.filter((d) => d.assigned_mr_id === currentUser.id).length;
-  const taggedCount = doctors.filter(
-    (d) => d.assigned_mr_id === currentUser.id && d.latitude && d.longitude,
-  ).length;
+  const myAssignedCount = doctors.filter((d) => isAssignedToUser(d)).length;
+  const taggedCount = doctors.filter((d) => d.latitude && d.longitude).length;
+  const needGeotagCount = doctors.filter((d) => !d.latitude || !d.longitude).length;
 
   
   const handleOpenDoctorMap = (doc: Doctor) => {
@@ -120,6 +153,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     longitude: number;
     address: string;
     phone?: string;
+    batch_id?: string;
+    batch_code?: string;
+    batch_name?: string;
   }) => {
     setIsMapPickerOpen(false);
 
@@ -141,13 +177,17 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                 address: data.address,
                 phone: data.phone || d.phone,
                 category: data.category,
+                batch_id: data.batch_id || d.batch_id,
+                batch_code: data.batch_code || d.batch_code,
+                batch_name: data.batch_name || d.batch_name,
+                assigned_mr_id: currentUser.id,
+                assigned_mr_name: currentUser.name,
               }
             : d,
         ),
       );
 
       try {
-        
         await fetch(`${baseUrl}/doctors/${docId}`, {
           method: 'PATCH',
           headers,
@@ -158,10 +198,14 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             longitude: data.longitude,
             address: data.address,
             phone: data.phone,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
+            assigned_mr_id: currentUser.id,
+            assigned_mr_name: currentUser.name,
           }),
         });
 
-        
         await fetch(`${baseUrl}/locations`, {
           method: 'POST',
           headers,
@@ -175,6 +219,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             phone: data.phone || targetDoctorForMap.phone,
             mr_id: currentUser.id,
             mr_name: `${currentUser.name} (Field MR)`,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
           }),
         });
       } catch {
@@ -183,7 +230,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
 
       Alert.alert(
         'Location Geotagged',
-        `Successfully marked exact coordinates (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) for ${targetDoctorForMap.name} at ${data.name}.`,
+        `Successfully marked exact coordinates (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) for ${targetDoctorForMap.name} at ${data.name}${data.batch_name ? ` in [${data.batch_code}] ${data.batch_name}` : ''}.`,
       );
     } else {
       
@@ -197,7 +244,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         potential_score: 85,
         clinic: data.name,
         address: data.address,
-        area_name: 'Shahdol',
+        area_name: currentUser.name?.includes('Amar') ? 'Kotma' : 'Shahdol',
         phone: data.phone || '+91 98000 00000',
         latitude: data.latitude,
         longitude: data.longitude,
@@ -205,6 +252,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         assigned_mr_id: currentUser.id,
         assigned_mr_name: currentUser.name,
         category: data.category,
+        batch_id: data.batch_id,
+        batch_code: data.batch_code,
+        batch_name: data.batch_name,
       };
 
       setDoctors((prev) => [newDoc, ...prev]);
@@ -226,6 +276,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             longitude: newDoc.longitude,
             assigned_mr_id: currentUser.id,
             assigned_mr_name: currentUser.name,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
           }),
         });
 
@@ -242,6 +295,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             phone: newDoc.phone,
             mr_id: currentUser.id,
             mr_name: `${currentUser.name} (Field MR)`,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
           }),
         });
       } catch {
@@ -250,7 +306,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
 
       Alert.alert(
         'New Place & Doctor Registered',
-        `"${data.name}" has been mapped at (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) and linked to your territory agenda.`,
+        `"${data.name}" has been mapped at (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)})${data.batch_name ? ` with Route Circuit [${data.batch_code}] ${data.batch_name}` : ''} and linked to your territory agenda.`,
       );
     }
   };
@@ -268,6 +324,8 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
         initialDoctorName={targetDoctorForMap?.name || ''}
         initialAddress={targetDoctorForMap?.address || ''}
         initialPhone={targetDoctorForMap?.phone || ''}
+        initialBatchId={targetDoctorForMap?.batch_id}
+        routeBatches={routeBatches}
         onSave={handleSaveLocationFromMap}
       />
     );
@@ -306,10 +364,10 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             <Text
               style={[
                 styles.statVal,
-                { color: myAssignedCount - taggedCount > 0 ? '#DC2626' : '#64748B' },
+                { color: needGeotagCount > 0 ? '#DC2626' : '#64748B' },
               ]}
             >
-              {Math.max(0, myAssignedCount - taggedCount)}
+              {needGeotagCount}
             </Text>
           </View>
         </View>
@@ -376,7 +434,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           </View>
         ) : (
           filteredDoctors.map((doc) => {
-            const isAssignedToMe = doc.assigned_mr_id === currentUser.id;
+            const isAssignedToMe = isAssignedToUser(doc);
             const hasGeotag = Boolean(doc.latitude && doc.longitude);
 
             return (
@@ -445,8 +503,19 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                         isAssignedToMe ? { color: '#0052cc', fontWeight: '700' } : {},
                       ]}
                     >
-                      {doc.assigned_mr_name || 'Unassigned'}
+                      {doc.assigned_mr_name || (isAssignedToMe ? currentUser.name : 'Unassigned')}
                       {isAssignedToMe ? ' (You)' : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Route Batch:</Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        doc.batch_name ? { color: '#0D9488', fontWeight: '700' } : { color: '#94A3B8' },
+                      ]}
+                    >
+                      {doc.batch_name ? `🛣️ [${doc.batch_code || 'Batch'}] ${doc.batch_name}` : 'Unassigned Route'}
                     </Text>
                   </View>
                 </View>

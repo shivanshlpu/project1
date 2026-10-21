@@ -13,6 +13,7 @@ import L from 'leaflet';
 import { create3DMapPinHtml, PinCategory } from '../utils/mapPinGenerator';
 import { LocationService } from '../services/locationService';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { ApiConfig } from '../services/apiConfig';
 
 interface InteractiveMapPickerProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ interface InteractiveMapPickerProps {
   initialDoctorName?: string;
   initialAddress?: string;
   initialPhone?: string;
+  initialBatchId?: string;
+  routeBatches?: Array<{ id: string; batch_code?: string; name: string }>;
   onSave: (data: {
     name: string;
     doctor_name?: string;
@@ -32,6 +35,9 @@ interface InteractiveMapPickerProps {
     longitude: number;
     address: string;
     phone?: string;
+    batch_id?: string;
+    batch_code?: string;
+    batch_name?: string;
   }) => void;
 }
 
@@ -45,6 +51,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   initialDoctorName = '',
   initialAddress = '',
   initialPhone = '',
+  initialBatchId = '',
+  routeBatches,
   onSave,
 }) => {
   const [selectedLat, setSelectedLat] = useState<number>(initialLat);
@@ -55,6 +63,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   const [doctorName, setDoctorName] = useState<string>(initialDoctorName);
   const [address, setAddress] = useState<string>(initialAddress);
   const [phone, setPhone] = useState<string>(initialPhone);
+
+  // Route Batch selection state
+  const [selectedBatchId, setSelectedBatchId] = useState<string>(initialBatchId || '');
+  const [selectedBatchCode, setSelectedBatchCode] = useState<string>('');
+  const [selectedBatchName, setSelectedBatchName] = useState<string>('');
+  const [routeBatchesList, setRouteBatchesList] = useState<Array<{ id: string; batch_code?: string; name: string }>>(
+    routeBatches || []
+  );
 
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [isLocatingGps, setIsLocatingGps] = useState<boolean>(false);
@@ -177,6 +193,47 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       }
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedBatchId(initialBatchId || '');
+      if (routeBatches && routeBatches.length > 0) {
+        setRouteBatchesList(routeBatches);
+        if (initialBatchId) {
+          const match = routeBatches.find(
+            (b) => b.id === initialBatchId || b.batch_code === initialBatchId,
+          );
+          if (match) {
+            setSelectedBatchCode(match.batch_code || match.id);
+            setSelectedBatchName(match.name);
+          }
+        }
+      } else {
+        (async () => {
+          try {
+            const baseUrl = await ApiConfig.getBaseUrl();
+            const headers = await ApiConfig.getAuthHeaders();
+            const res = await fetch(`${baseUrl}/territories/route-batches`, { headers });
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data) && data.length > 0) {
+                setRouteBatchesList(data);
+                if (initialBatchId) {
+                  const match = data.find(
+                    (b: any) => b.id === initialBatchId || b.batch_code === initialBatchId,
+                  );
+                  if (match) {
+                    setSelectedBatchCode(match.batch_code || match.id);
+                    setSelectedBatchName(match.name);
+                  }
+                }
+              }
+            }
+          } catch {}
+        })();
+      }
+    }
+  }, [isOpen, initialBatchId, routeBatches]);
 
   
   useEffect(() => {
@@ -321,6 +378,10 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       return;
     }
 
+    const currentBatch = routeBatchesList.find(
+      (b) => b.id === selectedBatchId || b.batch_code === selectedBatchId,
+    );
+
     onSave({
       name: placeName.trim(),
       doctor_name: doctorName.trim() || undefined,
@@ -329,6 +390,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       longitude: selectedLng,
       address: address.trim() || `${placeName.trim()}, Shahdol`,
       phone: phone.trim() || undefined,
+      batch_id: selectedBatchId || undefined,
+      batch_code: currentBatch?.batch_code || selectedBatchCode || undefined,
+      batch_name: currentBatch?.name || selectedBatchName || undefined,
     });
   };
 
@@ -446,6 +510,93 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          {/* Route Batch Circuit Assignment (§Route Batch Circuit) */}
+          <View style={{ marginTop: 14, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 13 }}>🛣️</Text>
+                <Text style={styles.inputLabel}>Route Batch Circuit</Text>
+              </View>
+              {selectedBatchId ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedBatchId('');
+                    setSelectedBatchCode('');
+                    setSelectedBatchName('');
+                  }}
+                >
+                  <Text style={{ fontSize: 11.5, color: '#DC2626', fontWeight: '700' }}>✕ Clear Batch</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>
+              Select the travel route circuit this clinic/pharmacy belongs to
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.catPill,
+                  !selectedBatchId && styles.catPillActive,
+                  { marginRight: 8 },
+                ]}
+                onPress={() => {
+                  setSelectedBatchId('');
+                  setSelectedBatchCode('');
+                  setSelectedBatchName('');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.catPillText,
+                    !selectedBatchId && styles.catPillTextActive,
+                  ]}
+                >
+                  Unassigned / Standalone
+                </Text>
+              </TouchableOpacity>
+
+              {routeBatchesList.map((batch) => {
+                const isSelected =
+                  selectedBatchId === batch.id || selectedBatchCode === batch.batch_code;
+                return (
+                  <TouchableOpacity
+                    key={batch.id}
+                    style={[
+                      styles.catPill,
+                      isSelected && styles.catPillActive,
+                      { marginRight: 8 },
+                    ]}
+                    onPress={() => {
+                      setSelectedBatchId(batch.id);
+                      setSelectedBatchCode(batch.batch_code || batch.id);
+                      setSelectedBatchName(batch.name);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.catPillText,
+                        isSelected && styles.catPillTextActive,
+                      ]}
+                    >
+                      [{batch.batch_code || batch.id}] {batch.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            {selectedBatchName ? (
+              <View style={{ marginTop: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: '#EFF6FF', borderLeftWidth: 3, borderLeftColor: '#0052cc' }}>
+                <Text style={{ fontSize: 11.5, color: '#1E40AF', fontWeight: '600' }}>
+                  ✓ Assigned Circuit: <Text style={{ fontWeight: '800' }}>[{selectedBatchCode}] {selectedBatchName}</Text>
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Place & Doctor Details */}

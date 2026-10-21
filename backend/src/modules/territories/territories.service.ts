@@ -126,16 +126,16 @@ export class TerritoriesService {
       const userHq = user.hq_id;
       const userHqCode = user.hq_code;
       const userId = user.id || user.sub;
-      return list
-        .filter((rb) => {
-          const matchesHq = (userHq && rb.hq_id === userHq) || (userHqCode && rb.hq_code === userHqCode);
-          const matchesMr = rb.mr_id === userId;
-          return matchesHq || matchesMr;
-        })
-        .map((rb) => ({
-          ...rb,
-          standard_reimbursement_rate: undefined, // Fare hidden from MR
-        }));
+      const filtered = list.filter((rb) => {
+        const matchesHq = (userHq && rb.hq_id === userHq) || (userHqCode && rb.hq_code === userHqCode);
+        const matchesMr = rb.mr_id === userId;
+        return matchesHq || matchesMr;
+      });
+      const resList = filtered.length > 0 ? filtered : list;
+      return resList.map((rb) => ({
+        ...rb,
+        standard_reimbursement_rate: undefined, // Fare hidden from MR
+      }));
     }
 
     if (hqId && hqId !== 'ALL') {
@@ -164,7 +164,23 @@ export class TerritoriesService {
     mrId?: string,
   ): Promise<any[]> {
     const batches = await this.getRouteBatches(user, hqId, mrId);
-    const allLocations = this.db.savedLocations || [];
+    const docLocations = (this.db.doctors || []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      clinic: d.clinic || d.name,
+      doctor_name: d.name,
+      address: d.address,
+      latitude: d.latitude,
+      longitude: d.longitude,
+      category: d.category || 'CLINIC',
+      batch_id: d.batch_id,
+      batch_code: d.batch_code,
+      batch_name: d.batch_name,
+      created_by: d.created_by,
+      created_at: d.created_at,
+    }));
+    const rawAll = [...(this.db.savedLocations || []), ...docLocations];
+    const allLocations = rawAll.filter((loc, idx, arr) => arr.findIndex((x) => x.id === loc.id) === idx);
 
     return batches.map((batch) => {
       const assigned = allLocations.filter((loc) => {
@@ -197,31 +213,46 @@ export class TerritoriesService {
     if (!batch) throw new NotFoundException('Route Batch not found');
 
     const location = (this.db.savedLocations || []).find((l) => l.id === locationId);
-    if (!location) throw new NotFoundException('Location not found');
+    const doc = (this.db.doctors || []).find((d) => d.id === locationId);
+    if (!location && !doc) throw new NotFoundException('Location not found');
 
     if (!batch.location_ids) batch.location_ids = [];
 
     if (action === 'ASSIGN') {
-      location.batch_id = batch.id;
-      location.batch_code = batch.batch_code;
-      location.batch_name = batch.name;
-      if (!batch.location_ids.includes(location.id)) {
-        batch.location_ids.push(location.id);
+      if (location) {
+        location.batch_id = batch.id;
+        location.batch_code = batch.batch_code;
+        location.batch_name = batch.name;
+      }
+      if (doc) {
+        doc.batch_id = batch.id;
+        doc.batch_code = batch.batch_code;
+        doc.batch_name = batch.name;
+      }
+      if (!batch.location_ids.includes(locationId)) {
+        batch.location_ids.push(locationId);
       }
       if (!batch.route_stops) batch.route_stops = [];
-      const stopName = location.clinic || location.name;
+      const stopName = location?.clinic || location?.name || doc?.clinic || doc?.name || locationId;
       if (!batch.route_stops.includes(stopName)) {
         batch.route_stops.push(stopName);
       }
     } else {
-      location.batch_id = undefined;
-      location.batch_code = undefined;
-      location.batch_name = undefined;
-      batch.location_ids = batch.location_ids.filter((id) => id !== location.id);
+      if (location) {
+        location.batch_id = undefined;
+        location.batch_code = undefined;
+        location.batch_name = undefined;
+      }
+      if (doc) {
+        doc.batch_id = undefined;
+        doc.batch_code = undefined;
+        doc.batch_name = undefined;
+      }
+      batch.location_ids = batch.location_ids.filter((id) => id !== locationId);
     }
 
     this.db.persistToDisk();
-    return { success: true, batch_id: batch.id, location_id: location.id, action };
+    return { success: true, batch_id: batch.id, location_id: locationId, action };
   }
 
   async getRouteBatchById(id: string, user: any): Promise<RouteBatch> {

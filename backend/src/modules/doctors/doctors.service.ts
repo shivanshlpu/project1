@@ -56,6 +56,9 @@ export class DoctorsService {
       area_id: dto.area_id || 'area-shd-07',
       assigned_mr_id: assignedMrId,
       assigned_mr_name: assignedMrName,
+      batch_id: dto.batch_id,
+      batch_code: dto.batch_code,
+      batch_name: dto.batch_name,
       created_by: createdBy,
       created_by_role: creator ? creator.role : 'MR',
       created_by_name: creator ? creator.name : (assignedMrName || 'Field MR'),
@@ -82,6 +85,9 @@ export class DoctorsService {
     if (dto.latitude !== undefined) doctor.latitude = dto.latitude;
     if (dto.longitude !== undefined) doctor.longitude = dto.longitude;
     if (dto.area_id) doctor.area_id = dto.area_id;
+    if (dto.batch_id !== undefined) doctor.batch_id = dto.batch_id;
+    if (dto.batch_code !== undefined) doctor.batch_code = dto.batch_code;
+    if (dto.batch_name !== undefined) doctor.batch_name = dto.batch_name;
     if (dto.assigned_mr_id !== undefined) {
       doctor.assigned_mr_id = dto.assigned_mr_id;
       if (dto.assigned_mr_name) {
