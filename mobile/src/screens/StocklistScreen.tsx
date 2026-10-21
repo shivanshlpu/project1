@@ -1333,7 +1333,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
                           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={{ flexDirection: 'row', gap: 6 }}>
                               {overview.hq_breakdown.map((hb: any) => {
-                                const isCurrentHq = hb.hq_id === selectedHqId || (selectedHq && hb.hq_name === selectedHq.name);
+                                const isCurrentHq = hb.hq_id === selectedHqId;
                                 return (
                                   <TouchableOpacity
                                     key={hb.hq_id}

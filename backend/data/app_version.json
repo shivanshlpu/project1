@@ -1,19 +1,21 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.30",
-  "latestVersionCode": 31,
+  "latestVersion": "1.0.31",
+  "latestVersionCode": 32,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.30/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.31/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-18",
-  "publishedAt": "2026-10-17T20:22:34.203Z",
+  "releaseDate": "2026-10-21",
+  "publishedAt": "2026-10-21T06:24:09.874Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Fixed Stock & Medicine Accuracy: Isolated inventory queries strictly by the selected MR's assigned Headquarters depot, eliminating cross-HQ stock summation errors",
-    "Full 17-Medicine Catalog Visibility: All company products are now visible during task creation with accurate live stock pills (In Stock, Low Stock, or Out of Stock) and filter toggles",
-    "Product Detailing Focus Sync: Selected focus medicines are now saved on task assignment and prominently highlighted on the MR mobile task card",
-    "Dynamic In-App Medicine Chips: Real-time depot stock indicators and exact medicine matching in the duty order recording screen"
+    "Accurate MR Headquarters Stock Mapping: Fixed MR stock visibility so representatives automatically see their assigned HQ depot upon login",
+    "Multi-HQ Stock Switcher: Instant cross-HQ stock level chips and 1-tap switching between Kotma, Shahdol, Ambikapur, and Bilaspur depots in Stocklist and Today Tasks",
+    "Multi-Depot Support: Stock depot selector for HQs with multiple distribution centers",
+    "Admin HQ Assignment: Headquarters dropdown selector for registering and managing Field Representatives in the Admin Portal",
+    "Auto-Provisioning: Instant setup of primary HQ areas, stocker depots, and medicine catalogs for newly created Headquarters",
+    "Seamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials"
   ]
 }

@@ -273,10 +273,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
-    latestVersion: '1.0.20',
-    latestVersionCode: 21,
+    latestVersion: '1.0.31',
+    latestVersionCode: 32,
     minimumVersion: '1.0.0',
-    downloadUrl: 'https://github.com/shivanshlpu/project1/releases/download/v1.0.20/ahtri-ffa-mobile.apk',
+    downloadUrl: 'https://github.com/shivanshlpu/project1/releases/download/v1.0.31/ahtri-ffa-mobile.apk',
     forceUpdate: false,
     isActive: true,
     releaseDate: new Date().toISOString().split('T')[0],
@@ -284,7 +284,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     publishedBy: managerName || 'System Admin',
   });
   const [releaseNotesText, setReleaseNotesText] = useState(
-    'Individual Leave Allocation: Admin allocates CL, SL, and EL separately per employee with live sync\nReal-time Reflection: Any updates to leave allowances reflect immediately on employee ID and mobile app\nField Orders & Delivery Workflow: View ordered products, track deliveries, and require HQ acceptance before inventory count\nEnhanced Device Binding & Security: 6-Digit Owner OTP re-authentication on employee logout'
+    'Accurate MR Headquarters Stock Mapping: Fixed MR stock visibility so representatives automatically see their assigned HQ depot upon login\nMulti-HQ Stock Switcher: Instant cross-HQ stock level chips and 1-tap switching between Kotma, Shahdol, Ambikapur, and Bilaspur depots in Stocklist and Today Tasks\nMulti-Depot Support: Stock depot selector for HQs with multiple distribution centers\nAdmin HQ Assignment: Headquarters dropdown selector for registering and managing Field Representatives in the Admin Portal\nAuto-Provisioning: Instant setup of primary HQ areas, stocker depots, and medicine catalogs for newly created Headquarters\nSeamless In-Place Update: Release signing ensures smooth APK update without uninstalling or losing device credentials'
   );
   const [isLoadingUpdateInfo, setIsLoadingUpdateInfo] = useState(false);
   const [isSavingUpdateInfo, setIsSavingUpdateInfo] = useState(false);
