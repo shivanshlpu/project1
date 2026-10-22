@@ -32,6 +32,9 @@ interface MapLocationPickerModalProps {
     longitude: number;
     geofence_radius_m: number;
     phone?: string;
+    batch_id?: string;
+    batch_code?: string;
+    batch_name?: string;
   }) => void;
   onAssignTaskHere?: (loc: {
     name: string;
@@ -39,10 +42,14 @@ interface MapLocationPickerModalProps {
     latitude: number;
     longitude: number;
     geofence_radius_m: number;
+    batch_id?: string;
+    batch_code?: string;
+    batch_name?: string;
   }) => void;
   initialLat?: number;
   initialLng?: number;
   editingLocation?: any | null;
+  routeBatches?: Array<{ id: string; batch_code?: string; name: string; hq_id?: string; hq_name?: string }>;
 }
 
 export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
@@ -53,11 +60,17 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   initialLat = 23.2035,
   initialLng = 81.9669,
   editingLocation = null,
+  routeBatches,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const circleRef = useRef<L.Circle | null>(null);
+
+  const [batchId, setBatchId] = useState<string>('');
+  const [batchCode, setBatchCode] = useState<string>('');
+  const [batchName, setBatchName] = useState<string>('');
+  const [availableBatches, setAvailableBatches] = useState<Array<{ id: string; batch_code?: string; name: string; hq_id?: string; hq_name?: string }>>(routeBatches || []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -199,6 +212,35 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       }
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (editingLocation) {
+      setBatchId(editingLocation.batch_id || '');
+      setBatchCode(editingLocation.batch_code || '');
+      setBatchName(editingLocation.batch_name || '');
+    } else {
+      setBatchId('');
+      setBatchCode('');
+      setBatchName('');
+    }
+  }, [editingLocation, isOpen]);
+
+  useEffect(() => {
+    if (routeBatches && routeBatches.length > 0) {
+      setAvailableBatches(routeBatches);
+    } else {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+      fetch(`${apiUrl}/territories/route-batches`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => {
+          if (Array.isArray(data)) setAvailableBatches(data);
+        })
+        .catch(() => {});
+    }
+  }, [routeBatches, isOpen]);
 
   
   useEffect(() => {
@@ -493,6 +535,9 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       longitude: selectedLng,
       geofence_radius_m: geofenceRadius,
       phone,
+      batch_id: batchId || undefined,
+      batch_code: batchCode || undefined,
+      batch_name: batchName || undefined,
     });
     setIsSavedSuccess(true);
     setTimeout(() => {
@@ -878,6 +923,70 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
                 <option value="OFFICE">Distributor / Stockist / Office</option>
                 <option value="OTHER">Other Territory Location</option>
               </select>
+            </div>
+
+            {/* Route Batch Circuit Selector */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>
+                  Route Batch Circuit (Optional)
+                </label>
+                {batchId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBatchId('');
+                      setBatchCode('');
+                      setBatchName('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#DC2626',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    Clear Batch
+                  </button>
+                )}
+              </div>
+              <select
+                value={batchId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setBatchId(val);
+                  const matched = availableBatches.find((b) => b.id === val || b.batch_code === val);
+                  if (matched) {
+                    setBatchCode(matched.batch_code || matched.id);
+                    setBatchName(matched.name);
+                  } else {
+                    setBatchCode('');
+                    setBatchName('');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  fontSize: '13px',
+                  background: '#FFFFFF',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="">None / Unassigned (Standalone Territory)</option>
+                {availableBatches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    [{b.batch_code || b.id}] {b.name} {b.hq_name ? `• ${b.hq_name}` : ''}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: '11px', color: '#64748B', marginTop: '3px', display: 'block' }}>
+                Assigning a batch helps MRs discover and select this location in their Tour Plan for that route circuit.
+              </span>
             </div>
 
             {/* Resolved Address */}

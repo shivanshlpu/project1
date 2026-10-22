@@ -123,16 +123,29 @@ export class TerritoriesService {
     // If the authenticated user is an MR, they can ONLY access their own HQ or MR route batches
     // and fare / reimbursement rate is HIDDEN from MR per policy
     if (user?.role === 'MR') {
-      const userHq = user.hq_id;
-      const userHqCode = user.hq_code;
+      const userHq = (user.hq_id || '').toLowerCase().trim();
+      const userHqCode = (user.hq_code || '').toLowerCase().trim();
+      const userHqName = (user.hq || user.hq_name || '').toLowerCase().trim();
       const userId = user.id || user.sub;
+      const userName = (user.name || '').toLowerCase().trim();
+
       const filtered = list.filter((rb) => {
-        const matchesHq = (userHq && rb.hq_id === userHq) || (userHqCode && rb.hq_code === userHqCode);
-        const matchesMr = rb.mr_id === userId;
-        return matchesHq || matchesMr;
+        const rbHqId = (rb.hq_id || '').toLowerCase().trim();
+        const rbHqCode = (rb.hq_code || '').toLowerCase().trim();
+        const rbHqName = (rb.hq_name || '').toLowerCase().trim();
+
+        // Check matching HQ by ID, code, or name
+        const matchesHqId = Boolean(userHq && (rbHqId === userHq || rbHqId.includes(userHq) || userHq.includes(rbHqId)));
+        const matchesHqCode = Boolean(userHqCode && (rbHqCode === userHqCode || rbHqCode.includes(userHqCode)));
+        const matchesHqName = Boolean(userHqName && (rbHqName === userHqName || rbHqName.includes(userHqName) || userHqName.includes(rbHqName)));
+        const matchesMrId = Boolean(userId && rb.mr_id === userId);
+        const matchesMrName = Boolean(userName && rb.mr_name && rb.mr_name.toLowerCase().includes(userName));
+
+        return matchesHqId || matchesHqCode || matchesHqName || matchesMrId || matchesMrName;
       });
-      const resList = filtered.length > 0 ? filtered : list;
-      return resList.map((rb) => ({
+
+      // Strict MR Isolation: NEVER leak other HQs' route batches to an MR!
+      return filtered.map((rb) => ({
         ...rb,
         standard_reimbursement_rate: undefined, // Fare hidden from MR
       }));
@@ -177,10 +190,26 @@ export class TerritoriesService {
       batch_code: d.batch_code,
       batch_name: d.batch_name,
       created_by: d.created_by,
+      created_by_name: d.created_by_name,
+      assigned_mr_id: d.assigned_mr_id,
+      assigned_mr_name: d.assigned_mr_name,
       created_at: d.created_at,
     }));
     const rawAll = [...(this.db.savedLocations || []), ...docLocations];
-    const allLocations = rawAll.filter((loc, idx, arr) => arr.findIndex((x) => x.id === loc.id) === idx);
+    let allLocations = rawAll.filter((loc, idx, arr) => arr.findIndex((x) => x.id === loc.id) === idx);
+
+    // If MR, strictly isolate to their marked / assigned locations
+    if (user?.role === 'MR') {
+      const currentMrId = user.id || user.sub;
+      const userName = (user.name || '').toLowerCase().trim();
+      allLocations = allLocations.filter((l: any) => {
+        const isCreatedByMe = l.created_by === currentMrId;
+        const isAssignedToMe = l.assigned_mr_id === currentMrId;
+        const matchesName = userName && l.assigned_mr_name?.toLowerCase().includes(userName);
+        const matchesCreatedName = userName && l.created_by_name?.toLowerCase().includes(userName);
+        return isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName;
+      });
+    }
 
     return batches.map((batch) => {
       const assigned = allLocations.filter((loc) => {

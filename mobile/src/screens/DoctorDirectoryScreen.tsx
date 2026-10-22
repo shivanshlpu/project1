@@ -172,8 +172,11 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     const headers = await ApiConfig.getAuthHeaders();
 
     if (targetDoctorForMap) {
-      
       const docId = targetDoctorForMap.id;
+      const cleanBatchId = data.batch_id && data.batch_id !== '__none__' && data.batch_id !== 'none' ? data.batch_id : undefined;
+      const cleanBatchCode = cleanBatchId ? data.batch_code : undefined;
+      const cleanBatchName = cleanBatchId ? data.batch_name : undefined;
+
       setDoctors((prev) =>
         prev.map((d) =>
           d.id === docId
@@ -186,9 +189,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                 address: data.address,
                 phone: data.phone || d.phone,
                 category: data.category,
-                batch_id: data.batch_id || d.batch_id,
-                batch_code: data.batch_code || d.batch_code,
-                batch_name: data.batch_name || d.batch_name,
+                batch_id: cleanBatchId,
+                batch_code: cleanBatchCode,
+                batch_name: cleanBatchName,
                 assigned_mr_id: currentUser.id,
                 assigned_mr_name: currentUser.name,
               }
@@ -202,15 +205,15 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           headers,
           body: JSON.stringify({
             clinic: data.name,
-            name: data.doctor_name,
+            name: data.doctor_name || targetDoctorForMap.name,
             latitude: data.latitude,
             longitude: data.longitude,
             address: data.address,
-            phone: data.phone,
+            phone: data.phone || targetDoctorForMap.phone,
             category: data.category,
-            batch_id: data.batch_id,
-            batch_code: data.batch_code,
-            batch_name: data.batch_name,
+            batch_id: cleanBatchId ?? '',
+            batch_code: cleanBatchCode ?? '',
+            batch_name: cleanBatchName ?? '',
             assigned_mr_id: currentUser.id,
             assigned_mr_name: currentUser.name,
           }),
@@ -229,18 +232,20 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             latitude: data.latitude,
             longitude: data.longitude,
             phone: data.phone || targetDoctorForMap.phone,
-            batch_id: data.batch_id,
-            batch_code: data.batch_code,
-            batch_name: data.batch_name,
+            batch_id: cleanBatchId ?? '',
+            batch_code: cleanBatchCode ?? '',
+            batch_name: cleanBatchName ?? '',
           }),
         });
+
+        await loadDoctors();
       } catch {
         // Fallback
       }
 
       Alert.alert(
         'Location Geotagged',
-        `Successfully marked exact coordinates (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) for ${targetDoctorForMap.name} at ${data.name}${data.batch_name ? ` in [${data.batch_code}] ${data.batch_name}` : ''}.`,
+        `Successfully marked exact coordinates (${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}) for ${targetDoctorForMap.name} at ${data.name}${cleanBatchName ? ` in [${cleanBatchCode}] ${cleanBatchName}` : ''}.`,
       );
     } else {
       
@@ -315,6 +320,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           };
         }
         setDoctors((prev) => [newDoc, ...prev]);
+        await loadDoctors();
       } catch {
         // Fallback
       }

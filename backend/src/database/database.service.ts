@@ -800,20 +800,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               }
             }
 
-            let batchId = d.batch_id;
-            let batchCode = d.batch_code;
-            let batchName = d.batch_name;
-            if (!batchId) {
-              if (assignedMrId === 'usr-mr-01') {
-                batchId = 'rb-kot-b01';
-                batchCode = 'KOT-B01';
-                batchName = 'Kotma - Marwahi - Dhanikundi';
-              } else if (assignedMrId === 'usr-mr-02') {
-                batchId = 'rb-shd-b01';
-                batchCode = 'SHD-B01';
-                batchName = 'Shahdol - Budhar - Dhanpuri - OPM';
-              }
-            }
+            const batchId = d.batch_id;
+            const batchCode = d.batch_code;
+            const batchName = d.batch_name;
 
             let createdBy = d.created_by;
             let createdByRole = d.created_by_role;
@@ -1049,20 +1038,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   }
                 }
 
-                let batchId = loc.batch_id;
-                let batchCode = loc.batch_code;
-                let batchName = loc.batch_name;
-                if (!batchId) {
-                  if (assignedMrId === 'usr-mr-01') {
-                    batchId = 'rb-kot-b01';
-                    batchCode = 'KOT-B01';
-                    batchName = 'Kotma - Marwahi - Dhanikundi';
-                  } else if (assignedMrId === 'usr-mr-02') {
-                    batchId = 'rb-shd-b01';
-                    batchCode = 'SHD-B01';
-                    batchName = 'Shahdol - Budhar - Dhanpuri - OPM';
-                  }
-                }
+                const existingDoc = this.doctors.find((d) => d.id === loc.id);
+                const batchId = loc.batch_id !== undefined ? loc.batch_id : existingDoc?.batch_id;
+                const batchCode = loc.batch_code !== undefined ? loc.batch_code : existingDoc?.batch_code;
+                const batchName = loc.batch_name !== undefined ? loc.batch_name : existingDoc?.batch_name;
 
                 let createdBy = loc.created_by;
                 let createdByRole: 'ADMIN' | 'MR' = creator?.role === 'MR' ? 'MR' : 'ADMIN';

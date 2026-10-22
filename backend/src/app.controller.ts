@@ -25,12 +25,12 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.39',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '40', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.40',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '41', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.39/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.40/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],

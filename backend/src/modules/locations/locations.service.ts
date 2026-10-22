@@ -440,9 +440,6 @@ export class LocationsService implements OnModuleInit {
             contact_person: newLocation.doctor_name || '',
             contact_phone: newLocation.phone || '',
             created_by: creatorId,
-            batch_id: batchId,
-            batch_code: batchCode,
-            batch_name: batchName,
             created_at: newLocation.created_at,
             updated_at: newLocation.created_at,
           });
@@ -576,25 +573,44 @@ export class LocationsService implements OnModuleInit {
     if (dto.longitude !== undefined) loc.longitude = dto.longitude;
     if (dto.class !== undefined) loc.class = dto.class as any;
 
+    const oldBatchId = loc.batch_id;
     if (dto.batch_id !== undefined) {
-      loc.batch_id = dto.batch_id;
-      const foundBatch = this.db.routeBatches.find(
-        (b) => b.id === dto.batch_id || b.batch_code === dto.batch_id,
-      );
-      if (foundBatch) {
-        loc.batch_code = foundBatch.batch_code;
-        loc.batch_name = foundBatch.name;
-        if (!foundBatch.location_ids) foundBatch.location_ids = [];
-        if (!foundBatch.location_ids.includes(loc.id)) {
-          foundBatch.location_ids.push(loc.id);
+      if (!dto.batch_id || dto.batch_id === '__none__' || dto.batch_id === 'none') {
+        loc.batch_id = undefined;
+        loc.batch_code = undefined;
+        loc.batch_name = undefined;
+        if (oldBatchId) {
+          const oldBatch = this.db.routeBatches.find((b) => b.id === oldBatchId || b.batch_code === oldBatchId);
+          if (oldBatch && oldBatch.location_ids) {
+            oldBatch.location_ids = oldBatch.location_ids.filter((lid) => lid !== loc.id);
+          }
         }
       } else {
-        loc.batch_code = dto.batch_code;
-        loc.batch_name = dto.batch_name;
+        if (oldBatchId && oldBatchId !== dto.batch_id) {
+          const oldBatch = this.db.routeBatches.find((b) => b.id === oldBatchId || b.batch_code === oldBatchId);
+          if (oldBatch && oldBatch.location_ids) {
+            oldBatch.location_ids = oldBatch.location_ids.filter((lid) => lid !== loc.id);
+          }
+        }
+        loc.batch_id = dto.batch_id;
+        const foundBatch = this.db.routeBatches.find(
+          (b) => b.id === dto.batch_id || b.batch_code === dto.batch_id,
+        );
+        if (foundBatch) {
+          loc.batch_code = foundBatch.batch_code;
+          loc.batch_name = foundBatch.name;
+          if (!foundBatch.location_ids) foundBatch.location_ids = [];
+          if (!foundBatch.location_ids.includes(loc.id)) {
+            foundBatch.location_ids.push(loc.id);
+          }
+        } else {
+          loc.batch_code = dto.batch_code;
+          loc.batch_name = dto.batch_name;
+        }
       }
     }
 
-    // Sync to Supabase
+    // Sync to Supabase with only columns that exist on the table
     if (this.db.supabase?.isConnected) {
       const client = this.db.supabase.getClient();
       if (client) {
@@ -607,9 +623,6 @@ export class LocationsService implements OnModuleInit {
             category: loc.category,
             contact_person: loc.doctor_name,
             contact_phone: loc.phone,
-            batch_id: loc.batch_id,
-            batch_code: loc.batch_code,
-            batch_name: loc.batch_name,
             updated_at: new Date().toISOString(),
           }).eq('id', id);
         } catch (sbErr: any) {
@@ -630,9 +643,11 @@ export class LocationsService implements OnModuleInit {
       if (dto.latitude !== undefined) doc.latitude = dto.latitude;
       if (dto.longitude !== undefined) doc.longitude = dto.longitude;
       if (dto.class !== undefined) doc.class = dto.class as any;
-      if (dto.batch_id !== undefined) doc.batch_id = dto.batch_id;
-      if (dto.batch_code !== undefined) doc.batch_code = dto.batch_code;
-      if (dto.batch_name !== undefined) doc.batch_name = dto.batch_name;
+      if (dto.batch_id !== undefined) {
+        doc.batch_id = loc.batch_id;
+        doc.batch_code = loc.batch_code;
+        doc.batch_name = loc.batch_name;
+      }
     }
 
     this.db.persistToDisk();

@@ -1,22 +1,19 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.39",
-  "latestVersionCode": 40,
+  "latestVersion": "1.0.40",
+  "latestVersionCode": 41,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.39/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.40/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-23",
-  "publishedAt": "2026-10-22T19:15:00.000Z",
+  "publishedAt": "2026-10-22T20:30:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Prevent Duplicate Locations on Map Edit: Fixed location updating so dragging or adjusting coordinates on the interactive map directly updates existing records via PATCH without spawning duplicate entries",
-    "Database Location Deduplication: Cleaned up duplicate locations so Field MRs have strictly their legitimate marked locations",
-    "Backend Location Role Permissions: Enabled MR role authorization for location updates",
-    "Unified MR Location Attribution: Resolved dashboard-mobile attribution conflict so Kotma locations correctly reflect Field MR discovery by Amar Dwivedi with route circuits across all admin and mobile views",
-    "Strict MR Location Isolation: Field Representatives strictly only view and manage locations and doctors marked by or assigned to them in the mobile directory and maps",
-    "Route Batch Circuit Selector on Map: Field Representatives can directly select and link a route batch circuit when marking or updating any facility location",
-    "Doctor Directory Route Circuit Badges: Doctor & facility directory displays assigned travel circuits with one-tap batch assignment"
+    "MR Marked Location Update Fix: Fixed marked location updating in mobile and web so batch changes, removal, GPS pin adjustments, clinic names, and phone numbers persist accurately without rejection",
+    "Tour Plan Batch-Specific Location Discovery: Monthly TP directly displays saved locations belonging to the selected route batch with interactive checkboxes and automatic KOL doctor linking",
+    "Strict Multi-HQ Territory & Batch Isolation: Guaranteed that Field Representatives only see their own headquarters' batches and marked locations, eliminating cross-territory data exposure between Kotma, Shahdol, and other HQs",
+    "Admin Web Route Batch Assignment: Admin interactive map modal now features a Route Batch Circuit selector so admins can assign clinics to route batches directly when creating or updating locations"
   ]
 }

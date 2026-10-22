@@ -117,9 +117,46 @@ export class DoctorsService {
     if (dto.latitude !== undefined) doctor.latitude = dto.latitude;
     if (dto.longitude !== undefined) doctor.longitude = dto.longitude;
     if (dto.area_id) doctor.area_id = dto.area_id;
-    if (dto.batch_id !== undefined) doctor.batch_id = dto.batch_id;
-    if (dto.batch_code !== undefined) doctor.batch_code = dto.batch_code;
-    if (dto.batch_name !== undefined) doctor.batch_name = dto.batch_name;
+    const oldBatchId = doctor.batch_id;
+    if (dto.batch_id !== undefined) {
+      if (!dto.batch_id || dto.batch_id === '__none__' || dto.batch_id === 'none') {
+        doctor.batch_id = undefined;
+        doctor.batch_code = undefined;
+        doctor.batch_name = undefined;
+        if (oldBatchId) {
+          const oldBatch = this.db.routeBatches.find((b) => b.id === oldBatchId || b.batch_code === oldBatchId);
+          if (oldBatch && oldBatch.location_ids) {
+            oldBatch.location_ids = oldBatch.location_ids.filter((lid) => lid !== doctor.id);
+          }
+        }
+      } else {
+        if (oldBatchId && oldBatchId !== dto.batch_id) {
+          const oldBatch = this.db.routeBatches.find((b) => b.id === oldBatchId || b.batch_code === oldBatchId);
+          if (oldBatch && oldBatch.location_ids) {
+            oldBatch.location_ids = oldBatch.location_ids.filter((lid) => lid !== doctor.id);
+          }
+        }
+        doctor.batch_id = dto.batch_id;
+        const foundBatch = this.db.routeBatches.find(
+          (b) => b.id === dto.batch_id || b.batch_code === dto.batch_id,
+        );
+        if (foundBatch) {
+          doctor.batch_code = foundBatch.batch_code;
+          doctor.batch_name = foundBatch.name;
+          if (!foundBatch.location_ids) foundBatch.location_ids = [];
+          if (!foundBatch.location_ids.includes(doctor.id)) {
+            foundBatch.location_ids.push(doctor.id);
+          }
+        } else {
+          doctor.batch_code = dto.batch_code;
+          doctor.batch_name = dto.batch_name;
+        }
+      }
+    } else {
+      if (dto.batch_code !== undefined) doctor.batch_code = dto.batch_code;
+      if (dto.batch_name !== undefined) doctor.batch_name = dto.batch_name;
+    }
+
     if (dto.assigned_mr_id !== undefined) {
       doctor.assigned_mr_id = dto.assigned_mr_id;
       if (dto.assigned_mr_name) {
@@ -135,14 +172,17 @@ export class DoctorsService {
       const loc = this.db.savedLocations.find((l) => l.id === id);
       if (loc) {
         if (dto.clinic) loc.clinic = dto.clinic;
+        if (dto.name) loc.name = dto.name;
         if (dto.name) loc.doctor_name = dto.name;
         if (dto.address) loc.address = dto.address;
         if (dto.phone) loc.phone = dto.phone;
         if (dto.latitude !== undefined) loc.latitude = dto.latitude;
         if (dto.longitude !== undefined) loc.longitude = dto.longitude;
-        if (dto.batch_id !== undefined) loc.batch_id = dto.batch_id;
-        if (dto.batch_code !== undefined) loc.batch_code = dto.batch_code;
-        if (dto.batch_name !== undefined) loc.batch_name = dto.batch_name;
+        if (dto.batch_id !== undefined) {
+          loc.batch_id = doctor.batch_id;
+          loc.batch_code = doctor.batch_code;
+          loc.batch_name = doctor.batch_name;
+        }
       }
     }
 
@@ -157,12 +197,11 @@ export class DoctorsService {
             longitude: doctor.longitude,
             contact_person: doctor.name,
             contact_phone: doctor.phone,
-            batch_id: doctor.batch_id,
-            batch_code: doctor.batch_code,
-            batch_name: doctor.batch_name,
             updated_at: new Date().toISOString(),
           }).eq('id', id);
-        } catch {}
+        } catch (sbErr: any) {
+          console.warn('[DoctorsService] Failed to update in Supabase:', sbErr?.message);
+        }
       }
     }
 

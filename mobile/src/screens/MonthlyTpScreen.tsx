@@ -791,8 +791,23 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     }
   };
 
+  const fetchMrLocations = async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(`${baseUrl}/locations`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setMrLocations(data);
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     fetchMyTourPlans();
+    fetchMrLocations();
   }, []);
 
   
@@ -880,6 +895,17 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     const finalDoctor = kolDrsName.trim() || 'General Field Detailing';
     const finalActivity = plannedActivity.trim() || 'Routine Field Detailing & Sampling';
 
+    const selectedLocationsList = mrLocations
+      .filter((l) => selectedLocationIds.includes(l.id))
+      .map((l) => ({
+        id: l.id,
+        name: l.name || l.clinic,
+        category: l.category,
+        address: l.address,
+        latitude: l.latitude,
+        longitude: l.longitude,
+      }));
+
     const punchItem = {
       date: formDate,
       hq_id: currentHq.id,
@@ -893,6 +919,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       route_batch_name: selectedBatch?.name,
       route: selectedBatch?.route,
       route_stops: selectedBatch?.route_stops,
+      location_ids: selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
+      selected_locations: selectedLocationsList.length > 0 ? selectedLocationsList : undefined,
       distance_km: selectedBatch?.distance_km,
       reimbursement_rate: selectedBatch?.reimbursement_rate,
       reimbursement_amount: selectedBatch?.reimbursement_amount,
@@ -917,6 +945,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         advanceFormDate();
         setKolDrsName('');
         setPlannedActivity('');
+        setSelectedLocationIds([]);
         fetchMyTourPlans();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -1610,63 +1639,154 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             </TouchableOpacity>
 
             {/* Multi-Location Selection per Date */}
-            <View style={{ marginTop: 10, marginBottom: 6 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
-                  Planned Doctors / Stores for this Date:
-                </Text>
-                <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700' }}>
-                  {selectedLocationIds.length} Selected
-                </Text>
-              </View>
+            {(() => {
+              const batchLocations = selectedBatch
+                ? mrLocations.filter((loc) => {
+                    const matchesId = loc.batch_id && (loc.batch_id === selectedBatch.id || loc.batch_id === selectedBatch.batch_code);
+                    const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (selectedBatch.batch_code || '').toLowerCase();
+                    const isInStops = selectedBatch.route_stops && selectedBatch.route_stops.some((s: string) => {
+                      const sLower = s.toLowerCase();
+                      return (
+                        (loc.address && loc.address.toLowerCase().includes(sLower)) ||
+                        (loc.clinic && loc.clinic.toLowerCase().includes(sLower)) ||
+                        (loc.name && loc.name.toLowerCase().includes(sLower))
+                      );
+                    });
+                    return Boolean(matchesId || matchesCode || isInStops);
+                  })
+                : mrLocations;
 
-              {mrLocations.length === 0 ? (
-                <Text style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 6 }}>
-                  No saved locations yet. You can mark doctors via "Mark Location".
-                </Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
-                  {mrLocations.map((loc) => {
-                    const isChecked = selectedLocationIds.includes(loc.id);
-                    return (
-                      <TouchableOpacity
-                        key={loc.id}
-                        onPress={() => {
-                          let nextIds: string[];
-                          if (isChecked) {
-                            nextIds = selectedLocationIds.filter((id) => id !== loc.id);
-                          } else {
-                            nextIds = [...selectedLocationIds, loc.id];
-                          }
-                          setSelectedLocationIds(nextIds);
-                          const names = mrLocations
-                            .filter((l) => nextIds.includes(l.id))
-                            .map((l) => l.name || l.clinic);
-                          if (names.length > 0) {
-                            setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
-                          }
-                        }}
-                        style={[
-                          styles.batchOptionCard,
-                          isChecked && styles.batchOptionCardSelected,
-                          { marginRight: 8, paddingHorizontal: 12, paddingVertical: 8, minWidth: 160 },
-                        ]}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={{ fontSize: 14 }}>{isChecked ? '☑️' : '⬜'}</Text>
-                          <Text style={[{ fontSize: 12, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
-                            {loc.name || loc.clinic}
-                          </Text>
-                        </View>
-                        <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }} numberOfLines={1}>
-                          {loc.category || 'CLINIC'} • {loc.address || 'Field'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
-            </View>
+              const otherLocations = selectedBatch
+                ? mrLocations.filter((loc) => !batchLocations.some((bl) => bl.id === loc.id))
+                : [];
+
+              return (
+                <View style={{ marginTop: 10, marginBottom: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
+                      Planned Doctors / Stores for this Date:
+                    </Text>
+                    <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700' }}>
+                      {selectedLocationIds.length} Selected
+                    </Text>
+                  </View>
+
+                  {selectedBatch && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#1A3C6E' }}>
+                        📍 Locations in Route [{selectedBatch.batch_code}]: ({batchLocations.length})
+                      </Text>
+                    </View>
+                  )}
+
+                  {batchLocations.length === 0 ? (
+                    <View style={{ padding: 10, backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>
+                        {selectedBatch
+                          ? `No marked locations linked to route circuit [${selectedBatch.batch_code}] yet. You can mark doctors via "Doctors & Locations" or pick other marked locations below:`
+                          : mrLocations.length === 0
+                          ? 'No marked locations found for your account yet. You can mark doctors via "Doctors & Locations".'
+                          : 'Select locations for this planned date:'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
+                      {batchLocations.map((loc) => {
+                        const isChecked = selectedLocationIds.includes(loc.id);
+                        return (
+                          <TouchableOpacity
+                            key={loc.id}
+                            onPress={() => {
+                              let nextIds: string[];
+                              if (isChecked) {
+                                nextIds = selectedLocationIds.filter((id) => id !== loc.id);
+                              } else {
+                                nextIds = [...selectedLocationIds, loc.id];
+                              }
+                              setSelectedLocationIds(nextIds);
+                              const names = mrLocations
+                                .filter((l) => nextIds.includes(l.id))
+                                .map((l) => l.name || l.clinic);
+                              if (names.length > 0) {
+                                setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
+                              }
+                            }}
+                            style={[
+                              styles.batchOptionCard,
+                              isChecked && styles.batchOptionCardSelected,
+                              { marginRight: 8, paddingHorizontal: 12, paddingVertical: 8, minWidth: 160 },
+                            ]}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 14 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                              <Text style={[{ fontSize: 12, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
+                                {loc.name || loc.clinic}
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }} numberOfLines={1}>
+                              {loc.category || 'CLINIC'} • {loc.address || 'Field'}
+                            </Text>
+                            {loc.batch_code ? (
+                              <Text style={{ fontSize: 9.5, color: '#0F8B5A', fontWeight: '700', marginTop: 2 }}>
+                                🛣️ [{loc.batch_code}]
+                              </Text>
+                            ) : null}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+
+                  {selectedBatch && otherLocations.length > 0 && (
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={{ fontSize: 10.5, fontWeight: '600', color: '#64748B', marginBottom: 4 }}>
+                        Other Marked Locations ({otherLocations.length}):
+                      </Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
+                        {otherLocations.map((loc) => {
+                          const isChecked = selectedLocationIds.includes(loc.id);
+                          return (
+                            <TouchableOpacity
+                              key={loc.id}
+                              onPress={() => {
+                                let nextIds: string[];
+                                if (isChecked) {
+                                  nextIds = selectedLocationIds.filter((id) => id !== loc.id);
+                                } else {
+                                  nextIds = [...selectedLocationIds, loc.id];
+                                }
+                                setSelectedLocationIds(nextIds);
+                                const names = mrLocations
+                                  .filter((l) => nextIds.includes(l.id))
+                                  .map((l) => l.name || l.clinic);
+                                if (names.length > 0) {
+                                  setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
+                                }
+                              }}
+                              style={[
+                                styles.batchOptionCard,
+                                isChecked && styles.batchOptionCardSelected,
+                                { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, minWidth: 140, opacity: 0.9 },
+                              ]}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                                <Text style={[{ fontSize: 11, fontWeight: '600', color: '#334155' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
+                                  {loc.name || loc.clinic}
+                                </Text>
+                              </View>
+                              <Text style={{ fontSize: 9.5, color: '#94A3B8', marginTop: 2 }} numberOfLines={1}>
+                                {loc.category || 'CLINIC'}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
 
             {/* Planned KOL DRS (Optional) */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, marginBottom: 4 }}>

@@ -529,22 +529,7 @@ export function getStoredSavedLocations(): DoctorItem[] {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((loc: any) => {
-          if (loc.id === 'loc-85cc2c5d' || loc.id === 'loc-02') {
-            return {
-              ...loc,
-              created_by: 'usr-mr-01',
-              created_by_role: 'MR',
-              created_by_name: 'Amar Dwivedi (usr-mr-01)',
-              assigned_mr_id: 'usr-mr-01',
-              assigned_mr_name: 'Amar Dwivedi',
-              batch_id: 'rb-kot-b01',
-              batch_code: 'KOT-B01',
-              batch_name: 'Kotma - Marwahi - Dhanikundi',
-            };
-          }
-          return loc;
-        });
+        return parsed;
       }
     }
     

@@ -69,6 +69,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<DoctorItem | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DoctorItem | null>(null);
+  const [routeBatches, setRouteBatches] = useState<any[]>([]);
 
   
   const isLocationUnread = (loc: DoctorItem) => {
@@ -141,6 +142,19 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   };
 
   
+  useEffect(() => {
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+    fetch(`${apiUrl}/territories/route-batches`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setRouteBatches(data);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchLocations = async () => {
     try {
       const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -484,6 +498,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
               latitude: locData.latitude,
               longitude: locData.longitude,
               phone: locData.phone || l.phone,
+              batch_id: locData.batch_id || undefined,
+              batch_code: locData.batch_code || undefined,
+              batch_name: locData.batch_name || undefined,
             }
           : l,
       );
@@ -509,6 +526,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             latitude: locData.latitude,
             longitude: locData.longitude,
             phone: locData.phone,
+            batch_id: locData.batch_id ?? '',
+            batch_code: locData.batch_code ?? '',
+            batch_name: locData.batch_name ?? '',
           }),
         });
         fetchLocations();
@@ -530,6 +550,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       latitude: locData.latitude,
       longitude: locData.longitude,
       category: locData.category,
+      batch_id: locData.batch_id,
+      batch_code: locData.batch_code,
+      batch_name: locData.batch_name,
       created_by_role: 'ADMIN',
       created_by_name: 'System Admin (Owner)',
       area_name: locData.address.includes('Kotma') ? 'Kotma District' : locData.address.includes('Ambikapur') ? 'Ambikapur District' : 'Shahdol District',
@@ -558,6 +581,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           latitude: locData.latitude,
           longitude: locData.longitude,
           phone: locData.phone,
+          batch_id: locData.batch_id,
+          batch_code: locData.batch_code,
+          batch_name: locData.batch_name,
           mr_name: 'System Admin (Owner)',
         }),
       });
@@ -1183,6 +1209,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         editingLocation={editingLocation}
         initialLat={editingLocation ? Number(editingLocation.latitude) : activeZone ? activeZone.latitude : 23.2035}
         initialLng={editingLocation ? Number(editingLocation.longitude) : activeZone ? activeZone.longitude : 81.9669}
+        routeBatches={routeBatches}
         onClose={() => {
           setIsPickerOpen(false);
           setEditingLocation(null);

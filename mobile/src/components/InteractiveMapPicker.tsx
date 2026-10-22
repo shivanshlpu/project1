@@ -407,9 +407,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       longitude: selectedLng,
       address: address.trim(),
       phone: phone.trim() || undefined,
-      batch_id: selectedBatchId || undefined,
-      batch_code: currentBatch?.batch_code || selectedBatchCode || undefined,
-      batch_name: currentBatch?.name || selectedBatchName || undefined,
+      batch_id: selectedBatchId || '',
+      batch_code: selectedBatchId ? (currentBatch?.batch_code || selectedBatchCode || '') : '',
+      batch_name: selectedBatchId ? (currentBatch?.name || selectedBatchName || '') : '',
     });
     onClose();
   };
