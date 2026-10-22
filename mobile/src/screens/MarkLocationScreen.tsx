@@ -158,14 +158,10 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const response = await fetch(`${baseUrl}/locations`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
+      let savedData: any = null;
 
-      
       if (selectedDoctorId) {
+        // Geotagging an existing doctor / location
         await fetch(`${baseUrl}/doctors/${selectedDoctorId}`, {
           method: 'PATCH',
           headers,
@@ -174,12 +170,36 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
             longitude: currentLng,
             clinic: clinicName.trim(),
             address: address.trim(),
+            batch_id: selectedBatch?.id || undefined,
+            batch_code: selectedBatch?.batch_code || undefined,
+            batch_name: selectedBatch?.name || undefined,
           }),
         }).catch(() => {});
+
+        const patchLocRes = await fetch(`${baseUrl}/locations/${selectedDoctorId}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+
+        if (patchLocRes && patchLocRes.ok) {
+          savedData = await patchLocRes.json();
+        } else {
+          savedData = { id: selectedDoctorId, ...payload, latitude: currentLat, longitude: currentLng };
+        }
+      } else {
+        // Registering a brand new location
+        const response = await fetch(`${baseUrl}/locations`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          savedData = await response.json();
+        }
       }
 
-      if (response.ok) {
-        const savedData = await response.json();
+      if (savedData) {
         if (onLocationSaved) {
           onLocationSaved(savedData);
         }

@@ -39,11 +39,11 @@ export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void
 export const CURRENT_APP_VERSION =
   Constants.expoConfig?.version ||
   (Constants as any).manifest2?.extra?.expoClient?.version ||
-  '1.0.38';
+  '1.0.39';
 
 export const CURRENT_APP_VERSION_CODE =
   Constants.expoConfig?.android?.versionCode ||
-  39;
+  40;
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',

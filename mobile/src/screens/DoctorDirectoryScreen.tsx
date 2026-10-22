@@ -207,6 +207,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             longitude: data.longitude,
             address: data.address,
             phone: data.phone,
+            category: data.category,
             batch_id: data.batch_id,
             batch_code: data.batch_code,
             batch_name: data.batch_name,
@@ -215,19 +216,19 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           }),
         });
 
-        await fetch(`${baseUrl}/locations`, {
-          method: 'POST',
+        // Update the existing location record directly using PATCH - DO NOT POST a new location!
+        await fetch(`${baseUrl}/locations/${docId}`, {
+          method: 'PATCH',
           headers,
           body: JSON.stringify({
             name: data.name,
+            clinic: data.name,
             doctor_name: data.doctor_name || targetDoctorForMap.name,
             category: data.category,
             address: data.address,
             latitude: data.latitude,
             longitude: data.longitude,
             phone: data.phone || targetDoctorForMap.phone,
-            mr_id: currentUser.id,
-            mr_name: `${currentUser.name} (Field MR)`,
             batch_id: data.batch_id,
             batch_code: data.batch_code,
             batch_name: data.batch_name,
@@ -243,65 +244,18 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
       );
     } else {
       
-      const newDocId = `doc-mr-${Date.now().toString().slice(-4)}`;
-      const newDoc: Doctor = {
-        id: newDocId,
-        name: data.doctor_name || 'Medical Specialist',
-        qualification: 'MBBS, MD',
-        specialization: data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : 'General Practice',
-        class: 'A',
-        potential_score: 85,
-        clinic: data.name,
-        address: data.address,
-        area_name: currentUser.name?.includes('Amar') ? 'Kotma' : 'Shahdol',
-        phone: data.phone || '+91 98000 00000',
-        latitude: data.latitude,
-        longitude: data.longitude,
-        visit_count: 0,
-        assigned_mr_id: currentUser.id,
-        assigned_mr_name: currentUser.name,
-        category: data.category,
-        batch_id: data.batch_id,
-        batch_code: data.batch_code,
-        batch_name: data.batch_name,
-      };
-
-      setDoctors((prev) => [newDoc, ...prev]);
-
       try {
-        await fetch(`${baseUrl}/doctors`, {
+        const res = await fetch(`${baseUrl}/locations`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            name: newDoc.name,
-            qualification: newDoc.qualification,
-            specialization: newDoc.specialization,
-            class: newDoc.class,
-            potential_score: newDoc.potential_score,
-            clinic: newDoc.clinic,
-            address: newDoc.address,
-            phone: newDoc.phone,
-            latitude: newDoc.latitude,
-            longitude: newDoc.longitude,
-            assigned_mr_id: currentUser.id,
-            assigned_mr_name: currentUser.name,
-            batch_id: data.batch_id,
-            batch_code: data.batch_code,
-            batch_name: data.batch_name,
-          }),
-        });
-
-        await fetch(`${baseUrl}/locations`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            name: newDoc.clinic,
-            doctor_name: newDoc.name,
+            name: data.name,
+            doctor_name: data.doctor_name || 'Medical Specialist',
             category: data.category,
-            address: newDoc.address,
-            latitude: newDoc.latitude,
-            longitude: newDoc.longitude,
-            phone: newDoc.phone,
+            address: data.address,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            phone: data.phone || '+91 98000 00000',
             mr_id: currentUser.id,
             mr_name: `${currentUser.name} (Field MR)`,
             batch_id: data.batch_id,
@@ -309,6 +263,58 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             batch_name: data.batch_name,
           }),
         });
+
+        let newDoc: Doctor;
+        if (res.ok) {
+          const createdLoc = await res.json();
+          newDoc = {
+            id: createdLoc.id,
+            name: createdLoc.doctor_name || createdLoc.name,
+            qualification: createdLoc.qualification || 'MBBS, MD',
+            specialization: createdLoc.specialization || (data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : 'General Practice'),
+            class: createdLoc.class || 'A',
+            potential_score: createdLoc.potential_score || 85,
+            clinic: createdLoc.clinic || createdLoc.name,
+            address: createdLoc.address || data.address,
+            area_name: currentUser.name?.includes('Amar') ? 'Kotma' : 'Shahdol',
+            phone: createdLoc.phone || data.phone || '+91 98000 00000',
+            latitude: createdLoc.latitude || data.latitude,
+            longitude: createdLoc.longitude || data.longitude,
+            visit_count: 0,
+            assigned_mr_id: currentUser.id,
+            assigned_mr_name: currentUser.name,
+            created_by: currentUser.id,
+            created_by_name: currentUser.name,
+            category: createdLoc.category || data.category,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
+          };
+        } else {
+          const newDocId = `doc-mr-${Date.now().toString().slice(-4)}`;
+          newDoc = {
+            id: newDocId,
+            name: data.doctor_name || 'Medical Specialist',
+            qualification: 'MBBS, MD',
+            specialization: data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : 'General Practice',
+            class: 'A',
+            potential_score: 85,
+            clinic: data.name,
+            address: data.address,
+            area_name: currentUser.name?.includes('Amar') ? 'Kotma' : 'Shahdol',
+            phone: data.phone || '+91 98000 00000',
+            latitude: data.latitude,
+            longitude: data.longitude,
+            visit_count: 0,
+            assigned_mr_id: currentUser.id,
+            assigned_mr_name: currentUser.name,
+            category: data.category,
+            batch_id: data.batch_id,
+            batch_code: data.batch_code,
+            batch_name: data.batch_name,
+          };
+        }
+        setDoctors((prev) => [newDoc, ...prev]);
       } catch {
         // Fallback
       }

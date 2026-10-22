@@ -130,6 +130,42 @@ export class DoctorsService {
       }
     }
 
+    // Also sync matching saved_location if present
+    if (this.db.savedLocations) {
+      const loc = this.db.savedLocations.find((l) => l.id === id);
+      if (loc) {
+        if (dto.clinic) loc.clinic = dto.clinic;
+        if (dto.name) loc.doctor_name = dto.name;
+        if (dto.address) loc.address = dto.address;
+        if (dto.phone) loc.phone = dto.phone;
+        if (dto.latitude !== undefined) loc.latitude = dto.latitude;
+        if (dto.longitude !== undefined) loc.longitude = dto.longitude;
+        if (dto.batch_id !== undefined) loc.batch_id = dto.batch_id;
+        if (dto.batch_code !== undefined) loc.batch_code = dto.batch_code;
+        if (dto.batch_name !== undefined) loc.batch_name = dto.batch_name;
+      }
+    }
+
+    if (this.db.supabase?.isConnected) {
+      const client = this.db.supabase.getClient();
+      if (client) {
+        try {
+          await client.from('saved_locations').update({
+            name: doctor.clinic || doctor.name,
+            address: doctor.address,
+            latitude: doctor.latitude,
+            longitude: doctor.longitude,
+            contact_person: doctor.name,
+            contact_phone: doctor.phone,
+            batch_id: doctor.batch_id,
+            batch_code: doctor.batch_code,
+            batch_name: doctor.batch_name,
+            updated_at: new Date().toISOString(),
+          }).eq('id', id);
+        } catch {}
+      }
+    }
+
     this.db.persistToDisk();
     return doctor;
   }

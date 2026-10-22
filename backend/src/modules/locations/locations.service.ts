@@ -345,6 +345,25 @@ export class LocationsService implements OnModuleInit {
       ? (dto.doctor_name.trim().startsWith('Dr.') ? dto.doctor_name.trim() : `Dr. ${dto.doctor_name.trim()}`)
       : dto.name;
 
+    // Duplicate prevention: check if location with same ID already exists
+    if ((dto as any).id) {
+      const existingById = this.locations.find((l) => l.id === (dto as any).id);
+      if (existingById) {
+        return this.updateLocation(existingById.id, dto, creatorUser);
+      }
+    }
+
+    // Check if the same MR already has this location/clinic
+    const existingByName = this.locations.find(
+      (l) =>
+        l.created_by === creatorId &&
+        (l.clinic?.trim().toLowerCase() === dto.name.trim().toLowerCase() ||
+         l.name?.trim().toLowerCase() === dto.name.trim().toLowerCase())
+    );
+    if (existingByName) {
+      return this.updateLocation(existingByName.id, dto, creatorUser);
+    }
+
     // Resolve assigned route batch if selected
     let batchId = dto.batch_id;
     let batchCode = dto.batch_code;
@@ -434,30 +453,51 @@ export class LocationsService implements OnModuleInit {
     }
 
     // Also register in DatabaseService doctors list
-    this.db.doctors.unshift({
-      id: newLocation.id,
-      name: newLocation.name,
-      qualification: newLocation.qualification,
-      specialization: newLocation.specialization,
-      class: newLocation.class,
-      potential_score: newLocation.potential_score,
-      phone: newLocation.phone,
-      clinic: newLocation.clinic,
-      address: newLocation.address,
-      latitude: newLocation.latitude,
-      longitude: newLocation.longitude,
-      area_id: dto.area_id || 'area-shd-07',
-      created_by: creatorId,
-      created_by_role: creatorRole,
-      created_by_name: creatorName,
-      assigned_mr_id: creatorRole === 'MR' ? creatorId : undefined,
-      assigned_mr_name: creatorRole === 'MR' ? creatorName : undefined,
-      batch_id: batchId,
-      batch_code: batchCode,
-      batch_name: batchName,
-      category: newLocation.category,
-      created_at: newLocation.created_at,
-    });
+    const existingDoc = this.db.doctors.find(
+      (d) =>
+        d.id === newLocation.id ||
+        (d.created_by === creatorId &&
+          (d.clinic?.trim().toLowerCase() === newLocation.clinic?.trim().toLowerCase() ||
+           d.name?.trim().toLowerCase() === newLocation.name?.trim().toLowerCase())),
+    );
+    if (existingDoc) {
+      existingDoc.clinic = newLocation.clinic;
+      existingDoc.name = newLocation.name;
+      existingDoc.address = newLocation.address;
+      existingDoc.latitude = newLocation.latitude;
+      existingDoc.longitude = newLocation.longitude;
+      existingDoc.phone = newLocation.phone;
+      if (batchId) {
+        existingDoc.batch_id = batchId;
+        existingDoc.batch_code = batchCode;
+        existingDoc.batch_name = batchName;
+      }
+    } else {
+      this.db.doctors.unshift({
+        id: newLocation.id,
+        name: newLocation.name,
+        qualification: newLocation.qualification,
+        specialization: newLocation.specialization,
+        class: newLocation.class,
+        potential_score: newLocation.potential_score,
+        phone: newLocation.phone,
+        clinic: newLocation.clinic,
+        address: newLocation.address,
+        latitude: newLocation.latitude,
+        longitude: newLocation.longitude,
+        area_id: dto.area_id || 'area-shd-07',
+        created_by: creatorId,
+        created_by_role: creatorRole,
+        created_by_name: creatorName,
+        assigned_mr_id: creatorRole === 'MR' ? creatorId : undefined,
+        assigned_mr_name: creatorRole === 'MR' ? creatorName : undefined,
+        batch_id: batchId,
+        batch_code: batchCode,
+        batch_name: batchName,
+        category: newLocation.category,
+        created_at: newLocation.created_at,
+      });
+    }
 
     if (creatorRole === 'MR') {
       this.db.notifications.unshift({
@@ -491,10 +531,37 @@ export class LocationsService implements OnModuleInit {
     return loc;
   }
 
-  async updateLocation(id: string, dto: Partial<CreateLocationDto>): Promise<SavedLocation> {
-    const loc = this.locations.find((l) => l.id === id);
+  async updateLocation(id: string, dto: Partial<CreateLocationDto>, user?: any): Promise<SavedLocation> {
+    let loc = this.locations.find((l) => l.id === id);
     if (!loc) {
-      throw new NotFoundException(`Location ${id} not found`);
+      const matchDoc = this.db.doctors.find((d) => d.id === id);
+      if (matchDoc) {
+        loc = {
+          id: matchDoc.id,
+          name: matchDoc.clinic || matchDoc.name,
+          clinic: matchDoc.clinic || matchDoc.name,
+          doctor_name: matchDoc.name,
+          qualification: matchDoc.qualification || 'Registered Practice',
+          specialization: matchDoc.specialization || 'General Practice',
+          class: matchDoc.class || 'A',
+          potential_score: matchDoc.potential_score || 85,
+          phone: matchDoc.phone || 'N/A',
+          address: matchDoc.address,
+          latitude: matchDoc.latitude,
+          longitude: matchDoc.longitude,
+          category: (matchDoc.category as any) || 'CLINIC',
+          created_by: matchDoc.created_by || 'usr-mr-01',
+          created_by_role: (matchDoc.created_by_role === 'ADMIN' ? 'ADMIN' : 'MR') as 'ADMIN' | 'MR',
+          created_by_name: matchDoc.created_by_name || 'Field MR',
+          area_name: 'Territory',
+          visit_count: 0,
+          is_new: false,
+          created_at: new Date().toISOString(),
+        };
+        this.locations.unshift(loc);
+      } else {
+        throw new NotFoundException(`Location ${id} not found`);
+      }
     }
 
     if (dto.name !== undefined) loc.name = dto.name;
@@ -563,6 +630,9 @@ export class LocationsService implements OnModuleInit {
       if (dto.latitude !== undefined) doc.latitude = dto.latitude;
       if (dto.longitude !== undefined) doc.longitude = dto.longitude;
       if (dto.class !== undefined) doc.class = dto.class as any;
+      if (dto.batch_id !== undefined) doc.batch_id = dto.batch_id;
+      if (dto.batch_code !== undefined) doc.batch_code = dto.batch_code;
+      if (dto.batch_name !== undefined) doc.batch_name = dto.batch_name;
     }
 
     this.db.persistToDisk();

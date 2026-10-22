@@ -45,10 +45,11 @@ export class LocationsController {
 
   @Put(':id')
   @Patch(':id')
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR')
   @HttpCode(HttpStatus.OK)
-  async updateLocation(@Param('id') id: string, @Body() dto: Partial<CreateLocationDto>) {
-    return this.locationsService.updateLocation(id, dto);
+  async updateLocation(@Param('id') id: string, @Body() dto: Partial<CreateLocationDto>, @Req() req: any) {
+    const user = req.user || null;
+    return this.locationsService.updateLocation(id, dto, user);
   }
 
   @Delete(':id')
