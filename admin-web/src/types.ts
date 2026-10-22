@@ -64,7 +64,11 @@ export interface DoctorItem {
   longitude: number;
   visit_count: number;
   category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  created_by?: string;
   created_by_role?: string;
+  batch_id?: string;
+  batch_code?: string;
+  batch_name?: string;
   created_by_name?: string;
   address?: string;
   assigned_mr_id?: string;

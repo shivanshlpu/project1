@@ -57,6 +57,13 @@ export class LocationsService implements OnModuleInit {
           const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
           const creatorName = user ? `${user.name} (${user.id})` : (isMr ? `Field MR (${d.created_by})` : 'System Admin');
 
+          const matchDoc = this.db.doctors.find((doc) => doc.id === d.id);
+          const batchId = d.batch_id || matchDoc?.batch_id;
+          const batchCode = d.batch_code || matchDoc?.batch_code;
+          const batchName = d.batch_name || matchDoc?.batch_name;
+          const assignedMrId = matchDoc?.assigned_mr_id || (user?.role === 'MR' ? user.id : undefined);
+          const assignedMrName = matchDoc?.assigned_mr_name || (user?.role === 'MR' ? user.name : undefined);
+
           return {
             id: d.id,
             name: d.name,
@@ -77,9 +84,11 @@ export class LocationsService implements OnModuleInit {
             area_name: 'Territory',
             visit_count: 0,
             is_new: false,
-            batch_id: d.batch_id || undefined,
-            batch_code: d.batch_code || undefined,
-            batch_name: d.batch_name || undefined,
+            batch_id: batchId,
+            batch_code: batchCode,
+            batch_name: batchName,
+            assigned_mr_id: assignedMrId,
+            assigned_mr_name: assignedMrName,
             created_at: d.created_at || new Date().toISOString(),
           };
         });
@@ -128,13 +137,41 @@ export class LocationsService implements OnModuleInit {
         latitude: 23.3012,
         longitude: 81.3620,
         category: 'PHARMACY',
-        created_by: 'usr-admin-01',
-        created_by_role: 'ADMIN',
-        created_by_name: 'System Admin (Owner)',
-        area_name: 'Shahdol HQ Territory',
+        created_by: 'usr-mr-01',
+        created_by_role: 'MR',
+        created_by_name: 'Amar Dwivedi (usr-mr-01)',
+        area_name: 'Kotma HQ Territory',
         visit_count: 8,
         is_new: false,
+        batch_id: 'rb-kot-b01',
+        batch_code: 'KOT-B01',
+        batch_name: 'Kotma - Marwahi - Dhanikundi',
         created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+      },
+      {
+        id: 'loc-85cc2c5d',
+        name: 'Marked Facility',
+        clinic: 'Marked Facility',
+        doctor_name: 'Medical Specialist',
+        qualification: 'Registered Practice',
+        specialization: 'General Practice',
+        class: 'A',
+        potential_score: 85,
+        phone: 'N/A',
+        address: 'Law gate, Phagwara Tahsil, Kapurthala, Punjab, 144411, India',
+        latitude: 31.2544044407956,
+        longitude: 75.6915811690241,
+        category: 'OTHER',
+        created_by: 'usr-mr-01',
+        created_by_role: 'MR',
+        created_by_name: 'Amar Dwivedi (usr-mr-01)',
+        area_name: 'Kotma HQ Territory',
+        visit_count: 0,
+        is_new: false,
+        batch_id: 'rb-kot-b01',
+        batch_code: 'KOT-B01',
+        batch_name: 'Kotma - Marwahi - Dhanikundi',
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
       },
       {
         id: 'loc-03',
@@ -218,6 +255,13 @@ export class LocationsService implements OnModuleInit {
               const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (creator?.role === 'ADMIN' || creator?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
               const creatorName = creator ? `${creator.name} (${creator.id})` : (isMr ? `Field MR (${d.created_by})` : 'System Admin');
 
+              const matchDoc = this.db.doctors.find((doc) => doc.id === d.id);
+              const batchId = d.batch_id || matchDoc?.batch_id;
+              const batchCode = d.batch_code || matchDoc?.batch_code;
+              const batchName = d.batch_name || matchDoc?.batch_name;
+              const assignedMrId = matchDoc?.assigned_mr_id || (creator?.role === 'MR' ? creator.id : undefined);
+              const assignedMrName = matchDoc?.assigned_mr_name || (creator?.role === 'MR' ? creator.name : undefined);
+
               return {
                 id: d.id,
                 name: d.name,
@@ -238,9 +282,11 @@ export class LocationsService implements OnModuleInit {
                 area_name: 'Territory',
                 visit_count: 0,
                 is_new: false,
-                batch_id: d.batch_id || undefined,
-                batch_code: d.batch_code || undefined,
-                batch_name: d.batch_name || undefined,
+                batch_id: batchId,
+                batch_code: batchCode,
+                batch_name: batchName,
+                assigned_mr_id: assignedMrId,
+                assigned_mr_name: assignedMrName,
                 created_at: d.created_at || new Date().toISOString(),
               };
             });

@@ -949,6 +949,12 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
                       </span>
                     </div>
 
+                    {loc.batch_name ? (
+                      <div style={{ fontSize: '10px', color: '#0D9488', marginTop: '4px', fontWeight: '600' }}>
+                        🛣️ [{loc.batch_code || 'Batch'}] {loc.batch_name}
+                      </div>
+                    ) : null}
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                           <span style={{ fontSize: '11px', color: loc.created_by_role === 'MR' ? '#0F8B5A' : '#1A3C6E', fontWeight: '700' }}>

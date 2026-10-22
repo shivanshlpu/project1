@@ -50,11 +50,39 @@ export const INITIAL_SAVED_LOCATIONS: DoctorItem[] = [
     latitude: 23.3012,
     longitude: 81.3620,
     category: 'PHARMACY',
-    created_by_role: 'ADMIN',
-    created_by_name: 'System Admin (Owner)',
-    area_name: 'Shahdol HQ Territory',
+    created_by: 'usr-mr-01',
+    created_by_role: 'MR',
+    created_by_name: 'Amar Dwivedi (usr-mr-01)',
+    area_name: 'Kotma HQ Territory',
     visit_count: 8,
     is_new: false,
+    batch_id: 'rb-kot-b01',
+    batch_code: 'KOT-B01',
+    batch_name: 'Kotma - Marwahi - Dhanikundi',
+  },
+  {
+    id: 'loc-85cc2c5d',
+    name: 'Marked Facility',
+    clinic: 'Marked Facility',
+    doctor_name: 'Medical Specialist',
+    qualification: 'Registered Practice',
+    specialization: 'General Practice',
+    class: 'A',
+    potential_score: 85,
+    phone: 'N/A',
+    address: 'Law gate, Phagwara Tahsil, Kapurthala, Punjab, 144411, India',
+    latitude: 31.2544,
+    longitude: 75.6916,
+    category: 'OTHER',
+    created_by: 'usr-mr-01',
+    created_by_role: 'MR',
+    created_by_name: 'Amar Dwivedi (usr-mr-01)',
+    area_name: 'Kotma HQ Territory',
+    visit_count: 0,
+    is_new: false,
+    batch_id: 'rb-kot-b01',
+    batch_code: 'KOT-B01',
+    batch_name: 'Kotma - Marwahi - Dhanikundi',
   },
   {
     id: 'loc-03',
@@ -500,8 +528,23 @@ export function getStoredSavedLocations(): DoctorItem[] {
     const raw = localStorage.getItem('ahtri_saved_locations');
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((loc: any) => {
+          if (loc.id === 'loc-85cc2c5d' || loc.id === 'loc-02') {
+            return {
+              ...loc,
+              created_by: 'usr-mr-01',
+              created_by_role: 'MR',
+              created_by_name: 'Amar Dwivedi (usr-mr-01)',
+              assigned_mr_id: 'usr-mr-01',
+              assigned_mr_name: 'Amar Dwivedi',
+              batch_id: 'rb-kot-b01',
+              batch_code: 'KOT-B01',
+              batch_name: 'Kotma - Marwahi - Dhanikundi',
+            };
+          }
+          return loc;
+        });
       }
     }
     

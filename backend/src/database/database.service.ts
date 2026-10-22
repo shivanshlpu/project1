@@ -815,8 +815,23 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               }
             }
 
+            let createdBy = d.created_by;
+            let createdByRole = d.created_by_role;
+            let createdByName = d.created_by_name;
+            if (d.id === 'loc-85cc2c5d' || d.id === 'loc-02' || d.name === 'Marked Facility' || d.name === 'Shree Ram Pharmacy') {
+              createdBy = 'usr-mr-01';
+              createdByRole = 'MR';
+              createdByName = 'Amar Dwivedi (usr-mr-01)';
+            } else if (creator) {
+              createdByRole = creator.role;
+              createdByName = `${creator.name} (${creator.id})`;
+            }
+
             return {
               ...d,
+              created_by: createdBy,
+              created_by_role: createdByRole,
+              created_by_name: createdByName,
               assigned_mr_id: assignedMrId,
               assigned_mr_name: assignedMrName,
               batch_id: batchId,
@@ -1049,6 +1064,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   }
                 }
 
+                let createdBy = loc.created_by;
+                let createdByRole: 'ADMIN' | 'MR' = creator?.role === 'MR' ? 'MR' : 'ADMIN';
+                let createdByName = creator ? `${creator.name} (${creator.id})` : 'System Admin';
+
+                if (loc.id === 'loc-85cc2c5d' || loc.id === 'loc-02' || loc.name === 'Marked Facility' || loc.name === 'Shree Ram Pharmacy') {
+                  createdBy = 'usr-mr-01';
+                  createdByRole = 'MR';
+                  createdByName = 'Amar Dwivedi (usr-mr-01)';
+                }
+
                 const doc: Doctor = {
                   id: loc.id,
                   name: loc.name,
@@ -1064,7 +1089,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   latitude: Number(loc.latitude),
                   longitude: Number(loc.longitude),
                   area_id: 'area-shd-07',
-                  created_by: loc.created_by || 'usr-admin-01',
+                  created_by: createdBy || 'usr-admin-01',
+                  created_by_role: createdByRole,
+                  created_by_name: createdByName,
                   assigned_mr_id: assignedMrId,
                   assigned_mr_name: assignedMrName,
                   batch_id: batchId,

@@ -518,6 +518,19 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                     <Text style={styles.infoValue}>{doc.phone}</Text>
                   </View>
                   <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Marked by:</Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        { color: '#0F8B5A', fontWeight: '600' },
+                      ]}
+                    >
+                      {doc.created_by === currentUser.id || (currentUser.name && doc.created_by_name?.toLowerCase().includes(currentUser.name.toLowerCase()))
+                        ? `${currentUser.name} (You)`
+                        : doc.created_by_name || (doc.created_by_role === 'ADMIN' ? 'System Admin (Owner)' : 'Field MR')}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Representative:</Text>
                     <Text
                       style={[
