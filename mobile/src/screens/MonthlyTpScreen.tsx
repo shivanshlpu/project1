@@ -40,6 +40,17 @@ export interface RouteBatchSuggestion {
   mr_name?: string;
   territory_name?: string;
   is_exact_match?: boolean;
+  location_ids?: string[];
+  locations?: Array<{
+    id: string;
+    name: string;
+    clinic?: string;
+    doctor_name?: string;
+    category?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }>;
 }
 
 interface WorkingTpItem {
@@ -71,6 +82,7 @@ interface WorkingTpItem {
 const WORK_TYPES = [
   'Doctor Visit',
   'Order Collection',
+  'Stockage',
   'Follow-up',
   'Transit',
   'Induction / Camp',
@@ -555,7 +567,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
       const res = await fetch(
-        `${baseUrl}/territories/route-batches?hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        `${baseUrl}/territories/route-batches/with-locations?hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
         { headers },
       );
       if (res.ok) {
@@ -573,6 +585,10 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             is_round_trip: true,
             hq_id: b.hq_id,
             hq_name: b.hq_name,
+            location_ids: b.location_ids || [],
+            locations: b.locations || [],
+            reimbursement_rate: b.standard_reimbursement_rate ?? 2.5,
+            reimbursement_amount: (b.distance_km || 0) * 2 * (b.standard_reimbursement_rate ?? 2.5),
           }));
           setAllHqBatches(mapped);
           return;
@@ -1083,9 +1099,17 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const handleOpenRouteChangeModal = (plan: any, entry: any) => {
     setRcTargetPlan(plan);
     setRcTargetEntry(entry);
-    setRcRequestedBatch(null);
-    setRcRequestedArea(entry.planned_area || '');
-    setRcSelectedLocIds(entry.location_ids || (entry.selected_locations || []).map((l: any) => l.id) || []);
+    const existingBatch = allHqBatches.find(
+      (b) => b.id === entry.route_batch_id || b.batch_code === entry.route_batch_code,
+    );
+    setRcRequestedBatch(existingBatch || null);
+    setRcRequestedArea(entry.planned_area || entry.destination || existingBatch?.name || '');
+    const initialLocIds = entry.location_ids || (entry.selected_locations || []).map((l: any) => l.id) || [];
+    if (initialLocIds.length === 0 && existingBatch?.locations && existingBatch.locations.length > 0) {
+      setRcSelectedLocIds(existingBatch.locations.map((l: any) => l.id));
+    } else {
+      setRcSelectedLocIds(initialLocIds);
+    }
     setRcReason('');
     setIsRouteChangeModalOpen(true);
   };
@@ -1732,7 +1756,57 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             </TouchableOpacity>
 
             {/* Multi-Location Selection per Date */}
-            {(() => {
+            {selectedWorkType === 'Stockage' ? (
+              <View style={{ marginTop: 10, marginBottom: 8, padding: 12, backgroundColor: '#FFFBEB', borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A' }}>
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#92400E', marginBottom: 4 }}>
+                  📦 Select HQ Stockage / Depot Location *
+                </Text>
+                <Text style={{ fontSize: 11, color: '#B45309', marginBottom: 8 }}>
+                  Choose the authorized Stockage depot for {activeHqName}. A 50m geofence will be activated for task submission upon approval.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.dropdownBox, { backgroundColor: '#FFFFFF', borderColor: '#F59E0B' }]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const stockageLocations = mrLocations.filter((l) => l.category === 'STOCKAGE');
+                    const options = [
+                      ...stockageLocations.map((l) => ({
+                        label: `📦 ${l.name || l.clinic}`,
+                        value: l.id,
+                        sublabel: `${l.address || `${activeHqName} Depot`} • 50m Geofence`,
+                      })),
+                      {
+                        label: `📦 ${activeHqName} Main Depot / Pharmacy Agency`,
+                        value: `stocker-hq-${selectedHqId}`,
+                        sublabel: `Official Stockage Facility for ${activeHqName}`,
+                      },
+                    ];
+
+                    setPickerModal({
+                      visible: true,
+                      title: `Select ${activeHqName} Stockage Depot`,
+                      options,
+                      selectedValue: selectedLocationIds[0] || '',
+                      onSelect: (val) => {
+                        setSelectedLocationIds([val]);
+                        const found = mrLocations.find((l) => l.id === val);
+                        const chosenName = found ? (found.name || found.clinic) : `${activeHqName} Main Depot`;
+                        setSelectedArea(chosenName);
+                        setKolDrsName(chosenName);
+                        setPlannedActivity('Stockage physical inventory verification & audit');
+                      },
+                    });
+                  }}
+                >
+                  <Text style={[styles.dropdownText, { color: selectedLocationIds.length > 0 ? '#92400E' : '#64748B', fontWeight: '700' }]}>
+                    {selectedLocationIds.length > 0
+                      ? (mrLocations.find((l) => l.id === selectedLocationIds[0])?.name || `${activeHqName} Main Depot`)
+                      : `Tap to choose ${activeHqName} Stockage Depot... ▼`}
+                  </Text>
+                  <Text style={styles.dropdownChevron}>▼</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (() => {
               const batchLocations = selectedBatch
                 ? mrLocations.filter((loc) => {
                     const matchesId = loc.batch_id && (loc.batch_id === selectedBatch.id || loc.batch_id === selectedBatch.batch_code);
@@ -2125,12 +2199,30 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           (r.tour_plan_item_id === e.id || r.date === e.date),
                       );
 
-                      const locsList: any[] =
-                        Array.isArray(e.selected_locations) && e.selected_locations.length > 0
-                          ? e.selected_locations
-                          : Array.isArray(e.location_ids) && e.location_ids.length > 0
-                          ? mrLocations.filter((l) => e.location_ids.includes(l.id))
-                          : [];
+                      const locsList: any[] = (() => {
+                        if (Array.isArray(e.selected_locations) && e.selected_locations.length > 0) {
+                          return e.selected_locations;
+                        }
+                        if (Array.isArray(e.location_ids) && e.location_ids.length > 0) {
+                          const matched = mrLocations.filter((l) => e.location_ids.includes(l.id));
+                          if (matched.length > 0) return matched;
+                        }
+                        if (e.route_batch_id || e.route_batch_code) {
+                          const foundBatch = allHqBatches.find(
+                            (b) => b.id === e.route_batch_id || b.batch_code === e.route_batch_code,
+                          );
+                          if (foundBatch?.locations && foundBatch.locations.length > 0) {
+                            return foundBatch.locations;
+                          }
+                          const matchedByBatch = mrLocations.filter(
+                            (l) =>
+                              (l.batch_id && (l.batch_id === e.route_batch_id || l.batch_id === e.route_batch_code)) ||
+                              (l.batch_code && l.batch_code.toLowerCase() === (e.route_batch_code || '').toLowerCase()),
+                          );
+                          if (matchedByBatch.length > 0) return matchedByBatch;
+                        }
+                        return [];
+                      })();
 
                       const destinationName =
                         e.destination || e.planned_area || e.route_batch_name || 'Field Territory';
@@ -2255,20 +2347,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           )}
 
                           {/* Action Footer */}
-                          {isPlanApproved ? (
-                            <TouchableOpacity
-                              style={[
-                                styles.deviationActionBtn,
-                                pendingCr ? styles.deviationActionBtnDisabled : styles.deviationActionBtnActive,
-                              ]}
-                              onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
-                              disabled={Boolean(pendingCr)}
-                            >
-                              <Text style={pendingCr ? styles.deviationBtnTextDisabled : styles.deviationBtnTextActive}>
-                                {pendingCr ? '⏳ Deviation Request Pending Admin Review' : '🔄 Request Route Deviation / Change'}
-                              </Text>
-                            </TouchableOpacity>
-                          ) : editStatus.canEdit ? (
+                          {editStatus.canEdit && !isPlanApproved ? (
                             <View style={styles.unapprovedActionRow}>
                               <TouchableOpacity
                                 style={styles.editVisitBtnNew}
@@ -2282,13 +2361,35 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                               >
                                 <Text style={styles.removeVisitBtnTextNew}>🗑️ Remove Visit</Text>
                               </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  styles.deviationActionBtn,
+                                  { flex: 1, marginTop: 0, paddingVertical: 6, minHeight: 32 },
+                                  pendingCr ? styles.deviationActionBtnDisabled : styles.deviationActionBtnActive,
+                                ]}
+                                onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
+                                disabled={Boolean(pendingCr)}
+                              >
+                                <Text style={pendingCr ? styles.deviationBtnTextDisabled : styles.deviationBtnTextActive}>
+                                  {pendingCr ? '⏳ Pending' : '🔄 Change Batch'}
+                                </Text>
+                              </TouchableOpacity>
                             </View>
                           ) : (
-                            <View style={{ paddingTop: 6, marginTop: 4, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
-                              <Text style={{ fontSize: 10.5, color: '#94A3B8', fontStyle: 'italic', textAlign: 'right' }}>
-                                🔒 24h edit window expired • Awaiting Admin Approval
+                            <TouchableOpacity
+                              style={[
+                                styles.deviationActionBtn,
+                                pendingCr ? styles.deviationActionBtnDisabled : styles.deviationActionBtnActive,
+                              ]}
+                              onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
+                              disabled={Boolean(pendingCr)}
+                            >
+                              <Text style={pendingCr ? styles.deviationBtnTextDisabled : styles.deviationBtnTextActive}>
+                                {pendingCr
+                                  ? '⏳ Deviation Request Pending Admin Review'
+                                  : '🔄 Request Route / Batch Change'}
                               </Text>
-                            </View>
+                            </TouchableOpacity>
                           )}
                         </View>
                       );
@@ -2791,74 +2892,182 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 />
 
                 <Text style={styles.fieldLabel}>Select New Route Batch (Optional):</Text>
-                <ScrollView style={{ maxHeight: 130, marginBottom: 10 }}>
-                  {allHqBatches.map((b) => {
-                    const isSel = rcRequestedBatch?.id === b.id;
-                    return (
-                      <TouchableOpacity
-                        key={b.id}
-                        style={[
-                          styles.batchOptionCard,
-                          isSel && styles.batchOptionCardSelected,
-                          { marginBottom: 6 },
-                        ]}
-                        onPress={() => {
-                          if (isSel) {
-                            setRcRequestedBatch(null);
-                          } else {
-                            setRcRequestedBatch(b);
-                            if (!rcRequestedArea) setRcRequestedArea(b.name);
+                <TouchableOpacity
+                  style={{
+                    borderWidth: 1,
+                    borderColor: rcRequestedBatch ? '#0284C7' : '#CBD5E1',
+                    backgroundColor: rcRequestedBatch ? '#F0F9FF' : '#FFFFFF',
+                    borderRadius: 8,
+                    padding: 10,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setPickerModal({
+                      visible: true,
+                      title: 'Select Route Batch for Deviation',
+                      options: [
+                        { label: 'None / Freeform Area', value: '', sublabel: 'Clear selected batch circuit' },
+                        ...allHqBatches.map((b) => ({
+                          label: `[${b.batch_code}] ${b.name}`,
+                          value: b.id,
+                          sublabel: `${b.distance_km} km one-way (${b.distance_km * 2} km round-trip) • ${b.route}`,
+                        })),
+                      ],
+                      selectedValue: rcRequestedBatch?.id || '',
+                      onSelect: (val) => {
+                        if (!val) {
+                          setRcRequestedBatch(null);
+                        } else {
+                          const found = allHqBatches.find((b) => b.id === val);
+                          if (found) {
+                            setRcRequestedBatch(found);
+                            if (!rcRequestedArea) setRcRequestedArea(found.name);
+                            if (found.locations && found.locations.length > 0) {
+                              const bLocIds = found.locations.map((l: any) => l.id);
+                              setRcSelectedLocIds((prev) => Array.from(new Set([...prev, ...bLocIds])));
+                            }
                           }
-                        }}
-                      >
-                        <Text style={[styles.batchCodeText, isSel && styles.batchCodeTextSelected]}>
-                          [{b.batch_code}] {b.name}
+                        }
+                      },
+                    });
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    {rcRequestedBatch ? (
+                      <>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369A1' }}>
+                          [{rcRequestedBatch.batch_code}] {rcRequestedBatch.name}
                         </Text>
-                        <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                          {b.distance_km} km one-way • {b.route}
+                        <Text style={{ fontSize: 10.5, color: '#475569', marginTop: 2 }}>
+                          {rcRequestedBatch.distance_km} km one-way ({rcRequestedBatch.distance_km * 2} km round-trip) • {rcRequestedBatch.route}
                         </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                {mrLocations && mrLocations.length > 0 && (
-                  <View style={{ marginBottom: 10 }}>
-                    <Text style={styles.fieldLabel}>Select Planned Doctors / Locations ({rcSelectedLocIds.length} selected):</Text>
-                    <ScrollView style={{ maxHeight: 130 }} nestedScrollEnabled>
-                      {mrLocations.map((loc) => {
-                        const isChecked = rcSelectedLocIds.includes(loc.id);
-                        return (
-                          <TouchableOpacity
-                            key={loc.id}
-                            onPress={() => {
-                              if (isChecked) {
-                                setRcSelectedLocIds(rcSelectedLocIds.filter((id) => id !== loc.id));
-                              } else {
-                                setRcSelectedLocIds([...rcSelectedLocIds, loc.id]);
-                              }
-                            }}
-                            style={[
-                              styles.batchOptionCard,
-                              isChecked && styles.batchOptionCardSelected,
-                              { marginBottom: 5, paddingVertical: 6, paddingHorizontal: 10 },
-                            ]}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
-                              <Text style={[{ fontSize: 11.5, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]}>
-                                {loc.name || loc.clinic}
-                              </Text>
-                            </View>
-                            <Text style={{ fontSize: 9.5, color: '#64748B', marginTop: 2 }}>
-                              {loc.category || 'CLINIC'} • {loc.address || 'Field'}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
+                      </>
+                    ) : (
+                      <Text style={{ fontSize: 12.5, color: '#64748B' }}>
+                        Tap to choose a Route Batch from dropdown ▼
+                      </Text>
+                    )}
                   </View>
-                )}
+                  {rcRequestedBatch ? (
+                    <TouchableOpacity
+                      onPress={() => setRcRequestedBatch(null)}
+                      style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#E2E8F0', borderRadius: 4, marginLeft: 6 }}
+                    >
+                      <Text style={{ fontSize: 10, color: '#475569', fontWeight: '700' }}>✕ Clear</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ fontSize: 14, color: '#64748B' }}>▼</Text>
+                  )}
+                </TouchableOpacity>
+
+                {mrLocations && mrLocations.length > 0 && (() => {
+                  const batchLocs = rcRequestedBatch
+                    ? mrLocations.filter((loc) => {
+                        const matchesId = loc.batch_id && (loc.batch_id === rcRequestedBatch.id || loc.batch_id === rcRequestedBatch.batch_code);
+                        const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (rcRequestedBatch.batch_code || '').toLowerCase();
+                        const isInList = rcRequestedBatch.location_ids && rcRequestedBatch.location_ids.includes(loc.id);
+                        const isInStops = rcRequestedBatch.route_stops && rcRequestedBatch.route_stops.some((s: string) => {
+                          const sLower = s.toLowerCase();
+                          return (
+                            (loc.address && loc.address.toLowerCase().includes(sLower)) ||
+                            (loc.clinic && loc.clinic.toLowerCase().includes(sLower)) ||
+                            (loc.name && loc.name.toLowerCase().includes(sLower))
+                          );
+                        });
+                        return Boolean(matchesId || matchesCode || isInList || isInStops);
+                      })
+                    : [];
+
+                  const otherLocs = rcRequestedBatch
+                    ? mrLocations.filter((loc) => !batchLocs.some((bl) => bl.id === loc.id))
+                    : mrLocations;
+
+                  return (
+                    <View style={{ marginBottom: 10 }}>
+                      <Text style={styles.fieldLabel}>
+                        Select Planned Doctors / Locations ({rcSelectedLocIds.length} selected):
+                      </Text>
+
+                      {rcRequestedBatch && batchLocs.length > 0 && (
+                        <View style={{ marginBottom: 6 }}>
+                          <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#0369A1', marginBottom: 4 }}>
+                            📍 Associated with [{rcRequestedBatch.batch_code}] ({batchLocs.length}):
+                          </Text>
+                          {batchLocs.map((loc) => {
+                            const isChecked = rcSelectedLocIds.includes(loc.id);
+                            return (
+                              <TouchableOpacity
+                                key={loc.id}
+                                onPress={() => {
+                                  setRcSelectedLocIds((prev) =>
+                                    isChecked ? prev.filter((id) => id !== loc.id) : [...prev, loc.id],
+                                  );
+                                }}
+                                style={[
+                                  styles.batchOptionCard,
+                                  isChecked && styles.batchOptionCardSelected,
+                                  { marginBottom: 5, paddingVertical: 6, paddingHorizontal: 10 },
+                                ]}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                  <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                                  <Text style={[{ fontSize: 11.5, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]}>
+                                    {loc.name || loc.clinic}
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 9.5, color: '#64748B', marginTop: 2 }}>
+                                  {loc.category || 'CLINIC'} • {loc.address || 'Field'}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+
+                      {otherLocs.length > 0 && (
+                        <View>
+                          {rcRequestedBatch && batchLocs.length > 0 && (
+                            <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#64748B', marginBottom: 4 }}>
+                              Other Locations ({otherLocs.length}):
+                            </Text>
+                          )}
+                          {otherLocs.map((loc) => {
+                            const isChecked = rcSelectedLocIds.includes(loc.id);
+                            return (
+                              <TouchableOpacity
+                                key={loc.id}
+                                onPress={() => {
+                                  setRcSelectedLocIds((prev) =>
+                                    isChecked ? prev.filter((id) => id !== loc.id) : [...prev, loc.id],
+                                  );
+                                }}
+                                style={[
+                                  styles.batchOptionCard,
+                                  isChecked && styles.batchOptionCardSelected,
+                                  { marginBottom: 5, paddingVertical: 6, paddingHorizontal: 10 },
+                                ]}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                  <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                                  <Text style={[{ fontSize: 11.5, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]}>
+                                    {loc.name || loc.clinic}
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 9.5, color: '#64748B', marginTop: 2 }}>
+                                  {loc.category || 'CLINIC'} • {loc.address || 'Field'}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
 
                 <Text style={styles.fieldLabel}>Reason for Deviation *:</Text>
                 <TextInput

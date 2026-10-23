@@ -206,7 +206,7 @@ export interface Doctor {
   created_by: string;
   created_by_role?: string;
   created_by_name?: string;
-  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
   assigned_mr_id?: string;
   assigned_mr_name?: string;
   batch_id?: string;
@@ -229,7 +229,7 @@ export interface SavedLocation {
   address: string;
   latitude: number;
   longitude: number;
-  category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
   created_by: string;
   created_by_role: 'ADMIN' | 'MR';
   created_by_name: string;

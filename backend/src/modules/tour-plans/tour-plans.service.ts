@@ -807,15 +807,16 @@ export class TourPlansService {
         const displayHours = hours > 12 ? hours - 12 : hours;
         const scheduledTime = `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
 
+        const isEntryStockage = (entry.work_type || '').toLowerCase().includes('stockage');
         expectedVisits.push({
           tp_entry_id: entry.id,
           date: entry.date,
           location_name: l.name,
-          category: l.category || 'CLINIC',
+          category: isEntryStockage ? 'STOCKAGE' : (l.category || 'CLINIC'),
           address: l.address || `${l.name}, ${entry.planned_area || 'Territory'}`,
           latitude: coords.latitude,
           longitude: coords.longitude,
-          geofence_radius_m: coords.geofence_radius_m,
+          geofence_radius_m: isEntryStockage ? 50 : coords.geofence_radius_m,
           route_batch_id: entry.route_batch_id,
           route_batch_name: entry.route_batch_name || entry.planned_area,
           sequence_order: idx + 1,
@@ -857,18 +858,22 @@ export class TourPlansService {
           match.time = exp.scheduled_time;
           match.latitude = exp.latitude;
           match.longitude = exp.longitude;
-          match.geofence_radius_m = exp.geofence_radius_m;
+          match.geofence_radius_m = (exp.category || '').toUpperCase() === 'STOCKAGE' ? 50 : exp.geofence_radius_m;
           match.location_name = exp.location_name;
           match.route_batch_id = exp.route_batch_id;
           match.route_batch_name = exp.route_batch_name;
           match.sequence_order = exp.sequence_order;
+          match.hq_accepted = true;
         }
       } else {
         // Create new task for newly approved visit
+        const isStockage = (exp.category || '').toUpperCase() === 'STOCKAGE';
         const newTask: Task = {
           id: `task-tp-${uuidv4().substring(0, 8)}`,
-          title: `Visit: ${exp.location_name}`,
-          description: `Scheduled TP call at ${exp.location_name} (${exp.category}). Geofenced check-in required.`,
+          title: isStockage ? `Stockage: ${exp.location_name}` : `Visit: ${exp.location_name}`,
+          description: isStockage
+            ? `Scheduled Stockage audit/visit at ${exp.location_name}. Geofenced physical presence (50m) required.`
+            : `Scheduled TP call at ${exp.location_name} (${exp.category}). Geofenced check-in required.`,
           assigned_mr_id: plan.mr_id,
           assigned_mr_name: plan.mr_name,
           created_by: adminId || 'SYSTEM_ADMIN',
@@ -876,7 +881,7 @@ export class TourPlansService {
           time: exp.scheduled_time,
           latitude: exp.latitude,
           longitude: exp.longitude,
-          geofence_radius_m: exp.geofence_radius_m,
+          geofence_radius_m: isStockage ? 50 : exp.geofence_radius_m,
           priority: 'HIGH',
           status: 'ASSIGNED',
           source: 'TourPlan',
@@ -886,6 +891,7 @@ export class TourPlansService {
           route_batch_id: exp.route_batch_id,
           route_batch_name: exp.route_batch_name,
           sequence_order: exp.sequence_order,
+          hq_accepted: true,
           created_at: new Date().toISOString(),
         };
 

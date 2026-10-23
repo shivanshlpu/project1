@@ -1,6 +1,6 @@
 
 
-export type PinCategory = 'HOSPITAL' | 'PHARMACY' | 'CLINIC' | 'OFFICE' | 'OTHER' | 'MR';
+export type PinCategory = 'HOSPITAL' | 'PHARMACY' | 'CLINIC' | 'OFFICE' | 'OTHER' | 'MR' | 'STOCKAGE';
 
 interface PinOptions {
   category: PinCategory;
@@ -30,6 +30,12 @@ export function create3DMapPinHtml(options: PinOptions): string {
       secondaryColor = '#1E40AF';
       highlightColor = '#60A5FA';
       ringColor = 'rgba(37, 99, 235, 0.45)';
+      break;
+    case 'STOCKAGE':
+      primaryColor = '#EA580C'; 
+      secondaryColor = '#9A3412';
+      highlightColor = '#FB923C';
+      ringColor = 'rgba(234, 88, 12, 0.45)';
       break;
     case 'OFFICE':
       primaryColor = '#7C3AED'; 
@@ -92,6 +98,15 @@ export function create3DMapPinHtml(options: PinOptions): string {
         <line x1="15" y1="22" x2="15" y2="22.01"/>
         <line x1="8" y1="6" x2="10" y2="6"/>
         <line x1="14" y1="6" x2="16" y2="6"/>
+      </svg>
+    `;
+  } else if (category === 'STOCKAGE') {
+    
+    iconSvg = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${secondaryColor}" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke-width="2" fill="#FFEDD5" fill-opacity="0.7"/>
+        <path d="m3.3 7 8.7 5 8.7-5" stroke-width="2"/>
+        <path d="M12 22V12" stroke-width="2"/>
       </svg>
     `;
   } else {

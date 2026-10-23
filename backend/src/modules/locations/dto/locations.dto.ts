@@ -15,8 +15,8 @@ export class CreateLocationDto {
 
   @IsString()
   @IsOptional()
-  @IsIn(['CLINIC', 'HOSPITAL', 'PHARMACY', 'OFFICE', 'OTHER'])
-  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  @IsIn(['CLINIC', 'HOSPITAL', 'PHARMACY', 'OFFICE', 'STOCKAGE', 'OTHER'])
+  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
 
   @IsString()
   @IsOptional()
@@ -84,7 +84,7 @@ export class UpdateLocationDto {
 
   @IsString()
   @IsOptional()
-  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
 
   @IsString()
   @IsOptional()

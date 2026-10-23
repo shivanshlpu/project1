@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   User,
   Trash2,
+  Edit2,
 } from 'lucide-react';
 import { getApiBaseUrl } from '../utils/apiHelper';
 import { showCenteredNotice } from '../components/CenteredModalNotice';
@@ -74,8 +75,15 @@ export const BatchLocationsView: React.FC = () => {
   const [newBatchCode, setNewBatchCode] = useState<string>('');
   const [newBatchName, setNewBatchName] = useState<string>('');
   const [newBatchDistance, setNewBatchDistance] = useState<string>('40');
+  const [newBatchRate, setNewBatchRate] = useState<string>('2.5');
   const [newBatchStops, setNewBatchStops] = useState<string>('Shahdol, Manpur');
   const [newBatchHq, setNewBatchHq] = useState<string>('hq-shahdol');
+
+  // Modal for editing batch reimbursement rate
+  const [isEditRateModalOpen, setIsEditRateModalOpen] = useState<boolean>(false);
+  const [editingRateBatch, setEditingRateBatch] = useState<RouteBatchItem | null>(null);
+  const [editRateInput, setEditRateInput] = useState<string>('2.5');
+  const [isSavingBatchRate, setIsSavingBatchRate] = useState<boolean>(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -238,19 +246,20 @@ export const BatchLocationsView: React.FC = () => {
           distance_km: Number(newBatchDistance) || 30,
           route_stops: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
           hq_id: newBatchHq,
-          standard_reimbursement_rate: 2.5,
+          standard_reimbursement_rate: Number(newBatchRate) || 2.5,
         }),
       });
 
       if (res.ok) {
         showCenteredNotice({
           title: 'Route Batch Created',
-          message: `New Route Batch [${newBatchCode.trim().toUpperCase()}] successfully configured!`,
+          message: `New Route Batch [${newBatchCode.trim().toUpperCase()}] successfully configured with rate ₹${Number(newBatchRate) || 2.5}/km!`,
           type: 'success',
         });
         setIsCreateBatchModalOpen(false);
         setNewBatchCode('');
         setNewBatchName('');
+        setNewBatchRate('2.5');
         fetchData();
       }
     } catch (err: any) {
@@ -259,6 +268,63 @@ export const BatchLocationsView: React.FC = () => {
         message: err.message,
         type: 'error',
       });
+    }
+  };
+
+  const handleOpenEditRateModal = (batch: RouteBatchItem) => {
+    setEditingRateBatch(batch);
+    setEditRateInput(String(batch.standard_reimbursement_rate ?? 2.5));
+    setIsEditRateModalOpen(true);
+  };
+
+  const handleSaveBatchRate = async () => {
+    if (!editingRateBatch) return;
+    const rateVal = parseFloat(editRateInput);
+    if (isNaN(rateVal) || rateVal < 0) {
+      showCenteredNotice({
+        title: 'Invalid Rate',
+        message: 'Please enter a valid reimbursement rate per kilometer (₹/km).',
+        type: 'warning',
+      });
+      return;
+    }
+
+    setIsSavingBatchRate(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const token = localStorage.getItem('ahtri_auth_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${baseUrl}/territories/route-batches/${editingRateBatch.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          standard_reimbursement_rate: rateVal,
+        }),
+      });
+
+      if (res.ok) {
+        showCenteredNotice({
+          title: 'Reimbursement Rate Saved',
+          message: `Standard reimbursement rate for [${editingRateBatch.batch_code}] successfully updated to ₹${rateVal}/km!`,
+          type: 'success',
+        });
+        setIsEditRateModalOpen(false);
+        fetchData();
+      } else {
+        throw new Error('Failed to update rate');
+      }
+    } catch (err: any) {
+      showCenteredNotice({
+        title: 'Error Saving Rate',
+        message: err.message || 'Could not update batch reimbursement rate.',
+        type: 'error',
+      });
+    } finally {
+      setIsSavingBatchRate(false);
     }
   };
 
@@ -620,6 +686,7 @@ export const BatchLocationsView: React.FC = () => {
                           marginTop: '4px',
                           fontSize: '0.82rem',
                           color: '#64748B',
+                          flexWrap: 'wrap',
                         }}
                       >
                         <span>📍 HQ: {batch.hq_name || 'Shahdol'}</span>
@@ -629,11 +696,27 @@ export const BatchLocationsView: React.FC = () => {
                         <span style={{ color: '#0F8B5A', fontWeight: 700 }}>
                           🔄 {batch.distance_km * 2} km (Round-Trip)
                         </span>
+                        <span>•</span>
+                        <span style={{ color: '#2563EB', fontWeight: 700 }}>
+                          💰 Rate: ₹{batch.standard_reimbursement_rate ?? 2.5}/km
+                        </span>
+                        <span>•</span>
+                        <span
+                          style={{
+                            color: '#15803D',
+                            fontWeight: 700,
+                            backgroundColor: '#DCFCE7',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          Round-Trip: ₹{((batch.distance_km * 2) * (batch.standard_reimbursement_rate ?? 2.5)).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div
                       style={{
                         padding: '4px 12px',
@@ -646,6 +729,30 @@ export const BatchLocationsView: React.FC = () => {
                     >
                       {batchLocations.length} Locations
                     </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditRateModal(batch);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '6px 12px',
+                        backgroundColor: '#F8FAFC',
+                        color: '#334155',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '6px',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                      title="Set standard reimbursement rate for this batch"
+                    >
+                      <Edit2 size={13} />
+                      Edit Rate
+                    </button>
 
                     <button
                       onClick={(e) => {
@@ -1039,6 +1146,26 @@ export const BatchLocationsView: React.FC = () => {
               />
             </div>
 
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                Standard Reimbursement Rate (₹/km) *
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                placeholder="2.5"
+                value={newBatchRate}
+                onChange={(e) => setNewBatchRate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  fontSize: '0.88rem',
+                }}
+              />
+            </div>
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                 Route Stops (comma-separated) *
@@ -1088,6 +1215,106 @@ export const BatchLocationsView: React.FC = () => {
                 }}
               >
                 Create Circuit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Batch Reimbursement Rate */}
+      {isEditRateModalOpen && editingRateBatch && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '12px',
+              maxWidth: '440px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
+              Set Reimbursement Rate
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: '#64748B' }}>
+              Configure standard travel reimbursement rate per kilometer for <strong>[{editingRateBatch.batch_code}] {editingRateBatch.name}</strong>.
+            </p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                Reimbursement Rate (₹/km)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={editRateInput}
+                onChange={(e) => setEditRateInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #CBD5E1',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                }}
+              />
+              <div style={{ marginTop: '10px', padding: '10px 12px', backgroundColor: '#F8FAFC', borderRadius: '6px', fontSize: '0.82rem', color: '#64748B' }}>
+                <div>Round-Trip Distance: <strong>{editingRateBatch.distance_km * 2} km</strong></div>
+                <div style={{ marginTop: '4px' }}>
+                  Total Estimated Reimbursement:{' '}
+                  <strong style={{ color: '#0F8B5A' }}>
+                    ₹{((editingRateBatch.distance_km * 2) * (parseFloat(editRateInput) || 0)).toFixed(2)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setIsEditRateModalOpen(false)}
+                disabled={isSavingBatchRate}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#F1F5F9',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  color: '#475569',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveBatchRate}
+                disabled={isSavingBatchRate}
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: '#0F8B5A',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                }}
+              >
+                {isSavingBatchRate ? 'Saving...' : 'Save Rate'}
               </button>
             </div>
           </div>

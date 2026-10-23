@@ -448,29 +448,42 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             } catch {}
           }
 
-          let hasNewTask = false;
-          activeBackendTasks.forEach((t: any) => {
-            if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED' && !isCancelledTask(t.status)) {
-              if (!seenTaskIdsRef.current.has(t.id)) {
-                seenTaskIdsRef.current.add(t.id);
-                hasNewTask = true;
-                NotificationService.notifyTaskAssigned({
-                  id: t.id,
-                  title: t.title,
-                  location_name: t.location_name,
-                  address: t.address,
-                  time: t.time,
-                  priority: t.priority,
-                });
-              }
-            }
-          });
-
-          if (hasNewTask) {
+          if (isInitialLoadRef.current) {
+            // First run on screen mount: register all active backend tasks as seen so visiting the Tasks page NEVER spams notifications!
+            activeBackendTasks.forEach((t: any) => {
+              seenTaskIdsRef.current.add(t.id);
+            });
             AsyncStorage.setItem(
               `@ahtri_seen_task_ids_${currentUserId}`,
               JSON.stringify(Array.from(seenTaskIdsRef.current))
             ).catch(() => {});
+            isInitialLoadRef.current = false;
+          } else {
+            // Subsequent live interval ticks: only notify genuinely new tasks that arrive while watching
+            let hasNewTask = false;
+            activeBackendTasks.forEach((t: any) => {
+              if (t.assigned_mr_id === currentUserId && t.status !== 'COMPLETED' && !isCancelledTask(t.status)) {
+                if (!seenTaskIdsRef.current.has(t.id)) {
+                  seenTaskIdsRef.current.add(t.id);
+                  hasNewTask = true;
+                  NotificationService.notifyTaskAssigned({
+                    id: t.id,
+                    title: t.title,
+                    location_name: t.location_name,
+                    address: t.address,
+                    time: t.time,
+                    priority: t.priority,
+                  });
+                }
+              }
+            });
+
+            if (hasNewTask) {
+              AsyncStorage.setItem(
+                `@ahtri_seen_task_ids_${currentUserId}`,
+                JSON.stringify(Array.from(seenTaskIdsRef.current))
+              ).catch(() => {});
+            }
           }
 
           setAllTasks(finalTasks);

@@ -16,7 +16,7 @@ export interface SavedLocation {
   address: string;
   latitude: number;
   longitude: number;
-  category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  category: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
   created_by: string;
   created_by_role: 'ADMIN' | 'MR';
   created_by_name: string;

@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckSquare,
+  ExternalLink,
 } from 'lucide-react';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
@@ -461,9 +462,13 @@ export interface RouteChangeRequestAdminItem {
   created_at: string;
 }
 
-export const MonthlyTpView: React.FC = () => {
-  // Navigation Sub-Tabs
-  const [activeSubTab, setActiveSubTab] = useState<'schedules' | 'route_batches' | 'change_requests'>('schedules');
+interface MonthlyTpViewProps {
+  onNavigateToBatches?: () => void;
+}
+
+export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatches }) => {
+  // Navigation Sub-Tabs: Schedules and Change Requests
+  const [activeSubTab, setActiveSubTab] = useState<'schedules' | 'change_requests'>('schedules');
 
   const [routeChangeRequests, setRouteChangeRequests] = useState<RouteChangeRequestAdminItem[]>([]);
   const [isLoadingChangeRequests, setIsLoadingChangeRequests] = useState<boolean>(false);
@@ -672,9 +677,7 @@ export const MonthlyTpView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeSubTab === 'route_batches') {
-      fetchRouteBatches();
-    } else if (activeSubTab === 'change_requests') {
+    if (activeSubTab === 'change_requests') {
       fetchRouteChangeRequests();
     }
   }, [activeSubTab]);
@@ -1417,28 +1420,16 @@ export const MonthlyTpView: React.FC = () => {
               </button>
             </>
           ) : (
-            <>
-              <button
-                type="button"
-                className="btn-enterprise"
-                onClick={() => handleOpenBatchModal()}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
-              >
-                <Plus size={15} />
-                <span>Add Route Batch</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-enterprise secondary"
-                onClick={fetchRouteBatches}
-                disabled={isLoadingBatches}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
-              >
-                <RefreshCw size={14} className={isLoadingBatches ? 'spin' : ''} />
-                <span>Refresh Batches</span>
-              </button>
-            </>
+            <button
+              type="button"
+              className="btn-enterprise secondary"
+              onClick={fetchRouteChangeRequests}
+              disabled={isLoadingChangeRequests}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
+            >
+              <RefreshCw size={14} className={isLoadingChangeRequests ? 'spin' : ''} />
+              <span>Refresh Requests</span>
+            </button>
           )}
         </div>
       </div>
@@ -1479,7 +1470,13 @@ export const MonthlyTpView: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setActiveSubTab('route_batches')}
+          onClick={() => {
+            if (onNavigateToBatches) {
+              onNavigateToBatches();
+            } else {
+              window.location.hash = 'batch_locations';
+            }
+          }}
           style={{
             padding: '7px 16px',
             borderRadius: 6,
@@ -1490,13 +1487,13 @@ export const MonthlyTpView: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: activeSubTab === 'route_batches' ? '#FFFFFF' : 'transparent',
-            color: activeSubTab === 'route_batches' ? '#1A3C6E' : '#64748B',
-            boxShadow: activeSubTab === 'route_batches' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: 'transparent',
+            color: '#2563EB',
           }}
+          title="Manage circuits, standard rates (₹/km), and assigned locations in dedicated Batch Manager"
         >
-          <Navigation size={15} />
-          <span>Route Batch Master ({routeBatches.length})</span>
+          <ExternalLink size={15} />
+          <span>Route Batches & Rates ↗</span>
         </button>
 
         <button
@@ -2080,196 +2077,6 @@ export const MonthlyTpView: React.FC = () => {
         </>
       )}
 
-      {/* SUB-VIEW 2: ROUTE BATCH MASTER */}
-      {activeSubTab === 'route_batches' && (
-        <div>
-          {/* Route Batches Filter and Stats */}
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '14px 18px', marginBottom: 18 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>FILTER BY HEADQUARTERS</label>
-                <select
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, fontWeight: 600, background: '#FFFFFF' }}
-                  value={batchHqFilter}
-                  onChange={(e) => setBatchHqFilter(e.target.value)}
-                >
-                  <option value="ALL">All Headquarters ({hqs.length})</option>
-                  {hqs.map((hq) => (
-                    <option key={hq.id} value={hq.id}>{hq.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>FILTER BY REPRESENTATIVE</label>
-                <select
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, fontWeight: 600, background: '#FFFFFF' }}
-                  value={batchMrFilter}
-                  onChange={(e) => setBatchMrFilter(e.target.value)}
-                >
-                  <option value="ALL">All Representatives ({users.filter((u) => u.role === 'MR').length})</option>
-                  {users.filter((u) => u.role === 'MR').map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.hq_name || 'Assigned'})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>SEARCH BATCH / STOP</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    placeholder="Search by stop, city, or batch code..."
-                    style={{ width: '100%', padding: '8px 10px 8px 30px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
-                    value={batchSearchQuery}
-                    onChange={(e) => setBatchSearchQuery(e.target.value)}
-                  />
-                  <Search size={14} style={{ position: 'absolute', left: 9, top: 10, color: '#94A3B8' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Batches Grid / Table */}
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
-                  Configured Route Batches ({filteredBatches.length})
-                </span>
-                <span style={{ fontSize: 11.5, color: '#64748B', display: 'block', marginTop: 2 }}>
-                  Predefined circuits assigned to field personnel. When MR creates a Tour Plan, destinations automatically match these stops.
-                </span>
-              </div>
-              <button
-                type="button"
-                className="btn-enterprise"
-                onClick={() => handleOpenBatchModal()}
-                style={{ fontSize: 12, fontWeight: 700 }}
-              >
-                <Plus size={14} />
-                <span>New Batch</span>
-              </button>
-            </div>
-
-            {isLoadingBatches ? (
-              <div style={{ padding: '50px 20px', textAlign: 'center', color: '#64748B' }}>
-                <RefreshCw size={24} className="spin" style={{ margin: '0 auto 8px auto', display: 'block' }} />
-                <div>Loading route batch master data...</div>
-              </div>
-            ) : filteredBatches.length === 0 ? (
-              <div style={{ padding: '48px 20px', textAlign: 'center' }}>
-                <Navigation size={36} color="#CBD5E1" style={{ margin: '0 auto 10px auto' }} />
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>No Route Batches Found</div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>Click &quot;New Batch&quot; to configure your first circuit.</div>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '10%' }}>Batch</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '12%' }}>Headquarters</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '14%' }}>Assigned MR</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '34%' }}>Ordered Route Stops</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '9%', textAlign: 'right' }}>Distance</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '9%', textAlign: 'right' }}>Rate / km</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '8%', textAlign: 'center' }}>Status</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', width: '10%', textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBatches.map((b, idx) => (
-                      <tr
-                        key={b.id}
-                        style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}
-                      >
-                        <td style={{ padding: '11px 14px', fontWeight: 800, color: '#1A3C6E' }}>
-                          <span style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '3px 8px', borderRadius: 4 }}>
-                            {b.batch_code}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
-                          {b.hq_name}
-                        </td>
-
-                        <td style={{ padding: '11px 14px', fontWeight: 600, color: '#334155' }}>
-                          {b.mr_name || <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Any MR in HQ</span>}
-                        </td>
-
-                        <td style={{ padding: '11px 14px' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5 }}>
-                            {(b.route_stops || []).map((stop, sIdx) => (
-                              <React.Fragment key={sIdx}>
-                                <span style={{ background: '#F1F5F9', color: '#1E293B', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 700, border: '1px solid #E2E8F0' }}>
-                                  {stop}
-                                </span>
-                                {sIdx < (b.route_stops || []).length - 1 && (
-                                  <ArrowRight size={12} color="#94A3B8" />
-                                )}
-                              </React.Fragment>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 700, color: '#0F172A' }}>
-                          {b.distance_km} km
-                        </td>
-
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 600, color: '#0F8B5A' }}>
-                          ₹{(b.standard_reimbursement_rate ?? globalRate).toFixed(2)}
-                        </td>
-
-                        <td style={{ padding: '11px 14px', textAlign: 'center' }}>
-                          <span
-                            onClick={() => handleToggleBatchStatus(b)}
-                            style={{
-                              cursor: 'pointer',
-                              display: 'inline-block',
-                              padding: '2px 7px',
-                              borderRadius: 4,
-                              fontSize: 10.5,
-                              fontWeight: 800,
-                              background: b.status === 'ACTIVE' ? '#DCFCE7' : '#F1F5F9',
-                              color: b.status === 'ACTIVE' ? '#166534' : '#64748B',
-                              border: `1px solid ${b.status === 'ACTIVE' ? '#86EFAC' : '#CBD5E1'}`,
-                            }}
-                            title="Click to toggle status"
-                          >
-                            {b.status}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '11px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenBatchModal(b)}
-                              style={{ background: '#F8FAFC', border: '1px solid #CBD5E1', padding: '4px 6px', borderRadius: 4, cursor: 'pointer', color: '#1E293B' }}
-                              title="Edit route batch"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBatch(b)}
-                              style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '4px 6px', borderRadius: 4, cursor: 'pointer', color: '#DC2626' }}
-                              title="Delete route batch"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* SUB-VIEW 3: ROUTE CHANGE REQUESTS */}
       {activeSubTab === 'change_requests' && (
@@ -2687,177 +2494,6 @@ export const MonthlyTpView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 2: ADD / EDIT ROUTE BATCH MODAL */}
-      {isBatchModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 12,
-              width: '100%',
-              maxWidth: 520,
-              padding: 24,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Navigation size={20} color="#1A3C6E" />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
-                  {editingBatch ? `Edit ${editingBatch.batch_code}` : 'Add New Route Batch'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsBatchModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveBatch}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                    Batch Identifier / Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Batch 3"
-                    value={batchFormData.batch_code}
-                    onChange={(e) => setBatchFormData({ ...batchFormData, batch_code: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                    HQ Assignment *
-                  </label>
-                  <select
-                    required
-                    value={batchFormData.hq_id}
-                    onChange={(e) => setBatchFormData({ ...batchFormData, hq_id: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box', background: '#FFFFFF' }}
-                  >
-                    <option value="">Select Headquarters</option>
-                    {hqs.map((hq) => (
-                      <option key={hq.id} value={hq.id}>{hq.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                  Assigned MR / Employee (Optional)
-                </label>
-                <select
-                  value={batchFormData.mr_id}
-                  onChange={(e) => setBatchFormData({ ...batchFormData, mr_id: e.target.value })}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box', background: '#FFFFFF' }}
-                >
-                  <option value="">Any Representative assigned to this HQ</option>
-                  {users.filter((u) => u.role === 'MR').map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.hq_name || 'Assigned'})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                  Ordered Route Stops * (Separated by → or comma)
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Shahdol → Gohparu → Jaisinghnagar"
-                  value={batchFormData.route_stops_str}
-                  onChange={(e) => setBatchFormData({ ...batchFormData, route_stops_str: e.target.value })}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
-                />
-                <span style={{ fontSize: 11, color: '#64748B', display: 'block', marginTop: 3 }}>
-                  Matching works for every stop in the configured route.
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                    Standard Distance (KM) *
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0.01"
-                    required
-                    value={batchFormData.distance_km}
-                    onChange={(e) => setBatchFormData({ ...batchFormData, distance_km: Number(e.target.value) })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                    Reimbursement Rate (₹/km)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={batchFormData.standard_reimbursement_rate}
-                    onChange={(e) => setBatchFormData({ ...batchFormData, standard_reimbursement_rate: Number(e.target.value) })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                  Status
-                </label>
-                <select
-                  value={batchFormData.status}
-                  onChange={(e) => setBatchFormData({ ...batchFormData, status: e.target.value as any })}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12.5, boxSizing: 'border-box', background: '#FFFFFF' }}
-                >
-                  <option value="ACTIVE">ACTIVE (Available for selection)</option>
-                  <option value="INACTIVE">INACTIVE (Hidden)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button
-                  type="button"
-                  className="btn-enterprise secondary"
-                  onClick={() => setIsBatchModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-enterprise"
-                >
-                  {editingBatch ? 'Update Batch' : 'Create Batch'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL 3: MONTHLY TP PDF GENERATION DIALOG */}
       {isPdfModalOpen && (

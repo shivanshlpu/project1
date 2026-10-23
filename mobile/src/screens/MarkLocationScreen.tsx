@@ -51,7 +51,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
   const [specialization, setSpecialization] = useState('General Physician');
-  const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE'>('CLINIC');
+  const [category, setCategory] = useState<'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE'>('CLINIC');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -369,6 +369,8 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
                       ? '#2563EB'
                       : category === 'OFFICE'
                       ? '#7C3AED'
+                      : category === 'STOCKAGE'
+                      ? '#D97706'
                       : '#0F8B5A',
                 },
               ]}
@@ -381,6 +383,8 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
               ? 'Medical Store / Chemist Mark'
               : category === 'OFFICE'
               ? 'Diagnostic Center Mark'
+              : category === 'STOCKAGE'
+              ? '📦 Stockage Depot Mark'
               : 'Doctor Practice Mark'}
           </Text>
           <Text style={styles.mapSub}>Verified On-Site Location</Text>
@@ -457,9 +461,9 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
 
         {/* Category Selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Point of Care Category</Text>
+          <Text style={styles.inputLabel}>Point of Care Category / Facility</Text>
           <View style={styles.categoryRow}>
-            {(['CLINIC', 'HOSPITAL', 'PHARMACY', 'OFFICE'] as const).map((cat) => (
+            {(['CLINIC', 'HOSPITAL', 'PHARMACY', 'STOCKAGE', 'OFFICE'] as const).map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[
@@ -480,6 +484,8 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
                     ? 'Hospital'
                     : cat === 'PHARMACY'
                     ? 'Chemist / Medical Shop'
+                    : cat === 'STOCKAGE'
+                    ? '📦 Stockage / Depot'
                     : 'Diagnostic / Other'}
                 </Text>
               </TouchableOpacity>

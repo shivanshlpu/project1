@@ -586,7 +586,9 @@ export const App: React.FC = () => {
               )}
               {managerTab === 'approvals' && <ApprovalsView />}
               {managerTab === 'attendance' && <AdminAttendanceView />}
-              {managerTab === 'tp' && <MonthlyTpView />}
+              {managerTab === 'tp' && (
+                <MonthlyTpView onNavigateToBatches={() => setManagerTab('batch_locations')} />
+              )}
               {managerTab === 'stockers' && <StockerManagementView />}
               {managerTab === 'competitions' && <CompetitionsView />}
               {managerTab === 'reports' && <ReportsView lang={lang} />}

@@ -25,23 +25,24 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.42',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '43', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.43',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '44', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.42/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.43/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Tour Plan Approval Status Persistence: Approved tour plans immediately reflect Approved state across reloads and offline sessions',
-    'Admin-Approved Tour Plan Change Requests: Request destination area, route batch, and doctor deviations mid-cycle with real-time status and admin notes',
-    'Automated 50m Geofenced Task Sequencing: Approved tour plans automatically generate geofenced field tasks with sequenced arrival times',
-    'Dynamic Multi-Territory Location Resolution: Zero hardcoding, dynamic GPS resolution across marked clinics and headquarters centers',
-    'Task Reconciliation Engine: Superseded visits safely cancel unstarted tasks while preserving completed visits, audit history, and orders',
+    'MR Route & Batch Change Authority: Submit route or batch changes anytime without 24-hour lockout',
+    'Dropdown Batch Picker: Full scrollable batch selector with grouped batch locations display',
+    'Stockage Depot Integration: Stockage category in Save Location and automatic 50m geofenced tasks upon TP approval',
+    'Task Notification Spam Elimination: Suppressed redundant notifications on Tasks screen initial open',
+    'Push Notification Cold Launch: Direct navigation to Tasks page when tapping push notifications',
+    'Admin Batch Management Refactoring: Dedicated Batch page with Standard Reimbursement Rate (₹/km) settings and live round-trip calculation',
   ],
 };
 

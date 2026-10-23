@@ -227,6 +227,7 @@ export default function App() {
   const seenTaskIdsRef = React.useRef<Set<string>>(new Set());
   const seenNotifIdsRef = React.useRef<Set<string>>(new Set());
   const isSyncingTasksRef = React.useRef<boolean>(false);
+  const isFirstGlobalSyncRef = React.useRef<boolean>(true);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -276,18 +277,19 @@ export default function App() {
         if (tasksRes.ok && isMounted) {
           const tasksData = await tasksRes.json();
           if (Array.isArray(tasksData)) {
-            const rawStorage = await AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`);
-            const hasExistingSeenStore = !!rawStorage;
+            if (isFirstGlobalSyncRef.current) {
+              // On first sync on app start: register all existing tasks as already seen so app boot never triggers spam
+              tasksData.forEach((t: any) => seenTaskIdsRef.current.add(t.id));
+              isFirstGlobalSyncRef.current = false;
+            } else {
+              // Subsequent sync intervals: alert MR ONLY for newly arrived tasks
+              for (const t of tasksData) {
+                const isAssignedToMe = t.assigned_mr_id === currentUserId;
+                const isPending = t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && t.status !== 'SUSPENDED';
 
-            for (const t of tasksData) {
-              const isAssignedToMe = t.assigned_mr_id === currentUserId;
-              const isPending = t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && t.status !== 'SUSPENDED';
-
-              if (isAssignedToMe && isPending) {
-                if (!seenTaskIdsRef.current.has(t.id)) {
-                  seenTaskIdsRef.current.add(t.id);
-                  // Alert in status bar if not initial app install sync
-                  if (hasExistingSeenStore) {
+                if (isAssignedToMe && isPending) {
+                  if (!seenTaskIdsRef.current.has(t.id)) {
+                    seenTaskIdsRef.current.add(t.id);
                     NotificationService.notifyTaskAssigned({
                       id: t.id,
                       title: t.title,
@@ -364,9 +366,24 @@ export default function App() {
   }, [currentUser?.id]);
 
   useEffect(() => {
+    // Handle notification tap from completely closed/cold app state
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        const data = response?.notification?.request?.content?.data;
+        if (data?.taskId || data?.type === 'TASK_ASSIGNED' || data?.type === 'NEW_TASK' || data?.type === 'TASK') {
+          setCurrentTab('tasks');
+        } else if (data?.type === 'STOCK_REMINDER' || data?.type === 'STOCK') {
+          setCurrentTab('profile');
+          setMoreSubScreen('stocklist');
+        } else if (data?.type === 'APP_UPDATE') {
+          setIsUpdateModalOpen(true);
+        }
+      }
+    }).catch(() => {});
+
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response?.notification?.request?.content?.data;
-      if (data?.taskId || data?.type === 'TASK_ASSIGNED' || data?.type === 'NEW_TASK') {
+      if (data?.taskId || data?.type === 'TASK_ASSIGNED' || data?.type === 'NEW_TASK' || data?.type === 'TASK') {
         setCurrentTab('tasks');
       } else if (data?.type === 'STOCK_REMINDER' || data?.type === 'STOCK') {
         setCurrentTab('profile');
@@ -480,6 +497,7 @@ export default function App() {
       }
       await ApiConfig.setUser(user);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      NotificationService.registerForRemotePushNotifications(user.id).catch(() => {});
     } catch {
       // Storage fallback
     }

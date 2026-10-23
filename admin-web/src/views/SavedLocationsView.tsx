@@ -847,6 +847,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
                 { id: 'CLINIC', label: 'Clinics' },
                 { id: 'HOSPITAL', label: 'Hospitals' },
                 { id: 'PHARMACY', label: 'Pharmacies' },
+                { id: 'STOCKAGE', label: '📦 Stockage' },
               ].map((pill) => (
                 <button
                   key={pill.id}

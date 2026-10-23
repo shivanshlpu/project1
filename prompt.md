@@ -269,5 +269,30 @@ The project leverages a dual-pipeline release architecture:
    - In `MonthlyTpScreen.tsx`, selecting a route batch automatically populates the destination from the route's terminal stop if the field was empty.
    - In `admin-web`, the table displays both the Destination and all linked clinics (`🏥 ...`).
 
+---
+
+### Phase 4: Route Changes, Stockage Geofencing, Notification Overhaul & Batch Rate Architecture (Current Update)
+
+#### 1. MR Route & Batch Change Authority Anytime
+- **Authority Unlocked**: Medical Representatives can now submit route and batch change requests at any time (even after the previous 24-hour window or after approval).
+- **Batch Dropdown Selection**: Replaced the constrained nested scroll area with a full modal dropdown picker (`setPickerModal`), displaying all available batches and showing their associated clinics and healthcare facilities.
+- **Auto-Populated Batch Locations**: When an MR requests a batch change, the circuit's assigned locations are dynamically grouped and pre-selected.
+
+#### 2. 'Stockage' Facility & 50m Geofenced Task Activation
+- **Save Location**: Added `📦 Stockage / Depot` option under Facility in `MarkLocationScreen.tsx` (mobile) with dedicated marker colors and package icon.
+- **Tour Plan Stockage Selection**: When work type `Stockage` is chosen in `MonthlyTpScreen.tsx`, MRs select the specific Stockage / Depot location linked to their Headquarters.
+- **Automated 50m Geofencing**: Upon Tour Plan approval, `reconcileTasksForTourPlan` generates a physical presence verification task strictly constrained to a 50m geofence radius and marked `hq_accepted: true`.
+
+#### 3. Task Notification Spam Elimination & Background Push Delivery
+- **Initial Load Suppression**: Fixed notification spam in `TodayTasksScreen.tsx` and `App.tsx` by seeding `seenTaskIdsRef` on first load (`isInitialLoadRef`) without firing local notifications.
+- **Push Notification Registration**: Added `NotificationService.registerForRemotePushNotifications` on login.
+- **Cold Launch Navigation**: Implemented `Notifications.getLastNotificationResponseAsync()` on cold launch to immediately route users clicking push notifications to the `Tasks` page.
+
+#### 4. Admin Web: Dedicated Batch Page & Reimbursement Rate Controls
+- **Batch Creation Relocation**: Removed redundant batch creation from `MonthlyTpView.tsx`, redirecting admins to the dedicated `BatchLocationsView` via an action button `Route Batches & Rates ↗`.
+- **Standard Reimbursement Rate (₹/km)**: Configurable directly during new batch creation and editable on any existing batch via a dedicated `✏️ Edit Rate` modal.
+- **Live Reimbursement Calculations**: Batch headers display one-way distance, round-trip distance, reimbursement rate (₹/km), and estimated total reimbursement (`Round-Trip km × ₹/km`).
+- **Saved Locations Filter**: Added `📦 Stockage` filter pill in `SavedLocationsView.tsx`.
+
 
 
