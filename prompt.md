@@ -189,10 +189,22 @@ The functional test script verified:
 
 ### 7. Mobile APK Build & Distribution (Version 1.0.41 / Build Code 42)
 
-- **EAS Project**: `@shiva900/ahtri-ffa-mobile`
-- **EAS Build ID**: `281ca3d1-3078-496d-8628-3c4328729908`
-- **EAS Build Status**: `FINISHED` (Exit Code 0, Android Release APK)
-- **Expo Artifact URL**: `https://expo.dev/artifacts/eas/XzwNupggRzqHIntEABXt5II4wGtqS7MbSBmhOH6URMg.apk`
+The project leverages a dual-pipeline release architecture:
+1. **GitHub Actions Automated APK Builder (`.github/workflows/build-apk.yml`)**:
+   - **Trigger**: Automatic on push to `main` with `mobile/**` changes.
+   - **Run ID**: `39942910637` (Status: `Success`)
+   - **Tooling**: Gradle 8, OpenJDK 17, Android SDK cmdline-tools, `assembleRelease`.
+   - **GitHub Release Created**: `v1.0.41` at [GitHub Releases](https://github.com/shivanshlpu/project1/releases/tag/v1.0.41)
+   - **Release Artifacts**:
+     - `ahtri-ffa-mobile-v1.0.41.apk` (63.15 MB)
+     - `ahtri-ffa-mobile.apk` (63.15 MB)
+
+2. **EAS Cloud Builder (`eas.json`)**:
+   - **EAS Project**: `@shiva900/ahtri-ffa-mobile`
+   - **EAS Build ID**: `281ca3d1-3078-496d-8628-3c4328729908`
+   - **EAS Build Status**: `FINISHED` (Exit Code 0)
+   - **Expo Direct Artifact**: `https://expo.dev/artifacts/eas/XzwNupggRzqHIntEABXt5II4wGtqS7MbSBmhOH6URMg.apk`
+
 - **Local Binary Artifacts (~63.15 MB)**:
   - `mobile/ahtri-ffa-latest.apk`
   - `mobile/build-output/ahtri-ffa-mobile-v1.0.41.apk`
@@ -210,4 +222,5 @@ The functional test script verified:
   - `backend/data/app_version.json`: `latestVersion: "1.0.41"`, `latestVersionCode: 42`
   - `admin-web/src/views/SettingsView.tsx`: `v1.0.41`, `Code 42`
   - `LATEST_APK_INFO.md`: Full release documentation and employee instructions.
+
 
