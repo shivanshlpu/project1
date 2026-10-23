@@ -933,11 +933,18 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         longitude: l.longitude,
       }));
 
+    const finalDestination =
+      selectedArea.trim() ||
+      selectedBatch?.name ||
+      (selectedBatch?.route_stops && selectedBatch.route_stops.length > 0 ? selectedBatch.route_stops[selectedBatch.route_stops.length - 1] : '') ||
+      'Field Territory';
+
     const punchItem = {
       date: formDate,
       hq_id: currentHq.id,
       hq_name: currentHq.name,
-      planned_area: selectedArea,
+      planned_area: finalDestination,
+      destination: finalDestination,
       work_type: selectedWorkType,
       planned_kol_drs: finalDoctor,
       planned_activity: finalActivity,
@@ -1032,12 +1039,18 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         longitude: l.longitude,
       }));
 
+    const finalDestination =
+      selectedArea.trim() ||
+      selectedBatch?.name ||
+      (selectedBatch?.route_stops && selectedBatch.route_stops.length > 0 ? selectedBatch.route_stops[selectedBatch.route_stops.length - 1] : '') ||
+      'Field Territory';
+
     const newItem: WorkingTpItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       date: formDate,
       hq_id: currentHq.id,
       hq_name: currentHq.name,
-      planned_area: selectedArea,
+      planned_area: finalDestination,
       work_type: selectedWorkType,
       planned_kol_drs: finalDoctor,
       planned_activity: finalActivity,
@@ -1197,6 +1210,28 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
   
   const getPlanEditStatus = (plan: any) => {
+    const isApproved = ['APPROVED', 'Approved'].includes(plan.status);
+    if (isApproved) {
+      return {
+        canEdit: false,
+        remainingHours: 0,
+        badgeText: '🔒 Approved (Changes via Deviation Request)',
+        badgeColor: '#15803D',
+        badgeBg: '#DCFCE7',
+      };
+    }
+
+    const isRejected = ['REJECTED', 'Rejected'].includes(plan.status);
+    if (isRejected) {
+      return {
+        canEdit: false,
+        remainingHours: 0,
+        badgeText: '❌ Rejected by Admin',
+        badgeColor: '#991B1B',
+        badgeBg: '#FEE2E2',
+      };
+    }
+
     const submittedTime = new Date(plan.submitted_at || plan.created_at || Date.now()).getTime();
     const now = Date.now();
     const elapsedHours = (now - submittedTime) / (1000 * 60 * 60);
@@ -1217,8 +1252,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       canEdit: true,
       remainingHours,
       badgeText: `⏳ Editable / Deletable (${wholeHours}h ${wholeMinutes}m left)`,
-      badgeColor: '#0F8B5A',
-      badgeBg: '#DCFCE7',
+      badgeColor: '#B45309',
+      badgeBg: '#FEF3C7',
     };
   };
 
@@ -1424,8 +1459,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const activeHqName = hqs.find((h) => h.id === selectedHqId)?.name || 'HQ';
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Top Header */}
+    <View style={{ flex: 1, backgroundColor: '#F4F6FA' }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Top Header */}
       <View style={styles.header}>
         {onBack && (
           <TouchableOpacity onPress={onBack} style={{ marginBottom: 6, alignSelf: 'flex-start' }}>
@@ -1576,7 +1617,16 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                       <TouchableOpacity
                         key={batch.id}
                         style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
-                        onPress={() => setSelectedBatch(batch)}
+                        onPress={() => {
+                          setSelectedBatch(batch);
+                          if (!selectedArea.trim()) {
+                            const termStop =
+                              batch.route_stops && batch.route_stops.length > 0
+                                ? batch.route_stops[batch.route_stops.length - 1]
+                                : batch.name || '';
+                            if (termStop) setSelectedArea(termStop);
+                          }
+                        }}
                         activeOpacity={0.7}
                       >
                         <View style={styles.batchCardTop}>
@@ -1930,6 +1980,23 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         </Text>
                       </View>
                     ) : null}
+                    {/* Planned Doctors & Clinics for this Batch */}
+                    {item.selected_locations && item.selected_locations.length > 0 && (
+                      <View style={{ marginTop: 5, backgroundColor: '#F0FDF4', padding: 6, borderRadius: 6, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#166534' }}>
+                          🏥 Planned Doctors &amp; Clinics ({item.selected_locations.length}):
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+                          {item.selected_locations.map((loc: any, idx: number) => (
+                            <View key={loc.id || idx} style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                              <Text style={{ fontSize: 9.5, color: '#14532D', fontWeight: '600' }}>
+                                📍 {loc.name || loc.clinic}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                     <Text style={styles.entryDoctor}>Dr: {item.planned_kol_drs}</Text>
                     <Text style={styles.entryActivity}>Task: {item.planned_activity}</Text>
                   </View>
@@ -2037,10 +2104,14 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                     </Text>
                   ) : null}
 
-                  {/* Punched Visits Table */}
-                  <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
+                  {/* Punched Visits Cards */}
+                  <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 10 }}>
                     {parseSafeTpEntries(plan.entries).map((e: any, i: number) => {
                       const isPlanApproved = ['APPROVED', 'Approved'].includes(plan.status);
+                      const isVisitApproved =
+                        ['APPROVED', 'Approved'].includes(e.reimbursement_status) || isPlanApproved;
+                      const isVisitRejected = ['REJECTED', 'Rejected'].includes(e.reimbursement_status);
+
                       const pendingCr = mrChangeRequests.find(
                         (r) =>
                           r.status === 'PENDING' &&
@@ -2054,108 +2125,171 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                           (r.tour_plan_item_id === e.id || r.date === e.date),
                       );
 
+                      const locsList: any[] =
+                        Array.isArray(e.selected_locations) && e.selected_locations.length > 0
+                          ? e.selected_locations
+                          : Array.isArray(e.location_ids) && e.location_ids.length > 0
+                          ? mrLocations.filter((l) => e.location_ids.includes(l.id))
+                          : [];
+
+                      const destinationName =
+                        e.destination || e.planned_area || e.route_batch_name || 'Field Territory';
+
                       return (
-                        <View key={e.id || i} style={styles.subItemRow}>
-                          <View style={{ width: 85 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>
-                              {formatDateDDMMYYYY(e.date)}
-                            </Text>
-                            <Text style={{ fontSize: 9.5, color: '#0369A1', fontWeight: '600' }}>
-                              {e.work_type}
-                            </Text>
+                        <View key={e.id || i} style={styles.visitDetailCard}>
+                          {/* Card Top: Date & Work Type + Approval Status */}
+                          <View style={styles.visitHeaderRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <View style={styles.visitDatePill}>
+                                <Text style={styles.visitDateText}>📅 {formatDateDDMMYYYY(e.date)}</Text>
+                              </View>
+                              <View style={styles.visitWorkTypePill}>
+                                <Text style={styles.visitWorkTypeText}>{e.work_type}</Text>
+                              </View>
+                            </View>
+
+                            <View
+                              style={[
+                                styles.statusBadge,
+                                isVisitApproved
+                                  ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC', borderWidth: 1 }
+                                  : isVisitRejected
+                                  ? { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1 }
+                                  : { backgroundColor: '#FEF3C7', borderColor: '#FCD34D', borderWidth: 1 },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.statusBadgeText,
+                                  isVisitApproved
+                                    ? { color: '#15803D' }
+                                    : isVisitRejected
+                                    ? { color: '#B91C1C' }
+                                    : { color: '#B45309' },
+                                ]}
+                              >
+                                ● {isVisitApproved ? 'Approved' : isVisitRejected ? 'Rejected' : 'Submitted (Pending Review)'}
+                              </Text>
+                            </View>
                           </View>
 
-                          <View style={{ flex: 1, paddingHorizontal: 6 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
-                              {e.hq_name} • {e.planned_area}
-                            </Text>
-                            {e.route ? (
-                              <View style={{ marginTop: 2 }}>
-                                <Text style={{ fontSize: 10, color: '#0F8B5A', fontWeight: '700' }}>
-                                  🛣️ {e.route_batch_code ? `${e.route_batch_code}: ` : ''}{e.route}
-                                </Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                  <Text style={{ fontSize: 9.5, color: '#475569' }}>
-                                    🚗 Travel Distance: {e.distance_km || 0} km (Round Trip)
-                                  </Text>
-                                </View>
-                              </View>
-                            ) : null}
-                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                              Dr: {e.planned_kol_drs} • {e.planned_activity}
-                            </Text>
+                          {/* Planned Destination */}
+                          <Text style={styles.visitDestTitle}>
+                            📍 Destination: <Text style={{ color: '#0369A1' }}>{destinationName}</Text>
+                          </Text>
+                          <Text style={styles.visitHqSub}>
+                            🏛️ HQ: {e.hq_name || activeHqName}
+                          </Text>
 
-                            {/* Pending Change Request Notice */}
-                            {pendingCr && (
-                              <View style={{ backgroundColor: '#FEF3C7', padding: 5, borderRadius: 5, marginTop: 4, borderWidth: 1, borderColor: '#FCD34D' }}>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#B45309' }}>
-                                  ⏳ Change Request Pending: {pendingCr.requested_batch_name || pendingCr.requested_area || 'Route Deviation'}
+                          {/* Route Circuit & Mileage */}
+                          {e.route ? (
+                            <View style={styles.visitRouteBox}>
+                              <Text style={styles.visitRouteCode}>
+                                🛣️ {e.route_batch_code ? `${e.route_batch_code}: ` : ''}{e.route}
+                              </Text>
+                              <View style={styles.visitDistRow}>
+                                <Text style={styles.visitDistBadge}>
+                                  🚗 Travel Distance: {e.distance_km || 0} km (Round Trip)
                                 </Text>
-                                <Text style={{ fontSize: 9.5, color: '#78350F', marginTop: 1 }}>
-                                  Reason: "{pendingCr.reason}"
-                                </Text>
-                              </View>
-                            )}
-
-                            {/* Rejected Change Request Notice */}
-                            {rejectedCr && !pendingCr && (
-                              <View style={{ backgroundColor: '#FEE2E2', padding: 5, borderRadius: 5, marginTop: 4, borderWidth: 1, borderColor: '#FCA5A5' }}>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#B91C1C' }}>
-                                  ❌ Change Request Declined by Admin
-                                </Text>
-                                {rejectedCr.admin_remarks ? (
-                                  <Text style={{ fontSize: 9.5, color: '#991B1B', marginTop: 1 }}>
-                                    Note: "{rejectedCr.admin_remarks}"
+                                {e.reimbursement_amount ? (
+                                  <Text style={styles.visitAmountBadge}>
+                                    💰 Reimbursement: ₹{Number(e.reimbursement_amount).toFixed(2)}
                                   </Text>
                                 ) : null}
                               </View>
-                            )}
+                            </View>
+                          ) : null}
+
+                          {/* Selected Batch Locations & Clinics */}
+                          {locsList.length > 0 && (
+                            <View style={styles.visitLocsBox}>
+                              <Text style={styles.visitLocsTitle}>
+                                🏥 Planned Doctors &amp; Clinics ({locsList.length}):
+                              </Text>
+                              <View style={styles.visitLocsTags}>
+                                {locsList.map((loc: any, idx: number) => (
+                                  <View key={loc.id || idx} style={styles.visitLocChip}>
+                                    <Text style={styles.visitLocChipText}>
+                                      📍 {loc.name || loc.clinic} {loc.category ? `• ${loc.category}` : ''}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          )}
+
+                          {/* KOL Dr & Activity Details */}
+                          <View style={styles.visitNotesBox}>
+                            <Text style={styles.visitDoctorText}>
+                              👤 <Text style={{ fontWeight: '700' }}>KOL Dr:</Text> {e.planned_kol_drs || 'General Field Coverage'}
+                            </Text>
+                            <Text style={styles.visitActivityText}>
+                              📝 <Text style={{ fontWeight: '700' }}>Task:</Text> {e.planned_activity || 'Doctor & Chemist Detailing'}
+                            </Text>
                           </View>
 
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            {/* 24-HOUR EDIT & REMOVE BUTTONS: ONLY APPEAR IF WITHIN 24 HOURS */}
-                            {editStatus.canEdit && (
-                              <>
-                                <TouchableOpacity
-                                  style={styles.editVisitBtn}
-                                  onPress={() => handleOpenEditModal(plan, e)}
-                                >
-                                  <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
-                                </TouchableOpacity>
+                          {/* Pending Deviation Request Notice */}
+                          {pendingCr && (
+                            <View style={styles.pendingCrBox}>
+                              <Text style={styles.pendingCrTitle}>
+                                ⏳ Deviation Request Pending Admin Review: {pendingCr.requested_batch_name || pendingCr.requested_area || 'Route Deviation'}
+                              </Text>
+                              <Text style={styles.pendingCrText}>
+                                Reason: "{pendingCr.reason}"
+                              </Text>
+                            </View>
+                          )}
 
-                                {/* REMOVE PUNCHED ENTRY BUTTON */}
-                                <TouchableOpacity
-                                  style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
-                                  onPress={() => handleDeletePunchedEntry(plan, e)}
-                                >
-                                  <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
-                                </TouchableOpacity>
-                              </>
-                            )}
-
-                            {/* REQUEST CHANGES BUTTON: FOR APPROVED TOUR PLANS */}
-                            {isPlanApproved && (
-                              <TouchableOpacity
-                                style={[
-                                  styles.editVisitBtn,
-                                  pendingCr
-                                    ? { backgroundColor: '#FEF3C7', borderColor: '#FCD34D', marginLeft: 6 }
-                                    : { backgroundColor: '#EFF6FF', borderColor: '#93C5FD', marginLeft: 6 },
-                                ]}
-                                onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
-                                disabled={Boolean(pendingCr)}
-                              >
-                                <Text
-                                  style={[
-                                    styles.editVisitBtnText,
-                                    pendingCr ? { color: '#B45309' } : { color: '#2563EB' },
-                                  ]}
-                                >
-                                  {pendingCr ? '⏳ Pending' : '🔄 Request Changes'}
+                          {/* Declined Deviation Request Notice */}
+                          {rejectedCr && !pendingCr && (
+                            <View style={[styles.pendingCrBox, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
+                              <Text style={[styles.pendingCrTitle, { color: '#B91C1C' }]}>
+                                ❌ Deviation Request Declined by Admin
+                              </Text>
+                              {rejectedCr.admin_remarks ? (
+                                <Text style={[styles.pendingCrText, { color: '#991B1B' }]}>
+                                  Note: "{rejectedCr.admin_remarks}"
                                 </Text>
+                              ) : null}
+                            </View>
+                          )}
+
+                          {/* Action Footer */}
+                          {isPlanApproved ? (
+                            <TouchableOpacity
+                              style={[
+                                styles.deviationActionBtn,
+                                pendingCr ? styles.deviationActionBtnDisabled : styles.deviationActionBtnActive,
+                              ]}
+                              onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
+                              disabled={Boolean(pendingCr)}
+                            >
+                              <Text style={pendingCr ? styles.deviationBtnTextDisabled : styles.deviationBtnTextActive}>
+                                {pendingCr ? '⏳ Deviation Request Pending Admin Review' : '🔄 Request Route Deviation / Change'}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : editStatus.canEdit ? (
+                            <View style={styles.unapprovedActionRow}>
+                              <TouchableOpacity
+                                style={styles.editVisitBtnNew}
+                                onPress={() => handleOpenEditModal(plan, e)}
+                              >
+                                <Text style={styles.editVisitBtnTextNew}>✏️ Edit Visit</Text>
                               </TouchableOpacity>
-                            )}
-                          </View>
+                              <TouchableOpacity
+                                style={styles.removeVisitBtnNew}
+                                onPress={() => handleDeletePunchedEntry(plan, e)}
+                              >
+                                <Text style={styles.removeVisitBtnTextNew}>🗑️ Remove Visit</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={{ paddingTop: 6, marginTop: 4, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+                              <Text style={{ fontSize: 10.5, color: '#94A3B8', fontStyle: 'italic', textAlign: 'right' }}>
+                                🔒 24h edit window expired • Awaiting Admin Approval
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       );
                     })}
@@ -2166,6 +2300,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           )}
         </View>
       )}
+    </ScrollView>
 
       {/* Calendar Picker Modal */}
       {isCalendarOpen && (
@@ -2595,6 +2730,13 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                       ]}
                       onPress={() => {
                         setSelectedBatch(b);
+                        if (!selectedArea.trim()) {
+                          const termStop =
+                            b.route_stops && b.route_stops.length > 0
+                              ? b.route_stops[b.route_stops.length - 1]
+                              : b.name || '';
+                          if (termStop) setSelectedArea(termStop);
+                        }
                         setIsAllBatchesModalOpen(false);
                       }}
                     >
@@ -2751,7 +2893,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           </View>
         </Modal>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -3005,6 +3147,225 @@ const styles = StyleSheet.create({
   },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   statusBadgeText: { fontSize: 10, fontWeight: '800' },
+  visitDetailCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  visitHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  visitDatePill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  visitDateText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  visitWorkTypePill: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  visitWorkTypeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  visitDestTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  visitHqSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  visitRouteBox: {
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  visitRouteCode: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F8B5A',
+  },
+  visitDistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  visitDistBadge: {
+    fontSize: 10.5,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  visitAmountBadge: {
+    fontSize: 10.5,
+    color: '#15803D',
+    fontWeight: '800',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  visitLocsBox: {
+    backgroundColor: '#F0FDF4',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginBottom: 8,
+  },
+  visitLocsTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#166534',
+    marginBottom: 4,
+  },
+  visitLocsTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  visitLocChip: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  visitLocChipText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#14532D',
+  },
+  visitNotesBox: {
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    marginBottom: 6,
+  },
+  visitDoctorText: {
+    fontSize: 11,
+    color: '#334155',
+    marginBottom: 2,
+  },
+  visitActivityText: {
+    fontSize: 10.5,
+    color: '#64748B',
+  },
+  pendingCrBox: {
+    backgroundColor: '#FEF3C7',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginVertical: 6,
+  },
+  pendingCrTitle: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  pendingCrText: {
+    fontSize: 10,
+    color: '#78350F',
+    marginTop: 2,
+  },
+  unapprovedActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  editVisitBtnNew: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  editVisitBtnTextNew: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  removeVisitBtnNew: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  removeVisitBtnTextNew: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  deviationActionBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    borderWidth: 1,
+  },
+  deviationActionBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
+  },
+  deviationActionBtnDisabled: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FCD34D',
+  },
+  deviationBtnTextActive: {
+    color: '#1D4ED8',
+    fontWeight: '800',
+    fontSize: 11.5,
+  },
+  deviationBtnTextDisabled: {
+    color: '#B45309',
+    fontWeight: '700',
+    fontSize: 11,
+  },
   subItemRow: {
     flexDirection: 'row',
     alignItems: 'center',

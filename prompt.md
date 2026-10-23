@@ -215,12 +215,59 @@ The project leverages a dual-pipeline release architecture:
   - Backend Universal Redirect: `https://ahtri-backend.onrender.com/download-apk`
   - Backend Version Info: `https://ahtri-backend.onrender.com/api/app/version`
 - **Synchronized Version Config Files**:
-  - `mobile/app.json`: `version: "1.0.41"`, `versionCode: 42`
-  - `mobile/package.json`: `version: "1.0.41"`
-  - `mobile/src/services/appUpdateService.ts`: `CURRENT_APP_VERSION = '1.0.41'`, `CURRENT_APP_VERSION_CODE = 42`
-  - `backend/src/app.controller.ts`: `defaultAppVersion` set to `1.0.41`, `42`
-  - `backend/data/app_version.json`: `latestVersion: "1.0.41"`, `latestVersionCode: 42`
-  - `admin-web/src/views/SettingsView.tsx`: `v1.0.41`, `Code 42`
+  - `mobile/app.json`: `version: "1.0.42"`, `versionCode: 43`
+  - `mobile/package.json`: `version: "1.0.42"`
+  - `mobile/src/services/appUpdateService.ts`: `CURRENT_APP_VERSION = '1.0.42'`, `CURRENT_APP_VERSION_CODE = 43`
+  - `backend/src/app.controller.ts`: `defaultAppVersion` set to `1.0.42`, `43`
+  - `backend/data/app_version.json`: `latestVersion: "1.0.42"`, `latestVersionCode: 43`
+  - `admin-web/src/views/SettingsView.tsx`: `v1.0.42`, `Code 43`
   - `LATEST_APK_INFO.md`: Full release documentation and employee instructions.
+
+---
+
+### 8. Tour Plan Request UI Overhaul, Single-Action Approval & Batch Locations (v1.0.42 / Build 43)
+
+#### A. Problem Analysis & User Feedback
+1. **Double Approval Bug in Admin Web**:
+   - Approving an individual visit in the table set `reimbursement_status = 'APPROVED'`, but left the parent plan in `status = 'SUBMITTED'`.
+   - Consequently, the top monthly plan banner still rendered `● Submitted (Pending Review)` with an `[Approve Plan]` button, forcing the admin to accept/approve a second time.
+2. **Collapsed & Broken Punched Visits in Mobile**:
+   - `subItemRow` used `flexDirection: 'row'` containing Date (85px), middle details (`flex: 1`), and Action Buttons (~260px across Edit, Remove, Request Changes).
+   - On standard mobile viewports (360px wide), the middle details were completely crushed to 0px width, causing destination, route, and doctor information to disappear.
+   - When a plan was approved, both 24h edit/delete buttons AND route deviation buttons rendered at the same time, aggravating layout overflow.
+3. **Missing Batch Locations / Clinics**:
+   - While `location_ids` and `selected_locations` existed in the backend and were saved during visit punching, they were never displayed in the mobile card or in the admin table.
+4. **Destination Resolution Issues**:
+   - The destination was not explicitly saved as a distinct field on `MonthlyTpItem`, causing fallbacks to default to general territory strings instead of terminal route stops.
+5. **Phantom Whitespace in Mobile App**:
+   - Five `<Modal>` dialogs (Calendar, Edit, Picker, All Batches, Route Change) were declared inside the outer `<ScrollView>`, causing React Native Android Yoga layout measurement glitches with hundreds of empty pixels.
+
+#### B. Architectural Solutions & Code Modifications
+
+1. **Unified Single-Action Approval Engine**:
+   - **Backend (`tour-plans.service.ts`)**:
+     - `updateTpStatus`: Approving a plan automatically marks every individual visit entry `APPROVED` (`reimbursement_status = 'APPROVED'`) and executes `reconcileTasksForTourPlan()`.
+     - `decideReimbursement`: When all visits in a plan are approved, the parent plan automatically transitions to `APPROVED`, persists to disk, and triggers automated task creation.
+   - **Admin Web (`MonthlyTpView.tsx`)**:
+     - `distinctPlans`: Computes `status = 'APPROVED'` whenever `approvedVisits === totalVisits && totalVisits > 0`.
+     - `handleDecideReimbursement`: Syncs both visit status and parent plan status in state immediately and triggers `fetchMonthlyPlans()` for authoritative backend synchronization.
+     - Single click now completely approves the plan, marks the rows approved, turns the banner green (`● Approved`), and generates geofenced tasks.
+
+2. **Mobile UI Complete Overhaul (`MonthlyTpScreen.tsx`)**:
+   - **Card-Based Architecture (`visitDetailCard`)**:
+     - Replaced crushed horizontal `subItemRow` with spacious vertical cards.
+     - **Header**: Date badge (`📅 DD-MM-YYYY`), Work Type pill (`🩺 Doctor Visit`), and live Approval status badge (`● Approved` / `● Submitted (Pending Review)` / `● Rejected`).
+     - **Destination & Circuit**: Prominent `📍 Destination: ...` header and Route circuit box with round-trip distance and calculated reimbursement amount.
+     - **Batch Locations Display**: Prominently renders `🏥 Planned Doctors & Clinics (X):` with individual green chip tags for every selected clinic/doctor.
+     - **Locked Approved State**: Once approved, `Edit` and `Remove` buttons are strictly hidden; only the prominent `🔄 Request Route Deviation / Change` button is shown.
+     - **Unapproved State (Within 24 Hours)**: Neatly renders separate `✏️ Edit Visit` and `🗑️ Remove Visit` buttons in a dedicated bottom action row.
+   - **Whitespace Bug Elimination**:
+     - Closed the main `<ScrollView>` before modal definitions and wrapped the entire screen in a root `<View style={{ flex: 1, backgroundColor: '#F4F6FA' }}>`.
+
+3. **Destination Resolution & Auto-Fill**:
+   - Extended `MonthlyTpItem` schema in `database.types.ts`, `tour-plans.dto.ts`, and `MonthlyTpView.tsx` with `destination?: string`.
+   - In `MonthlyTpScreen.tsx`, selecting a route batch automatically populates the destination from the route's terminal stop if the field was empty.
+   - In `admin-web`, the table displays both the Destination and all linked clinics (`🏥 ...`).
+
 
 

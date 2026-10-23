@@ -1,20 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.41",
-  "latestVersionCode": 42,
+  "latestVersion": "1.0.42",
+  "latestVersionCode": 43,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.41/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.42/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-23",
-  "publishedAt": "2026-10-23T10:45:00.000Z",
+  "publishedAt": "2026-10-23T17:30:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Tour Plan Approval Status Persistence: Approved tour plans immediately reflect Approved state across reloads and offline sessions",
-    "Admin-Approved Tour Plan Change Requests: Request destination area, route batch, and doctor deviations mid-cycle with real-time status and admin notes",
-    "Automated 50m Geofenced Task Sequencing: Approved tour plans automatically generate geofenced field tasks with sequenced arrival times",
-    "Dynamic Multi-Territory Location Resolution: Zero hardcoding, dynamic GPS resolution across marked clinics and headquarters centers",
-    "Task Reconciliation Engine: Superseded visits safely cancel unstarted tasks while preserving completed visits, audit history, and orders"
+    "Overhauled MR Tour Plan request & submission UI with spacious, card-based visit views and zero crushed rows",
+    "Unified single-action Tour Plan approvals: approving a plan immediately marks all visits Approved and reconciles tasks without duplicate review",
+    "Accurate destination capture: automatically defaults to selected route terminal stops and HQ territories",
+    "Prominent batch locations display: all planned doctors and clinics for each route circuit are clearly visible in green chips",
+    "Eliminated phantom whitespace layout glitches caused by nested modals inside mobile scrollviews"
   ]
 }

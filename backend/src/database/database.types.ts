@@ -683,6 +683,7 @@ export interface MonthlyTpItem {
   hq_id: string;
   hq_name: string;
   planned_area: string;
+  destination?: string;
   work_type: string; 
   planned_kol_drs: string;
   planned_activity: string;

@@ -48,6 +48,8 @@ export interface MonthlyTpItem {
   hq_name: string;
   planned_area: string;
   destination?: string;
+  location_ids?: string[];
+  selected_locations?: any[];
   work_type: string;
   planned_kol_drs: string;
   planned_activity: string;
@@ -889,9 +891,16 @@ export const MonthlyTpView: React.FC = () => {
       } else {
         existing.totalVisits += 1;
         if (isAppr) existing.approvedVisits += 1;
-        if (p.status === 'APPROVED' && existing.status !== 'APPROVED') {
+        if ((p.status === 'APPROVED' || p.reimbursement_status === 'APPROVED') && existing.status !== 'APPROVED') {
           existing.status = 'APPROVED';
         }
+      }
+    });
+
+    // Auto-resolve: if all visits are approved, mark plan as APPROVED
+    map.forEach((dp) => {
+      if (dp.totalVisits > 0 && dp.approvedVisits === dp.totalVisits) {
+        dp.status = 'APPROVED';
       }
     });
 
@@ -938,21 +947,25 @@ export const MonthlyTpView: React.FC = () => {
 
       if (res.ok) {
         setPlans((prev) =>
-          prev.map((p) =>
-            p.entry_id === item.entry_id || p.id === item.id
-              ? { ...p, reimbursement_status: newStatus }
-              : p,
-          ),
+          prev.map((p) => {
+            if (p.entry_id === item.entry_id || p.id === item.id) {
+              return { ...p, reimbursement_status: newStatus, status: newStatus };
+            }
+            if (newStatus === 'APPROVED' && p.tp_id === item.tp_id) {
+              return { ...p, status: 'APPROVED' };
+            }
+            return p;
+          }),
         );
         if (selectedEntryForDetails && (selectedEntryForDetails.entry_id === item.entry_id || selectedEntryForDetails.id === item.id)) {
-          setSelectedEntryForDetails((prev) => prev ? { ...prev, reimbursement_status: newStatus } : null);
+          setSelectedEntryForDetails((prev) => prev ? { ...prev, reimbursement_status: newStatus, status: newStatus } : null);
         }
         setActionNotice({
           type: 'success',
-          message: `✓ Reimbursement marked as ${newStatus} for ${item.mr_name} (${item.date})`,
+          message: `✓ Visit marked as ${newStatus} for ${item.mr_name} (${item.date}) and Tour Plan synchronized!`,
         });
+        fetchMonthlyPlans();
       } else {
-        
         await handleUpdateStatus(item.tp_id, newStatus);
       }
     } catch {
@@ -1035,8 +1048,9 @@ export const MonthlyTpView: React.FC = () => {
         );
         setActionNotice({
           type: 'success',
-          message: `✓ Tour Plan marked as ${newStatus} successfully!`,
+          message: `✓ Tour Plan marked as ${newStatus} successfully! All visits and 50m geofenced tasks synchronized.`,
         });
+        fetchMonthlyPlans();
       } else {
         setActionNotice({
           type: 'error',
@@ -1873,9 +1887,19 @@ export const MonthlyTpView: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Destination */}
-                          <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
-                            📍 {item.destination || item.planned_area}
+                          {/* Destination & Planned Locations */}
+                          <td style={{ padding: '11px 14px', color: '#0F172A' }}>
+                            <div style={{ fontWeight: 800 }}>📍 {item.destination || item.planned_area}</div>
+                            {item.selected_locations && item.selected_locations.length > 0 && (
+                              <div style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: 600, marginTop: 3 }}>
+                                🏥 {item.selected_locations.map((l) => l.name).join(', ')}
+                              </div>
+                            )}
+                            {item.planned_kol_drs && item.planned_kol_drs !== 'General Field Coverage' && (
+                              <div style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                                👤 {item.planned_kol_drs}
+                              </div>
+                            )}
                           </td>
 
                           {/* Route Batch & Complete Route */}

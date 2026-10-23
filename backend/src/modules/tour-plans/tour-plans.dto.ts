@@ -26,6 +26,10 @@ export class MonthlyTpItemDto {
   planned_area: string;
 
   @IsString()
+  @IsOptional()
+  destination?: string;
+
+  @IsString()
   @IsNotEmpty()
   work_type: string;
 

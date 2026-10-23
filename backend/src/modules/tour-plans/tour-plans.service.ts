@@ -136,12 +136,20 @@ export class TourPlansService {
       kolDrs = selectedLocations.map((l) => l.name).slice(0, 3).join(', ') + (selectedLocations.length > 3 ? ` +${selectedLocations.length - 3} more` : '');
     }
 
+    const destination =
+      e.destination?.trim() ||
+      e.planned_area?.trim() ||
+      routeBatchName?.trim() ||
+      (routeStops.length > 0 ? routeStops[routeStops.length - 1] : '') ||
+      'Field Territory';
+
     return {
       id: e.id || `tp-item-${uuidv4().substring(0, 8)}`,
       date: e.date,
       hq_id: effectiveHqId,
       hq_name: effectiveHqName,
-      planned_area: e.planned_area,
+      destination: destination,
+      planned_area: e.planned_area || destination,
       work_type: e.work_type,
       planned_kol_drs: kolDrs || 'General Field Coverage',
       planned_activity: e.planned_activity?.trim() || 'Doctor & Chemist Detailing',
@@ -498,7 +506,7 @@ export class TourPlansService {
           hq_id: entry.hq_id,
           hq_name: entry.hq_name,
           planned_area: entry.planned_area,
-          destination: entry.planned_area,
+          destination: entry.destination || entry.planned_area || entry.route_batch_name || 'Field Territory',
           work_type: entry.work_type,
           planned_kol_drs: entry.planned_kol_drs || 'General Field Coverage',
           planned_activity: entry.planned_activity || 'Doctor & Chemist Detailing',
@@ -507,6 +515,8 @@ export class TourPlansService {
           route_batch_name: entry.route_batch_name,
           route: entry.route,
           route_stops: entry.route_stops,
+          location_ids: entry.location_ids,
+          selected_locations: entry.selected_locations,
           is_round_trip: isRoundTrip,
           one_way_distance_km: oneWayKm,
           round_trip_distance_km: roundTripKm,
@@ -549,12 +559,10 @@ export class TourPlansService {
     plan.approved_at = new Date().toISOString();
     if (dto.remarks) plan.remarks = dto.remarks;
 
-    // Also update all pending item reimbursement statuses to match if plan is approved/rejected
+    // Automatically approve/reject all item reimbursement statuses to eliminate double-approval
     if (normStatus === 'APPROVED' || normStatus === 'REJECTED') {
       plan.entries.forEach((entry) => {
-        if (entry.reimbursement_amount !== undefined && (!entry.reimbursement_status || entry.reimbursement_status === 'PENDING')) {
-          entry.reimbursement_status = normStatus;
-        }
+        entry.reimbursement_status = normStatus;
       });
     }
 
@@ -596,9 +604,10 @@ export class TourPlansService {
       plan.remarks = plan.remarks ? `${plan.remarks} | ${remarks}` : remarks;
     }
 
-    // If all entries are approved, update the plan status to APPROVED as well
+    // If all entries are approved, update the parent plan status to APPROVED and generate geofenced tasks
     const allApproved = plan.entries.length > 0 && plan.entries.every((e) => e.reimbursement_status === 'APPROVED');
-    if (allApproved && plan.status === 'SUBMITTED') {
+    const planStatusUpper = (plan.status || '').toUpperCase();
+    if (allApproved && (planStatusUpper === 'SUBMITTED' || planStatusUpper === 'PENDING' || !plan.status)) {
       plan.status = 'APPROVED';
       plan.approved_by = adminId;
       plan.approved_at = new Date().toISOString();
