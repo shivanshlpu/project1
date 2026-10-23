@@ -1,20 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.44",
-  "latestVersionCode": 45,
+  "latestVersion": "1.0.45",
+  "latestVersionCode": 46,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.44/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.45/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-24",
-  "publishedAt": "2026-10-23T19:40:00.000Z",
+  "publishedAt": "2026-10-23T20:53:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Storage / Depot Facility Geotagging: Dedicated Storage / Depot facility marking with custom 3D depot map pins and automated 50m presence geofencing",
-    "Unassigned Location Isolation: Eliminated false batch associations where unassigned clinics were matched to every batch",
-    "Responsive Facility Type Selector: Clean wrapping grid for Clinic, Hospital, Pharmacy, Chemist, and Storage / Depot options",
-    "Strict Tour Plan & Route Change Location Sync: Locations are strictly grouped under their assigned route circuits without address overlap",
-    "Depot Badge & Management: MR doctor directory cards now display prominent Storage Depot tags with specialized inventory roles"
+    "Dynamic Batch Rate Synchronization: Tour plan travel calculations dynamically pull authoritative Route Batch rates (e.g. ₹2.25/km for SHD-B02)",
+    "Immediate Task Provisioning: Approving a Tour Plan entry immediately provisions high-priority tasks in the MR daily agenda with GPS geofencing",
+    "Automated Daily Task Reconciliation: Multi-format date normalization ensuring overdue tasks auto-suspend seamlessly once the visit date elapses",
+    "Streamlined Rate Management: Removed redundant global rate settings from Monthly TP, consolidating rate policy under Route Batches",
+    "Enhanced Storage / Depot Facility Mapping: Dedicated depot geotagging with specialized 50m geofence radius"
   ]
 }

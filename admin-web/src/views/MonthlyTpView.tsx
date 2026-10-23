@@ -534,66 +534,23 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   const [processingTpId, setProcessingTpId] = useState<string | null>(null);
 
   
-  const [globalRate, setGlobalRate] = useState<number>(() => {
-    const saved = localStorage.getItem('ahtri_reimbursement_rate');
-    return saved ? parseFloat(saved) || 2.5 : 2.5;
-  });
-  const [isRateSettingsModalOpen, setIsRateSettingsModalOpen] = useState<boolean>(false);
-  const [rateInput, setRateInput] = useState<string>(() => String(localStorage.getItem('ahtri_reimbursement_rate') || '2.5'));
-  const [isSavingRate, setIsSavingRate] = useState<boolean>(false);
+  const resolveItemBatchRateAndAmount = (item: MonthlyTpItem) => {
+    const matchedBatch = routeBatches.find(
+      (b) =>
+        (item.route_batch_id && (b.id === item.route_batch_id || b.batch_code === item.route_batch_id)) ||
+        (item.route_batch_code && b.batch_code?.toLowerCase() === item.route_batch_code?.toLowerCase()) ||
+        (item.route_batch_name && b.name?.toLowerCase() === item.route_batch_name?.toLowerCase())
+    );
+    const effectiveRate = matchedBatch?.standard_reimbursement_rate ?? item.reimbursement_rate;
+    const dist = item.round_trip_distance_km || item.distance_km || 0;
+    const effectiveAmount =
+      effectiveRate !== undefined && dist > 0
+        ? Math.round(dist * effectiveRate * 100) / 100
+        : item.reimbursement_amount;
+    return { effectiveRate, effectiveAmount, matchedBatch };
+  };
 
   const apiUrl = getApiBaseUrl();
-
-  const handleSaveRateSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newRate = parseFloat(rateInput);
-    if (isNaN(newRate) || newRate < 0) {
-      alert('Please enter a valid reimbursement rate per km.');
-      return;
-    }
-
-    setIsSavingRate(true);
-    try {
-      localStorage.setItem('ahtri_reimbursement_rate', String(newRate));
-      setGlobalRate(newRate);
-
-      await resilientFetch('/territories/route-batches/settings/rate', {
-        method: 'PATCH',
-        body: JSON.stringify({ rate: newRate }),
-      }).catch(() => {});
-
-      
-      setRouteBatches((prev) =>
-        prev.map((b) => ({
-          ...b,
-          standard_reimbursement_rate: newRate,
-        }))
-      );
-
-      
-      setPlans((prev) =>
-        prev.map((p) => {
-          const dist = p.round_trip_distance_km || p.distance_km || 0;
-          return {
-            ...p,
-            reimbursement_rate: newRate,
-            reimbursement_amount: Math.round(dist * newRate * 100) / 100,
-          };
-        })
-      );
-
-      setIsRateSettingsModalOpen(false);
-      setActionNotice({
-        type: 'success',
-        message: `✓ Reimbursement rate updated to ₹${newRate.toFixed(2)}/km! All route batches and calculations updated.`,
-      });
-      setTimeout(() => setActionNotice(null), 5000);
-    } catch {
-      alert('Error updating reimbursement rate settings.');
-    } finally {
-      setIsSavingRate(false);
-    }
-  };
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
@@ -631,24 +588,6 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   }, [apiUrl]);
 
   
-  useEffect(() => {
-    const fetchActiveRate = async () => {
-      try {
-        const res = await resilientFetch('/territories/route-batches/settings/rate');
-        if (res.ok) {
-          const data = await res.json();
-          if (data && typeof data.rate === 'number' && !isNaN(data.rate)) {
-            setGlobalRate(data.rate);
-            setRateInput(String(data.rate));
-            localStorage.setItem('ahtri_reimbursement_rate', String(data.rate));
-          }
-        }
-      } catch {}
-    };
-    fetchActiveRate();
-  }, []);
-
-  
   const fetchRouteBatches = async () => {
     setIsBatchesLoading(true);
     try {
@@ -657,12 +596,6 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         const data = await res.json();
         if (Array.isArray(data)) {
           setRouteBatches(data);
-          if (data.length > 0 && typeof data[0].standard_reimbursement_rate === 'number' && !isNaN(data[0].standard_reimbursement_rate)) {
-            const serverRate = data[0].standard_reimbursement_rate;
-            setGlobalRate(serverRate);
-            setRateInput(String(serverRate));
-            localStorage.setItem('ahtri_reimbursement_rate', String(serverRate));
-          }
         }
       }
     } catch {
@@ -859,9 +792,9 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     const approvedCount = filteredPlans.filter((p) => (p.reimbursement_status || p.status) === 'APPROVED').length;
     const distinctMrs = new Set(filteredPlans.map((p) => p.mr_name)).size;
     const totalDistance = filteredPlans.reduce((acc, p) => acc + (p.distance_km || 0), 0);
-    const totalReimbursement = filteredPlans.reduce((acc, p) => acc + (p.reimbursement_amount || 0), 0);
+    const totalReimbursement = filteredPlans.reduce((acc, p) => acc + (resolveItemBatchRateAndAmount(p).effectiveAmount || 0), 0);
     return { totalVisits, pendingCount, approvedCount, distinctMrs, totalDistance, totalReimbursement };
-  }, [filteredPlans]);
+  }, [filteredPlans, routeBatches]);
 
   const distinctPlans = useMemo(() => {
     const map = new Map<string, {
@@ -1082,7 +1015,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         mr_id: batch.mr_id || '',
         route_stops_str: (batch.route_stops || []).join(' → '),
         distance_km: batch.distance_km,
-        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? globalRate,
+        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 2.5,
         status: batch.status,
       });
     } else {
@@ -1094,7 +1027,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         mr_id: '',
         route_stops_str: '',
         distance_km: 60,
-        standard_reimbursement_rate: globalRate,
+        standard_reimbursement_rate: 2.5,
         status: 'ACTIVE',
       });
     }
@@ -1371,20 +1304,6 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn-enterprise secondary"
-            onClick={() => {
-              setRateInput(String(globalRate));
-              setIsRateSettingsModalOpen(true);
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
-            title="Configure Authoritative Travel Reimbursement Rate Policy"
-          >
-            <Sliders size={14} color="#1A3C6E" />
-            <span>Rate Settings (₹{globalRate.toFixed(2)}/km)</span>
-          </button>
-
           {activeSubTab === 'schedules' ? (
             <>
               <button
@@ -1855,6 +1774,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                       const reimbStatus = item.reimbursement_status || item.status;
                       const isApproved = reimbStatus === 'APPROVED';
                       const isRejected = reimbStatus === 'REJECTED';
+                      const { effectiveRate, effectiveAmount } = resolveItemBatchRateAndAmount(item);
 
                       return (
                         <tr
@@ -1942,18 +1862,18 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
 
                           {/* Rate / km */}
                           <td style={{ padding: '11px 14px', textAlign: 'right', fontWeight: 600, color: '#64748B' }}>
-                            {item.reimbursement_rate !== undefined ? `₹${item.reimbursement_rate.toFixed(2)}` : '-'}
+                            {effectiveRate !== undefined ? `₹${effectiveRate.toFixed(2)}` : '-'}
                           </td>
 
                           {/* Calculated Two-Way Reimbursement */}
                           <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                            {item.reimbursement_amount !== undefined ? (
+                            {effectiveAmount !== undefined ? (
                               <div>
                                 <span style={{ fontWeight: 800, color: '#0F8B5A', fontSize: 13 }}>
-                                  ₹{item.reimbursement_amount.toFixed(2)}
+                                  ₹{effectiveAmount.toFixed(2)}
                                 </span>
                                 <div style={{ fontSize: 10, color: '#64748B' }}>
-                                  {item.round_trip_distance_km || item.distance_km}km (2-way) × ₹{(item.reimbursement_rate ?? 2.5).toFixed(2)}
+                                  {item.round_trip_distance_km || item.distance_km}km (2-way) × ₹{(effectiveRate ?? 2.5).toFixed(2)}
                                 </div>
                               </div>
                             ) : (
@@ -2420,8 +2340,9 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
               {(() => {
                 const oneWay = selectedEntryForDetails.one_way_distance_km || Math.round(((selectedEntryForDetails.distance_km || 0) / 2) * 10) / 10;
                 const roundTrip = selectedEntryForDetails.round_trip_distance_km || selectedEntryForDetails.distance_km || (oneWay * 2);
-                const rate = selectedEntryForDetails.reimbursement_rate ?? 2.5;
-                const totalAmount = selectedEntryForDetails.reimbursement_amount ?? Math.round(roundTrip * rate * 100) / 100;
+                const { effectiveRate, effectiveAmount } = resolveItemBatchRateAndAmount(selectedEntryForDetails);
+                const rate = effectiveRate ?? 2.5;
+                const totalAmount = effectiveAmount ?? Math.round(roundTrip * rate * 100) / 100;
 
                 return (
                   <>
@@ -2620,101 +2541,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           </div>
         </div>
       )}
-
-      {/* MODAL: RATE SETTINGS */}
-      {isRateSettingsModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 12,
-              width: '100%',
-              maxWidth: 460,
-              padding: 24,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Sliders size={20} color="#1A3C6E" />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
-                  Travel Reimbursement Rate Settings
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRateSettingsModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveRateSettings}>
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                  Reimbursement Rate Policy (₹ / KM)
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: '#1A3C6E' }}>₹</span>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    required
-                    value={rateInput}
-                    onChange={(e) => setRateInput(e.target.value)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      borderRadius: 6,
-                      border: '1.5px solid #0284C7',
-                      fontSize: 15,
-                      fontWeight: 800,
-                      color: '#0F172A',
-                    }}
-                  />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>per km</span>
-                </div>
-                <p style={{ fontSize: 11.5, color: '#64748B', marginTop: 8, lineHeight: 1.5 }}>
-                  This rate is authoritative across all headquarters and circuits. Saving will update the Rate column for all route batches and automatically recompute reimbursement amounts.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button
-                  type="button"
-                  className="btn-enterprise secondary"
-                  onClick={() => setIsRateSettingsModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-enterprise"
-                  disabled={isSavingRate}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  {isSavingRate ? <RefreshCw size={14} className="spin" /> : <Check size={15} />}
-                  <span>{isSavingRate ? 'Saving...' : 'Save Rate Settings'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+

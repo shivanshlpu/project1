@@ -122,7 +122,7 @@ const STATIC_PRESET_BATCHES: Array<{
 
   
   { id: 'rb-sha-01', batch_code: 'SHD-B01', name: 'Shahdol → Budhar → Dhanpuri → OPM', route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'], distance_km: 55, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
-  { id: 'rb-sha-02', batch_code: 'SHD-B02', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
+  { id: 'rb-sha-02', batch_code: 'SHD-B02', name: 'Shahdol → Pali → Navrozabad', route_stops: ['Shahdol', 'Pali', 'Navrozabad'], distance_km: 75, reimbursement_rate: 2.25, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-03', batch_code: 'SHD-B03', name: 'Shahdol → Gohparu → Jaisinghnagar', route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'], distance_km: 120, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-04', batch_code: 'SHD-B04', name: 'Shahdol → Jaitpur', route_stops: ['Shahdol', 'Jaitpur'], distance_km: 80, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
   { id: 'rb-sha-05', batch_code: 'SHD-B05', name: 'Shahdol → Manpur', route_stops: ['Shahdol', 'Manpur'], distance_km: 110, reimbursement_rate: 2.5, hq_id: 'hq-shahdol', mr_id: 'usr-mr-02' },
@@ -656,8 +656,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             is_round_trip: true,
             hq_id: b.hq_id,
             hq_name: b.hq_name,
-            reimbursement_rate: b.reimbursement_rate ?? 2.5,
-            reimbursement_amount: b.reimbursement_amount ?? ((b.distance_km || 0) * 2 * 2.5),
+            reimbursement_rate: b.standard_reimbursement_rate ?? b.reimbursement_rate ?? 2.5,
+            reimbursement_amount: (b.distance_km || 0) * 2 * (b.standard_reimbursement_rate ?? b.reimbursement_rate ?? 2.5),
           }));
           setEditAllBatches(mapped);
           return;

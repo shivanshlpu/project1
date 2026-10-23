@@ -31,6 +31,22 @@ function getLocalDateString(d: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function normalizeToIsoDate(dStr: string): string {
+  if (!dStr) return '';
+  const trimmed = dStr.trim();
+  const parts = trimmed.split(/[-/]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (parts[2].length === 4) {
+      // DD-MM-YYYY
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  return trimmed;
+}
+
 export function isCancelledStatus(s?: string): boolean {
   if (!s) return false;
   const upper = s.trim().toUpperCase();
@@ -56,7 +72,8 @@ export class TasksService {
     let changed = false;
     for (const task of this.db.tasks) {
       if (!task.deleted_at && (task.status === 'ASSIGNED' || task.status === 'IN_PROGRESS' || task.status === 'ORDER_PENDING')) {
-        if (task.date < today) {
+        const taskDateIso = normalizeToIsoDate(task.date);
+        if (taskDateIso && taskDateIso < today) {
           task.status = 'SUSPENDED';
           task.suspended_at = task.suspended_at || new Date().toISOString();
           task.suspended_reason = '1 day expired without MR visit completion. Suspended until Owner unsuspends.';

@@ -97,20 +97,21 @@ export class TourPlansService {
     const billableDistanceKm = roundTripDistanceKm !== undefined ? roundTripDistanceKm : e.distance_km;
 
     // 3. Compute reimbursement rate and two-way round trip amount
+    // Batch's standard reimbursement rate takes precedence over generic/stale submitted rate
     const rate =
-      e.reimbursement_rate !== undefined && e.reimbursement_rate !== null
-        ? e.reimbursement_rate
-        : batch?.standard_reimbursement_rate !== undefined
+      batch?.standard_reimbursement_rate !== undefined && batch.standard_reimbursement_rate !== null
         ? batch.standard_reimbursement_rate
+        : e.reimbursement_rate !== undefined && e.reimbursement_rate !== null
+        ? e.reimbursement_rate
         : billableDistanceKm !== undefined
         ? policyRate
         : undefined;
 
     const amount =
-      e.reimbursement_amount !== undefined && e.reimbursement_amount !== null
-        ? e.reimbursement_amount
-        : billableDistanceKm !== undefined && rate !== undefined
+      billableDistanceKm !== undefined && rate !== undefined
         ? Math.round(billableDistanceKm * rate * 100) / 100
+        : e.reimbursement_amount !== undefined && e.reimbursement_amount !== null
+        ? e.reimbursement_amount
         : undefined;
 
     const reimbursementStatus =
@@ -492,6 +493,29 @@ export class TourPlansService {
             ? entry.distance_km
             : undefined;
 
+        // Dynamically resolve route batch standard reimbursement rate
+        let matchedBatch = null;
+        if (entry.route_batch_id) {
+          matchedBatch = this.db.routeBatches.find(
+            (b) => b.id === entry.route_batch_id || b.batch_code === entry.route_batch_id,
+          );
+        } else if (entry.route_batch_code && entry.route_batch_code !== 'DIRECT_AREA') {
+          matchedBatch = this.db.routeBatches.find(
+            (b) => b.batch_code.toLowerCase() === entry.route_batch_code?.toLowerCase(),
+          );
+        }
+
+        const effectiveRate =
+          matchedBatch?.standard_reimbursement_rate !== undefined && matchedBatch?.standard_reimbursement_rate !== null
+            ? matchedBatch.standard_reimbursement_rate
+            : entry.reimbursement_rate;
+
+        const effectiveBillableDist = roundTripKm !== undefined ? roundTripKm : entry.distance_km;
+        const effectiveAmount =
+          effectiveBillableDist !== undefined && effectiveRate !== undefined
+            ? Math.round(effectiveBillableDist * effectiveRate * 100) / 100
+            : entry.reimbursement_amount;
+
         flattenedRows.push({
           id: entry.id,
           tp_id: plan.id,
@@ -521,9 +545,9 @@ export class TourPlansService {
           one_way_distance_km: oneWayKm,
           round_trip_distance_km: roundTripKm,
           distance_km: entry.distance_km,
-          reimbursement_rate: entry.reimbursement_rate,
-          reimbursement_amount: entry.reimbursement_amount,
-          reimbursement_status: entry.reimbursement_status || (entry.reimbursement_amount !== undefined ? 'PENDING' : undefined),
+          reimbursement_rate: effectiveRate,
+          reimbursement_amount: effectiveAmount,
+          reimbursement_status: entry.reimbursement_status || (effectiveAmount !== undefined ? 'PENDING' : undefined),
           calculation_basis: entry.calculation_basis || (entry.route_batch_code === 'DIRECT_AREA' ? 'ROUND_TRIP_CENTER_TO_BOUNDARY' : 'ROUND_TRIP_BATCH'),
           remarks: plan.remarks || '',
           created_at: plan.submitted_at,
@@ -604,13 +628,17 @@ export class TourPlansService {
       plan.remarks = plan.remarks ? `${plan.remarks} | ${remarks}` : remarks;
     }
 
-    // If all entries are approved, update the parent plan status to APPROVED and generate geofenced tasks
+    // If all entries are approved, update the parent plan status to APPROVED
     const allApproved = plan.entries.length > 0 && plan.entries.every((e) => e.reimbursement_status === 'APPROVED');
     const planStatusUpper = (plan.status || '').toUpperCase();
     if (allApproved && (planStatusUpper === 'SUBMITTED' || planStatusUpper === 'PENDING' || !plan.status)) {
       plan.status = 'APPROVED';
       plan.approved_by = adminId;
       plan.approved_at = new Date().toISOString();
+    }
+
+    // Always reconcile tasks immediately so the approved entry creates the task for that date & location right away!
+    if (status === 'APPROVED' || plan.status === 'APPROVED') {
       await this.reconcileTasksForTourPlan(plan, adminId);
     }
 
@@ -744,6 +772,16 @@ export class TourPlansService {
     const expectedVisits: ExpectedVisit[] = [];
 
     for (const entry of plan.entries) {
+      // Generate tasks for approved visits (or all non-rejected visits if the whole plan is approved)
+      const isEntryApproved = entry.reimbursement_status === 'APPROVED';
+      const isPlanApproved = (plan.status || '').toUpperCase() === 'APPROVED';
+      if (!isEntryApproved && !isPlanApproved) {
+        continue;
+      }
+      if (entry.reimbursement_status === 'REJECTED') {
+        continue;
+      }
+
       const workType = (entry.work_type || '').toUpperCase();
       if (workType.includes('LEAVE') || workType.includes('HOLIDAY') || workType.includes('OFFICE')) {
         continue;
