@@ -55,7 +55,10 @@ function loadPersistedVersion(): AppVersionData {
       const raw = fs.readFileSync(DATA_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && parsed.latestVersion && parsed.downloadUrl) {
-        return { ...defaultAppVersion, ...parsed };
+        const parsedCode = parsed.latestVersionCode || 0;
+        if (parsedCode >= defaultAppVersion.latestVersionCode) {
+          return { ...defaultAppVersion, ...parsed };
+        }
       }
     }
   } catch (err) {

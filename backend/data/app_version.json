@@ -1,20 +1,21 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.42",
-  "latestVersionCode": 43,
+  "latestVersion": "1.0.43",
+  "latestVersionCode": 44,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.42/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.43/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-23",
-  "publishedAt": "2026-10-23T17:30:00.000Z",
+  "publishedAt": "2026-10-23T18:00:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Overhauled MR Tour Plan request & submission UI with spacious, card-based visit views and zero crushed rows",
-    "Unified single-action Tour Plan approvals: approving a plan immediately marks all visits Approved and reconciles tasks without duplicate review",
-    "Accurate destination capture: automatically defaults to selected route terminal stops and HQ territories",
-    "Prominent batch locations display: all planned doctors and clinics for each route circuit are clearly visible in green chips",
-    "Eliminated phantom whitespace layout glitches caused by nested modals inside mobile scrollviews"
+    "MR Route & Batch Change Authority: Submit route or batch changes anytime without 24-hour lockout",
+    "Dropdown Batch Picker: Full scrollable batch selector with grouped batch locations display",
+    "Stockage Depot Integration: Stockage category in Save Location and automatic 50m geofenced tasks upon TP approval",
+    "Task Notification Spam Elimination: Suppressed redundant notifications on Tasks screen initial open",
+    "Push Notification Cold Launch: Direct navigation to Tasks page when tapping push notifications",
+    "Admin Batch Management Refactoring: Dedicated Batch page with Standard Reimbursement Rate (₹/km) settings and live round-trip calculation"
   ]
 }
