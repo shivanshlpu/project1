@@ -25,24 +25,23 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.43',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '44', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.44',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '45', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.43/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.44/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'MR Route & Batch Change Authority: Submit route or batch changes anytime without 24-hour lockout',
-    'Dropdown Batch Picker: Full scrollable batch selector with grouped batch locations display',
-    'Stockage Depot Integration: Stockage category in Save Location and automatic 50m geofenced tasks upon TP approval',
-    'Task Notification Spam Elimination: Suppressed redundant notifications on Tasks screen initial open',
-    'Push Notification Cold Launch: Direct navigation to Tasks page when tapping push notifications',
-    'Admin Batch Management Refactoring: Dedicated Batch page with Standard Reimbursement Rate (₹/km) settings and live round-trip calculation',
+    'Storage / Depot Facility Geotagging: Dedicated Storage / Depot facility marking with custom 3D depot map pins and automated 50m presence geofencing',
+    'Unassigned Location Isolation: Eliminated false batch associations where unassigned clinics were matched to every batch',
+    'Responsive Facility Type Selector: Clean wrapping grid for Clinic, Hospital, Pharmacy, Chemist, and Storage / Depot options',
+    'Strict Tour Plan & Route Change Location Sync: Locations are strictly grouped under their assigned route circuits without address overlap',
+    'Depot Badge & Management: MR doctor directory cards now display prominent Storage Depot tags with specialized inventory roles',
   ],
 };
 
