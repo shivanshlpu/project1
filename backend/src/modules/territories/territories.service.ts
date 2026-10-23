@@ -314,7 +314,10 @@ export class TerritoriesService {
     match_found: boolean;
     message?: string;
   }> {
-    const defaultPolicyRate = this.db.attendanceSettings?.reimbursement_rate_per_km ?? 2.5;
+    const defaultPolicyRate =
+      this.db.attendanceSettings?.reimbursement_rate_per_km ??
+      this.db.routeBatches.find((b) => b.standard_reimbursement_rate)?.standard_reimbursement_rate ??
+      2.25;
     const cleanDest = (destination || '').trim().toLowerCase();
     const isMr = user?.role === 'MR';
 
@@ -434,7 +437,10 @@ export class TerritoriesService {
       ? dto.route_stops
       : (dto.areas && dto.areas.length > 0 ? dto.areas : [dto.name]);
 
-    const defaultRate = this.db.attendanceSettings?.reimbursement_rate_per_km ?? 2.5;
+    const defaultRate =
+      this.db.attendanceSettings?.reimbursement_rate_per_km ??
+      this.db.routeBatches.find((b) => b.standard_reimbursement_rate)?.standard_reimbursement_rate ??
+      2.25;
 
     const newBatch: RouteBatch = {
       id: `rb-${uuidv4().substring(0, 8)}`,
@@ -511,6 +517,31 @@ export class TerritoriesService {
     if (dto.distance_km !== undefined) rb.distance_km = dto.distance_km;
     if (dto.standard_reimbursement_rate !== undefined) {
       rb.standard_reimbursement_rate = dto.standard_reimbursement_rate;
+      // Cascade assigned batch rate to all matching monthly tour plan entries
+      for (const plan of this.db.monthlyTourPlans || []) {
+        let changed = false;
+        for (const entry of plan.entries || []) {
+          const matchesBatch =
+            (entry.route_batch_id && (entry.route_batch_id === rb.id || entry.route_batch_id === rb.batch_code)) ||
+            (entry.route_batch_code && entry.route_batch_code.toLowerCase() === rb.batch_code.toLowerCase());
+          if (matchesBatch) {
+            entry.reimbursement_rate = dto.standard_reimbursement_rate;
+            const dist =
+              entry.round_trip_distance_km !== undefined
+                ? entry.round_trip_distance_km
+                : entry.distance_km !== undefined
+                ? entry.distance_km
+                : 0;
+            if (dist > 0) {
+              entry.reimbursement_amount = Math.round(dist * dto.standard_reimbursement_rate * 100) / 100;
+            }
+            changed = true;
+          }
+        }
+        if (changed) {
+          this.db.persistMonthlyTourPlan(plan).catch(() => null);
+        }
+      }
     }
     if (dto.status) rb.status = dto.status;
     if (dto.hq_id) {
@@ -553,8 +584,8 @@ export class TerritoriesService {
   getStandardRate(): number {
     return (
       this.db.attendanceSettings?.reimbursement_rate_per_km ??
-      this.db.routeBatches[0]?.standard_reimbursement_rate ??
-      2.5
+      this.db.routeBatches.find((b) => b.standard_reimbursement_rate)?.standard_reimbursement_rate ??
+      2.25
     );
   }
 

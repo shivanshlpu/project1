@@ -33,8 +33,8 @@ export class TourPlansService {
   ): MonthlyTpItem {
     const policyRate =
       this.db.attendanceSettings?.reimbursement_rate_per_km ??
-      this.db.routeBatches[0]?.standard_reimbursement_rate ??
-      2.5;
+      this.db.routeBatches.find((b) => b.standard_reimbursement_rate)?.standard_reimbursement_rate ??
+      2.25;
 
     
     let batch = null;

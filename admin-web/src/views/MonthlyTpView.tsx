@@ -145,7 +145,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Marwahi', 'Dhanikundi'],
     areas: ['Kotma', 'Marwahi', 'Dhanikundi'],
     distance_km: 85,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -161,7 +160,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Kelhari', 'Janakpur'],
     areas: ['Kotma', 'Kelhari', 'Janakpur'],
     distance_km: 95,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -177,7 +175,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'],
     areas: ['Kotma', 'Keswahi', 'Girva', 'Khamhidol'],
     distance_km: 110,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -193,7 +190,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Jaithari', 'Rajendragram'],
     areas: ['Kotma', 'Jaithari', 'Rajendragram'],
     distance_km: 70,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -209,7 +205,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Anuppur'],
     areas: ['Kotma', 'Anuppur'],
     distance_km: 45,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -225,7 +220,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Manendragarh'],
     areas: ['Kotma', 'Manendragarh'],
     distance_km: 65,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -241,7 +235,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Chirmiri'],
     areas: ['Kotma', 'Chirmiri'],
     distance_km: 80,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -257,7 +250,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Baikunthpur'],
     areas: ['Kotma', 'Baikunthpur'],
     distance_km: 90,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -273,7 +265,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Kotma', 'Gaurela'],
     areas: ['Kotma', 'Gaurela'],
     distance_km: 95,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
 
@@ -291,7 +282,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'],
     areas: ['Shahdol', 'Budhar', 'Dhanpuri', 'OPM'],
     distance_km: 55,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -307,7 +297,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Shahdol', 'Pali', 'Navrozabad'],
     areas: ['Shahdol', 'Pali', 'Navrozabad'],
     distance_km: 75,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -323,7 +312,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Shahdol', 'Gohparu', 'Jaisinghnagar'],
     areas: ['Shahdol', 'Gohparu', 'Jaisinghnagar'],
     distance_km: 120,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -339,7 +327,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Shahdol', 'Jaitpur'],
     areas: ['Shahdol', 'Jaitpur'],
     distance_km: 80,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -355,7 +342,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Shahdol', 'Manpur'],
     areas: ['Shahdol', 'Manpur'],
     distance_km: 110,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
 
@@ -373,7 +359,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'],
     areas: ['Ambikapur', 'Laknapur', 'Udaypur', 'Kedma'],
     distance_km: 90,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -389,7 +374,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'],
     areas: ['Ambikapur', 'Batuli', 'Sitapur', 'Patthalgawn'],
     distance_km: 130,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -405,7 +389,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'],
     areas: ['Ambikapur', 'Silpili', 'Vishrampur', 'Surajpur', 'Devnagar', 'Shreenagar'],
     distance_km: 115,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -421,7 +404,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'],
     areas: ['Ambikapur', 'Pratapur', 'Siluta', 'Vadrafnagar'],
     distance_km: 140,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
   {
@@ -437,7 +419,6 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
     route_stops: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'],
     areas: ['Ambikapur', 'Latori', 'Krwan', 'Datima', 'Batra', 'Bhatgawn'],
     distance_km: 125,
-    standard_reimbursement_rate: 2.5,
     status: 'ACTIVE',
   },
 ];
@@ -496,7 +477,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     mr_id: '',
     route_stops_str: '',
     distance_km: 0,
-    standard_reimbursement_rate: 2.5,
+    standard_reimbursement_rate: 0,
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
@@ -541,7 +522,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         (item.route_batch_code && b.batch_code?.toLowerCase() === item.route_batch_code?.toLowerCase()) ||
         (item.route_batch_name && b.name?.toLowerCase() === item.route_batch_name?.toLowerCase())
     );
-    const effectiveRate = matchedBatch?.standard_reimbursement_rate ?? item.reimbursement_rate;
+    const effectiveRate = (matchedBatch?.standard_reimbursement_rate !== undefined && matchedBatch?.standard_reimbursement_rate !== null) ? matchedBatch.standard_reimbursement_rate : item.reimbursement_rate;
     const dist = item.round_trip_distance_km || item.distance_km || 0;
     const effectiveAmount =
       effectiveRate !== undefined && dist > 0
@@ -585,6 +566,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
       } catch {}
     };
     fetchMetadata();
+    fetchRouteBatches();
   }, [apiUrl]);
 
   
@@ -1015,7 +997,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         mr_id: batch.mr_id || '',
         route_stops_str: (batch.route_stops || []).join(' → '),
         distance_km: batch.distance_km,
-        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 2.5,
+        standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 0,
         status: batch.status,
       });
     } else {
@@ -1027,7 +1009,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         mr_id: '',
         route_stops_str: '',
         distance_km: 60,
-        standard_reimbursement_rate: 2.5,
+        standard_reimbursement_rate: 0,
         status: 'ACTIVE',
       });
     }
@@ -1873,7 +1855,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                                   ₹{effectiveAmount.toFixed(2)}
                                 </span>
                                 <div style={{ fontSize: 10, color: '#64748B' }}>
-                                  {item.round_trip_distance_km || item.distance_km}km (2-way) × ₹{(effectiveRate ?? 2.5).toFixed(2)}
+                                  {item.round_trip_distance_km || item.distance_km}km (2-way) × ₹{(effectiveRate ?? item.reimbursement_rate ?? 0).toFixed(2)}
                                 </div>
                               </div>
                             ) : (
@@ -2341,7 +2323,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                 const oneWay = selectedEntryForDetails.one_way_distance_km || Math.round(((selectedEntryForDetails.distance_km || 0) / 2) * 10) / 10;
                 const roundTrip = selectedEntryForDetails.round_trip_distance_km || selectedEntryForDetails.distance_km || (oneWay * 2);
                 const { effectiveRate, effectiveAmount } = resolveItemBatchRateAndAmount(selectedEntryForDetails);
-                const rate = effectiveRate ?? 2.5;
+                const rate = effectiveRate ?? selectedEntryForDetails.reimbursement_rate ?? 0;
                 const totalAmount = effectiveAmount ?? Math.round(roundTrip * rate * 100) / 100;
 
                 return (

@@ -75,14 +75,14 @@ export const BatchLocationsView: React.FC = () => {
   const [newBatchCode, setNewBatchCode] = useState<string>('');
   const [newBatchName, setNewBatchName] = useState<string>('');
   const [newBatchDistance, setNewBatchDistance] = useState<string>('40');
-  const [newBatchRate, setNewBatchRate] = useState<string>('2.5');
+  const [newBatchRate, setNewBatchRate] = useState<string>('2.25');
   const [newBatchStops, setNewBatchStops] = useState<string>('Shahdol, Manpur');
   const [newBatchHq, setNewBatchHq] = useState<string>('hq-shahdol');
 
   // Modal for editing batch reimbursement rate
   const [isEditRateModalOpen, setIsEditRateModalOpen] = useState<boolean>(false);
   const [editingRateBatch, setEditingRateBatch] = useState<RouteBatchItem | null>(null);
-  const [editRateInput, setEditRateInput] = useState<string>('2.5');
+  const [editRateInput, setEditRateInput] = useState<string>('');
   const [isSavingBatchRate, setIsSavingBatchRate] = useState<boolean>(false);
 
   const fetchData = async () => {
@@ -246,20 +246,20 @@ export const BatchLocationsView: React.FC = () => {
           distance_km: Number(newBatchDistance) || 30,
           route_stops: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
           hq_id: newBatchHq,
-          standard_reimbursement_rate: Number(newBatchRate) || 2.5,
+          standard_reimbursement_rate: Number(newBatchRate) || 2.25,
         }),
       });
 
       if (res.ok) {
         showCenteredNotice({
           title: 'Route Batch Created',
-          message: `New Route Batch [${newBatchCode.trim().toUpperCase()}] successfully configured with rate ₹${Number(newBatchRate) || 2.5}/km!`,
+          message: `New Route Batch [${newBatchCode.trim().toUpperCase()}] successfully configured with rate ₹${Number(newBatchRate) || 2.25}/km!`,
           type: 'success',
         });
         setIsCreateBatchModalOpen(false);
         setNewBatchCode('');
         setNewBatchName('');
-        setNewBatchRate('2.5');
+        setNewBatchRate('2.25');
         fetchData();
       }
     } catch (err: any) {
@@ -273,7 +273,7 @@ export const BatchLocationsView: React.FC = () => {
 
   const handleOpenEditRateModal = (batch: RouteBatchItem) => {
     setEditingRateBatch(batch);
-    setEditRateInput(String(batch.standard_reimbursement_rate ?? 2.5));
+    setEditRateInput(String(batch.standard_reimbursement_rate ?? 2.25));
     setIsEditRateModalOpen(true);
   };
 
