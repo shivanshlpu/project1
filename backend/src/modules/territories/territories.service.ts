@@ -216,12 +216,7 @@ export class TerritoriesService {
         const matchesBatchId = loc.batch_id && (loc.batch_id === batch.id || loc.batch_id === batch.batch_code);
         const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === batch.batch_code.toLowerCase();
         const isInList = batch.location_ids && batch.location_ids.includes(loc.id);
-        const isInStops = batch.route_stops && batch.route_stops.some((s) =>
-          (loc.clinic && loc.clinic.toLowerCase().includes(s.toLowerCase())) ||
-          (loc.name && loc.name.toLowerCase().includes(s.toLowerCase())) ||
-          (loc.address && loc.address.toLowerCase().includes(s.toLowerCase()))
-        );
-        return matchesBatchId || matchesCode || isInList || isInStops;
+        return Boolean(matchesBatchId || matchesCode || isInList);
       });
 
       return {

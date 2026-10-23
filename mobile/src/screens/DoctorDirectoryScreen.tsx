@@ -274,9 +274,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           const createdLoc = await res.json();
           newDoc = {
             id: createdLoc.id,
-            name: createdLoc.doctor_name || createdLoc.name,
-            qualification: createdLoc.qualification || 'MBBS, MD',
-            specialization: createdLoc.specialization || (data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : 'General Practice'),
+            name: createdLoc.doctor_name || (data.category === 'STOCKAGE' ? `${data.name} (Depot)` : (createdLoc.name || data.name)),
+            qualification: createdLoc.qualification || (data.category === 'STOCKAGE' ? 'Storage Facility / Depot' : 'MBBS, MD'),
+            specialization: createdLoc.specialization || (data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : data.category === 'STOCKAGE' ? 'Central Stock & Distribution Depot' : 'General Practice'),
             class: createdLoc.class || 'A',
             potential_score: createdLoc.potential_score || 85,
             clinic: createdLoc.clinic || createdLoc.name,
@@ -299,9 +299,9 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           const newDocId = `doc-mr-${Date.now().toString().slice(-4)}`;
           newDoc = {
             id: newDocId,
-            name: data.doctor_name || 'Medical Specialist',
-            qualification: 'MBBS, MD',
-            specialization: data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : 'General Practice',
+            name: data.doctor_name || (data.category === 'STOCKAGE' ? `${data.name} (Depot)` : (data.name || 'Medical Specialist')),
+            qualification: data.category === 'STOCKAGE' ? 'Storage Facility / Depot' : 'MBBS, MD',
+            specialization: data.category === 'HOSPITAL' ? 'Cardiology / Multi-Specialty' : data.category === 'STOCKAGE' ? 'Central Stock & Distribution Depot' : 'General Practice',
             class: 'A',
             potential_score: 85,
             clinic: data.name,
@@ -478,29 +478,35 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.doctorName}>{doc.name}</Text>
-                      <View
-                        style={[
-                          styles.classBadge,
-                          doc.class === 'A'
-                            ? styles.classBadgeA
-                            : doc.class === 'B'
-                            ? styles.classBadgeB
-                            : styles.classBadgeC,
-                        ]}
-                      >
-                        <Text
+                      {doc.category === 'STOCKAGE' ? (
+                        <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#B45309' }}>📦 Storage Depot</Text>
+                        </View>
+                      ) : (
+                        <View
                           style={[
-                            styles.classBadgeText,
+                            styles.classBadge,
                             doc.class === 'A'
-                              ? styles.classTextA
+                              ? styles.classBadgeA
                               : doc.class === 'B'
-                              ? styles.classTextB
-                              : styles.classTextC,
+                              ? styles.classBadgeB
+                              : styles.classBadgeC,
                           ]}
                         >
-                          Class {doc.class}
-                        </Text>
-                      </View>
+                          <Text
+                            style={[
+                              styles.classBadgeText,
+                              doc.class === 'A'
+                                ? styles.classTextA
+                                : doc.class === 'B'
+                                ? styles.classTextB
+                                : styles.classTextC,
+                            ]}
+                          >
+                            Class {doc.class}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={styles.qualificationText}>
                       {doc.qualification} • {doc.specialization}

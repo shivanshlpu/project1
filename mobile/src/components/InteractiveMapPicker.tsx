@@ -47,6 +47,7 @@ const CATEGORIES: { id: PinCategory; label: string; color: string }[] = [
   { id: 'HOSPITAL', label: 'Hospital', color: '#DC2626' },
   { id: 'PHARMACY', label: 'Pharmacy', color: '#0F8B5A' },
   { id: 'OFFICE', label: 'Chemist / Lab', color: '#D97706' },
+  { id: 'STOCKAGE', label: 'Storage / Depot', color: '#B45309' },
 ];
 
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
@@ -550,7 +551,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             <Text style={styles.subtitle}>
               {isFullscreenMap
                 ? 'Tap anywhere to drop pin or drag freely'
-                : 'Interactive Geotag for Clinics, Hospitals & Chemists'}
+                : 'Interactive Geotag for Clinics, Hospitals, Chemists & Storage Depots'}
             </Text>
           </View>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -908,22 +909,34 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             </View>
 
             {/* Facility Name */}
-            <Text style={styles.inputLabel}>Facility / Clinic Name *</Text>
+            <Text style={styles.inputLabel}>
+              {category === 'STOCKAGE' ? 'Storage Facility / Depot Name *' : 'Facility / Clinic Name *'}
+            </Text>
             <TextInput
               style={styles.textInput}
               value={placeName}
               onChangeText={setPlaceName}
-              placeholder="e.g. Apex Heart Centre, Metro Pharmacy"
+              placeholder={
+                category === 'STOCKAGE'
+                  ? 'e.g. Shahdol Central Stockage Depot, Main Godown'
+                  : 'e.g. Apex Heart Centre, Metro Pharmacy'
+              }
               placeholderTextColor="#94A3B8"
             />
 
             {/* Key Doctor / Contact */}
-            <Text style={styles.inputLabel}>Key Doctor / Contact Person</Text>
+            <Text style={styles.inputLabel}>
+              {category === 'STOCKAGE' ? 'Depot Incharge / Manager Name' : 'Key Doctor / Contact Person'}
+            </Text>
             <TextInput
               style={styles.textInput}
               value={doctorName}
               onChangeText={setDoctorName}
-              placeholder="e.g. Dr. Rajesh Sharma, MD"
+              placeholder={
+                category === 'STOCKAGE'
+                  ? 'e.g. Ramesh Sharma (Stock Incharge)'
+                  : 'e.g. Dr. Rajesh Sharma, MD'
+              }
               placeholderTextColor="#94A3B8"
             />
 
@@ -1370,12 +1383,15 @@ const styles = StyleSheet.create({
   },
   categoryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 14,
   },
   categoryTab: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '29%',
     paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',

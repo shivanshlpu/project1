@@ -1811,15 +1811,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 ? mrLocations.filter((loc) => {
                     const matchesId = loc.batch_id && (loc.batch_id === selectedBatch.id || loc.batch_id === selectedBatch.batch_code);
                     const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (selectedBatch.batch_code || '').toLowerCase();
-                    const isInStops = selectedBatch.route_stops && selectedBatch.route_stops.some((s: string) => {
-                      const sLower = s.toLowerCase();
-                      return (
-                        (loc.address && loc.address.toLowerCase().includes(sLower)) ||
-                        (loc.clinic && loc.clinic.toLowerCase().includes(sLower)) ||
-                        (loc.name && loc.name.toLowerCase().includes(sLower))
-                      );
-                    });
-                    return Boolean(matchesId || matchesCode || isInStops);
+                    const isInList = selectedBatch.location_ids && selectedBatch.location_ids.includes(loc.id);
+                    return Boolean(matchesId || matchesCode || isInList);
                   })
                 : mrLocations;
 
@@ -2970,15 +2963,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         const matchesId = loc.batch_id && (loc.batch_id === rcRequestedBatch.id || loc.batch_id === rcRequestedBatch.batch_code);
                         const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (rcRequestedBatch.batch_code || '').toLowerCase();
                         const isInList = rcRequestedBatch.location_ids && rcRequestedBatch.location_ids.includes(loc.id);
-                        const isInStops = rcRequestedBatch.route_stops && rcRequestedBatch.route_stops.some((s: string) => {
-                          const sLower = s.toLowerCase();
-                          return (
-                            (loc.address && loc.address.toLowerCase().includes(sLower)) ||
-                            (loc.clinic && loc.clinic.toLowerCase().includes(sLower)) ||
-                            (loc.name && loc.name.toLowerCase().includes(sLower))
-                          );
-                        });
-                        return Boolean(matchesId || matchesCode || isInList || isInStops);
+                        return Boolean(matchesId || matchesCode || isInList);
                       })
                     : [];
 

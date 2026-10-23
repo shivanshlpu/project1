@@ -490,6 +490,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 { id: 'HOSPITAL', label: 'Hospital' },
                 { id: 'PHARMACY', label: 'Chemist' },
                 { id: 'OFFICE', label: 'Diagnostic' },
+                { id: 'STOCKAGE', label: 'Storage / Depot' },
               ] as const
             ).map((cat) => (
               <TouchableOpacity

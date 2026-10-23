@@ -27,7 +27,7 @@ interface BatchLocation {
   name: string;
   clinic?: string;
   doctor_name?: string;
-  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'OTHER';
+  category?: 'CLINIC' | 'HOSPITAL' | 'PHARMACY' | 'OFFICE' | 'STOCKAGE' | 'OTHER';
   phone?: string;
   address?: string;
   latitude?: number;
