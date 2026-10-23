@@ -220,12 +220,21 @@ const parseSafeTpEntries = (entries: any): any[] => {
   return [];
 };
 
+const normalizePlanStatus = (rawStatus?: string): 'Approved' | 'Rejected' | 'Submitted' => {
+  if (!rawStatus) return 'Submitted';
+  const s = String(rawStatus).toUpperCase().trim();
+  if (s === 'APPROVED' || s === 'APPROVE') return 'Approved';
+  if (s === 'REJECTED' || s === 'REJECT') return 'Rejected';
+  return 'Submitted';
+};
+
 const normalizeTourPlans = (plans: any[]): any[] => {
   if (!Array.isArray(plans)) return [];
   return plans.map((p) => {
     if (!p) return p;
     return {
       ...p,
+      status: normalizePlanStatus(p.status),
       entries: parseSafeTpEntries(p.entries),
     };
   });
@@ -285,10 +294,13 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
   // Route Change Request Modal State
+  const [mrChangeRequests, setMrChangeRequests] = useState<any[]>([]);
   const [isRouteChangeModalOpen, setIsRouteChangeModalOpen] = useState<boolean>(false);
   const [rcTargetPlan, setRcTargetPlan] = useState<any | null>(null);
   const [rcTargetEntry, setRcTargetEntry] = useState<any | null>(null);
   const [rcRequestedBatch, setRcRequestedBatch] = useState<RouteBatchSuggestion | null>(null);
+  const [rcRequestedArea, setRcRequestedArea] = useState<string>('');
+  const [rcSelectedLocIds, setRcSelectedLocIds] = useState<string[]>([]);
   const [rcReason, setRcReason] = useState<string>('');
   const [isSubmittingRc, setIsSubmittingRc] = useState<boolean>(false);
 
@@ -734,6 +746,20 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   }, [currentUserId]);
 
   
+  const fetchMyChangeRequests = async () => {
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const headers = await ApiConfig.getAuthHeaders();
+      const res = await fetch(`${baseUrl}/tour-plans/route-change-requests`, { headers });
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          setMrChangeRequests(list);
+        }
+      }
+    } catch {}
+  };
+
   const fetchMyTourPlans = async () => {
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -742,26 +768,27 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          
           let cachedPlans: any[] = [];
           try {
             const raw = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
             if (raw) cachedPlans = JSON.parse(raw);
           } catch {}
 
-          let merged: any[] = [];
-          if (data.length > 0) {
-            const map = new Map<string, any>();
-            cachedPlans.forEach((p) => map.set(p.id || p.month, p));
-            data.forEach((p: any) => map.set(p.id || p.month, p));
-            merged = Array.from(map.values());
-          } else if (cachedPlans.length > 0) {
-            
-            merged = cachedPlans;
-          } else {
-            merged = [];
-          }
+          const monthMap = new Map<string, any>();
+          // Server records are authoritative and primary
+          data.forEach((p: any) => {
+            const key = p.month || p.id;
+            if (key) monthMap.set(key, p);
+          });
+          // Only add cached offline-only plans if not present on server
+          cachedPlans.forEach((p: any) => {
+            const key = p.month || p.id;
+            if (key && !monthMap.has(key)) {
+              monthMap.set(key, p);
+            }
+          });
 
+          const merged = Array.from(monthMap.values());
           merged.sort(
             (a, b) =>
               new Date(b.submitted_at || b.created_at || 0).getTime() -
@@ -778,7 +805,6 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         }
       }
     } catch {
-      
       try {
         const cached = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
         if (cached) {
@@ -789,6 +815,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         }
       } catch {}
     }
+    fetchMyChangeRequests();
   };
 
   const fetchMrLocations = async () => {
@@ -1044,20 +1071,33 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     setRcTargetPlan(plan);
     setRcTargetEntry(entry);
     setRcRequestedBatch(null);
+    setRcRequestedArea(entry.planned_area || '');
+    setRcSelectedLocIds(entry.location_ids || (entry.selected_locations || []).map((l: any) => l.id) || []);
     setRcReason('');
     setIsRouteChangeModalOpen(true);
   };
 
   const handleSubmitRouteChange = async () => {
     if (!rcTargetPlan || !rcTargetEntry) return;
-    if (!rcRequestedBatch) {
-      Alert.alert('Selection Required', 'Please select the destination route batch you wish to switch to.');
+    if (!rcRequestedBatch && !rcRequestedArea.trim()) {
+      Alert.alert('Selection Required', 'Please select a destination route batch or enter a planned visit area.');
       return;
     }
     if (!rcReason.trim()) {
-      Alert.alert('Reason Required', 'Please provide a reason for deviating from the approved route.');
+      Alert.alert('Reason Required', 'Please provide a reason for requesting changes to this approved Tour Plan.');
       return;
     }
+
+    const selectedLocs = mrLocations
+      .filter((l) => rcSelectedLocIds.includes(l.id))
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        category: l.category,
+        address: l.address,
+        latitude: l.latitude,
+        longitude: l.longitude,
+      }));
 
     setIsSubmittingRc(true);
     try {
@@ -1071,19 +1111,22 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           tour_plan_id: rcTargetPlan.id,
           tour_plan_item_id: rcTargetEntry.id || rcTargetEntry.date,
           date: rcTargetEntry.date,
-          requested_batch_id: rcRequestedBatch.id,
-          requested_batch_code: rcRequestedBatch.batch_code,
-          requested_batch_name: rcRequestedBatch.name,
+          requested_batch_id: rcRequestedBatch?.id,
+          requested_batch_code: rcRequestedBatch?.batch_code,
+          requested_batch_name: rcRequestedBatch?.name || rcRequestedArea.trim(),
+          requested_area: rcRequestedArea.trim() || rcRequestedBatch?.name,
+          requested_locations: selectedLocs,
           reason: rcReason.trim(),
         }),
       });
 
       if (res.ok) {
         Alert.alert(
-          'Request Submitted',
-          `Route change request for ${formatDateDDMMYYYY(rcTargetEntry.date)} has been sent to Admin for review. Once approved, your daily tasks will update automatically.`,
+          'Change Request Submitted',
+          `Your change request for ${formatDateDDMMYYYY(rcTargetEntry.date)} has been sent to Admin for authorization. Your currently approved plan remains active until the Admin approves.`,
         );
         setIsRouteChangeModalOpen(false);
+        fetchMyChangeRequests();
       } else {
         const err = await res.json().catch(() => ({}));
         Alert.alert('Request Failed', err.message || 'Unable to submit route change request.');
@@ -1956,29 +1999,35 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                       </View>
 
                       {/* Approval Status Badge */}
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          plan.status === 'APPROVED'
-                            ? { backgroundColor: '#DCFCE7' }
-                            : plan.status === 'REJECTED'
-                            ? { backgroundColor: '#FEE2E2' }
-                            : { backgroundColor: '#FEF3C7' },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusBadgeText,
-                            plan.status === 'APPROVED'
-                              ? { color: '#15803D' }
-                              : plan.status === 'REJECTED'
-                              ? { color: '#B91C1C' }
-                              : { color: '#B45309' },
-                          ]}
-                        >
-                          ● {plan.status}
-                        </Text>
-                      </View>
+                      {(() => {
+                        const isApproved = ['APPROVED', 'Approved'].includes(plan.status);
+                        const isRejected = ['REJECTED', 'Rejected'].includes(plan.status);
+                        return (
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              isApproved
+                                ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC', borderWidth: 1 }
+                                : isRejected
+                                ? { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1 }
+                                : { backgroundColor: '#FEF3C7', borderColor: '#FCD34D', borderWidth: 1 },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusBadgeText,
+                                isApproved
+                                  ? { color: '#15803D' }
+                                  : isRejected
+                                  ? { color: '#B91C1C' }
+                                  : { color: '#B45309' },
+                              ]}
+                            >
+                              ● {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Submitted'}
+                            </Text>
+                          </View>
+                        );
+                      })()}
                     </View>
                   </View>
 
@@ -1990,71 +2039,126 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
 
                   {/* Punched Visits Table */}
                   <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }}>
-                    {parseSafeTpEntries(plan.entries).map((e: any, i: number) => (
-                      <View key={e.id || i} style={styles.subItemRow}>
-                        <View style={{ width: 85 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>
-                            {formatDateDDMMYYYY(e.date)}
-                          </Text>
-                          <Text style={{ fontSize: 9.5, color: '#0369A1', fontWeight: '600' }}>
-                            {e.work_type}
-                          </Text>
-                        </View>
+                    {parseSafeTpEntries(plan.entries).map((e: any, i: number) => {
+                      const isPlanApproved = ['APPROVED', 'Approved'].includes(plan.status);
+                      const pendingCr = mrChangeRequests.find(
+                        (r) =>
+                          r.status === 'PENDING' &&
+                          (r.tour_plan_id === plan.id || r.tour_plan_id === plan.month) &&
+                          (r.tour_plan_item_id === e.id || r.date === e.date),
+                      );
+                      const rejectedCr = mrChangeRequests.find(
+                        (r) =>
+                          r.status === 'REJECTED' &&
+                          (r.tour_plan_id === plan.id || r.tour_plan_id === plan.month) &&
+                          (r.tour_plan_item_id === e.id || r.date === e.date),
+                      );
 
-                        <View style={{ flex: 1, paddingHorizontal: 6 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
-                            {e.hq_name} • {e.planned_area}
-                          </Text>
-                          {e.route ? (
-                            <View style={{ marginTop: 2 }}>
-                              <Text style={{ fontSize: 10, color: '#0F8B5A', fontWeight: '700' }}>
-                                🛣️ {e.route_batch_code ? `${e.route_batch_code}: ` : ''}{e.route}
-                              </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                <Text style={{ fontSize: 9.5, color: '#475569' }}>
-                                  🚗 Travel Distance: {e.distance_km || 0} km (Round Trip)
+                      return (
+                        <View key={e.id || i} style={styles.subItemRow}>
+                          <View style={{ width: 85 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E293B' }}>
+                              {formatDateDDMMYYYY(e.date)}
+                            </Text>
+                            <Text style={{ fontSize: 9.5, color: '#0369A1', fontWeight: '600' }}>
+                              {e.work_type}
+                            </Text>
+                          </View>
+
+                          <View style={{ flex: 1, paddingHorizontal: 6 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#0F172A' }}>
+                              {e.hq_name} • {e.planned_area}
+                            </Text>
+                            {e.route ? (
+                              <View style={{ marginTop: 2 }}>
+                                <Text style={{ fontSize: 10, color: '#0F8B5A', fontWeight: '700' }}>
+                                  🛣️ {e.route_batch_code ? `${e.route_batch_code}: ` : ''}{e.route}
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                  <Text style={{ fontSize: 9.5, color: '#475569' }}>
+                                    🚗 Travel Distance: {e.distance_km || 0} km (Round Trip)
+                                  </Text>
+                                </View>
+                              </View>
+                            ) : null}
+                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
+                              Dr: {e.planned_kol_drs} • {e.planned_activity}
+                            </Text>
+
+                            {/* Pending Change Request Notice */}
+                            {pendingCr && (
+                              <View style={{ backgroundColor: '#FEF3C7', padding: 5, borderRadius: 5, marginTop: 4, borderWidth: 1, borderColor: '#FCD34D' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#B45309' }}>
+                                  ⏳ Change Request Pending: {pendingCr.requested_batch_name || pendingCr.requested_area || 'Route Deviation'}
+                                </Text>
+                                <Text style={{ fontSize: 9.5, color: '#78350F', marginTop: 1 }}>
+                                  Reason: "{pendingCr.reason}"
                                 </Text>
                               </View>
-                            </View>
-                          ) : null}
-                          <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                            Dr: {e.planned_kol_drs} • {e.planned_activity}
-                          </Text>
-                        </View>
+                            )}
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          {/* 24-HOUR EDIT & REMOVE BUTTONS: ONLY APPEAR IF WITHIN 24 HOURS */}
-                          {editStatus.canEdit && (
-                            <>
+                            {/* Rejected Change Request Notice */}
+                            {rejectedCr && !pendingCr && (
+                              <View style={{ backgroundColor: '#FEE2E2', padding: 5, borderRadius: 5, marginTop: 4, borderWidth: 1, borderColor: '#FCA5A5' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#B91C1C' }}>
+                                  ❌ Change Request Declined by Admin
+                                </Text>
+                                {rejectedCr.admin_remarks ? (
+                                  <Text style={{ fontSize: 9.5, color: '#991B1B', marginTop: 1 }}>
+                                    Note: "{rejectedCr.admin_remarks}"
+                                  </Text>
+                                ) : null}
+                              </View>
+                            )}
+                          </View>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {/* 24-HOUR EDIT & REMOVE BUTTONS: ONLY APPEAR IF WITHIN 24 HOURS */}
+                            {editStatus.canEdit && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.editVisitBtn}
+                                  onPress={() => handleOpenEditModal(plan, e)}
+                                >
+                                  <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                                </TouchableOpacity>
+
+                                {/* REMOVE PUNCHED ENTRY BUTTON */}
+                                <TouchableOpacity
+                                  style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
+                                  onPress={() => handleDeletePunchedEntry(plan, e)}
+                                >
+                                  <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
+                                </TouchableOpacity>
+                              </>
+                            )}
+
+                            {/* REQUEST CHANGES BUTTON: FOR APPROVED TOUR PLANS */}
+                            {isPlanApproved && (
                               <TouchableOpacity
-                                style={styles.editVisitBtn}
-                                onPress={() => handleOpenEditModal(plan, e)}
+                                style={[
+                                  styles.editVisitBtn,
+                                  pendingCr
+                                    ? { backgroundColor: '#FEF3C7', borderColor: '#FCD34D', marginLeft: 6 }
+                                    : { backgroundColor: '#EFF6FF', borderColor: '#93C5FD', marginLeft: 6 },
+                                ]}
+                                onPress={() => !pendingCr && handleOpenRouteChangeModal(plan, e)}
+                                disabled={Boolean(pendingCr)}
                               >
-                                <Text style={styles.editVisitBtnText}>✏️ Edit</Text>
+                                <Text
+                                  style={[
+                                    styles.editVisitBtnText,
+                                    pendingCr ? { color: '#B45309' } : { color: '#2563EB' },
+                                  ]}
+                                >
+                                  {pendingCr ? '⏳ Pending' : '🔄 Request Changes'}
+                                </Text>
                               </TouchableOpacity>
-
-                              {/* REMOVE PUNCHED ENTRY BUTTON */}
-                              <TouchableOpacity
-                                style={[styles.editVisitBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', marginLeft: 6 }]}
-                                onPress={() => handleDeletePunchedEntry(plan, e)}
-                              >
-                                <Text style={[styles.editVisitBtnText, { color: '#DC2626' }]}>🗑️ Remove</Text>
-                              </TouchableOpacity>
-                            </>
-                          )}
-
-                          {/* ROUTE DEVIATION REQUEST BUTTON: FOR APPROVED TOUR PLANS */}
-                          {plan.status === 'APPROVED' && (
-                            <TouchableOpacity
-                              style={[styles.editVisitBtn, { backgroundColor: '#EFF6FF', borderColor: '#93C5FD', marginLeft: 6 }]}
-                              onPress={() => handleOpenRouteChangeModal(plan, e)}
-                            >
-                              <Text style={[styles.editVisitBtnText, { color: '#2563EB' }]}>🔄 Route Change</Text>
-                            </TouchableOpacity>
-                          )}
+                            )}
+                          </View>
                         </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
               );
@@ -2521,7 +2625,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           onRequestClose={() => setIsRouteChangeModalOpen(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.calendarModalBox, { maxWidth: 390 }]}>
+            <View style={[styles.calendarModalBox, { maxWidth: 390, maxHeight: '90%' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
                   🔄 Request Route Change
@@ -2532,44 +2636,99 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               </View>
 
               <Text style={{ fontSize: 11.5, color: '#64748B', marginBottom: 10 }}>
-                Date: <strong>{formatDateDDMMYYYY(rcTargetEntry.date)}</strong> • Current Route: <strong>{rcTargetEntry.route_batch_name || rcTargetEntry.planned_area}</strong>
+                Date: <Text style={{ fontWeight: 'bold' }}>{formatDateDDMMYYYY(rcTargetEntry.date)}</Text> • Current Route: <Text style={{ fontWeight: 'bold' }}>{rcTargetEntry.route_batch_name || rcTargetEntry.planned_area}</Text>
               </Text>
 
-              <Text style={styles.fieldLabel}>Select New Route Batch:</Text>
-              <ScrollView style={{ maxHeight: 160, marginBottom: 10 }}>
-                {allHqBatches.map((b) => {
-                  const isSel = rcRequestedBatch?.id === b.id;
-                  return (
-                    <TouchableOpacity
-                      key={b.id}
-                      style={[
-                        styles.batchOptionCard,
-                        isSel && styles.batchOptionCardSelected,
-                        { marginBottom: 6 },
-                      ]}
-                      onPress={() => setRcRequestedBatch(b)}
-                    >
-                      <Text style={[styles.batchCodeText, isSel && styles.batchCodeTextSelected]}>
-                        [{b.batch_code}] {b.name}
-                      </Text>
-                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                        {b.distance_km} km one-way • {b.route}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={true}>
+                <Text style={styles.fieldLabel}>Planned Area / Destination:</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 40, marginBottom: 10 }]}
+                  placeholder="e.g. Manpur / Town Market"
+                  value={rcRequestedArea}
+                  onChangeText={setRcRequestedArea}
+                />
+
+                <Text style={styles.fieldLabel}>Select New Route Batch (Optional):</Text>
+                <ScrollView style={{ maxHeight: 130, marginBottom: 10 }}>
+                  {allHqBatches.map((b) => {
+                    const isSel = rcRequestedBatch?.id === b.id;
+                    return (
+                      <TouchableOpacity
+                        key={b.id}
+                        style={[
+                          styles.batchOptionCard,
+                          isSel && styles.batchOptionCardSelected,
+                          { marginBottom: 6 },
+                        ]}
+                        onPress={() => {
+                          if (isSel) {
+                            setRcRequestedBatch(null);
+                          } else {
+                            setRcRequestedBatch(b);
+                            if (!rcRequestedArea) setRcRequestedArea(b.name);
+                          }
+                        }}
+                      >
+                        <Text style={[styles.batchCodeText, isSel && styles.batchCodeTextSelected]}>
+                          [{b.batch_code}] {b.name}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
+                          {b.distance_km} km one-way • {b.route}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {mrLocations && mrLocations.length > 0 && (
+                  <View style={{ marginBottom: 10 }}>
+                    <Text style={styles.fieldLabel}>Select Planned Doctors / Locations ({rcSelectedLocIds.length} selected):</Text>
+                    <ScrollView style={{ maxHeight: 130 }} nestedScrollEnabled>
+                      {mrLocations.map((loc) => {
+                        const isChecked = rcSelectedLocIds.includes(loc.id);
+                        return (
+                          <TouchableOpacity
+                            key={loc.id}
+                            onPress={() => {
+                              if (isChecked) {
+                                setRcSelectedLocIds(rcSelectedLocIds.filter((id) => id !== loc.id));
+                              } else {
+                                setRcSelectedLocIds([...rcSelectedLocIds, loc.id]);
+                              }
+                            }}
+                            style={[
+                              styles.batchOptionCard,
+                              isChecked && styles.batchOptionCardSelected,
+                              { marginBottom: 5, paddingVertical: 6, paddingHorizontal: 10 },
+                            ]}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                              <Text style={[{ fontSize: 11.5, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]}>
+                                {loc.name || loc.clinic}
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 9.5, color: '#64748B', marginTop: 2 }}>
+                              {loc.category || 'CLINIC'} • {loc.address || 'Field'}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <Text style={styles.fieldLabel}>Reason for Deviation *:</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 56, marginBottom: 12 }]}
+                  placeholder="e.g. Doctor unavailable / clinic closed, switching to Manpur circuit"
+                  value={rcReason}
+                  onChangeText={setRcReason}
+                  multiline
+                />
               </ScrollView>
 
-              <Text style={styles.fieldLabel}>Reason for Deviation *:</Text>
-              <TextInput
-                style={[styles.textInput, { height: 56, marginBottom: 12 }]}
-                placeholder="e.g. Doctor unavailable / clinic closed, switching to Manpur circuit"
-                value={rcReason}
-                onChangeText={setRcReason}
-                multiline
-              />
-
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
                 <TouchableOpacity
                   style={[styles.deleteBtn, { paddingHorizontal: 14, paddingVertical: 8, height: 'auto', width: 'auto' }]}
                   onPress={() => setIsRouteChangeModalOpen(false)}

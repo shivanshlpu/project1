@@ -32,6 +32,7 @@ backend/data/ffa_db_store.json
 # Private Internal Documentation, Plans & AI Prompts (Local Retention)
 *.md
 **/*.md
+!prompt.md
 !docs/API_AUDIT.md
 !docs/FUNCTIONALITY_AUDIT.md
 *.pdf

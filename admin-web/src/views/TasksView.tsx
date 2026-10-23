@@ -130,6 +130,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   const [filterMr, setFilterMr] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterSource, setFilterSource] = useState<'ALL' | 'TourPlan' | 'Manual'>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(Boolean(prefilledLocation));
 
   
@@ -1307,7 +1308,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
     if (t.status === 'SUSPENDED') return false;
     const matchesMr = filterMr === 'ALL' || t.assigned_mr_name === filterMr;
     const matchesStatus = filterStatus === 'ALL' || t.status === filterStatus;
-    return matchesMr && matchesStatus;
+    const matchesSource =
+      filterSource === 'ALL' ||
+      (filterSource === 'TourPlan' && t.source === 'TourPlan') ||
+      (filterSource === 'Manual' && t.source !== 'TourPlan');
+    return matchesMr && matchesStatus && matchesSource;
   });
 
   return (
@@ -2281,6 +2286,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </select>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569', flex: '1 1 auto', minWidth: '200px' }}>
+          <span>Source:</span>
+          <select
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value as any)}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', background: '#FFFFFF', flex: '1 1 auto', minWidth: 0 }}
+          >
+            <option value="ALL">All Sources</option>
+            <option value="TourPlan">🗺️ Tour Plan Generated</option>
+            <option value="Manual">👤 Manually Assigned</option>
+          </select>
+        </div>
+
         {tasks.length > 0 && (
           <button
             type="button"
@@ -2326,15 +2344,47 @@ export const TasksView: React.FC<TasksViewProps> = ({
             {/* Card Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    color: task.status === 'SUSPENDED' ? '#DC2626' : task.priority === 'HIGH' ? '#DC2626' : '#2563EB',
-                  }}
-                >
-                  {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: task.status === 'SUSPENDED' ? '#DC2626' : task.priority === 'HIGH' ? '#DC2626' : '#2563EB',
+                    }}
+                  >
+                    {formatDateDDMMYYYY(task.date)} • {task.time} • {task.priority} PRIORITY
+                  </span>
+                  {task.source === 'TourPlan' ? (
+                    <span
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: '800',
+                        color: '#6D28D9',
+                        background: '#EDE9FE',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        border: '1px solid #DDD6FE',
+                      }}
+                      title={task.tp_id ? `Generated from Tour Plan (${task.tp_id})` : 'Auto-generated from Tour Plan'}
+                    >
+                      🗺️ TP Task
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: '800',
+                        color: '#475569',
+                        background: '#F1F5F9',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      👤 Manual
+                    </span>
+                  )}
+                </div>
                 <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                   {task.title}
                 </h3>

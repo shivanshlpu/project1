@@ -120,8 +120,9 @@ export class SubmitMonthlyTpDto {
 }
 
 export class UpdateTpStatusDto {
-  @IsEnum(['APPROVED', 'REJECTED'])
-  status: 'APPROVED' | 'REJECTED';
+  @IsString()
+  @IsNotEmpty()
+  status: 'APPROVED' | 'REJECTED' | 'Approved' | 'Rejected' | 'SUBMITTED' | 'Submitted';
 
   @IsString()
   @IsOptional()
@@ -150,8 +151,8 @@ export class CreateRouteChangeRequestDto {
   requested_batch_code?: string;
 
   @IsString()
-  @IsNotEmpty()
-  requested_batch_name: string;
+  @IsOptional()
+  requested_batch_name?: string;
 
   @IsArray()
   @IsOptional()
@@ -165,13 +166,30 @@ export class CreateRouteChangeRequestDto {
   }>;
 
   @IsString()
+  @IsOptional()
+  requested_area?: string;
+
+  @IsString()
+  @IsOptional()
+  requested_work_type?: string;
+
+  @IsString()
+  @IsOptional()
+  requested_kol_drs?: string;
+
+  @IsString()
+  @IsOptional()
+  requested_activity?: string;
+
+  @IsString()
   @IsNotEmpty()
   reason: string;
 }
 
 export class ReviewRouteChangeRequestDto {
-  @IsEnum(['APPROVED', 'REJECTED'])
-  status: 'APPROVED' | 'REJECTED';
+  @IsString()
+  @IsNotEmpty()
+  status: 'APPROVED' | 'REJECTED' | 'Approved' | 'Rejected';
 
   @IsString()
   @IsOptional()

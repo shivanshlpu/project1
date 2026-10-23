@@ -24,6 +24,8 @@ export interface TaskItem {
   hq_name?: string;
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  source?: 'Manual' | 'TourPlan';
+  tp_id?: string;
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED' | 'SUSPENDED';
   distance_verified?: boolean;
   started_at?: string;

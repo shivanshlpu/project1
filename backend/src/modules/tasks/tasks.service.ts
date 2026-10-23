@@ -105,6 +105,7 @@ export class TasksService {
       geofence_radius_m: dto.geofence_radius_m || 20, // Default 20m per PRD §9-12
       priority: dto.priority || 'MEDIUM',
       status: 'ASSIGNED',
+      source: 'Manual',
       created_at: new Date().toISOString(),
     };
 
@@ -452,12 +453,31 @@ export class TasksService {
       throw new ForbiddenException('Access denied: You can only complete tasks assigned to your account.');
     }
 
-    const lat = dto.latitude || task.latitude;
-    const lng = dto.longitude || task.longitude;
+    if (!isManagerOrAdmin) {
+      if (dto.latitude === undefined || dto.latitude === null || dto.longitude === undefined || dto.longitude === null) {
+        throw new BadRequestException('Real-time GPS coordinates are required to verify physical presence for task completion.');
+      }
+      const dist = distanceMeters(dto.latitude, dto.longitude, task.latitude, task.longitude);
+      const baseRadius = task.geofence_radius_m || 50;
+      const allowedRadius = baseRadius + Math.min(dto.gps_accuracy_m || 10, 100);
+      if (dist > allowedRadius) {
+        throw new BadRequestException(
+          `Geofence verification failed. You are ${Math.round(dist)}m away from ${task.location_name || 'assigned location'} (permitted radius: <= ${Math.round(allowedRadius)}m). Physical presence within the geofence is required to complete this task.`,
+        );
+      }
+      if ((dto.gps_accuracy_m || 10) > 150) {
+        throw new BadRequestException(
+          `GPS accuracy insufficient (${dto.gps_accuracy_m}m). Must be <= 150m to verify on-site presence.`,
+        );
+      }
+    }
+
+    const lat = dto.latitude !== undefined && dto.latitude !== null ? dto.latitude : task.latitude;
+    const lng = dto.longitude !== undefined && dto.longitude !== null ? dto.longitude : task.longitude;
     const distance_m = distanceMeters(lat, lng, task.latitude, task.longitude);
     const maxRadius = task.geofence_radius_m || 50;
 
-    const isDistanceVerified = distance_m <= maxRadius || !!task.started_at;
+    const isDistanceVerified = distance_m <= maxRadius + Math.min(dto.gps_accuracy_m || 10, 100) || !!task.started_at;
     const isGpsAccurate = (dto.gps_accuracy_m || 10) <= 150;
     const verified = isDistanceVerified && isGpsAccurate;
 

@@ -439,9 +439,33 @@ const DEFAULT_ROUTE_BATCHES: RouteBatchItem[] = [
   },
 ];
 
+export interface RouteChangeRequestAdminItem {
+  id: string;
+  mr_id: string;
+  mr_name: string;
+  hq_name: string;
+  date: string;
+  tour_plan_id: string;
+  tour_plan_item_id: string;
+  original_batch_name: string;
+  original_area?: string;
+  original_locations?: Array<{ id: string; name: string }>;
+  requested_batch_name: string;
+  requested_area?: string;
+  requested_locations?: Array<{ id: string; name: string }>;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  admin_remarks?: string;
+  created_at: string;
+}
+
 export const MonthlyTpView: React.FC = () => {
-  
-  const [activeSubTab, setActiveSubTab] = useState<'schedules' | 'route_batches'>('schedules');
+  // Navigation Sub-Tabs
+  const [activeSubTab, setActiveSubTab] = useState<'schedules' | 'route_batches' | 'change_requests'>('schedules');
+
+  const [routeChangeRequests, setRouteChangeRequests] = useState<RouteChangeRequestAdminItem[]>([]);
+  const [isLoadingChangeRequests, setIsLoadingChangeRequests] = useState<boolean>(false);
+  const [rcFilterStatus, setRcFilterStatus] = useState<'ALL' | 'PENDING' | 'RESOLVED'>('ALL');
 
   const [plans, setPlans] = useState<MonthlyTpItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -648,8 +672,72 @@ export const MonthlyTpView: React.FC = () => {
   useEffect(() => {
     if (activeSubTab === 'route_batches') {
       fetchRouteBatches();
+    } else if (activeSubTab === 'change_requests') {
+      fetchRouteChangeRequests();
     }
   }, [activeSubTab]);
+
+  useEffect(() => {
+    fetchRouteChangeRequests();
+  }, []);
+
+  const fetchRouteChangeRequests = async () => {
+    setIsLoadingChangeRequests(true);
+    try {
+      const res = await resilientFetch('/tour-plans/route-change-requests');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setRouteChangeRequests(data);
+        }
+      }
+    } catch {
+      // offline fallback
+    } finally {
+      setIsLoadingChangeRequests(false);
+    }
+  };
+
+  const handleReviewRouteChange = async (id: string, action: 'APPROVED' | 'REJECTED') => {
+    const defaultRemark = action === 'APPROVED' ? 'Approved by Admin' : 'Change request declined';
+    const remark = window.prompt(`Enter optional review note for MR:`, defaultRemark);
+    if (remark === null) return;
+
+    setProcessingTpId(id);
+    try {
+      const res = await resilientFetch(`/tour-plans/route-change-requests/${id}/review`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: action,
+          admin_remarks: remark,
+        }),
+      });
+
+      if (res.ok) {
+        setActionNotice({
+          type: 'success',
+          message: `✓ Route change request marked as ${action}! Active Tour Plan & Tasks updated.`,
+        });
+        fetchRouteChangeRequests();
+        fetchMonthlyPlans();
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setActionNotice({
+          type: 'error',
+          message: err.message || 'Failed to review route change request.',
+        });
+      }
+    } catch {
+      setActionNotice({
+        type: 'error',
+        message: 'Network error reviewing route change request.',
+      });
+    } finally {
+      setProcessingTpId(null);
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
 
   
   const fetchMonthlyPlans = async () => {
@@ -769,6 +857,50 @@ export const MonthlyTpView: React.FC = () => {
     const totalReimbursement = filteredPlans.reduce((acc, p) => acc + (p.reimbursement_amount || 0), 0);
     return { totalVisits, pendingCount, approvedCount, distinctMrs, totalDistance, totalReimbursement };
   }, [filteredPlans]);
+
+  const distinctPlans = useMemo(() => {
+    const map = new Map<string, {
+      tp_id: string;
+      mr_id: string;
+      mr_name: string;
+      month: string;
+      hq_name: string;
+      status: string;
+      totalVisits: number;
+      approvedVisits: number;
+    }>();
+
+    filteredPlans.forEach((p) => {
+      const tpId = p.tp_id;
+      if (!tpId) return;
+      const isAppr = (p.reimbursement_status || p.status) === 'APPROVED';
+      const existing = map.get(tpId);
+      if (!existing) {
+        map.set(tpId, {
+          tp_id: tpId,
+          mr_id: p.mr_id,
+          mr_name: p.mr_name,
+          month: p.month,
+          hq_name: p.hq_name,
+          status: p.status,
+          totalVisits: 1,
+          approvedVisits: isAppr ? 1 : 0,
+        });
+      } else {
+        existing.totalVisits += 1;
+        if (isAppr) existing.approvedVisits += 1;
+        if (p.status === 'APPROVED' && existing.status !== 'APPROVED') {
+          existing.status = 'APPROVED';
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [filteredPlans]);
+
+  const pendingChangeRequestsCount = useMemo(() => {
+    return routeChangeRequests.filter((r) => r.status === 'PENDING').length;
+  }, [routeChangeRequests]);
 
   
   const filteredBatches = useMemo(() => {
@@ -1352,6 +1484,47 @@ export const MonthlyTpView: React.FC = () => {
           <Navigation size={15} />
           <span>Route Batch Master ({routeBatches.length})</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('change_requests')}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 6,
+            border: 'none',
+            fontSize: 12.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeSubTab === 'change_requests' ? '#FFFFFF' : 'transparent',
+            color: activeSubTab === 'change_requests' ? '#1A3C6E' : '#64748B',
+            boxShadow: activeSubTab === 'change_requests' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+          }}
+        >
+          <RefreshCw size={15} />
+          <span>
+            Route Change Requests
+            {pendingChangeRequestsCount > 0 ? (
+              <span
+                style={{
+                  marginLeft: 6,
+                  background: '#F59E0B',
+                  color: '#FFFFFF',
+                  padding: '2px 7px',
+                  borderRadius: 10,
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                {pendingChangeRequestsCount} Pending
+              </span>
+            ) : (
+              ` (${routeChangeRequests.length})`
+            )}
+          </span>
+        </button>
       </div>
 
       {/* Action Notification Banner */}
@@ -1504,6 +1677,134 @@ export const MonthlyTpView: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Plan-Level Approval Action Banner */}
+          {distinctPlans.length > 0 && (
+            <div
+              style={{
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 8,
+                padding: '14px 18px',
+                marginBottom: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShieldCheck size={18} color="#1A3C6E" />
+                  <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A' }}>
+                    Monthly Tour Plan Approvals & Automated Geofenced Tasks
+                  </span>
+                </div>
+                <span style={{ fontSize: 11.5, color: '#64748B' }}>
+                  Approving an MR's monthly tour plan automatically creates 50m geofenced tasks for all planned locations.
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: 10 }}>
+                {distinctPlans.map((dp) => {
+                  const isPlanApproved = dp.status === 'APPROVED';
+                  const isPlanRejected = dp.status === 'REJECTED';
+                  const isProcessing = processingTpId === dp.tp_id;
+
+                  return (
+                    <div
+                      key={dp.tp_id}
+                      style={{
+                        border: `1.5px solid ${isPlanApproved ? '#86EFAC' : isPlanRejected ? '#FCA5A5' : '#CBD5E1'}`,
+                        background: isPlanApproved ? '#F0FDF4' : isPlanRejected ? '#FEF2F2' : '#F8FAFC',
+                        borderRadius: 6,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 800, color: '#0F172A', fontSize: 13 }}>{dp.mr_name}</span>
+                          <span style={{ fontSize: 11, color: '#64748B' }}>({dp.hq_name || 'HQ'})</span>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                          Month: <strong>{dp.month}</strong> • {dp.totalVisits} planned visits ({dp.approvedVisits} approved)
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: isPlanApproved ? '#DCFCE7' : isPlanRejected ? '#FEE2E2' : '#FEF3C7',
+                              color: isPlanApproved ? '#15803D' : isPlanRejected ? '#991B1B' : '#B45309',
+                            }}
+                          >
+                            ● {isPlanApproved ? 'Approved' : isPlanRejected ? 'Rejected' : 'Submitted (Pending Review)'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 125 }}>
+                        {!isPlanApproved && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(dp.tp_id, 'APPROVED')}
+                            disabled={isProcessing}
+                            style={{
+                              background: '#0F8B5A',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '6px 10px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Check size={12} />
+                            <span>{isProcessing ? 'Processing...' : 'Approve Plan'}</span>
+                          </button>
+                        )}
+                        {!isPlanRejected && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(dp.tp_id, 'REJECTED')}
+                            disabled={isProcessing}
+                            style={{
+                              background: '#FFFFFF',
+                              color: '#DC2626',
+                              border: '1px solid #FCA5A5',
+                              padding: '5px 10px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <X size={12} />
+                            <span>Reject Plan</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Schedules Table */}
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -1943,6 +2244,242 @@ export const MonthlyTpView: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 3: ROUTE CHANGE REQUESTS */}
+      {activeSubTab === 'change_requests' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Header & Filter Controls */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              padding: '16px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                Field Tour Plan Change Requests
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748B' }}>
+                Review requested route batch and location changes on already-approved Tour Plans. Upon approval, agenda and geofenced tasks are automatically updated.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', background: '#F1F5F9', padding: 3, borderRadius: 6 }}>
+                {(['ALL', 'PENDING', 'RESOLVED'] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setRcFilterStatus(st)}
+                    style={{
+                      border: 'none',
+                      background: rcFilterStatus === st ? '#FFFFFF' : 'transparent',
+                      color: rcFilterStatus === st ? '#1A3C6E' : '#64748B',
+                      padding: '5px 12px',
+                      borderRadius: 4,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: rcFilterStatus === st ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                  >
+                    {st === 'ALL' ? 'All Requests' : st === 'PENDING' ? `Pending (${pendingChangeRequestsCount})` : 'Resolved'}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={fetchRouteChangeRequests}
+                disabled={isLoadingChangeRequests}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+              >
+                <RefreshCw size={13} className={isLoadingChangeRequests ? 'spin' : ''} />
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+
+          {/* List of Change Requests */}
+          {isLoadingChangeRequests ? (
+            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 60, textAlign: 'center' }}>
+              <RefreshCw size={26} className="spin" style={{ margin: '0 auto 12px auto', display: 'block', color: '#1A3C6E' }} />
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#334155' }}>Loading route change requests...</div>
+            </div>
+          ) : (
+            (() => {
+              const filteredList = routeChangeRequests.filter((r) => {
+                if (rcFilterStatus === 'PENDING') return r.status === 'PENDING';
+                if (rcFilterStatus === 'RESOLVED') return r.status === 'APPROVED' || r.status === 'REJECTED';
+                return true;
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '56px 20px', textAlign: 'center' }}>
+                    <RefreshCw size={36} color="#CBD5E1" style={{ margin: '0 auto 12px auto' }} />
+                    <p style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>No Change Requests Found</p>
+                    <p style={{ fontSize: 12.5, color: '#64748B' }}>
+                      {rcFilterStatus === 'PENDING'
+                        ? 'There are no pending route change requests awaiting authorization.'
+                        : 'No route change requests match the selected filter.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {filteredList.map((rc) => {
+                    const isPending = rc.status === 'PENDING';
+                    const isApproved = rc.status === 'APPROVED';
+                    const isRejected = rc.status === 'REJECTED';
+                    const isProcessing = processingTpId === rc.id;
+
+                    return (
+                      <div
+                        key={rc.id}
+                        style={{
+                          background: '#FFFFFF',
+                          border: `1.5px solid ${isPending ? '#FDE68A' : isApproved ? '#86EFAC' : '#E2E8F0'}`,
+                          borderRadius: 8,
+                          padding: '16px 20px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                                {rc.mr_name}
+                              </span>
+                              <span style={{ fontSize: 11.5, background: '#EFF6FF', color: '#1E40AF', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                                {rc.hq_name || 'HQ Territory'}
+                              </span>
+                              <span style={{ fontSize: 12, color: '#64748B' }}>
+                                Visit Date: <strong>{formatDateDDMMYYYY(rc.date)}</strong>
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>
+                              Submitted: {formatDateDDMMYYYY(rc.created_at)}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '3px 9px',
+                                borderRadius: 12,
+                                background: isApproved ? '#DCFCE7' : isRejected ? '#FEE2E2' : '#FEF3C7',
+                                color: isApproved ? '#166534' : isRejected ? '#991B1B' : '#92400E',
+                              }}
+                            >
+                              ● {rc.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Side by side comparison */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 14 }}>
+                          {/* Current Approved */}
+                          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6, padding: '12px 14px' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 6 }}>
+                              📌 Current Approved Route
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                              {rc.original_batch_name || rc.original_area || 'Standard Circuit'}
+                            </div>
+                            {rc.original_area && rc.original_area !== rc.original_batch_name && (
+                              <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                                Area: {rc.original_area}
+                              </div>
+                            )}
+                            {rc.original_locations && rc.original_locations.length > 0 && (
+                              <div style={{ marginTop: 6, fontSize: 11, color: '#64748B' }}>
+                                Planned Stops ({rc.original_locations.length}): {rc.original_locations.map((l) => l.name).join(', ')}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Requested Changes */}
+                          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: '12px 14px' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 6 }}>
+                              ➡️ Requested Deviation / Destination
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#15803D' }}>
+                              {rc.requested_batch_name || rc.requested_area || 'Direct Area'}
+                            </div>
+                            {rc.requested_area && (
+                              <div style={{ fontSize: 11.5, color: '#166534', marginTop: 2 }}>
+                                Planned Area: {rc.requested_area}
+                              </div>
+                            )}
+                            {rc.requested_locations && rc.requested_locations.length > 0 && (
+                              <div style={{ marginTop: 6, fontSize: 11, color: '#166534' }}>
+                                Proposed Stops ({rc.requested_locations.length}): {rc.requested_locations.map((l) => l.name).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Reason */}
+                        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '10px 14px', marginBottom: 12 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E' }}>MR Stated Reason: </span>
+                          <span style={{ fontSize: 12, color: '#78350F' }}>"{rc.reason}"</span>
+                        </div>
+
+                        {/* Admin Remarks if already reviewed */}
+                        {rc.admin_remarks && (
+                          <div style={{ fontSize: 11.5, color: '#64748B', marginBottom: 10 }}>
+                            Admin Review Notes: <em>"{rc.admin_remarks}"</em>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        {isPending && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                            <button
+                              type="button"
+                              className="btn-enterprise secondary"
+                              onClick={() => handleReviewRouteChange(rc.id, 'REJECTED')}
+                              disabled={isProcessing}
+                              style={{ color: '#DC2626', borderColor: '#FCA5A5', padding: '6px 14px', fontSize: 12 }}
+                            >
+                              <X size={13} style={{ marginRight: 4 }} />
+                              Reject Deviation
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-enterprise"
+                              onClick={() => handleReviewRouteChange(rc.id, 'APPROVED')}
+                              disabled={isProcessing}
+                              style={{ background: '#0F8B5A', padding: '6px 16px', fontSize: 12 }}
+                            >
+                              <Check size={14} style={{ marginRight: 4 }} />
+                              {isProcessing ? 'Applying...' : 'Approve & Update Tour Plan'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
         </div>
       )}
 

@@ -1,19 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.40",
-  "latestVersionCode": 41,
+  "latestVersion": "1.0.41",
+  "latestVersionCode": 42,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.40/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.41/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-10-23",
-  "publishedAt": "2026-10-22T20:30:00.000Z",
+  "publishedAt": "2026-10-23T10:45:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "MR Marked Location Update Fix: Fixed marked location updating in mobile and web so batch changes, removal, GPS pin adjustments, clinic names, and phone numbers persist accurately without rejection",
-    "Tour Plan Batch-Specific Location Discovery: Monthly TP directly displays saved locations belonging to the selected route batch with interactive checkboxes and automatic KOL doctor linking",
-    "Strict Multi-HQ Territory & Batch Isolation: Guaranteed that Field Representatives only see their own headquarters' batches and marked locations, eliminating cross-territory data exposure between Kotma, Shahdol, and other HQs",
-    "Admin Web Route Batch Assignment: Admin interactive map modal now features a Route Batch Circuit selector so admins can assign clinics to route batches directly when creating or updating locations"
+    "Tour Plan Approval Status Persistence: Approved tour plans immediately reflect Approved state across reloads and offline sessions",
+    "Admin-Approved Tour Plan Change Requests: Request destination area, route batch, and doctor deviations mid-cycle with real-time status and admin notes",
+    "Automated 50m Geofenced Task Sequencing: Approved tour plans automatically generate geofenced field tasks with sequenced arrival times",
+    "Dynamic Multi-Territory Location Resolution: Zero hardcoding, dynamic GPS resolution across marked clinics and headquarters centers",
+    "Task Reconciliation Engine: Superseded visits safely cancel unstarted tasks while preserving completed visits, audit history, and orders"
   ]
 }

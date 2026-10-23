@@ -163,6 +163,8 @@ export interface Task {
   route_batch_id?: string;
   route_batch_name?: string;
   tp_entry_id?: string;
+  tp_id?: string;
+  source?: 'Manual' | 'TourPlan';
   sequence_order?: number;
 }
 
@@ -237,6 +239,7 @@ export interface SavedLocation {
   batch_id?: string;
   batch_code?: string;
   batch_name?: string;
+  geofence_radius_m?: number;
   created_at: string;
 }
 
@@ -722,10 +725,18 @@ export interface RouteChangeRequest {
   original_batch_code?: string;
   original_batch_name: string;
   original_locations?: Array<{ id: string; name: string; category?: string }>;
+  original_area?: string;
+  original_work_type?: string;
+  original_kol_drs?: string;
+  original_activity?: string;
   requested_batch_id?: string;
   requested_batch_code?: string;
   requested_batch_name: string;
   requested_locations?: Array<{ id: string; name: string; category?: string; address?: string; latitude?: number; longitude?: number }>;
+  requested_area?: string;
+  requested_work_type?: string;
+  requested_kol_drs?: string;
+  requested_activity?: string;
   reason: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   admin_id?: string;

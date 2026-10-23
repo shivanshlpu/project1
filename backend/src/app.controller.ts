@@ -25,24 +25,23 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.40',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '41', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.41',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '42', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.40/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.41/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Out-of-Stock Order Visibility: Orders containing out-of-stock items remain visible with warnings instead of being hidden',
-    'MR Location Attribution & Isolation: Field Representatives view and manage their own marked locations with complete author attribution',
-    'Route Batch Location Assignment: Territory route batches allow assigning and grouping multiple verified clinic locations',
-    'Multi-Location Tour Planning: Monthly TP allows selecting multiple pinned locations per day/date with automatic sequence ordering',
-    'Route Change Request Workflow: MRs can request mid-cycle route changes for approved tour plans with instant admin review & approval',
-    'TP-Driven Geofenced Task Sequencing: Approved tour plans automatically generate sequenced daily tasks with 50-meter geofence enforcement',
+    'Tour Plan Approval Status Persistence: Approved tour plans immediately reflect Approved state across reloads and offline sessions',
+    'Admin-Approved Tour Plan Change Requests: Request destination area, route batch, and doctor deviations mid-cycle with real-time status and admin notes',
+    'Automated 50m Geofenced Task Sequencing: Approved tour plans automatically generate geofenced field tasks with sequenced arrival times',
+    'Dynamic Multi-Territory Location Resolution: Zero hardcoding, dynamic GPS resolution across marked clinics and headquarters centers',
+    'Task Reconciliation Engine: Superseded visits safely cancel unstarted tasks while preserving completed visits, audit history, and orders',
   ],
 };
 
