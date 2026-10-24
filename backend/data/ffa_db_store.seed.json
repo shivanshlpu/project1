@@ -1,5 +1,30 @@
 {
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "task-tp-23102026",
+      "title": "Visit: Xyz",
+      "description": "Scheduled TP call at Xyz (Shahdol - Pali - Navrozabad). Geofenced check-in required.",
+      "assigned_mr_id": "usr-mr-02",
+      "assigned_mr_name": "Aman Rathore",
+      "created_by": "usr-admin-01",
+      "date": "23-10-2026",
+      "time": "10:00 AM",
+      "latitude": 23.288309,
+      "longitude": 81.352204,
+      "geofence_radius_m": 50,
+      "priority": "HIGH",
+      "status": "ASSIGNED",
+      "source": "TourPlan",
+      "tp_id": "mtp-ddf6d444",
+      "tp_entry_id": "tp-item-93b9452d",
+      "location_name": "Xyz",
+      "route_batch_id": "rb-shd-b02",
+      "route_batch_name": "Shahdol - Pali - Navrozabad",
+      "sequence_order": 1,
+      "hq_accepted": true,
+      "created_at": "2026-10-24T22:29:47.307Z"
+    }
+  ],
   "orders": [
     {
       "id": "ord-5e8d591c",
@@ -3306,7 +3331,14 @@
     "ORD-PURGE-100"
   ],
   "doctors": [],
-  "taskAssignments": [],
+  "taskAssignments": [
+    {
+      "id": "ta-23102026",
+      "task_id": "task-tp-23102026",
+      "mr_id": "usr-mr-02",
+      "assigned_at": "2026-10-24T22:29:47.307Z"
+    }
+  ],
   "locationVerifications": [],
   "approvals": [],
   "routeChangeRequests": [
@@ -3354,8 +3386,10 @@
       "requested_kol_drs": "Xyz",
       "requested_activity": "Routine Field Detailing & Sampling",
       "reason": "Route deviation requested for urgent Key Doctor visits and stocker coordination in Budhar/Dhanpuri belt.",
-      "status": "PENDING",
-      "created_at": "2026-10-23T06:30:00.000Z"
+      "status": "REJECTED",
+      "created_at": "2026-10-23T06:30:00.000Z",
+      "admin_remarks": "Change request declined",
+      "reviewed_at": "2026-10-24T22:29:47.306Z"
     }
   ]
 }

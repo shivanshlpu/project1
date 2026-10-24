@@ -19,6 +19,22 @@ import { NotificationsService } from '../notifications/notifications.module';
 
 import { calculateHqCenterToDestinationDistance, HQ_CENTERS } from '../territories/distance-calculator.service';
 
+function datesMatch(d1?: string, d2?: string): boolean {
+  if (!d1 || !d2) return false;
+  if (d1 === d2) return true;
+  const clean1 = d1.trim().slice(0, 10);
+  const clean2 = d2.trim().slice(0, 10);
+  if (clean1 === clean2) return true;
+  const parts1 = clean1.split('-');
+  const parts2 = clean2.split('-');
+  if (parts1.length === 3 && parts2.length === 3) {
+    const norm1 = parts1[0].length === 2 ? `${parts1[2]}-${parts1[1]}-${parts1[0]}` : clean1;
+    const norm2 = parts2[0].length === 2 ? `${parts2[2]}-${parts2[1]}-${parts2[0]}` : clean2;
+    return norm1 === norm2;
+  }
+  return false;
+}
+
 @Injectable()
 export class TourPlansService implements OnModuleInit {
   constructor(
@@ -30,6 +46,16 @@ export class TourPlansService implements OnModuleInit {
     await this.cleanupOrphanedTourPlanTasks().catch((err) =>
       console.warn(`[TourPlansService] Orphan cleanup notice: ${err?.message}`),
     );
+
+    // Restore original route tasks for any route change requests that are currently REJECTED
+    const rejectedRequests = (this.db.routeChangeRequests || []).filter(
+      (r) => (r.status || '').toUpperCase() === 'REJECTED',
+    );
+    for (const rcr of rejectedRequests) {
+      await this.restoreOriginalRouteTasks(rcr, 'SYSTEM_ADMIN').catch((err) =>
+        console.warn(`[TourPlansService] Restore original task notice: ${err?.message}`),
+      );
+    }
   }
 
   /**
@@ -94,12 +120,18 @@ export class TourPlansService implements OnModuleInit {
       if (t.deleted_at || t.status === 'COMPLETED') continue;
 
       if (t.source === 'TourPlan' || t.tp_id || t.tp_entry_id) {
+        // Protect tasks that correspond to a route change request
+        const hasRcr = (this.db.routeChangeRequests || []).some(
+          (r) => r.mr_id === t.assigned_mr_id && (r.tour_plan_item_id === t.tp_entry_id || datesMatch(r.date, t.date)),
+        );
+        if (hasRcr) continue;
+
         if (!t.tp_id) {
           const matchingPlan = this.db.monthlyTourPlans.find(
             (p) =>
               p.mr_id === t.assigned_mr_id &&
               (p.entries || []).some(
-                (e) => e.id === t.tp_entry_id || (e.date === t.date && e.reimbursement_status === 'APPROVED'),
+                (e) => e.id === t.tp_entry_id || (datesMatch(e.date, t.date) && e.reimbursement_status !== 'REJECTED'),
               ),
           );
           if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
@@ -110,7 +142,16 @@ export class TourPlansService implements OnModuleInit {
 
         const plan = validPlanMap.get(t.tp_id);
         if (!plan) {
-          orphanedTasks.push(t);
+          const matchingPlan = this.db.monthlyTourPlans.find(
+            (p) =>
+              p.mr_id === t.assigned_mr_id &&
+              (p.entries || []).some(
+                (e) => e.id === t.tp_entry_id || datesMatch(e.date, t.date),
+              ),
+          );
+          if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
+            orphanedTasks.push(t);
+          }
           continue;
         }
 
@@ -1236,16 +1277,23 @@ export class TourPlansService implements OnModuleInit {
     request.reviewed_at = new Date().toISOString();
 
     if (normStatus === 'APPROVED') {
-      const plan = this.db.monthlyTourPlans.find((tp) => tp.id === request.tour_plan_id);
+      let plan = this.db.monthlyTourPlans.find((tp) => tp.id === request.tour_plan_id);
+      if (!plan) {
+        const dIso = request.date.includes('-') && request.date.split('-')[0].length === 2
+          ? request.date.split('-').reverse().join('-')
+          : request.date;
+        plan = this.db.monthlyTourPlans.find((tp) => tp.mr_id === request.mr_id && tp.month === dIso.slice(0, 7));
+      }
       if (plan) {
-        const entry = plan.entries.find(
-          (e) => e.id === request.tour_plan_item_id || e.date === request.date,
+        let entry = plan.entries.find(
+          (e) => e.id === request.tour_plan_item_id || datesMatch(e.date, request.date),
         );
         if (entry) {
           if (request.requested_batch_id) {
             entry.route_batch_id = request.requested_batch_id;
             entry.route_batch_code = request.requested_batch_code;
             entry.route_batch_name = request.requested_batch_name;
+            entry.route = request.requested_batch_name;
             const batch = this.db.routeBatches.find((b) => b.id === request.requested_batch_id);
             if (batch) {
               entry.one_way_distance_km = batch.distance_km;
@@ -1269,13 +1317,17 @@ export class TourPlansService implements OnModuleInit {
           if (request.requested_work_type) entry.work_type = request.requested_work_type;
           if (request.requested_kol_drs) entry.planned_kol_drs = request.requested_kol_drs;
           if (request.requested_activity) entry.planned_activity = request.requested_activity;
+          entry.reimbursement_status = 'APPROVED';
 
           await this.db.persistMonthlyTourPlan(plan);
-
-          // Reconcile tasks cleanly for this plan
           await this.reconcileTasksForTourPlan(plan, adminUser.id);
         }
       }
+    } else {
+      // normStatus === 'REJECTED'
+      // The requested route change was declined by Admin.
+      // Therefore, the MR MUST continue with their original approved route & destinations!
+      await this.restoreOriginalRouteTasks(request, adminUser.id);
     }
 
     await this.db.persistRouteChangeRequest(request);
@@ -1289,6 +1341,208 @@ export class TourPlansService implements OnModuleInit {
     );
 
     return request;
+  }
+
+  /**
+   * When a Route Change Request is REJECTED by Admin:
+   * Restores/retains the MR's original assigned route, location stops, and tasks
+   * so the MR stays on their original approved destination.
+   */
+  async restoreOriginalRouteTasks(
+    request: RouteChangeRequest,
+    adminId: string,
+  ): Promise<void> {
+    const datesToMatch = new Set<string>([request.date]);
+    if (request.date.includes('-')) {
+      const parts = request.date.split('-');
+      if (parts[0].length === 2 && parts[2].length === 4) {
+        datesToMatch.add(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      } else if (parts[0].length === 4 && parts[2].length === 2) {
+        datesToMatch.add(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    }
+
+    const dIso = request.date.includes('-') && request.date.split('-')[0].length === 2
+      ? request.date.split('-').reverse().join('-')
+      : request.date;
+
+    // 1. Find or link the monthly tour plan
+    let plan = this.db.monthlyTourPlans.find((tp) => tp.id === request.tour_plan_id);
+    if (!plan) {
+      const monthPrefix = dIso.slice(0, 7);
+      plan = this.db.monthlyTourPlans.find((tp) => tp.mr_id === request.mr_id && tp.month === monthPrefix);
+    }
+
+    if (plan) {
+      let entry = plan.entries.find(
+        (e) => e.id === request.tour_plan_item_id || datesMatch(e.date, request.date),
+      );
+      if (!entry) {
+        entry = {
+          id: request.tour_plan_item_id || `tp-item-${uuidv4().substring(0, 8)}`,
+          date: request.date,
+          hq_id: request.hq_id,
+          hq_name: request.hq_name,
+          route: request.original_batch_name,
+          route_batch_id: request.original_batch_id,
+          route_batch_code: request.original_batch_code,
+          route_batch_name: request.original_batch_name,
+          planned_area: request.original_area,
+          work_type: request.original_work_type || 'Doctor Visit',
+          selected_locations: request.original_locations || [],
+          location_ids: (request.original_locations || []).map((l: any) => l.id),
+          planned_kol_drs: request.original_kol_drs,
+          planned_activity: request.original_activity,
+          reimbursement_status: 'APPROVED',
+          distance_km: 110,
+        };
+        plan.entries.push(entry);
+      } else {
+        entry.route_batch_id = request.original_batch_id;
+        entry.route_batch_code = request.original_batch_code;
+        entry.route_batch_name = request.original_batch_name;
+        entry.route = request.original_batch_name;
+        entry.planned_area = request.original_area;
+        entry.selected_locations = request.original_locations || [];
+        entry.location_ids = (request.original_locations || []).map((l: any) => l.id);
+        entry.work_type = request.original_work_type || entry.work_type;
+        entry.planned_kol_drs = request.original_kol_drs || entry.planned_kol_drs;
+        entry.planned_activity = request.original_activity || entry.planned_activity;
+        entry.reimbursement_status = 'APPROVED';
+      }
+      await this.db.persistMonthlyTourPlan(plan);
+    }
+
+    // 2. Identify original locations
+    let locations = request.original_locations;
+    if (!locations || locations.length === 0) {
+      if (request.original_batch_id) {
+        const batch = this.db.routeBatches.find(
+          (b) => b.id === request.original_batch_id || b.batch_code === request.original_batch_id,
+        );
+        if (batch?.location_ids && batch.location_ids.length > 0) {
+          locations = this.db.savedLocations.filter((l) => batch.location_ids?.includes(l.id));
+        } else if (batch?.route_stops && batch.route_stops.length > 0) {
+          locations = batch.route_stops.map((stop, sIdx) => ({
+            id: `stop-orig-${sIdx + 1}`,
+            name: stop,
+            category: 'CLINIC',
+            address: `${stop}, ${request.original_area || 'Field Territory'}`,
+          }));
+        }
+      }
+    }
+
+    let anyLocations: any[] = locations || [];
+    if (anyLocations.length === 0) {
+      anyLocations = [{
+        id: `loc-orig-${uuidv4().substring(0, 6)}`,
+        name: request.original_area || request.original_batch_name || 'Designated Clinic',
+        category: 'CLINIC',
+        address: `${request.original_area || 'Field Territory'}, Shahdol`,
+        latitude: 23.288309,
+        longitude: 81.352204,
+      }];
+    }
+
+    // 3. Find existing tasks for this MR on this date
+    const existingDateTasks = this.db.tasks.filter(
+      (t) =>
+        !t.deleted_at &&
+        t.assigned_mr_id === request.mr_id &&
+        (datesToMatch.has(t.date) || datesMatch(t.date, request.date) || (t.tp_entry_id && t.tp_entry_id === request.tour_plan_item_id)),
+    );
+
+    // 4. Ensure original tasks are present and set to original route
+    for (const [idx, loc] of anyLocations.entries()) {
+      let task = existingDateTasks.find(
+        (t) =>
+          t.location_name?.toLowerCase() === (loc.name || '').toLowerCase() ||
+          t.title?.toLowerCase().includes((loc.name || '').toLowerCase()),
+      );
+
+      if (task) {
+        if (task.status !== 'COMPLETED') {
+          task.title = `Visit: ${loc.name || request.original_area}`;
+          task.description = `Scheduled TP call at ${loc.name || request.original_area} (${request.original_batch_name}). Geofenced check-in required.`;
+          task.location_name = loc.name || request.original_area;
+          (task as any).address = loc.address || `${loc.name}, ${request.original_area || 'Territory'}`;
+          task.route_batch_id = request.original_batch_id;
+          task.route_batch_name = request.original_batch_name;
+          task.status = 'ASSIGNED';
+          task.source = 'TourPlan';
+          task.tp_id = plan ? plan.id : request.tour_plan_id;
+          task.tp_entry_id = request.tour_plan_item_id;
+          if (loc.latitude) task.latitude = loc.latitude;
+          if (loc.longitude) task.longitude = loc.longitude;
+          task.geofence_radius_m = 50;
+          task.hq_accepted = true;
+          task.date = request.date;
+          await this.db.persistTask(task);
+        }
+      } else {
+        const coords = this.resolveLocationCoordinates(
+          loc.name || 'Main Center',
+          request.hq_id,
+          idx,
+          loc.latitude,
+          loc.longitude,
+          50,
+        );
+
+        const newTask: Task = {
+          id: `task-tp-${uuidv4().substring(0, 8)}`,
+          title: `Visit: ${loc.name || request.original_area}`,
+          description: `Scheduled TP call at ${loc.name || request.original_area} (${request.original_batch_name}). Geofenced check-in required.`,
+          assigned_mr_id: request.mr_id,
+          assigned_mr_name: request.mr_name,
+          created_by: adminId || 'SYSTEM_ADMIN',
+          date: request.date,
+          time: '10:00 AM',
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          geofence_radius_m: 50,
+          priority: 'HIGH',
+          status: 'ASSIGNED',
+          source: 'TourPlan',
+          tp_id: plan ? plan.id : request.tour_plan_id,
+          tp_entry_id: request.tour_plan_item_id,
+          location_name: loc.name || request.original_area,
+          route_batch_id: request.original_batch_id,
+          route_batch_name: request.original_batch_name,
+          sequence_order: idx + 1,
+          hq_accepted: true,
+          created_at: new Date().toISOString(),
+        };
+
+        this.db.tasks.push(newTask);
+        this.db.taskAssignments.push({
+          id: `ta-${uuidv4().substring(0, 8)}`,
+          task_id: newTask.id,
+          mr_id: request.mr_id,
+          assigned_at: new Date().toISOString(),
+        });
+        await this.db.persistTask(newTask);
+      }
+    }
+
+    // 5. Remove any uncompleted tasks on this date that belonged to the requested (deviated) route!
+    if (request.requested_batch_name) {
+      const deviatedTasks = this.db.tasks.filter(
+        (t) =>
+          !t.deleted_at &&
+          t.status !== 'COMPLETED' &&
+          t.assigned_mr_id === request.mr_id &&
+          (datesToMatch.has(t.date) || datesMatch(t.date, request.date)) &&
+          (t.route_batch_name === request.requested_batch_name ||
+            (request.requested_batch_id && t.route_batch_id === request.requested_batch_id)),
+      );
+      for (const t of deviatedTasks) {
+        await this.removeSingleTask(t.id);
+      }
+    }
+
+    await this.db.persistToDisk();
   }
 
   async getPendingCount(): Promise<{

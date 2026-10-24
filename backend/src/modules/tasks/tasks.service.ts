@@ -53,6 +53,22 @@ export function isCancelledStatus(s?: string): boolean {
   return upper === 'CANCELLED' || upper === 'CANCELED' || upper === 'CANCEL';
 }
 
+export function datesMatch(d1?: string, d2?: string): boolean {
+  if (!d1 || !d2) return false;
+  if (d1 === d2) return true;
+  const clean1 = d1.trim().slice(0, 10);
+  const clean2 = d2.trim().slice(0, 10);
+  if (clean1 === clean2) return true;
+  const parts1 = clean1.split('-');
+  const parts2 = clean2.split('-');
+  if (parts1.length === 3 && parts2.length === 3) {
+    const norm1 = parts1[0].length === 2 ? `${parts1[2]}-${parts1[1]}-${parts1[0]}` : clean1;
+    const norm2 = parts2[0].length === 2 ? `${parts2[2]}-${parts2[1]}-${parts2[0]}` : clean2;
+    return norm1 === norm2;
+  }
+  return false;
+}
+
 @Injectable()
 export class TasksService {
   constructor(
@@ -69,12 +85,27 @@ export class TasksService {
     if (t.status === 'COMPLETED' || t.deleted_at) return false;
     if (t.source !== 'TourPlan' && !t.tp_id && !t.tp_entry_id) return false;
 
+    // Tasks linked to an active or resolved Route Change Request must never be orphaned
+    const hasRcr = (this.db.routeChangeRequests || []).some(
+      (r) => r.mr_id === t.assigned_mr_id && (r.tour_plan_item_id === t.tp_entry_id || datesMatch(r.date, t.date)),
+    );
+    if (hasRcr) return false;
+
     if (t.tp_id) {
       const plan = this.db.monthlyTourPlans.find((p) => p.id === t.tp_id);
-      if (!plan || (plan.status || '').toUpperCase() === 'REJECTED') return true;
+      if (!plan) {
+        const normDate = normalizeToIsoDate(t.date);
+        const monthStr = normDate ? normDate.slice(0, 7) : '';
+        const matchingPlan = this.db.monthlyTourPlans.find((p) => p.mr_id === t.assigned_mr_id && p.month === monthStr);
+        if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
+          return true;
+        }
+        return false;
+      }
+      if ((plan.status || '').toUpperCase() === 'REJECTED') return true;
       if (t.tp_entry_id) {
-        const entry = (plan.entries || []).find((e) => e.id === t.tp_entry_id);
-        if (!entry || entry.reimbursement_status === 'REJECTED') return true;
+        const entry = (plan.entries || []).find((e) => e.id === t.tp_entry_id || datesMatch(e.date, t.date));
+        if (entry && entry.reimbursement_status === 'REJECTED') return true;
       }
       return false;
     }
@@ -84,7 +115,7 @@ export class TasksService {
         (p) =>
           p.mr_id === t.assigned_mr_id &&
           (p.entries || []).some(
-            (e) => e.id === t.tp_entry_id || (e.date === t.date && e.reimbursement_status === 'APPROVED'),
+            (e) => e.id === t.tp_entry_id || (datesMatch(e.date, t.date) && e.reimbursement_status !== 'REJECTED'),
           ),
       );
       if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
