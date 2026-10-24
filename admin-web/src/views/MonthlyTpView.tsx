@@ -620,18 +620,39 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     }
   };
 
-  const handleReviewRouteChange = async (id: string, action: 'APPROVED' | 'REJECTED') => {
-    const defaultRemark = action === 'APPROVED' ? 'Approved by Admin' : 'Change request declined';
-    const remark = window.prompt(`Enter optional review note for MR:`, defaultRemark);
-    if (remark === null) return;
+  const [reviewModalState, setReviewModalState] = useState<{
+    isOpen: boolean;
+    request: any | null;
+    action: 'APPROVED' | 'REJECTED';
+    remark: string;
+  }>({
+    isOpen: false,
+    request: null,
+    action: 'APPROVED',
+    remark: '',
+  });
 
-    setProcessingTpId(id);
+  const handleOpenReviewModal = (rc: any, action: 'APPROVED' | 'REJECTED') => {
+    const defaultRemark = action === 'APPROVED' ? 'Approved by Admin' : 'Change request declined';
+    setReviewModalState({
+      isOpen: true,
+      request: rc,
+      action,
+      remark: defaultRemark,
+    });
+  };
+
+  const handleConfirmReviewModal = async () => {
+    if (!reviewModalState.request) return;
+    const { request, action, remark } = reviewModalState;
+    setReviewModalState((prev) => ({ ...prev, isOpen: false }));
+    setProcessingTpId(request.id);
     try {
-      const res = await resilientFetch(`/tour-plans/route-change-requests/${id}/review`, {
+      const res = await resilientFetch(`/tour-plans/route-change-requests/${request.id}/review`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: action,
-          admin_remarks: remark,
+          admin_remarks: (remark || '').trim(),
         }),
       });
 
@@ -660,6 +681,13 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     } finally {
       setProcessingTpId(null);
       setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
+
+  const handleReviewRouteChange = (id: string, action: 'APPROVED' | 'REJECTED') => {
+    const rc = routeChangeRequests.find((r) => r.id === id);
+    if (rc) {
+      handleOpenReviewModal(rc, action);
     }
   };
 
@@ -2621,6 +2649,312 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
               >
                 <Printer size={15} />
                 <span>Generate &amp; Print PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ROUTE CHANGE REQUEST CUSTOM REVIEW */}
+      {reviewModalState.isOpen && reviewModalState.request && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setReviewModalState((prev) => ({ ...prev, isOpen: false }));
+            }
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 540,
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.08)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background:
+                  reviewModalState.action === 'APPROVED'
+                    ? 'linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%)'
+                    : 'linear-gradient(180deg, #FEF2F2 0%, #FFFFFF 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: reviewModalState.action === 'APPROVED' ? '#DCFCE7' : '#FEE2E2',
+                    color: reviewModalState.action === 'APPROVED' ? '#15803D' : '#DC2626',
+                    boxShadow:
+                      reviewModalState.action === 'APPROVED'
+                        ? '0 2px 8px rgba(34, 197, 94, 0.2)'
+                        : '0 2px 8px rgba(239, 68, 68, 0.2)',
+                  }}
+                >
+                  {reviewModalState.action === 'APPROVED' ? <Check size={22} /> : <X size={22} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                    {reviewModalState.action === 'APPROVED'
+                      ? 'Approve Route Deviation'
+                      : 'Decline Route Deviation'}
+                  </h3>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    {reviewModalState.action === 'APPROVED'
+                      ? 'Confirm schedule switch & update agenda tasks automatically.'
+                      : 'Decline this change request and keep the original planned route.'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewModalState((prev) => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Request Info Card */}
+              <div
+                style={{
+                  background: '#F8FAFC',
+                  borderRadius: 12,
+                  border: '1px solid #E2E8F0',
+                  padding: 14,
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Medical Rep</div>
+                    <div style={{ fontWeight: 800, color: '#0F172A', marginTop: 2 }}>
+                      {reviewModalState.request.mr_name}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Headquarter</div>
+                    <div style={{ fontWeight: 700, color: '#0F172A', marginTop: 2 }}>
+                      {reviewModalState.request.hq_name || 'Shahdol'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Visit Date</div>
+                    <div style={{ fontWeight: 800, color: '#1A3C6E', marginTop: 2 }}>
+                      {formatDateDDMMYYYY(reviewModalState.request.date)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Route Deviation Box */}
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', textTransform: 'uppercase' }}>
+                      Current Planned
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
+                      {reviewModalState.request.original_batch_name || reviewModalState.request.original_area || 'Standard Route'}
+                    </div>
+                  </div>
+                  <ArrowRight size={16} color="#94A3B8" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>
+                      Requested Deviation
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0F8B5A', marginTop: 2 }}>
+                      {reviewModalState.request.requested_batch_name || reviewModalState.request.requested_area || 'Deviation Route'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reason */}
+                {reviewModalState.request.reason && (
+                  <div style={{ marginTop: 10, fontSize: 11.5, color: '#475569' }}>
+                    <span style={{ fontWeight: 700, color: '#334155' }}>MR Stated Reason:</span>{' '}
+                    <em>"{reviewModalState.request.reason}"</em>
+                  </div>
+                )}
+              </div>
+
+              {/* Review Note / Remark Field */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>
+                    Review Note / Instructions for MR
+                  </label>
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>Optional</span>
+                </div>
+                <textarea
+                  value={reviewModalState.remark}
+                  onChange={(e) =>
+                    setReviewModalState((prev) => ({ ...prev, remark: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="Enter a note or instructions for the Medical Representative..."
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    fontSize: 12.5,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    resize: 'vertical',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    lineHeight: 1.5,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor =
+                      reviewModalState.action === 'APPROVED' ? '#0F8B5A' : '#EF4444';
+                    e.currentTarget.style.boxShadow =
+                      reviewModalState.action === 'APPROVED'
+                        ? '0 0 0 3px rgba(15, 139, 90, 0.15)'
+                        : '0 0 0 3px rgba(239, 68, 68, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#CBD5E1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+
+                {/* Quick Suggestion Chips */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {(reviewModalState.action === 'APPROVED'
+                    ? [
+                        'Approved by Admin',
+                        'Key doctor detailing confirmed',
+                        'Authorized for today only',
+                      ]
+                    : [
+                        'Change request declined',
+                        'Please continue with standard approved route',
+                        'Reschedule for next week',
+                      ]
+                  ).map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setReviewModalState((prev) => ({ ...prev, remark: chip }))}
+                      style={{
+                        background: '#F1F5F9',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        color: '#475569',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#E2E8F0')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#F1F5F9')}
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #F1F5F9',
+                background: '#FAFAFA',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 10,
+              }}
+            >
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setReviewModalState((prev) => ({ ...prev, isOpen: false }))}
+                style={{ padding: '8px 18px', fontSize: 13, borderRadius: 8 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleConfirmReviewModal}
+                style={{
+                  padding: '8px 22px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background:
+                    reviewModalState.action === 'APPROVED'
+                      ? 'linear-gradient(135deg, #10B981 0%, #0F8B5A 100%)'
+                      : 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                  borderColor: reviewModalState.action === 'APPROVED' ? '#0F8B5A' : '#DC2626',
+                  color: '#FFFFFF',
+                  boxShadow:
+                    reviewModalState.action === 'APPROVED'
+                      ? '0 4px 12px rgba(15, 139, 90, 0.3)'
+                      : '0 4px 12px rgba(220, 38, 38, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                {reviewModalState.action === 'APPROVED' ? <Check size={16} /> : <X size={16} />}
+                {reviewModalState.action === 'APPROVED'
+                  ? 'Confirm Approval & Apply'
+                  : 'Confirm Rejection'}
               </button>
             </div>
           </div>

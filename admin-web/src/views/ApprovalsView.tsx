@@ -14,6 +14,8 @@ import {
   User,
   MapPin,
   Trash2,
+  Check,
+  ArrowRight,
 } from 'lucide-react';
 import { ApprovalItem } from '../types';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
@@ -374,15 +376,37 @@ export const ApprovalsView: React.FC = () => {
   };
 
   
-  const handleReviewRouteChange = async (id: string, action: 'APPROVE' | 'REJECT') => {
+  const [routeChangeModal, setRouteChangeModal] = useState<{
+    isOpen: boolean;
+    request: RouteChangeRequestItem | null;
+    action: 'APPROVE' | 'REJECT';
+    remark: string;
+  }>({
+    isOpen: false,
+    request: null,
+    action: 'APPROVE',
+    remark: '',
+  });
+
+  const handleOpenRouteChangeModal = (rc: RouteChangeRequestItem, action: 'APPROVE' | 'REJECT') => {
     const defaultRemark = action === 'APPROVE' ? 'Approved by Operations' : 'Route switch declined';
-    const remark = window.prompt(`Enter optional review note for MR:`, defaultRemark);
-    if (remark === null) return;
+    setRouteChangeModal({
+      isOpen: true,
+      request: rc,
+      action,
+      remark: defaultRemark,
+    });
+  };
+
+  const handleConfirmRouteChangeModal = async () => {
+    if (!routeChangeModal.request) return;
+    const { request, action, remark } = routeChangeModal;
+    setRouteChangeModal((prev) => ({ ...prev, isOpen: false }));
 
     try {
       const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/tour-plans/route-change-requests/${id}/review`, {
+      const res = await fetch(`${apiUrl}/tour-plans/route-change-requests/${request.id}/review`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -390,7 +414,7 @@ export const ApprovalsView: React.FC = () => {
         },
         body: JSON.stringify({
           status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-          admin_remarks: remark,
+          admin_remarks: (remark || '').trim(),
         }),
       });
 
@@ -401,9 +425,30 @@ export const ApprovalsView: React.FC = () => {
           type: action === 'APPROVE' ? 'success' : 'info',
         });
         fetchData();
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showCenteredNotice({
+          title: 'Review Failed',
+          message: err.message || 'Failed to update route change request status.',
+          type: 'error',
+        });
       }
     } catch (err: any) {
-      alert(`Error reviewing route change: ${err.message}`);
+      showCenteredNotice({
+        title: 'Network Error',
+        message: err.message || 'Error communicating with server.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleReviewRouteChange = (id: string, action: 'APPROVE' | 'REJECT') => {
+    const rc = routeChangeRequests.find((r) => r.id === id);
+    if (rc) {
+      handleOpenRouteChangeModal(rc, action);
     }
   };
 
@@ -928,6 +973,312 @@ export const ApprovalsView: React.FC = () => {
                 onClick={() => handleLeaveDecision(activeModal.id, activeModal.action)}
               >
                 Confirm {activeModal.action === 'APPROVE' ? 'Approval' : 'Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ROUTE CHANGE REQUEST CUSTOM REVIEW */}
+      {routeChangeModal.isOpen && routeChangeModal.request && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setRouteChangeModal((prev) => ({ ...prev, isOpen: false }));
+            }
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 540,
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.08)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background:
+                  routeChangeModal.action === 'APPROVE'
+                    ? 'linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%)'
+                    : 'linear-gradient(180deg, #FEF2F2 0%, #FFFFFF 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: routeChangeModal.action === 'APPROVE' ? '#DCFCE7' : '#FEE2E2',
+                    color: routeChangeModal.action === 'APPROVE' ? '#15803D' : '#DC2626',
+                    boxShadow:
+                      routeChangeModal.action === 'APPROVE'
+                        ? '0 2px 8px rgba(34, 197, 94, 0.2)'
+                        : '0 2px 8px rgba(239, 68, 68, 0.2)',
+                  }}
+                >
+                  {routeChangeModal.action === 'APPROVE' ? <Check size={22} /> : <X size={22} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                    {routeChangeModal.action === 'APPROVE'
+                      ? 'Approve Route Deviation'
+                      : 'Decline Route Deviation'}
+                  </h3>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    {routeChangeModal.action === 'APPROVE'
+                      ? 'Confirm schedule switch & update agenda tasks automatically.'
+                      : 'Decline this change request and keep the original planned route.'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRouteChangeModal((prev) => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Request Info Card */}
+              <div
+                style={{
+                  background: '#F8FAFC',
+                  borderRadius: 12,
+                  border: '1px solid #E2E8F0',
+                  padding: 14,
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Medical Rep</div>
+                    <div style={{ fontWeight: 800, color: '#0F172A', marginTop: 2 }}>
+                      {routeChangeModal.request.mr_name}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Headquarter</div>
+                    <div style={{ fontWeight: 700, color: '#0F172A', marginTop: 2 }}>
+                      {routeChangeModal.request.hq_name || 'Shahdol'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748B', fontSize: 11, fontWeight: 600 }}>Visit Date</div>
+                    <div style={{ fontWeight: 800, color: '#1A3C6E', marginTop: 2 }}>
+                      {formatDateDDMMYYYY(routeChangeModal.request.date)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Route Deviation Box */}
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', textTransform: 'uppercase' }}>
+                      Current Planned
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
+                      {routeChangeModal.request.original_batch_name || 'Standard Route'}
+                    </div>
+                  </div>
+                  <ArrowRight size={16} color="#94A3B8" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>
+                      Requested Deviation
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0F8B5A', marginTop: 2 }}>
+                      {routeChangeModal.request.requested_batch_name || 'Deviation Route'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reason */}
+                {routeChangeModal.request.reason && (
+                  <div style={{ marginTop: 10, fontSize: 11.5, color: '#475569' }}>
+                    <span style={{ fontWeight: 700, color: '#334155' }}>MR Stated Reason:</span>{' '}
+                    <em>"{routeChangeModal.request.reason}"</em>
+                  </div>
+                )}
+              </div>
+
+              {/* Review Note / Remark Field */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>
+                    Review Note / Instructions for MR
+                  </label>
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>Optional</span>
+                </div>
+                <textarea
+                  value={routeChangeModal.remark}
+                  onChange={(e) =>
+                    setRouteChangeModal((prev) => ({ ...prev, remark: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="Enter a note or instructions for the Medical Representative..."
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    fontSize: 12.5,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    resize: 'vertical',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    lineHeight: 1.5,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor =
+                      routeChangeModal.action === 'APPROVE' ? '#0F8B5A' : '#EF4444';
+                    e.currentTarget.style.boxShadow =
+                      routeChangeModal.action === 'APPROVE'
+                        ? '0 0 0 3px rgba(15, 139, 90, 0.15)'
+                        : '0 0 0 3px rgba(239, 68, 68, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#CBD5E1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+
+                {/* Quick Suggestion Chips */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {(routeChangeModal.action === 'APPROVE'
+                    ? [
+                        'Approved by Operations',
+                        'Key doctor detailing confirmed',
+                        'Authorized for today only',
+                      ]
+                    : [
+                        'Route switch declined',
+                        'Please continue with standard approved route',
+                        'Reschedule for next week',
+                      ]
+                  ).map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setRouteChangeModal((prev) => ({ ...prev, remark: chip }))}
+                      style={{
+                        background: '#F1F5F9',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        color: '#475569',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#E2E8F0')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#F1F5F9')}
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #F1F5F9',
+                background: '#FAFAFA',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 10,
+              }}
+            >
+              <button
+                type="button"
+                className="btn-enterprise secondary"
+                onClick={() => setRouteChangeModal((prev) => ({ ...prev, isOpen: false }))}
+                style={{ padding: '8px 18px', fontSize: 13, borderRadius: 8 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-enterprise"
+                onClick={handleConfirmRouteChangeModal}
+                style={{
+                  padding: '8px 22px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background:
+                    routeChangeModal.action === 'APPROVE'
+                      ? 'linear-gradient(135deg, #10B981 0%, #0F8B5A 100%)'
+                      : 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                  borderColor: routeChangeModal.action === 'APPROVE' ? '#0F8B5A' : '#DC2626',
+                  color: '#FFFFFF',
+                  boxShadow:
+                    routeChangeModal.action === 'APPROVE'
+                      ? '0 4px 12px rgba(15, 139, 90, 0.3)'
+                      : '0 4px 12px rgba(220, 38, 38, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                {routeChangeModal.action === 'APPROVE' ? <Check size={16} /> : <X size={16} />}
+                {routeChangeModal.action === 'APPROVE'
+                  ? 'Confirm Approval & Apply'
+                  : 'Confirm Rejection'}
               </button>
             </div>
           </div>
