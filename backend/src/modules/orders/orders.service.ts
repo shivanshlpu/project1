@@ -105,7 +105,16 @@ export class OrdersService {
         : this.db.stockers.find((s) => this.normalizeHq(s.hq_id) === this.normalizeHq(effectiveHqId)) ||
           this.db.stockers[0];
 
-      const isDelivered = t.delivery_status === 'DELIVERED' || t.status === 'COMPLETED';
+      const existingOrder = existingIdx >= 0 ? this.db.orders[existingIdx] : null;
+
+      // Delivery status must strictly honor the order itself.
+      // Do NOT assume an order is delivered just because task.status === 'COMPLETED' (visit done != order delivered).
+      // If the order already exists, preserve its delivery_status!
+      const currentDeliveryStatus = existingOrder
+        ? (existingOrder.delivery_status || 'PENDING')
+        : (t.delivery_status === 'DELIVERED' ? 'DELIVERED' : 'PENDING');
+
+      const isDelivered = currentDeliveryStatus === 'DELIVERED';
 
       const orderObj: Order = {
         id: orderId,
@@ -122,20 +131,26 @@ export class OrdersService {
         items: validTaskItems,
         total_units: totalUnits,
         total_amount: Math.round(totalAmount * 100) / 100,
-        delivery_status: isDelivered ? 'DELIVERED' : (t.delivery_status || 'PENDING'),
-        delivered_at: t.completed_at || t.started_at,
-        delivered_by_user_id: t.assigned_mr_id,
+        delivery_status: currentDeliveryStatus,
+        delivered_at: isDelivered ? (existingOrder?.delivered_at || t.completed_at || t.started_at) : undefined,
+        delivered_by_user_id: isDelivered ? (existingOrder?.delivered_by_user_id || t.assigned_mr_id) : undefined,
         hq_accepted: isDelivered,
-        inventory_deducted: !!t.inventory_deducted,
+        inventory_deducted: isDelivered ? (existingOrder ? !!existingOrder.inventory_deducted : false) : false,
+        inventory_deducted_at: isDelivered ? existingOrder?.inventory_deducted_at : undefined,
         has_stock_warning: hasOut || hasLow,
         stock_warning_type: hasOut ? 'OUT_OF_STOCK' : hasLow ? 'LOW_STOCK' : undefined,
         stock_warning_summary:
           hasOut && outNames.length > 0
             ? `${outNames.join(', ')} out of stock at ${hqName}`
             : undefined,
-        created_at: t.created_at || new Date().toISOString(),
-        updated_at: t.completed_at || t.created_at || new Date().toISOString(),
+        created_at: existingOrder?.created_at || t.created_at || new Date().toISOString(),
+        updated_at: existingOrder?.updated_at || t.completed_at || t.created_at || new Date().toISOString(),
       };
+
+      if (t.delivery_status !== currentDeliveryStatus) {
+        t.delivery_status = currentDeliveryStatus;
+        t.inventory_deducted = orderObj.inventory_deducted;
+      }
 
       if (existingIdx >= 0) {
         this.db.orders[existingIdx] = { ...this.db.orders[existingIdx], ...orderObj };
@@ -759,6 +774,7 @@ export class OrdersService {
       if (task) {
         task.delivery_status = order.delivery_status;
         task.inventory_deducted = order.inventory_deducted;
+        await this.db.persistTask(task);
       }
     }
 

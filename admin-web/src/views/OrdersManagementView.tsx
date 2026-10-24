@@ -157,9 +157,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   
   const totalCount = orders.length;
   const pendingDeliveryCount = orders.filter((o) => o.delivery_status === 'PENDING').length;
-  const deliveredAndDeductedCount = orders.filter(
-    (o) => o.delivery_status === 'DELIVERED' || o.inventory_deducted || o.hq_accepted,
-  ).length;
+  const deliveredAndDeductedCount = orders.filter((o) => o.delivery_status === 'DELIVERED').length;
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   
@@ -855,7 +853,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
 
                       {/* Inventory / Stock Impact */}
                       <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                        {isDelivered || ord.inventory_deducted ? (
+                        {isDelivered ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span
                               style={{
@@ -1117,15 +1115,15 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                         justifyContent: 'center',
                         gap: '4px',
                         padding: '6px 10px',
-                        backgroundColor: (isDelivered || ord.inventory_deducted) ? '#DCFCE7' : '#F1F5F9',
-                        border: (isDelivered || ord.inventory_deducted) ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
+                        backgroundColor: isDelivered ? '#DCFCE7' : '#F1F5F9',
+                        border: isDelivered ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontWeight: '700',
-                        color: (isDelivered || ord.inventory_deducted) ? '#166534' : '#64748B',
+                        color: isDelivered ? '#166534' : '#64748B',
                       }}
                     >
-                      {(isDelivered || ord.inventory_deducted) ? (
+                      {isDelivered ? (
                         <>
                           <CheckCircle2 size={13} color="#15803D" />
                           <span>Stock Deducted ✓</span>
