@@ -46,7 +46,6 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
 
   
   const [selectedOrderForItems, setSelectedOrderForItems] = useState<OrderItemRecord | null>(null);
-  const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<OrderItemRecord | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderItemRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
@@ -158,10 +157,9 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
   
   const totalCount = orders.length;
   const pendingDeliveryCount = orders.filter((o) => o.delivery_status === 'PENDING').length;
-  const deliveredAwaitingAcceptance = orders.filter(
-    (o) => o.delivery_status === 'DELIVERED' && !o.hq_accepted
+  const deliveredAndDeductedCount = orders.filter(
+    (o) => o.delivery_status === 'DELIVERED' || o.inventory_deducted || o.hq_accepted,
   ).length;
-  const acceptedAndCountedCount = orders.filter((o) => o.hq_accepted).length;
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   
@@ -187,7 +185,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         showCenteredNotice({
           type: 'success',
           title: 'Delivery Status Updated',
-          message: `Order #${order.order_number} marked as ${nextStatus}.`,
+          message: `Order #${order.order_number} marked as ${nextStatus}. ${nextStatus === 'DELIVERED' ? 'Stock automatically decreased from inventory.' : 'Stock restored.'}`,
         });
       } else {
         const err = await res.json().catch(() => ({}));
@@ -202,48 +200,6 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         type: 'error',
         title: 'Network Error',
         message: err.message || 'Error updating delivery status.',
-      });
-    } finally {
-      setIsProcessingAction(null);
-    }
-  };
-
-  
-  const handleExecuteHqAcceptance = async (order: OrderItemRecord) => {
-    setIsProcessingAction(order.id);
-    try {
-      const res = await resilientFetch(`/orders/${order.id}/accept`, {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setOrders((prev) => prev.map((o) => (o.id === order.id ? updated : o)));
-        if (selectedOrderForItems?.id === order.id) {
-          setSelectedOrderForItems(updated);
-        }
-        setConfirmAcceptOrder(null);
-        showCenteredNotice({
-          type: 'success',
-          title: 'Order Accepted & Stock Counted! ✓',
-          message: `Order #${order.order_number} has been officially accepted for ${order.hq_name}. Inventory counting has started and stock was deducted.`,
-        });
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showCenteredNotice({
-          type: 'error',
-          title: 'Acceptance Rejected',
-          message:
-            err.message ||
-            'Only the HQ for which the order was placed can accept it, and delivery must be complete.',
-        });
-      }
-    } catch (err: any) {
-      showCenteredNotice({
-        type: 'error',
-        title: 'Network Error',
-        message: err.message || 'Error processing HQ acceptance.',
       });
     } finally {
       setIsProcessingAction(null);
@@ -425,7 +381,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                 Orders &amp; Delivery Supervision
               </h1>
               <p className="orders-header-sub">
-                Manage field orders, employee delivery tracking, HQ-scoped visibility, and stock count acceptance.
+                Real-time field orders, employee delivery tracking, and automated inventory supervision.
               </p>
             </div>
           </div>
@@ -508,7 +464,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
           </div>
         </div>
 
-        {/* Delivered - Awaiting HQ Acceptance */}
+        {/* Delivered & Stock Deducted */}
         <div
           style={{
             background: '#F0FDF4',
@@ -520,39 +476,15 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#15803D', textTransform: 'uppercase' }}>
-              Awaiting HQ Acceptance
+              Delivered &amp; Deducted
             </span>
-            <Truck size={16} color="#16A34A" />
+            <CheckCircle2 size={16} color="#16A34A" />
           </div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#166534', marginTop: '6px' }}>
-            {deliveredAwaitingAcceptance}
+            {deliveredAndDeductedCount}
           </div>
           <div style={{ fontSize: '11px', color: '#15803D', marginTop: '2px' }}>
-            Delivered • Ready for stock count
-          </div>
-        </div>
-
-        {/* Accepted & Counted */}
-        <div
-          style={{
-            background: '#EFF6FF',
-            border: '1px solid #BFDBFE',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#1D4ED8', textTransform: 'uppercase' }}>
-              Accepted & Counted
-            </span>
-            <CheckCircle2 size={16} color="#2563EB" />
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1E40AF', marginTop: '6px' }}>
-            {acceptedAndCountedCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#1D4ED8', marginTop: '2px' }}>
-            Inventory successfully deducted
+            Stock automatically decreased
           </div>
         </div>
 
@@ -662,43 +594,18 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             }}
           >
             <option value="ALL">Delivery: All Statuses</option>
+            <option value="DELIVERED">🚚 Delivered (Stock Deducted)</option>
             <option value="PENDING">⏳ Delivery Pending</option>
-            <option value="DELIVERED">🚚 Delivered</option>
-          </select>
-        </div>
-
-        {/* Acceptance Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Boxes size={15} color="#64748B" />
-          <select
-            value={filterAcceptance}
-            onChange={(e) => setFilterAcceptance(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              fontSize: '13px',
-              borderRadius: '8px',
-              border: '1px solid #CBD5E1',
-              backgroundColor: '#FFFFFF',
-              color: '#334155',
-              fontWeight: '500',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <option value="ALL">Stock Acceptance: All</option>
-            <option value="PENDING">⏳ Awaiting HQ Acceptance</option>
-            <option value="ACCEPTED">✅ Accepted & Counted</option>
           </select>
         </div>
 
         {/* Reset */}
-        {(searchQuery || filterHq !== 'ALL' || filterDeliveryStatus !== 'ALL' || filterAcceptance !== 'ALL') && (
+        {(searchQuery || filterHq !== 'ALL' || filterDeliveryStatus !== 'ALL') && (
           <button
             onClick={() => {
               setSearchQuery('');
               setFilterHq('ALL');
               setFilterDeliveryStatus('ALL');
-              setFilterAcceptance('ALL');
             }}
             style={{
               padding: '7px 12px',
@@ -740,7 +647,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
             Showing {filteredOrders.length} of {orders.length} orders
           </div>
           <div style={{ fontSize: '12px', color: '#64748B' }}>
-            💡 Stock is deducted only after employee marks delivery AND target HQ accepts.
+            💡 Stock is deducted automatically as soon as an order is marked as delivered.
           </div>
         </div>
 
@@ -765,7 +672,7 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                   <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>Ordered Items</th>
                   <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>Amount</th>
                   <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>Delivery Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>HQ Acceptance & Counting</th>
+                  <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px' }}>Inventory Status</th>
                   <th style={{ padding: '12px 16px', fontWeight: '700', fontSize: '12px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -946,33 +853,33 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                         </div>
                       </td>
 
-                      {/* HQ Acceptance & Stock Counting */}
+                      {/* Inventory / Stock Impact */}
                       <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                        {isAccepted ? (
+                        {isDelivered || ord.inventory_deducted ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '5px',
-                                padding: '3px 8px',
+                                padding: '4px 9px',
                                 borderRadius: '12px',
                                 fontSize: '11px',
                                 fontWeight: '700',
                                 width: 'fit-content',
-                                backgroundColor: '#EFF6FF',
-                                color: '#1E40AF',
-                                border: '1px solid #BFDBFE',
+                                backgroundColor: '#DCFCE7',
+                                color: '#166534',
+                                border: '1px solid #BBF7D0',
                               }}
                             >
-                              <CheckCircle2 size={12} />
-                              <span>Accepted & Counted</span>
+                              <CheckCircle2 size={12} color="#15803D" />
+                              <span>Stock Deducted ✓</span>
                             </span>
-                            <span style={{ fontSize: '10.5px', color: '#1D4ED8' }}>
-                              Deducted at {formatDateTimeDDMMYYYY(ord.accepted_at || ord.updated_at)}
+                            <span style={{ fontSize: '10.5px', color: '#15803D' }}>
+                              Auto-deducted from {ord.hq_name}
                             </span>
                           </div>
-                        ) : !isDelivered ? (
+                        ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span
                               style={{
@@ -989,37 +896,11 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                                 border: '1px solid #E2E8F0',
                               }}
                             >
-                              <span>Awaiting Delivery</span>
+                              <Clock size={11} color="#64748B" />
+                              <span>Pending Delivery</span>
                             </span>
                             <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
-                              Cannot count before delivery
-                            </span>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <button
-                              onClick={() => setConfirmAcceptOrder(ord)}
-                              disabled={isProcessing}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '5px 10px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                backgroundColor: '#0F8B5A',
-                                color: '#FFFFFF',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 4px rgba(15, 139, 90, 0.25)',
-                              }}
-                            >
-                              <Check size={13} />
-                              <span>Accept & Count Stock</span>
-                            </button>
-                            <span style={{ fontSize: '10.5px', color: '#0F8B5A', fontWeight: '500' }}>
-                              Authorized for {ord.hq_name}
+                              Deducts upon delivery
                             </span>
                           </div>
                         )}
@@ -1227,9 +1108,8 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                     {isProcessing ? 'Updating...' : isDelivered ? '↩ Mark Pending' : '✓ Mark Delivered'}
                   </button>
 
-                  {/* HQ Acceptance Action */}
-                  {isAccepted ? (
-                    <div
+                  {/* Stock Impact Badge */}
+                  <div
                       style={{
                         flex: '1 1 140px',
                         display: 'flex',
@@ -1237,41 +1117,26 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                         justifyContent: 'center',
                         gap: '4px',
                         padding: '6px 10px',
-                        backgroundColor: '#EFF6FF',
-                        border: '1px solid #BFDBFE',
+                        backgroundColor: (isDelivered || ord.inventory_deducted) ? '#DCFCE7' : '#F1F5F9',
+                        border: (isDelivered || ord.inventory_deducted) ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontWeight: '700',
-                        color: '#1D4ED8',
+                        color: (isDelivered || ord.inventory_deducted) ? '#166534' : '#64748B',
                       }}
                     >
-                      <CheckCircle2 size={13} color="#2563EB" />
-                      <span>Stock Deducted ✓</span>
+                      {(isDelivered || ord.inventory_deducted) ? (
+                        <>
+                          <CheckCircle2 size={13} color="#15803D" />
+                          <span>Stock Deducted ✓</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={13} color="#64748B" />
+                          <span>Deducts on Delivery</span>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmAcceptOrder(ord)}
-                      disabled={isProcessing || !isDelivered}
-                      style={{
-                        flex: '1 1 140px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        border: !isDelivered ? '1px dashed #CBD5E1' : '1px solid #16A34A',
-                        backgroundColor: !isDelivered ? '#F8FAFC' : '#DCFCE7',
-                        color: !isDelivered ? '#94A3B8' : '#166534',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
-                        cursor: !isDelivered ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <Check size={13} />
-                      <span>{!isDelivered ? 'Awaiting Delivery' : `Accept for ${ord.hq_name}`}</span>
-                    </button>
-                  )}
 
                   {/* Details & Delete Buttons */}
                   <button
@@ -1449,31 +1314,12 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
                 Workflow Status
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', marginTop: '2px' }}>
-                Delivery: {selectedOrderForItems.delivery_status} • HQ Acceptance:{' '}
-                {selectedOrderForItems.hq_accepted ? 'ACCEPTED & COUNTED' : 'PENDING'}
+                Delivery: {selectedOrderForItems.delivery_status} • Stock Impact:{' '}
+                {selectedOrderForItems.delivery_status === 'DELIVERED' || selectedOrderForItems.inventory_deducted
+                  ? 'AUTOMATICALLY DEDUCTED'
+                  : 'DEDUCTS UPON DELIVERY'}
               </div>
             </div>
-
-            {/* Action within modal if delivered & not accepted */}
-            {selectedOrderForItems.delivery_status === 'DELIVERED' && !selectedOrderForItems.hq_accepted && (
-              <button
-                onClick={() => {
-                  setConfirmAcceptOrder(selectedOrderForItems);
-                }}
-                style={{
-                  backgroundColor: '#0F8B5A',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '7px 14px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                }}
-              >
-                Accept & Count Stock
-              </button>
-            )}
           </div>
 
           {/* Stock Shortage Alert Banner if items are low or out of stock at HQ */}
@@ -1844,114 +1690,6 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
           </div>
         </div>
       )}
-
-  {/* Confirmation Dialog for HQ Acceptance */ }
-  {
-    confirmAcceptOrder && (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: '20px',
-        }}
-        onClick={() => setConfirmAcceptOrder(null)}
-      >
-        <div
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '14px',
-            maxWidth: '480px',
-            width: '100%',
-            padding: '24px',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: '#DCFCE7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#16A34A',
-              }}
-            >
-              <Check size={20} />
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-              Accept Order & Count Stock?
-            </h3>
-          </div>
-
-          <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: '1.5', margin: '0 0 16px' }}>
-            You are about to officially accept Order <strong>#{confirmAcceptOrder.order_number}</strong> for{' '}
-            <strong>{confirmAcceptOrder.hq_name}</strong>.
-          </p>
-
-          <div
-            style={{
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #BBF7D0',
-              borderRadius: '8px',
-              padding: '12px 14px',
-              marginBottom: '20px',
-              fontSize: '12.5px',
-              color: '#166534',
-            }}
-          >
-            <div style={{ fontWeight: '700', marginBottom: '4px' }}>Counting will now start:</div>
-            <div>• {confirmAcceptOrder.total_units} product units will be deducted from {confirmAcceptOrder.hq_name} inventory.</div>
-            <div>• This order is already marked as DELIVERED by {confirmAcceptOrder.mr_name}.</div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button
-              onClick={() => setConfirmAcceptOrder(null)}
-              disabled={isProcessingAction === confirmAcceptOrder.id}
-              style={{
-                padding: '9px 16px',
-                borderRadius: '8px',
-                border: '1px solid #CBD5E1',
-                backgroundColor: '#FFFFFF',
-                color: '#475569',
-                fontWeight: '600',
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => handleExecuteHqAcceptance(confirmAcceptOrder)}
-              disabled={isProcessingAction === confirmAcceptOrder.id}
-              style={{
-                padding: '9px 18px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: '#0F8B5A',
-                color: '#FFFFFF',
-                fontWeight: '700',
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(15, 139, 90, 0.3)',
-              }}
-            >
-              {isProcessingAction === confirmAcceptOrder.id ? 'Accepting & Deducting...' : 'Yes, Accept & Deduct Stock'}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-    </div >
+    </div>
   );
 };

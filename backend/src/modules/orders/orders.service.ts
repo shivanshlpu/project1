@@ -105,6 +105,8 @@ export class OrdersService {
         : this.db.stockers.find((s) => this.normalizeHq(s.hq_id) === this.normalizeHq(effectiveHqId)) ||
           this.db.stockers[0];
 
+      const isDelivered = t.delivery_status === 'DELIVERED' || t.status === 'COMPLETED';
+
       const orderObj: Order = {
         id: orderId,
         order_number: orderNumber,
@@ -120,10 +122,10 @@ export class OrdersService {
         items: validTaskItems,
         total_units: totalUnits,
         total_amount: Math.round(totalAmount * 100) / 100,
-        delivery_status: t.delivery_status || (t.status === 'COMPLETED' ? 'DELIVERED' : 'PENDING'),
+        delivery_status: isDelivered ? 'DELIVERED' : (t.delivery_status || 'PENDING'),
         delivered_at: t.completed_at || t.started_at,
         delivered_by_user_id: t.assigned_mr_id,
-        hq_accepted: !!t.hq_accepted,
+        hq_accepted: isDelivered,
         inventory_deducted: !!t.inventory_deducted,
         has_stock_warning: hasOut || hasLow,
         stock_warning_type: hasOut ? 'OUT_OF_STOCK' : hasLow ? 'LOW_STOCK' : undefined,
@@ -144,6 +146,49 @@ export class OrdersService {
     this.db.refreshPendingOrdersStock();
   }
 
+  /**
+   * Automatically deducts stock from inventory as soon as an order is marked as DELIVERED.
+   * Eliminates the need for manual admin HQ acceptance / counting.
+   */
+  public async processPendingDeliveredOrderDeductions(): Promise<void> {
+    for (const order of this.db.orders) {
+      if (order.delivery_status === 'DELIVERED') {
+        order.hq_accepted = true;
+        if (!order.accepted_at) {
+          order.accepted_at = order.delivered_at || new Date().toISOString();
+        }
+
+        if (!order.inventory_deducted && order.items && order.items.length > 0) {
+          try {
+            await this.inventoryService.deductStockForOrder(
+              order.hq_id,
+              order.stocker_id,
+              order.items,
+              order.id,
+              order.task_id || order.id,
+              order.delivered_by_user_id || order.mr_id || 'system',
+            );
+            order.inventory_deducted = true;
+            order.inventory_deducted_at = order.delivered_at || new Date().toISOString();
+            order.accepted_at = order.delivered_at || new Date().toISOString();
+
+            if (order.task_id) {
+              const task = this.db.tasks.find((t) => t.id === order.task_id);
+              if (task) {
+                task.delivery_status = 'DELIVERED';
+                task.inventory_deducted = true;
+                task.hq_accepted = true;
+              }
+            }
+            await this.db.persistOrder(order);
+          } catch (err: any) {
+            console.warn(`[OrdersService] Auto stock deduction error on order ${order.id}:`, err?.message);
+          }
+        }
+      }
+    }
+  }
+
   async getOrders(
     user: any,
     query?: {
@@ -155,6 +200,7 @@ export class OrdersService {
     },
   ): Promise<Order[]> {
     this.ensureOrdersFromTasks();
+    await this.processPendingDeliveredOrderDeductions();
     this.db.refreshPendingOrdersStock();
 
     let list = this.db.orders.filter(
@@ -667,6 +713,8 @@ export class OrdersService {
     if (dto.delivery_status === 'DELIVERED') {
       order.delivered_at = new Date().toISOString();
       order.delivered_by_user_id = user.id;
+      order.hq_accepted = true;
+      order.accepted_at = order.delivered_at;
 
       // Deduct medicine from inventory upon successful delivery
       if (!order.inventory_deducted && order.items && order.items.length > 0) {
