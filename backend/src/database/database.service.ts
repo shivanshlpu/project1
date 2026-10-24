@@ -51,6 +51,7 @@ import {
 } from './database.types';
 import { SupabaseService } from './supabase.service';
 import { computeAttendanceDeviations } from '../modules/attendance/attendance.utils';
+import { decodeBatchFromAddress, encodeBatchInAddress } from './location-batch.utils';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
@@ -632,7 +633,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.routeBatches) && data.routeBatches.length > 0) {
           const batchMap = new Map(this.routeBatches.map((b) => [b.id, b]));
           for (const b of data.routeBatches) {
-            batchMap.set(b.id, b);
+            const existing = batchMap.get(b.id);
+            batchMap.set(b.id, {
+              ...existing,
+              ...b,
+              location_ids: b.location_ids || existing?.location_ids || [],
+            });
           }
           this.routeBatches = Array.from(batchMap.values());
         }
@@ -835,8 +841,51 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.fcmTokens)) {
           this.fcmTokens = new Map(data.fcmTokens);
         }
+
+        // Reconcile saved locations, doctors, and route batches bidirectional links
+        for (const loc of this.savedLocations) {
+          if (loc.batch_id) {
+            const b = this.routeBatches.find((rb) => rb.id === loc.batch_id || rb.batch_code === loc.batch_id);
+            if (b) {
+              if (!b.location_ids) b.location_ids = [];
+              if (!b.location_ids.includes(loc.id)) b.location_ids.push(loc.id);
+              loc.batch_code = loc.batch_code || b.batch_code;
+              loc.batch_name = loc.batch_name || b.name;
+            }
+          }
+        }
+        for (const doc of this.doctors) {
+          if (doc.batch_id) {
+            const b = this.routeBatches.find((rb) => rb.id === doc.batch_id || rb.batch_code === doc.batch_id);
+            if (b) {
+              if (!b.location_ids) b.location_ids = [];
+              if (!b.location_ids.includes(doc.id)) b.location_ids.push(doc.id);
+              doc.batch_code = doc.batch_code || b.batch_code;
+              doc.batch_name = doc.batch_name || b.name;
+            }
+          }
+        }
+        for (const b of this.routeBatches) {
+          if (Array.isArray(b.location_ids)) {
+            for (const lid of b.location_ids) {
+              const loc = this.savedLocations.find((l) => l.id === lid);
+              if (loc && !loc.batch_id) {
+                loc.batch_id = b.id;
+                loc.batch_code = b.batch_code;
+                loc.batch_name = b.name;
+              }
+              const doc = this.doctors.find((d) => d.id === lid);
+              if (doc && !doc.batch_id) {
+                doc.batch_id = b.id;
+                doc.batch_code = b.batch_code;
+                doc.batch_name = b.name;
+              }
+            }
+          }
+        }
+
         console.log(
-          `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.monthlyStockagePermissions.length} stockage permissions, and ${this.deviceAuthorizations.length} device authorizations from persistent disk store.`,
+          `[DatabaseService] Successfully restored ${this.tasks.length} tasks, ${this.attendance.length} attendance records, ${this.savedLocations.length} locations, and ${this.routeBatches.length} route batches from persistent disk store.`,
         );
         this.refreshPendingOrdersStock();
         return true;
@@ -1038,10 +1087,30 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   }
                 }
 
+                const { cleanAddress, batchId: parsedBatchId, batchCode: parsedBatchCode, batchName: parsedBatchName } = decodeBatchFromAddress(loc.address);
                 const existingDoc = this.doctors.find((d) => d.id === loc.id);
-                const batchId = loc.batch_id !== undefined ? loc.batch_id : existingDoc?.batch_id;
-                const batchCode = loc.batch_code !== undefined ? loc.batch_code : existingDoc?.batch_code;
-                const batchName = loc.batch_name !== undefined ? loc.batch_name : existingDoc?.batch_name;
+                const existingLoc = this.savedLocations.find((l) => l.id === loc.id);
+                const matchedBatch = this.routeBatches.find((b) => b.location_ids?.includes(loc.id));
+
+                const batchId = loc.batch_id || parsedBatchId || existingDoc?.batch_id || existingLoc?.batch_id || matchedBatch?.id;
+                let batchCode = loc.batch_code || parsedBatchCode || existingDoc?.batch_code || existingLoc?.batch_code || matchedBatch?.batch_code;
+                let batchName = loc.batch_name || parsedBatchName || existingDoc?.batch_name || existingLoc?.batch_name || matchedBatch?.name;
+
+                if (batchId && (!batchCode || !batchName)) {
+                  const foundB = this.routeBatches.find((b) => b.id === batchId || b.batch_code === batchId);
+                  if (foundB) {
+                    batchCode = foundB.batch_code;
+                    batchName = foundB.name;
+                  }
+                }
+
+                if (batchId) {
+                  const foundB = this.routeBatches.find((b) => b.id === batchId || b.batch_code === batchId);
+                  if (foundB) {
+                    if (!foundB.location_ids) foundB.location_ids = [];
+                    if (!foundB.location_ids.includes(loc.id)) foundB.location_ids.push(loc.id);
+                  }
+                }
 
                 let createdBy = loc.created_by;
                 let createdByRole: 'ADMIN' | 'MR' = creator?.role === 'MR' ? 'MR' : 'ADMIN';
@@ -1064,7 +1133,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   whatsapp: '',
                   clinic: loc.name,
                   category: loc.category || 'CLINIC',
-                  address: loc.address || '',
+                  address: cleanAddress || loc.address || '',
                   latitude: Number(loc.latitude),
                   longitude: Number(loc.longitude),
                   area_id: 'area-shd-07',
@@ -1083,6 +1152,45 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   this.doctors[idx] = { ...this.doctors[idx], ...doc };
                 } else {
                   this.doctors.push(doc);
+                }
+
+                const savedL: SavedLocation = {
+                  id: loc.id,
+                  name: loc.name,
+                  clinic: loc.name,
+                  doctor_name: loc.contact_person || '',
+                  qualification: doc.qualification,
+                  specialization: doc.specialization,
+                  class: 'A',
+                  potential_score: 85,
+                  phone: loc.contact_phone || 'N/A',
+                  address: cleanAddress || loc.address || '',
+                  latitude: Number(loc.latitude),
+                  longitude: Number(loc.longitude),
+                  category: loc.category || 'CLINIC',
+                  created_by: createdBy || 'usr-admin-01',
+                  created_by_role: createdByRole,
+                  created_by_name: createdByName,
+                  area_name: 'Territory',
+                  visit_count: 0,
+                  is_new: false,
+                  batch_id: batchId,
+                  batch_code: batchCode,
+                  batch_name: batchName,
+                  assigned_mr_id: assignedMrId,
+                  assigned_mr_name: assignedMrName,
+                  created_at: loc.created_at || new Date().toISOString(),
+                };
+                const sIdx = this.savedLocations.findIndex((s) => s.id === savedL.id);
+                if (sIdx >= 0) {
+                  this.savedLocations[sIdx] = { ...this.savedLocations[sIdx], ...savedL };
+                } else {
+                  this.savedLocations.push(savedL);
+                }
+
+                if (!parsedBatchId && batchId) {
+                  const encoded = encodeBatchInAddress(cleanAddress || loc.address, batchId, batchCode, batchName);
+                  client.from('saved_locations').update({ address: encoded }).eq('id', loc.id).then(() => {}, () => {});
                 }
               }
             }
@@ -1556,11 +1664,34 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 };
                 const idx = this.routeBatches.findIndex((b) => b.id === batch.id || b.batch_code === batch.batch_code);
                 if (idx >= 0) {
-                  this.routeBatches[idx] = { ...this.routeBatches[idx], ...batch };
+                  const existingLocIds = this.routeBatches[idx].location_ids || [];
+                  this.routeBatches[idx] = { ...this.routeBatches[idx], ...batch, location_ids: existingLocIds };
                 } else {
+                  batch.location_ids = [];
                   this.routeBatches.push(batch);
                 }
               }
+
+              // Reconcile route batch location_ids with loaded savedLocations and doctors
+              for (const loc of this.savedLocations) {
+                if (loc.batch_id) {
+                  const b = this.routeBatches.find((rb) => rb.id === loc.batch_id || rb.batch_code === loc.batch_id);
+                  if (b) {
+                    if (!b.location_ids) b.location_ids = [];
+                    if (!b.location_ids.includes(loc.id)) b.location_ids.push(loc.id);
+                  }
+                }
+              }
+              for (const doc of this.doctors) {
+                if (doc.batch_id) {
+                  const b = this.routeBatches.find((rb) => rb.id === doc.batch_id || rb.batch_code === doc.batch_id);
+                  if (b) {
+                    if (!b.location_ids) b.location_ids = [];
+                    if (!b.location_ids.includes(doc.id)) b.location_ids.push(doc.id);
+                  }
+                }
+              }
+
               if (this.routeBatches.length > 0 && this.routeBatches[0].standard_reimbursement_rate !== undefined) {
                 this.attendanceSettings.reimbursement_rate_per_km = this.routeBatches[0].standard_reimbursement_rate;
               }

@@ -23,8 +23,8 @@ export class CreateLocationDto {
   specialization?: string;
 
   @IsString()
-  @IsNotEmpty()
-  address: string;
+  @IsOptional()
+  address?: string;
 
   @IsNumber()
   latitude: number;

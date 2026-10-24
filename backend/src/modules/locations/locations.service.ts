@@ -26,8 +26,13 @@ export interface SavedLocation {
   batch_id?: string;
   batch_code?: string;
   batch_name?: string;
+  assigned_mr_id?: string;
+  assigned_mr_name?: string;
   created_at: string;
 }
+ 
+export { encodeBatchInAddress, decodeBatchFromAddress } from '../../database/location-batch.utils';
+import { encodeBatchInAddress, decodeBatchFromAddress } from '../../database/location-batch.utils';
 
 @Injectable()
 export class LocationsService implements OnModuleInit {
@@ -44,6 +49,70 @@ export class LocationsService implements OnModuleInit {
     this.db.savedLocations = this.locations;
   }
 
+  public mapSupabaseRecordToSavedLocation(d: any): SavedLocation {
+    const user = this.db.users.find((u) => u.id === d.created_by);
+    const isMr = user?.role === 'MR' || (d.created_by && String(d.created_by).includes('mr'));
+    const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
+    const creatorName = user ? `${user.name} (${user.id})` : (isMr ? `Field MR (${d.created_by})` : 'System Admin');
+
+    const { cleanAddress, batchId: parsedBatchId, batchCode: parsedBatchCode, batchName: parsedBatchName } = decodeBatchFromAddress(d.address);
+
+    const existingLoc = this.locations.find((l) => l.id === d.id) || (this.db.savedLocations || []).find((l) => l.id === d.id);
+    const matchDoc = (this.db.doctors || []).find((doc) => doc.id === d.id);
+    const matchBatch = (this.db.routeBatches || []).find((b) => b.location_ids?.includes(d.id));
+
+    const batchId = d.batch_id || parsedBatchId || existingLoc?.batch_id || matchBatch?.id || matchDoc?.batch_id;
+    let batchCode = d.batch_code || parsedBatchCode || existingLoc?.batch_code || matchBatch?.batch_code || matchDoc?.batch_code;
+    let batchName = d.batch_name || parsedBatchName || existingLoc?.batch_name || matchBatch?.name || matchDoc?.batch_name;
+
+    if (batchId && (!batchCode || !batchName)) {
+      const foundB = (this.db.routeBatches || []).find((b) => b.id === batchId || b.batch_code === batchId);
+      if (foundB) {
+        batchCode = foundB.batch_code;
+        batchName = foundB.name;
+      }
+    }
+
+    if (batchId) {
+      const foundB = (this.db.routeBatches || []).find((b) => b.id === batchId || b.batch_code === batchId);
+      if (foundB) {
+        if (!foundB.location_ids) foundB.location_ids = [];
+        if (!foundB.location_ids.includes(d.id)) foundB.location_ids.push(d.id);
+      }
+    }
+
+    const assignedMrId = matchDoc?.assigned_mr_id || (user?.role === 'MR' ? user.id : undefined);
+    const assignedMrName = matchDoc?.assigned_mr_name || (user?.role === 'MR' ? user.name : undefined);
+
+    return {
+      id: d.id,
+      name: d.name,
+      clinic: d.name,
+      doctor_name: d.contact_person || '',
+      qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
+      specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
+      class: 'A',
+      potential_score: 85,
+      phone: d.contact_phone || 'N/A',
+      address: cleanAddress || d.address || '',
+      latitude: Number(d.latitude),
+      longitude: Number(d.longitude),
+      category: d.category || 'CLINIC',
+      created_by: d.created_by || 'usr-admin-01',
+      created_by_role: creatorRole,
+      created_by_name: creatorName,
+      area_name: 'Territory',
+      visit_count: 0,
+      is_new: false,
+      batch_id: batchId,
+      batch_code: batchCode,
+      batch_name: batchName,
+      assigned_mr_id: assignedMrId,
+      assigned_mr_name: assignedMrName,
+      created_at: d.created_at || new Date().toISOString(),
+    };
+  }
+
   private async syncFromSupabase() {
     if (!this.db.supabase?.isConnected) return;
     const client = this.db.supabase.getClient();
@@ -51,47 +120,11 @@ export class LocationsService implements OnModuleInit {
     try {
       const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
       if (!error && Array.isArray(data) && data.length > 0) {
-        this.locations = data.map((d: any) => {
-          const user = this.db.users.find((u) => u.id === d.created_by);
-          const isMr = user?.role === 'MR' || (d.created_by && String(d.created_by).includes('mr'));
-          const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
-          const creatorName = user ? `${user.name} (${user.id})` : (isMr ? `Field MR (${d.created_by})` : 'System Admin');
-
-          const matchDoc = this.db.doctors.find((doc) => doc.id === d.id);
-          const batchId = d.batch_id || matchDoc?.batch_id;
-          const batchCode = d.batch_code || matchDoc?.batch_code;
-          const batchName = d.batch_name || matchDoc?.batch_name;
-          const assignedMrId = matchDoc?.assigned_mr_id || (user?.role === 'MR' ? user.id : undefined);
-          const assignedMrName = matchDoc?.assigned_mr_name || (user?.role === 'MR' ? user.name : undefined);
-
-          return {
-            id: d.id,
-            name: d.name,
-            clinic: d.name,
-            doctor_name: d.contact_person || '',
-            qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
-            specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
-            class: 'A',
-            potential_score: 85,
-            phone: d.contact_phone || 'N/A',
-            address: d.address,
-            latitude: Number(d.latitude),
-            longitude: Number(d.longitude),
-            category: d.category || 'CLINIC',
-            created_by: d.created_by || 'usr-admin-01',
-            created_by_role: creatorRole,
-            created_by_name: creatorName,
-            area_name: 'Territory',
-            visit_count: 0,
-            is_new: false,
-            batch_id: batchId,
-            batch_code: batchCode,
-            batch_name: batchName,
-            assigned_mr_id: assignedMrId,
-            assigned_mr_name: assignedMrName,
-            created_at: d.created_at || new Date().toISOString(),
-          };
-        });
+        const remoteLocations = data.map((d: any) => this.mapSupabaseRecordToSavedLocation(d));
+        const remoteIds = new Set(remoteLocations.map((l) => l.id));
+        const keptLocal = this.locations.filter((l) => !remoteIds.has(l.id));
+        this.locations = [...remoteLocations, ...keptLocal];
+        this.db.savedLocations = this.locations;
         console.log(`[LocationsService] Loaded ${this.locations.length} live saved locations from data store.`);
       }
     } catch (err: any) {
@@ -249,47 +282,11 @@ export class LocationsService implements OnModuleInit {
         try {
           const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
           if (!error && Array.isArray(data)) {
-            this.locations = data.map((d: any) => {
-              const creator = this.db.users.find((u) => u.id === d.created_by);
-              const isMr = creator?.role === 'MR' || (d.created_by && String(d.created_by).includes('mr'));
-              const creatorRole: 'ADMIN' | 'MR' = isMr ? 'MR' : (creator?.role === 'ADMIN' || creator?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'MR');
-              const creatorName = creator ? `${creator.name} (${creator.id})` : (isMr ? `Field MR (${d.created_by})` : 'System Admin');
-
-              const matchDoc = this.db.doctors.find((doc) => doc.id === d.id);
-              const batchId = d.batch_id || matchDoc?.batch_id;
-              const batchCode = d.batch_code || matchDoc?.batch_code;
-              const batchName = d.batch_name || matchDoc?.batch_name;
-              const assignedMrId = matchDoc?.assigned_mr_id || (creator?.role === 'MR' ? creator.id : undefined);
-              const assignedMrName = matchDoc?.assigned_mr_name || (creator?.role === 'MR' ? creator.name : undefined);
-
-              return {
-                id: d.id,
-                name: d.name,
-                clinic: d.name,
-                doctor_name: d.contact_person || '',
-                qualification: d.category === 'HOSPITAL' ? 'Hospital Facility' : d.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'Registered Practice',
-                specialization: d.category === 'PHARMACY' ? 'Pharmacy Depot' : 'General Practice',
-                class: 'A',
-                potential_score: 85,
-                phone: d.contact_phone || 'N/A',
-                address: d.address,
-                latitude: Number(d.latitude),
-                longitude: Number(d.longitude),
-                category: d.category || 'CLINIC',
-                created_by: d.created_by || 'usr-admin-01',
-                created_by_role: creatorRole,
-                created_by_name: creatorName,
-                area_name: 'Territory',
-                visit_count: 0,
-                is_new: false,
-                batch_id: batchId,
-                batch_code: batchCode,
-                batch_name: batchName,
-                assigned_mr_id: assignedMrId,
-                assigned_mr_name: assignedMrName,
-                created_at: d.created_at || new Date().toISOString(),
-              };
-            });
+            const remoteLocations = data.map((d: any) => this.mapSupabaseRecordToSavedLocation(d));
+            const remoteIds = new Set(remoteLocations.map((l) => l.id));
+            const keptLocal = this.locations.filter((l) => !remoteIds.has(l.id));
+            this.locations = [...remoteLocations, ...keptLocal];
+            this.db.savedLocations = this.locations;
           }
         } catch {}
       }
@@ -379,6 +376,10 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
+    const rawAddress = (dto.address && dto.address.trim())
+      ? dto.address.trim()
+      : `${displayName}, Field Territory`;
+
     const newLocation: SavedLocation = {
       id: `loc-${uuidv4().substring(0, 8)}`,
       name: displayName,
@@ -389,7 +390,7 @@ export class LocationsService implements OnModuleInit {
       class: 'A',
       potential_score: 85,
       phone: dto.phone || 'N/A',
-      address: dto.address,
+      address: rawAddress,
       latitude: dto.latitude,
       longitude: dto.longitude,
       category: dto.category || 'CLINIC',
@@ -406,6 +407,7 @@ export class LocationsService implements OnModuleInit {
     };
 
     this.locations.unshift(newLocation);
+    this.db.savedLocations = this.locations;
 
     // If assigned to a batch, append this location to the batch's location_ids and route_stops
     if (batchId) {
@@ -422,17 +424,19 @@ export class LocationsService implements OnModuleInit {
           targetBatch.route_stops.push(newLocation.clinic || newLocation.name);
         }
       }
+      this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => {});
     }
 
-    // Sync to Supabase saved_locations table
+    // Sync to Supabase saved_locations table with batch encoded in address
     if (this.db.supabase?.isConnected) {
       const client = this.db.supabase.getClient();
       if (client) {
         try {
+          const encodedAddress = encodeBatchInAddress(newLocation.address, newLocation.batch_id, newLocation.batch_code, newLocation.batch_name);
           await client.from('saved_locations').upsert({
             id: newLocation.id,
             name: newLocation.clinic || newLocation.name,
-            address: newLocation.address || '',
+            address: encodedAddress,
             latitude: newLocation.latitude,
             longitude: newLocation.longitude,
             geofence_radius_m: 50,
@@ -610,14 +614,15 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
-    // Sync to Supabase with only columns that exist on the table
+    // Sync to Supabase with only columns that exist on the table (with batch encoded into address)
     if (this.db.supabase?.isConnected) {
       const client = this.db.supabase.getClient();
       if (client) {
         try {
+          const encodedAddress = encodeBatchInAddress(loc.address, loc.batch_id, loc.batch_code, loc.batch_name);
           await client.from('saved_locations').update({
             name: loc.clinic || loc.name,
-            address: loc.address,
+            address: encodedAddress,
             latitude: loc.latitude,
             longitude: loc.longitude,
             category: loc.category,
@@ -650,6 +655,10 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
+    this.db.savedLocations = this.locations;
+    if (dto.batch_id !== undefined) {
+      this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => {});
+    }
     this.db.persistToDisk();
     return loc;
   }
@@ -664,6 +673,14 @@ export class LocationsService implements OnModuleInit {
     if (docIndex !== -1) {
       this.db.doctors.splice(docIndex, 1);
     }
+
+    this.db.routeBatches.forEach((b) => {
+      if (b.location_ids) {
+        b.location_ids = b.location_ids.filter((lid) => lid !== id);
+      }
+    });
+
+    this.db.savedLocations = this.locations;
 
     // Delete directly from Supabase saved_locations table
     if (this.db.supabase?.isConnected) {

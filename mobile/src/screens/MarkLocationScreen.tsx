@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LocationService } from '../services/locationService';
 import { ApiConfig } from '../services/apiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface MarkLocationScreenProps {
   currentUser?: {
@@ -99,6 +100,31 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
             setRouteBatches(bData);
           }
         }
+
+        // Flush any pending offline marked locations to server
+        const offlineKey = `@ahtri_offline_marked_locations_${mrId}`;
+        const rawOffline = await AsyncStorage.getItem(offlineKey);
+        if (rawOffline) {
+          const offlineList = JSON.parse(rawOffline);
+          if (Array.isArray(offlineList) && offlineList.length > 0) {
+            const remaining: any[] = [];
+            for (const item of offlineList) {
+              try {
+                const syncRes = await fetch(`${baseUrl}/locations`, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify(item),
+                });
+                if (!syncRes.ok) remaining.push(item);
+              } catch {
+                remaining.push(item);
+              }
+            }
+            if (remaining.length !== offlineList.length) {
+              await AsyncStorage.setItem(offlineKey, JSON.stringify(remaining));
+            }
+          }
+        }
       } catch {
         // Keep fallback
       }
@@ -138,13 +164,14 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
     const mrName = currentUser?.name ? `${currentUser.name} (Field MR)` : 'Field Representative';
     const mrId = currentUser?.id || 'usr-mr-01';
     const selectedBatch = routeBatches.find((b) => b.id === selectedBatchId);
+    const finalAddress = address.trim() || `${clinicName.trim()}, Field Territory`;
 
     const payload = {
       name: clinicName.trim(),
       doctor_name: doctorName.trim() || undefined,
       category,
       specialization: specialization.trim() || undefined,
-      address: address.trim(),
+      address: finalAddress,
       latitude: currentLat,
       longitude: currentLng,
       phone: phone.trim() || 'N/A',
@@ -153,6 +180,25 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
       batch_id: selectedBatch?.id || undefined,
       batch_code: selectedBatch?.batch_code || undefined,
       batch_name: selectedBatch?.name || undefined,
+    };
+
+    const persistOfflineFallback = async () => {
+      try {
+        const offlineKey = `@ahtri_offline_marked_locations_${mrId}`;
+        const raw = await AsyncStorage.getItem(offlineKey);
+        const list = raw ? JSON.parse(raw) : [];
+        list.push({ ...payload, offline_id: `offline-${Date.now()}` });
+        await AsyncStorage.setItem(offlineKey, JSON.stringify(list));
+      } catch {}
+    };
+
+    const resetFormFields = () => {
+      setClinicName('');
+      setDoctorName('');
+      setPhone('');
+      setAddress('');
+      setSelectedDoctorId('');
+      setSelectedBatchId('');
     };
 
     try {
@@ -169,7 +215,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
             latitude: currentLat,
             longitude: currentLng,
             clinic: clinicName.trim(),
-            address: address.trim(),
+            address: finalAddress,
             batch_id: selectedBatch?.id || undefined,
             batch_code: selectedBatch?.batch_code || undefined,
             batch_name: selectedBatch?.name || undefined,
@@ -209,16 +255,12 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
           [
             {
               text: 'OK',
-              onPress: () => {
-                setClinicName('');
-                setDoctorName('');
-                setPhone('');
-                setSelectedDoctorId('');
-              },
+              onPress: resetFormFields,
             },
           ],
         );
       } else {
+        await persistOfflineFallback();
         if (onLocationSaved) {
           onLocationSaved(payload);
         }
@@ -228,17 +270,13 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
           [
             {
               text: 'OK',
-              onPress: () => {
-                setClinicName('');
-                setDoctorName('');
-                setPhone('');
-                setSelectedDoctorId('');
-              },
+              onPress: resetFormFields,
             },
           ],
         );
       }
     } catch {
+      await persistOfflineFallback();
       if (onLocationSaved) {
         onLocationSaved(payload);
       }
@@ -248,11 +286,7 @@ export const MarkLocationScreen: React.FC<MarkLocationScreenProps> = ({
         [
           {
             text: 'OK',
-            onPress: () => {
-              setClinicName('');
-              setDoctorName('');
-              setPhone('');
-            },
+            onPress: resetFormFields,
           },
         ],
       );

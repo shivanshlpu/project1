@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import { CreateDoctorDto, UpdateDoctorDto, DoctorFilterDto } from './dto/doctors.dto';
 import { Doctor } from '../../database/database.types';
+import { encodeBatchInAddress } from '../locations/locations.service';
 
 @Injectable()
 export class DoctorsService {
@@ -190,9 +191,10 @@ export class DoctorsService {
       const client = this.db.supabase.getClient();
       if (client) {
         try {
+          const encodedAddress = encodeBatchInAddress(doctor.address, doctor.batch_id, doctor.batch_code, doctor.batch_name);
           await client.from('saved_locations').update({
             name: doctor.clinic || doctor.name,
-            address: doctor.address,
+            address: encodedAddress,
             latitude: doctor.latitude,
             longitude: doctor.longitude,
             contact_person: doctor.name,
@@ -203,6 +205,10 @@ export class DoctorsService {
           console.warn('[DoctorsService] Failed to update in Supabase:', sbErr?.message);
         }
       }
+    }
+
+    if (dto.batch_id !== undefined) {
+      this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => {});
     }
 
     this.db.persistToDisk();

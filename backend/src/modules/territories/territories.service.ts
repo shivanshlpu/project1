@@ -16,6 +16,7 @@ import {
   UpdateRouteBatchDto,
 } from './territories.dto';
 import { RouteBatch } from '../../database/database.types';
+import { encodeBatchInAddress } from '../locations/locations.service';
 
 @Injectable()
 export class TerritoriesService {
@@ -261,6 +262,19 @@ export class TerritoriesService {
       if (!batch.route_stops.includes(stopName)) {
         batch.route_stops.push(stopName);
       }
+
+      // Sync batch linkage into Supabase saved_locations address metadata
+      if (this.db.supabase?.isConnected) {
+        const client = this.db.supabase.getClient();
+        if (client) {
+          const locAddr = location?.address || doc?.address || '';
+          const encodedAddr = encodeBatchInAddress(locAddr, batch.id, batch.batch_code, batch.name);
+          client.from('saved_locations').update({
+            address: encodedAddr,
+            updated_at: new Date().toISOString(),
+          }).eq('id', locationId).then(() => {}, () => {});
+        }
+      }
     } else {
       if (location) {
         location.batch_id = undefined;
@@ -273,8 +287,22 @@ export class TerritoriesService {
         doc.batch_name = undefined;
       }
       batch.location_ids = batch.location_ids.filter((id) => id !== locationId);
+
+      // Remove batch linkage from Supabase saved_locations address metadata
+      if (this.db.supabase?.isConnected) {
+        const client = this.db.supabase.getClient();
+        if (client) {
+          const locAddr = location?.address || doc?.address || '';
+          const cleanAddr = encodeBatchInAddress(locAddr, undefined);
+          client.from('saved_locations').update({
+            address: cleanAddr,
+            updated_at: new Date().toISOString(),
+          }).eq('id', locationId).then(() => {}, () => {});
+        }
+      }
     }
 
+    this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => {});
     this.db.persistToDisk();
     return { success: true, batch_id: batch.id, location_id: locationId, action };
   }

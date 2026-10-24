@@ -239,6 +239,8 @@ export interface SavedLocation {
   batch_id?: string;
   batch_code?: string;
   batch_name?: string;
+  assigned_mr_id?: string;
+  assigned_mr_name?: string;
   geofence_radius_m?: number;
   created_at: string;
 }
