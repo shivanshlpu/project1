@@ -122,7 +122,18 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   constructor(public readonly supabase: SupabaseService) {}
 
   public getStorageFilePath(): string {
-    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+    if (process.env.DATA_DIR) {
+      return path.join(process.env.DATA_DIR, 'ffa_db_store.json');
+    }
+    const cwd = process.cwd();
+    const backendData = path.join(cwd, 'backend', 'data');
+    const directData = path.join(cwd, 'data');
+    const dataDir = fs.existsSync(path.join(backendData, 'ffa_db_store.json'))
+      ? backendData
+      : fs.existsSync(backendData)
+      ? backendData
+      : directData;
+
     if (!fs.existsSync(dataDir)) {
       try {
         fs.mkdirSync(dataDir, { recursive: true });
