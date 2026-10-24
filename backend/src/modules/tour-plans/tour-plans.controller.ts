@@ -134,6 +134,12 @@ export class TourPlansController {
     return this.tourPlansService.reviewRouteChangeRequest(id, dto, user);
   }
 
+  @Get('pending-count')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async getPendingCount() {
+    return this.tourPlansService.getPendingCount();
+  }
+
   @Get(':id')
   async getTourPlanById(@Param('id') id: string) {
     return this.tourPlansService.getTourPlanById(id);

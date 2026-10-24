@@ -244,16 +244,38 @@ export class TerritoriesService {
     if (!batch.location_ids) batch.location_ids = [];
 
     if (action === 'ASSIGN') {
+      const locAddr = location?.address || doc?.address || '';
+      const encodedAddr = encodeBatchInAddress(locAddr, batch.id, batch.batch_code, batch.name);
+
       if (location) {
         location.batch_id = batch.id;
         location.batch_code = batch.batch_code;
         location.batch_name = batch.name;
+        location.address = encodedAddr;
       }
       if (doc) {
         doc.batch_id = batch.id;
         doc.batch_code = batch.batch_code;
         doc.batch_name = batch.name;
+        doc.address = encodedAddr;
       }
+      (this.db.savedLocations || []).forEach((l) => {
+        if (l.id === locationId) {
+          l.batch_id = batch.id;
+          l.batch_code = batch.batch_code;
+          l.batch_name = batch.name;
+          l.address = encodedAddr;
+        }
+      });
+      (this.db.doctors || []).forEach((d) => {
+        if (d.id === locationId) {
+          d.batch_id = batch.id;
+          d.batch_code = batch.batch_code;
+          d.batch_name = batch.name;
+          d.address = encodedAddr;
+        }
+      });
+
       if (!batch.location_ids.includes(locationId)) {
         batch.location_ids.push(locationId);
       }
@@ -267,42 +289,83 @@ export class TerritoriesService {
       if (this.db.supabase?.isConnected) {
         const client = this.db.supabase.getClient();
         if (client) {
-          const locAddr = location?.address || doc?.address || '';
-          const encodedAddr = encodeBatchInAddress(locAddr, batch.id, batch.batch_code, batch.name);
-          client.from('saved_locations').update({
-            address: encodedAddr,
-            updated_at: new Date().toISOString(),
-          }).eq('id', locationId).then(() => {}, () => {});
+          try {
+            await client.from('saved_locations').update({
+              address: encodedAddr,
+              updated_at: new Date().toISOString(),
+            }).eq('id', locationId);
+          } catch (e: any) {
+            console.warn('[TerritoriesService] Supabase assign address update failed:', e?.message);
+          }
         }
       }
     } else {
+      const locAddr = location?.address || doc?.address || '';
+      const cleanAddr = encodeBatchInAddress(locAddr, undefined);
+      const stopName = location?.clinic || location?.name || doc?.clinic || doc?.name;
+
       if (location) {
         location.batch_id = undefined;
         location.batch_code = undefined;
         location.batch_name = undefined;
+        location.address = cleanAddr;
       }
       if (doc) {
         doc.batch_id = undefined;
         doc.batch_code = undefined;
         doc.batch_name = undefined;
+        doc.address = cleanAddr;
       }
-      batch.location_ids = batch.location_ids.filter((id) => id !== locationId);
 
-      // Remove batch linkage from Supabase saved_locations address metadata
+      // Clean all matching records in savedLocations and doctors
+      (this.db.savedLocations || []).forEach((l) => {
+        if (l.id === locationId) {
+          l.batch_id = undefined;
+          l.batch_code = undefined;
+          l.batch_name = undefined;
+          l.address = cleanAddr;
+        }
+      });
+      (this.db.doctors || []).forEach((d) => {
+        if (d.id === locationId) {
+          d.batch_id = undefined;
+          d.batch_code = undefined;
+          d.batch_name = undefined;
+          d.address = cleanAddr;
+        }
+      });
+
+      // Completely remove locationId and stop from ALL route batches
+      (this.db.routeBatches || []).forEach((b) => {
+        if (b.location_ids) {
+          b.location_ids = b.location_ids.filter((id) => id !== locationId);
+        }
+        if (b.route_stops && stopName) {
+          b.route_stops = b.route_stops.filter(
+            (s) => s.toLowerCase().trim() !== stopName.toLowerCase().trim()
+          );
+        }
+      });
+
+      // Remove batch linkage from Supabase saved_locations address metadata (authoritatively awaited)
       if (this.db.supabase?.isConnected) {
         const client = this.db.supabase.getClient();
         if (client) {
-          const locAddr = location?.address || doc?.address || '';
-          const cleanAddr = encodeBatchInAddress(locAddr, undefined);
-          client.from('saved_locations').update({
-            address: cleanAddr,
-            updated_at: new Date().toISOString(),
-          }).eq('id', locationId).then(() => {}, () => {});
+          try {
+            await client.from('saved_locations').update({
+              address: cleanAddr,
+              updated_at: new Date().toISOString(),
+            }).eq('id', locationId);
+          } catch (e: any) {
+            console.warn('[TerritoriesService] Supabase unlink address update failed:', e?.message);
+          }
         }
       }
     }
 
-    this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches).catch(() => {});
+    try {
+      await this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches);
+    } catch {}
     this.db.persistToDisk();
     return { success: true, batch_id: batch.id, location_id: locationId, action };
   }

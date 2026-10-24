@@ -29,6 +29,7 @@ interface SidebarNavProps {
   currentTab: ManagerTab;
   onSelectTab: (tab: ManagerTab) => void;
   pendingApprovalsCount: number;
+  pendingTpCount?: number;
   newLocationsCount?: number;
   lang: Language;
   onAssignNewCall?: () => void;
@@ -55,6 +56,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   currentTab,
   onSelectTab,
   pendingApprovalsCount,
+  pendingTpCount = 0,
   newLocationsCount = 0,
   lang,
   onAssignNewCall,
@@ -100,6 +102,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           id: 'tp',
           label: t.tabMonthlyTp || 'Monthly Tour Plan',
           Icon: Calendar,
+          badge: pendingTpCount,
+          badgeColor: '#DC2626',
         },
         {
           id: 'stockers',

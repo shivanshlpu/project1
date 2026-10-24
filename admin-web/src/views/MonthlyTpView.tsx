@@ -641,6 +641,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         fetchRouteChangeRequests();
         fetchMonthlyPlans();
         window.dispatchEvent(new Event('ahtri_tasks_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
       } else {
         const err = await res.json().catch(() => ({}));
         setActionNotice({
@@ -731,12 +733,113 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     }
   };
 
+  const fetchMonthlyPlansSilent = async () => {
+    try {
+      let query = `?month=${selectedMonth}`;
+      if (selectedMr !== 'ALL') query += `&mr_id=${selectedMr}`;
+      if (selectedHq !== 'ALL') query += `&hq_id=${selectedHq}`;
+      if (selectedWorkType !== 'ALL') query += `&work_type=${encodeURIComponent(selectedWorkType)}`;
+      if (selectedStatus !== 'ALL') query += `&status=${selectedStatus}`;
+
+      let res = await resilientFetch(`/tour-plans/admin${query}`);
+      if (!res.ok) {
+        res = await resilientFetch(`/tour-plans/admin-list${query}`);
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const normalized: MonthlyTpItem[] = data.map((item: any) => ({
+            id: item.id || item.entry_id || item.tp_id || `tp-${Math.random()}`,
+            tp_id: item.tp_id || item.id,
+            entry_id: item.entry_id || item.id,
+            mr_id: item.mr_id || '',
+            mr_name: item.mr_name || 'Field Representative',
+            month: item.month || selectedMonth,
+            date: item.date || '',
+            hq_id: item.hq_id || '',
+            hq_name: item.hq_name || 'Shahdol',
+            planned_area: item.planned_area || '',
+            destination: item.destination || item.planned_area || '',
+            work_type: item.work_type || 'Doctor Visit',
+            planned_kol_drs: item.planned_kol_drs || '',
+            planned_activity: item.planned_activity || '',
+            route_batch_id: item.route_batch_id,
+            route_batch_code: item.route_batch_code,
+            route_batch_name: item.route_batch_name,
+            route: item.route,
+            route_stops: Array.isArray(item.route_stops) ? item.route_stops : [],
+            is_round_trip: item.is_round_trip !== undefined ? item.is_round_trip : true,
+            one_way_distance_km:
+              item.one_way_distance_km !== undefined
+                ? item.one_way_distance_km
+                : item.distance_km !== undefined
+                ? Math.round((item.distance_km / 2) * 10) / 10
+                : undefined,
+            round_trip_distance_km:
+              item.round_trip_distance_km !== undefined
+                ? item.round_trip_distance_km
+                : item.distance_km !== undefined
+                ? item.distance_km
+                : undefined,
+            distance_km: item.distance_km,
+            reimbursement_rate: item.reimbursement_rate,
+            reimbursement_amount: item.reimbursement_amount,
+            reimbursement_status: item.reimbursement_status,
+            calculation_basis:
+              item.calculation_basis ||
+              (item.route_batch_code === 'DIRECT_AREA' ? 'ROUND_TRIP_CENTER_TO_BOUNDARY' : 'ROUND_TRIP_BATCH'),
+            status: item.status || item.plan_status || 'SUBMITTED',
+            created_at: item.created_at || item.submitted_at || new Date().toISOString(),
+            remarks: item.remarks || '',
+          }));
+          setPlans(normalized);
+        }
+      }
+    } catch {
+      // Silent error suppression during background sync
+    }
+  };
+
   useEffect(() => {
     if (activeSubTab === 'schedules') {
       fetchMonthlyPlans();
       setCurrentPage(1);
     }
   }, [selectedMr, selectedMonth, selectedHq, selectedWorkType, selectedStatus, activeSubTab]);
+
+  // Real-time live synchronization: instantly update on notifications, price changes, or location updates
+  useEffect(() => {
+    const handleLiveSync = () => {
+      fetchMonthlyPlansSilent();
+      fetchRouteBatches();
+      fetchRouteChangeRequests();
+    };
+
+    // Periodic silent auto-refresh every 5 seconds so live updates reflect immediately on this page
+    const timer = setInterval(() => {
+      if (!document.hidden) {
+        handleLiveSync();
+      }
+    }, 5000);
+
+    window.addEventListener('ahtri_notification_received', handleLiveSync);
+    window.addEventListener('ahtri_tp_updated', handleLiveSync);
+    window.addEventListener('ahtri_batch_updated', handleLiveSync);
+    window.addEventListener('ahtri_data_updated', handleLiveSync);
+    window.addEventListener('ahtri_tasks_updated', handleLiveSync);
+    window.addEventListener('ahtri_locations_updated', handleLiveSync);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('ahtri_notification_received', handleLiveSync);
+      window.removeEventListener('ahtri_tp_updated', handleLiveSync);
+      window.removeEventListener('ahtri_batch_updated', handleLiveSync);
+      window.removeEventListener('ahtri_data_updated', handleLiveSync);
+      window.removeEventListener('ahtri_tasks_updated', handleLiveSync);
+      window.removeEventListener('ahtri_locations_updated', handleLiveSync);
+    };
+  }, [selectedMonth, selectedMr, selectedHq, selectedWorkType, selectedStatus]);
 
   
   const filteredPlans = useMemo(() => {
@@ -882,6 +985,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           type: 'success',
           message: `✓ Visit marked as ${newStatus} for ${item.mr_name} (${item.date}) and Tour Plan synchronized!`,
         });
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
         fetchMonthlyPlans();
       } else {
         await handleUpdateStatus(item.tp_id, newStatus);
@@ -968,6 +1073,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           type: 'success',
           message: `✓ Tour Plan marked as ${newStatus} successfully! All visits and 50m geofenced tasks synchronized.`,
         });
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
         fetchMonthlyPlans();
       } else {
         setActionNotice({

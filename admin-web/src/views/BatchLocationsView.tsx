@@ -20,7 +20,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import { getApiBaseUrl } from '../utils/apiHelper';
-import { showCenteredNotice } from '../components/CenteredModalNotice';
+import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
 
 interface BatchLocation {
   id: string;
@@ -166,6 +166,9 @@ export const BatchLocationsView: React.FC = () => {
           type: 'success',
         });
         setIsAssignModalOpen(false);
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated', { detail: { batchId: assigningBatch.id, locationId: selectedLocationToAssign, action: 'ASSIGN' } }));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_ASSIGN' } }));
         fetchData();
       } else {
         throw new Error('Server returned an error');
@@ -182,7 +185,39 @@ export const BatchLocationsView: React.FC = () => {
   };
 
   const handleRemoveLocationFromBatch = async (batchId: string, locationId: string, locationName: string) => {
-    if (!window.confirm(`Unlink "${locationName}" from this route batch?`)) return;
+    const confirmed = await showConfirmModal({
+      title: 'Unlink Location',
+      message: `Are you sure you want to unlink "${locationName}" from this route batch circuit?`,
+      type: 'warning',
+      isDestructive: true,
+      confirmText: 'Unlink Location',
+      cancelText: 'Cancel',
+    });
+    if (!confirmed) return;
+
+    // Optimistically update batches and allLocations immediately in UI
+    setBatches((prevBatches) =>
+      prevBatches.map((b) => {
+        if (b.id === batchId || b.batch_code === batchId) {
+          const updatedLocations = (b.locations || []).filter((l) => l.id !== locationId);
+          const updatedIds = (b.location_ids || []).filter((id) => id !== locationId);
+          return {
+            ...b,
+            locations: updatedLocations,
+            location_ids: updatedIds,
+            locations_count: updatedLocations.length,
+          };
+        }
+        return b;
+      })
+    );
+    setAllLocations((prevLocs) =>
+      prevLocs.map((l) =>
+        l.id === locationId
+          ? { ...l, batch_id: undefined, batch_code: undefined, batch_name: undefined }
+          : l
+      )
+    );
 
     try {
       const baseUrl = getApiBaseUrl();
@@ -207,10 +242,21 @@ export const BatchLocationsView: React.FC = () => {
           message: `"${locationName}" removed from route batch.`,
           type: 'info',
         });
-        fetchData();
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated', { detail: { batchId, locationId, action: 'REMOVE' } }));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_UNLINK' } }));
+        await fetchData();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Server error unlinking location');
       }
     } catch (err: any) {
-      alert(`Error unlinking location: ${err.message}`);
+      showCenteredNotice({
+        title: 'Unlink Failed',
+        message: `Error unlinking location: ${err.message}`,
+        type: 'error',
+      });
+      fetchData();
     }
   };
 
@@ -260,6 +306,9 @@ export const BatchLocationsView: React.FC = () => {
         setNewBatchCode('');
         setNewBatchName('');
         setNewBatchRate('2.25');
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_CREATED' } }));
         fetchData();
       }
     } catch (err: any) {
@@ -313,6 +362,9 @@ export const BatchLocationsView: React.FC = () => {
           type: 'success',
         });
         setIsEditRateModalOpen(false);
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated', { detail: { batchId: editingRateBatch.id, rate: rateVal } }));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'RATE_UPDATED' } }));
         fetchData();
       } else {
         throw new Error('Failed to update rate');

@@ -57,13 +57,15 @@ export class LocationsService implements OnModuleInit {
 
     const { cleanAddress, batchId: parsedBatchId, batchCode: parsedBatchCode, batchName: parsedBatchName } = decodeBatchFromAddress(d.address);
 
-    const existingLoc = this.locations.find((l) => l.id === d.id) || (this.db.savedLocations || []).find((l) => l.id === d.id);
     const matchDoc = (this.db.doctors || []).find((doc) => doc.id === d.id);
     const matchBatch = (this.db.routeBatches || []).find((b) => b.location_ids?.includes(d.id));
 
-    const batchId = d.batch_id || parsedBatchId || existingLoc?.batch_id || matchBatch?.id || matchDoc?.batch_id;
-    let batchCode = d.batch_code || parsedBatchCode || existingLoc?.batch_code || matchBatch?.batch_code || matchDoc?.batch_code;
-    let batchName = d.batch_name || parsedBatchName || existingLoc?.batch_name || matchBatch?.name || matchDoc?.batch_name;
+    // Authoritative batch resolution: Only keep batch if encoded in address, explicitly provided on d,
+    // or actively present in routeBatches.location_ids. Never fallback to existingLoc?.batch_id
+    // to ensure unlinked locations remain unassigned.
+    const batchId = d.batch_id || parsedBatchId || (matchBatch && matchBatch.location_ids?.includes(d.id) ? matchBatch.id : undefined);
+    let batchCode = d.batch_code || parsedBatchCode || (matchBatch ? matchBatch.batch_code : undefined);
+    let batchName = d.batch_name || parsedBatchName || (matchBatch ? matchBatch.name : undefined);
 
     if (batchId && (!batchCode || !batchName)) {
       const foundB = (this.db.routeBatches || []).find((b) => b.id === batchId || b.batch_code === batchId);

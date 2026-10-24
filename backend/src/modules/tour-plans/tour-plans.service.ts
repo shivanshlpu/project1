@@ -1149,4 +1149,22 @@ export class TourPlansService {
 
     return request;
   }
+
+  async getPendingCount(): Promise<{
+    pending_plans: number;
+    pending_requests: number;
+    total_pending: number;
+  }> {
+    const pendingPlans = (this.db.monthlyTourPlans || []).filter(
+      (p) => (p.status || '').toUpperCase() === 'SUBMITTED' || (p.status || '').toUpperCase() === 'PENDING',
+    ).length;
+    const pendingRequests = (this.db.routeChangeRequests || []).filter(
+      (r) => (r.status || '').toUpperCase() === 'PENDING',
+    ).length;
+    return {
+      pending_plans: pendingPlans,
+      pending_requests: pendingRequests,
+      total_pending: pendingPlans + pendingRequests,
+    };
+  }
 }

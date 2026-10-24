@@ -199,6 +199,7 @@ export const App: React.FC = () => {
 
   
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+  const [pendingTpCount, setPendingTpCount] = useState<number>(0);
 
   
   const [recentNewLocations, setRecentNewLocations] = useState<NewLocationItem[]>([]);
@@ -267,6 +268,63 @@ export const App: React.FC = () => {
       window.removeEventListener('ahtri_approvals_updated', fetchPendingApprovals);
     };
   }, []);
+
+  // Poll pending Tour Plans & Route Change Requests awaiting Monthly TP approval
+  useEffect(() => {
+    if (!authUser) return;
+    const fetchPendingTp = async () => {
+      if (document.hidden) return;
+      try {
+        const apiUrl = getApiBaseUrl();
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+        let count = 0;
+        const res = await fetch(`${apiUrl}/tour-plans/pending-count`, { headers }).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json();
+          count = Number(data.total_pending ?? (data.pending_plans ?? 0) + (data.pending_requests ?? 0));
+        } else {
+          // Fallback check
+          const [plansRes, rcRes] = await Promise.all([
+            fetch(`${apiUrl}/tour-plans/admin?status=SUBMITTED`, { headers }).catch(() => null),
+            fetch(`${apiUrl}/tour-plans/route-change-requests?status=PENDING`, { headers }).catch(() => null),
+          ]);
+          let pCount = 0;
+          let rCount = 0;
+          if (plansRes && plansRes.ok) {
+            const pData = await plansRes.json();
+            if (Array.isArray(pData)) {
+              const uniquePlans = new Set(pData.map((d: any) => d.tp_id || d.plan_id || d.id));
+              pCount = uniquePlans.size;
+            }
+          }
+          if (rcRes && rcRes.ok) {
+            const rcData = await rcRes.json();
+            if (Array.isArray(rcData)) {
+              rCount = rcData.length;
+            }
+          }
+          count = pCount + rCount;
+        }
+        setPendingTpCount(count);
+      } catch {
+        setPendingTpCount(0);
+      }
+    };
+
+    fetchPendingTp();
+    const interval = setInterval(fetchPendingTp, 4000);
+    window.addEventListener('ahtri_tp_updated', fetchPendingTp);
+    window.addEventListener('ahtri_approvals_updated', fetchPendingTp);
+    window.addEventListener('ahtri_notification_received', fetchPendingTp);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ahtri_tp_updated', fetchPendingTp);
+      window.removeEventListener('ahtri_approvals_updated', fetchPendingTp);
+      window.removeEventListener('ahtri_notification_received', fetchPendingTp);
+    };
+  }, [authUser]);
 
   
   useEffect(() => {
@@ -542,6 +600,7 @@ export const App: React.FC = () => {
             setIsMobileSidebarOpen(false);
           }}
           pendingApprovalsCount={pendingApprovalsCount}
+          pendingTpCount={pendingTpCount}
           newLocationsCount={recentNewLocations.length}
           lang={lang}
           onAssignNewCall={handleAssignNewCall}

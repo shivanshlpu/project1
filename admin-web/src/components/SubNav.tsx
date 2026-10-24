@@ -41,6 +41,7 @@ interface SubNavProps {
   currentTab: ManagerTab;
   onSelectTab: (tab: ManagerTab) => void;
   pendingApprovalsCount: number;
+  pendingTpCount?: number;
   newLocationsCount?: number;
   lang: Language;
   onAssignNewCall?: () => void;
@@ -50,6 +51,7 @@ export const SubNav: React.FC<SubNavProps> = ({
   currentTab,
   onSelectTab,
   pendingApprovalsCount,
+  pendingTpCount = 0,
   newLocationsCount = 0,
   lang,
   onAssignNewCall,
@@ -70,7 +72,13 @@ export const SubNav: React.FC<SubNavProps> = ({
     },
     { id: 'members' as ManagerTab, label: t.tabMembers, Icon: Users },
     { id: 'attendance' as ManagerTab, label: t.tabAttendance || 'Attendance & Integrity', Icon: Clock },
-    { id: 'tp' as ManagerTab, label: t.tabMonthlyTp || 'Monthly TP', Icon: Calendar },
+    {
+      id: 'tp' as ManagerTab,
+      label: t.tabMonthlyTp || 'Monthly TP',
+      Icon: Calendar,
+      badge: pendingTpCount,
+      badgeColor: '#DC2626',
+    },
     { id: 'stockers' as ManagerTab, label: t.tabStockers || 'Stockage Management', Icon: Boxes },
     { id: 'competitions' as ManagerTab, label: t.tabCompetitions || 'Competitions', Icon: Trophy },
 

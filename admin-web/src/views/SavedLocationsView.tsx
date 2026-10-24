@@ -466,6 +466,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           
           await fetch(`${apiUrl}/tasks?location=${encodeURIComponent(name)}`, { method: 'DELETE', headers });
           window.dispatchEvent(new Event('ahtri_approvals_updated'));
+          window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'LOCATION_DELETED' } }));
+          window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+          window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
           fetchLocations();
         } catch (err) {
           console.warn('Backend delete location warning:', err);
@@ -531,12 +534,15 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
             batch_name: locData.batch_name ?? '',
           }),
         });
+        window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'LOCATION_UPDATED' } }));
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         fetchLocations();
       } catch {}
       return;
     }
 
-    
+    // New location creation
     const created: DoctorItem = {
       id: `loc-${Date.now().toString().slice(-4)}`,
       name: locData.name,
@@ -587,6 +593,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           mr_name: 'System Admin (Owner)',
         }),
       });
+      window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'LOCATION_CREATED' } }));
+      window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+      window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
       fetchLocations();
     } catch {
       // Local state already updated

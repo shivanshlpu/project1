@@ -1088,13 +1088,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 }
 
                 const { cleanAddress, batchId: parsedBatchId, batchCode: parsedBatchCode, batchName: parsedBatchName } = decodeBatchFromAddress(loc.address);
-                const existingDoc = this.doctors.find((d) => d.id === loc.id);
-                const existingLoc = this.savedLocations.find((l) => l.id === loc.id);
                 const matchedBatch = this.routeBatches.find((b) => b.location_ids?.includes(loc.id));
 
-                const batchId = loc.batch_id || parsedBatchId || existingDoc?.batch_id || existingLoc?.batch_id || matchedBatch?.id;
-                let batchCode = loc.batch_code || parsedBatchCode || existingDoc?.batch_code || existingLoc?.batch_code || matchedBatch?.batch_code;
-                let batchName = loc.batch_name || parsedBatchName || existingDoc?.batch_name || existingLoc?.batch_name || matchedBatch?.name;
+                const batchId = loc.batch_id || parsedBatchId || (matchedBatch && matchedBatch.location_ids?.includes(loc.id) ? matchedBatch.id : undefined);
+                let batchCode = loc.batch_code || parsedBatchCode || (matchedBatch ? matchedBatch.batch_code : undefined);
+                let batchName = loc.batch_name || parsedBatchName || (matchedBatch ? matchedBatch.name : undefined);
 
                 if (batchId && (!batchCode || !batchName)) {
                   const foundB = this.routeBatches.find((b) => b.id === batchId || b.batch_code === batchId);
