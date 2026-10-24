@@ -570,8 +570,9 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   }, [apiUrl]);
 
   
-  const fetchRouteBatches = async () => {
-    setIsBatchesLoading(true);
+  const fetchRouteBatches = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
+    if (!isSilent) setIsBatchesLoading(true);
     try {
       const res = await resilientFetch('/territories/route-batches');
       if (res.ok) {
@@ -583,7 +584,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     } catch {
       // offline fallback
     } finally {
-      setIsBatchesLoading(false);
+      if (!isSilent) setIsBatchesLoading(false);
     }
   };
 
@@ -593,16 +594,17 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
 
   useEffect(() => {
     if (activeSubTab === 'change_requests') {
-      fetchRouteChangeRequests();
+      fetchRouteChangeRequests(false);
     }
   }, [activeSubTab]);
 
   useEffect(() => {
-    fetchRouteChangeRequests();
+    fetchRouteChangeRequests(true);
   }, []);
 
-  const fetchRouteChangeRequests = async () => {
-    setIsLoadingChangeRequests(true);
+  const fetchRouteChangeRequests = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
+    if (!isSilent) setIsLoadingChangeRequests(true);
     try {
       const res = await resilientFetch('/tour-plans/route-change-requests');
       if (res.ok) {
@@ -614,7 +616,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     } catch {
       // offline fallback
     } finally {
-      setIsLoadingChangeRequests(false);
+      if (!isSilent) setIsLoadingChangeRequests(false);
     }
   };
 
@@ -808,20 +810,13 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     }
   }, [selectedMr, selectedMonth, selectedHq, selectedWorkType, selectedStatus, activeSubTab]);
 
-  // Real-time live synchronization: instantly update on notifications, price changes, or location updates
+  // Real-time live synchronization: update silently on notifications, price changes, or system updates without reloads
   useEffect(() => {
     const handleLiveSync = () => {
       fetchMonthlyPlansSilent();
-      fetchRouteBatches();
-      fetchRouteChangeRequests();
+      fetchRouteBatches(true);
+      fetchRouteChangeRequests(true);
     };
-
-    // Periodic silent auto-refresh every 5 seconds so live updates reflect immediately on this page
-    const timer = setInterval(() => {
-      if (!document.hidden) {
-        handleLiveSync();
-      }
-    }, 5000);
 
     window.addEventListener('ahtri_notification_received', handleLiveSync);
     window.addEventListener('ahtri_tp_updated', handleLiveSync);
@@ -829,15 +824,16 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     window.addEventListener('ahtri_data_updated', handleLiveSync);
     window.addEventListener('ahtri_tasks_updated', handleLiveSync);
     window.addEventListener('ahtri_locations_updated', handleLiveSync);
+    window.addEventListener('ahtri_approvals_updated', handleLiveSync);
 
     return () => {
-      clearInterval(timer);
       window.removeEventListener('ahtri_notification_received', handleLiveSync);
       window.removeEventListener('ahtri_tp_updated', handleLiveSync);
       window.removeEventListener('ahtri_batch_updated', handleLiveSync);
       window.removeEventListener('ahtri_data_updated', handleLiveSync);
       window.removeEventListener('ahtri_tasks_updated', handleLiveSync);
       window.removeEventListener('ahtri_locations_updated', handleLiveSync);
+      window.removeEventListener('ahtri_approvals_updated', handleLiveSync);
     };
   }, [selectedMonth, selectedMr, selectedHq, selectedWorkType, selectedStatus]);
 
@@ -1431,7 +1427,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
             <button
               type="button"
               className="btn-enterprise secondary"
-              onClick={fetchRouteChangeRequests}
+              onClick={() => fetchRouteChangeRequests(false)}
               disabled={isLoadingChangeRequests}
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
             >
@@ -2141,7 +2137,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
               <button
                 type="button"
                 className="btn-enterprise secondary"
-                onClick={fetchRouteChangeRequests}
+                onClick={() => fetchRouteChangeRequests(false)}
                 disabled={isLoadingChangeRequests}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
               >
