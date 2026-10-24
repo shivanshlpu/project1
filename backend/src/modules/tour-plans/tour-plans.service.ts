@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
@@ -19,11 +20,125 @@ import { NotificationsService } from '../notifications/notifications.module';
 import { calculateHqCenterToDestinationDistance, HQ_CENTERS } from '../territories/distance-calculator.service';
 
 @Injectable()
-export class TourPlansService {
+export class TourPlansService implements OnModuleInit {
   constructor(
     private readonly db: DatabaseService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  async onModuleInit() {
+    await this.cleanupOrphanedTourPlanTasks().catch((err) =>
+      console.warn(`[TourPlansService] Orphan cleanup notice: ${err?.message}`),
+    );
+  }
+
+  /**
+   * Safely delete a single task from memory, assignments, verifications, and Supabase
+   */
+  public async removeSingleTask(taskId: string): Promise<void> {
+    const idx = this.db.tasks.findIndex((tk) => tk.id === taskId);
+    if (idx >= 0) this.db.tasks.splice(idx, 1);
+    this.db.taskAssignments = this.db.taskAssignments.filter((ta) => ta.task_id !== taskId);
+    this.db.locationVerifications = this.db.locationVerifications.filter((lv) => lv.task_id !== taskId);
+    await this.db.deleteTaskFromSupabase(taskId).catch(() => {});
+  }
+
+  /**
+   * Remove all non-completed tasks associated with a Tour Plan
+   */
+  public async removeTasksForTourPlan(plan: MonthlyTourPlan): Promise<void> {
+    const entryIds = new Set((plan.entries || []).map((e) => e.id));
+    const entryDates = new Set((plan.entries || []).map((e) => e.date));
+
+    const tasksToRemove = this.db.tasks.filter((t) => {
+      if (t.status === 'COMPLETED' || t.deleted_at) return false;
+      if (t.assigned_mr_id !== plan.mr_id) return false;
+      if (t.tp_id === plan.id) return true;
+      if (t.tp_entry_id && entryIds.has(t.tp_entry_id)) return true;
+      if (t.source === 'TourPlan' && entryDates.has(t.date)) return true;
+      return false;
+    });
+
+    for (const t of tasksToRemove) {
+      await this.removeSingleTask(t.id);
+    }
+    await this.db.persistToDisk();
+  }
+
+  /**
+   * Remove all non-completed tasks associated with a single TP entry
+   */
+  public async removeTasksForEntry(plan: MonthlyTourPlan, entryId: string, entryDate?: string): Promise<void> {
+    const tasksToRemove = this.db.tasks.filter((t) => {
+      if (t.status === 'COMPLETED' || t.deleted_at) return false;
+      if (t.assigned_mr_id !== plan.mr_id) return false;
+      if (t.tp_entry_id === entryId) return true;
+      if (entryDate && t.date === entryDate && (t.tp_id === plan.id || t.source === 'TourPlan')) return true;
+      return false;
+    });
+
+    for (const t of tasksToRemove) {
+      await this.removeSingleTask(t.id);
+    }
+    await this.db.persistToDisk();
+  }
+
+  /**
+   * Cleans up orphaned or rejected TP tasks from the database and Supabase
+   */
+  public async cleanupOrphanedTourPlanTasks(): Promise<number> {
+    const validPlanMap = new Map(this.db.monthlyTourPlans.map((p) => [p.id, p]));
+    const orphanedTasks: Task[] = [];
+
+    for (const t of this.db.tasks) {
+      if (t.deleted_at || t.status === 'COMPLETED') continue;
+
+      if (t.source === 'TourPlan' || t.tp_id || t.tp_entry_id) {
+        if (!t.tp_id) {
+          const matchingPlan = this.db.monthlyTourPlans.find(
+            (p) =>
+              p.mr_id === t.assigned_mr_id &&
+              (p.entries || []).some(
+                (e) => e.id === t.tp_entry_id || (e.date === t.date && e.reimbursement_status === 'APPROVED'),
+              ),
+          );
+          if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
+            orphanedTasks.push(t);
+          }
+          continue;
+        }
+
+        const plan = validPlanMap.get(t.tp_id);
+        if (!plan) {
+          orphanedTasks.push(t);
+          continue;
+        }
+
+        if ((plan.status || '').toUpperCase() === 'REJECTED') {
+          orphanedTasks.push(t);
+          continue;
+        }
+
+        if (t.tp_entry_id) {
+          const entry = (plan.entries || []).find((e) => e.id === t.tp_entry_id);
+          if (!entry || entry.reimbursement_status === 'REJECTED') {
+            orphanedTasks.push(t);
+            continue;
+          }
+        }
+      }
+    }
+
+    if (orphanedTasks.length > 0) {
+      console.log(`[TourPlansService] Cleaned up ${orphanedTasks.length} orphaned/rejected Tour Plan tasks.`);
+      for (const t of orphanedTasks) {
+        await this.removeSingleTask(t.id);
+      }
+      await this.db.persistToDisk();
+    }
+
+    return orphanedTasks.length;
+  }
 
   private enrichTpItem(
     e: MonthlyTpItemDto,
@@ -366,6 +481,17 @@ export class TourPlansService {
       }
     }
 
+    const entry = (plan.entries || []).find(
+      (e) => e.id !== undefined && (e.id === entryId || e.date === entryId || String(e.id) === String(entryId)),
+    );
+
+    // Remove any non-completed tasks generated for this entry
+    if (entry) {
+      await this.removeTasksForEntry(plan, entry.id, entry.date);
+    } else {
+      await this.removeTasksForEntry(plan, entryId);
+    }
+
     const initialLength = (plan.entries || []).length;
     plan.entries = (plan.entries || []).filter(
       (e) => e.id !== entryId && e.date !== entryId && String(e.id) !== String(entryId),
@@ -373,6 +499,7 @@ export class TourPlansService {
 
     // If all entries in this tour plan are removed, remove the plan completely
     if (plan.entries.length === 0) {
+      await this.removeTasksForTourPlan(plan);
       await this.db.deleteMonthlyTourPlan(plan.id);
       return { success: true, deleted: true, planDeleted: true, message: 'Tour plan and entry removed' };
     }
@@ -405,6 +532,9 @@ export class TourPlansService {
         );
       }
     }
+
+    // Remove all associated uncompleted tasks generated from this tour plan
+    await this.removeTasksForTourPlan(plan);
 
     await this.db.deleteMonthlyTourPlan(planId);
     return { success: true, message: 'Monthly Tour Plan removed successfully' };
@@ -595,6 +725,9 @@ export class TourPlansService {
     // If approved, automatically generate or reconcile sequenced geofenced tasks in the MR's agenda
     if (normStatus === 'APPROVED') {
       await this.reconcileTasksForTourPlan(plan, adminId);
+    } else if (normStatus === 'REJECTED') {
+      // If rejected, cleanly remove all uncompleted tasks for this tour plan
+      await this.removeTasksForTourPlan(plan);
     }
 
     await this.db.flushToDisk();
@@ -628,6 +761,11 @@ export class TourPlansService {
       plan.remarks = plan.remarks ? `${plan.remarks} | ${remarks}` : remarks;
     }
 
+    // If an entry is rejected, remove any non-completed tasks for that entry immediately
+    if (status === 'REJECTED') {
+      await this.removeTasksForEntry(plan, entry.id, entry.date);
+    }
+
     // If all entries are approved, update the parent plan status to APPROVED
     const allApproved = plan.entries.length > 0 && plan.entries.every((e) => e.reimbursement_status === 'APPROVED');
     const planStatusUpper = (plan.status || '').toUpperCase();
@@ -637,7 +775,7 @@ export class TourPlansService {
       plan.approved_at = new Date().toISOString();
     }
 
-    // Always reconcile tasks immediately so the approved entry creates the task for that date & location right away!
+    // Reconcile remaining tasks so approved visits stay properly synchronized
     if (status === 'APPROVED' || plan.status === 'APPROVED') {
       await this.reconcileTasksForTourPlan(plan, adminId);
     }
@@ -869,8 +1007,8 @@ export class TourPlansService {
         !t.deleted_at &&
         t.assigned_mr_id === plan.mr_id &&
         (t.tp_id === plan.id ||
-          t.source === 'TourPlan' ||
-          (t.tp_entry_id && plan.entries.some((e) => e.id === t.tp_entry_id))),
+          (t.tp_entry_id && plan.entries.some((e) => e.id === t.tp_entry_id)) ||
+          (t.source === 'TourPlan' && plan.entries.some((e) => e.date === t.date))),
     );
 
     const matchedTaskIds = new Set<string>();
@@ -902,6 +1040,7 @@ export class TourPlansService {
           match.route_batch_name = exp.route_batch_name;
           match.sequence_order = exp.sequence_order;
           match.hq_accepted = true;
+          await this.db.persistTask(match);
         }
       } else {
         // Create new task for newly approved visit
@@ -940,17 +1079,17 @@ export class TourPlansService {
           mr_id: plan.mr_id,
           assigned_at: new Date().toISOString(),
         });
+        await this.db.persistTask(newTask);
       }
     }
 
     // 2. Remove or cancel superseded unstarted tasks for this TP
     for (const t of tpTasks) {
       if (!matchedTaskIds.has(t.id)) {
-        if (t.status === 'ASSIGNED') {
-          // Unstarted superseded task: remove cleanly
-          const idx = this.db.tasks.findIndex((tk) => tk.id === t.id);
-          if (idx >= 0) this.db.tasks.splice(idx, 1);
-        } else if (t.status === 'COMPLETED') {
+        if (t.status !== 'COMPLETED') {
+          // Uncompleted superseded task: remove cleanly
+          await this.removeSingleTask(t.id);
+        } else {
           // Completed task: PRESERVED with audit history
           t.description = `${t.description || ''} (Superseded by TP change - preserved for audit)`.trim();
         }

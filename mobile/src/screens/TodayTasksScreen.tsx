@@ -418,14 +418,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           });
 
           
-          if (activeBackendTasks.length === 0 && allTasks.length > 0) {
-            allTasks.forEach((pt) => {
-              if (!explicitlyCancelledIds.has(pt.id) && !isCancelledTask(pt.status) && !mergedMap.has(pt.id)) {
-                mergedMap.set(pt.id, pt);
-              }
-            });
-          }
-
+          // 4. Final tasks: backend is authoritative for active tasks, local completions preserved
           const finalTasks = Array.from(mergedMap.values());
 
           

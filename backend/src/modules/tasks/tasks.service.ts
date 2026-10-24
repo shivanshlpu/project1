@@ -63,11 +63,60 @@ export class TasksService {
   ) {}
 
   /**
+   * Identifies non-completed tasks whose Tour Plan or TP entry was rejected or deleted
+   */
+  public isOrphanedTpTask(t: Task): boolean {
+    if (t.status === 'COMPLETED' || t.deleted_at) return false;
+    if (t.source !== 'TourPlan' && !t.tp_id && !t.tp_entry_id) return false;
+
+    if (t.tp_id) {
+      const plan = this.db.monthlyTourPlans.find((p) => p.id === t.tp_id);
+      if (!plan || (plan.status || '').toUpperCase() === 'REJECTED') return true;
+      if (t.tp_entry_id) {
+        const entry = (plan.entries || []).find((e) => e.id === t.tp_entry_id);
+        if (!entry || entry.reimbursement_status === 'REJECTED') return true;
+      }
+      return false;
+    }
+
+    if (t.tp_entry_id || t.source === 'TourPlan') {
+      const matchingPlan = this.db.monthlyTourPlans.find(
+        (p) =>
+          p.mr_id === t.assigned_mr_id &&
+          (p.entries || []).some(
+            (e) => e.id === t.tp_entry_id || (e.date === t.date && e.reimbursement_status === 'APPROVED'),
+          ),
+      );
+      if (!matchingPlan || (matchingPlan.status || '').toUpperCase() === 'REJECTED') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Cleanly purge any tasks whose Tour Plan or TP entry was rejected or deleted
+   */
+  public async cleanupOrphanedTourPlanTasks(): Promise<void> {
+    const orphaned = this.db.tasks.filter((t) => this.isOrphanedTpTask(t));
+    if (orphaned.length === 0) return;
+    const orphanedIds = new Set(orphaned.map((t) => t.id));
+    this.db.tasks = this.db.tasks.filter((t) => !orphanedIds.has(t.id));
+    this.db.taskAssignments = this.db.taskAssignments.filter((ta) => !orphanedIds.has(ta.task_id));
+    this.db.locationVerifications = this.db.locationVerifications.filter((lv) => !orphanedIds.has(lv.task_id));
+    this.db.persistToDisk();
+    for (const id of orphanedIds) {
+      await this.db.deleteTaskFromSupabase(id).catch(() => {});
+    }
+  }
+
+  /**
    * Auto-Suspension Rule (§Owner Requirement):
    * If a task was assigned and 1 day passes without the MR completing it (date < today in local calendar),
    * the task is automatically SUSPENDED. Only the Owner can unsuspend it.
    */
   checkAndSuspendOverdueTasks() {
+    this.cleanupOrphanedTourPlanTasks().catch(() => {});
     const today = getLocalDateString(new Date());
     let changed = false;
     for (const task of this.db.tasks) {
@@ -152,7 +201,7 @@ export class TasksService {
   async getMyTasks(mrId: string, date?: string) {
     this.checkAndSuspendOverdueTasks();
     return this.db.tasks
-      .filter((t) => !t.deleted_at && !isCancelledStatus(t.status) && t.assigned_mr_id === mrId)
+      .filter((t) => !t.deleted_at && !isCancelledStatus(t.status) && t.assigned_mr_id === mrId && !this.isOrphanedTpTask(t))
       .filter((t) => (date ? t.date === date : true))
       .sort((a, b) => {
         if (a.sequence_order !== undefined && b.sequence_order !== undefined) {
@@ -683,7 +732,7 @@ export class TasksService {
   async getAdminTasks(filter: { mr_id?: string; status?: string; startDate?: string; endDate?: string }) {
     this.checkAndSuspendOverdueTasks();
     return this.db.tasks
-      .filter((t) => !t.deleted_at && (filter.status === 'CANCELLED' || !isCancelledStatus(t.status)))
+      .filter((t) => !t.deleted_at && (filter.status === 'CANCELLED' || !isCancelledStatus(t.status)) && !this.isOrphanedTpTask(t))
       .filter((t) => (filter.mr_id ? t.assigned_mr_id === filter.mr_id : true))
       .filter((t) => (filter.status ? t.status === filter.status : true))
       .filter((t) => (filter.startDate ? t.date >= filter.startDate : true))
