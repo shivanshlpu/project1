@@ -359,3 +359,44 @@ ON CONFLICT (id) DO UPDATE SET
   quantity = EXCLUDED.quantity,
   low_stock_threshold = EXCLUDED.low_stock_threshold,
   updated_at = NOW();
+
+-- 5. ROUTE CHANGE REQUESTS TABLE
+CREATE TABLE IF NOT EXISTS public.route_change_requests (
+  id VARCHAR(64) PRIMARY KEY,
+  mr_id VARCHAR(64) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  mr_name VARCHAR(255) NOT NULL,
+  hq_id VARCHAR(64),
+  hq_name VARCHAR(255),
+  date VARCHAR(50) NOT NULL,
+  tour_plan_id VARCHAR(64) NOT NULL,
+  tour_plan_item_id VARCHAR(64) NOT NULL,
+  original_batch_id VARCHAR(64),
+  original_batch_code VARCHAR(50),
+  original_batch_name VARCHAR(255),
+  original_locations JSONB DEFAULT '[]'::jsonb,
+  original_area VARCHAR(255),
+  original_work_type VARCHAR(100),
+  original_kol_drs TEXT,
+  original_activity TEXT,
+  requested_batch_id VARCHAR(64),
+  requested_batch_code VARCHAR(50),
+  requested_batch_name VARCHAR(255),
+  requested_locations JSONB DEFAULT '[]'::jsonb,
+  requested_area VARCHAR(255),
+  requested_work_type VARCHAR(100),
+  requested_kol_drs TEXT,
+  requested_activity TEXT,
+  reason TEXT,
+  status VARCHAR(50) DEFAULT 'PENDING',
+  admin_id VARCHAR(64),
+  admin_name VARCHAR(255),
+  admin_remarks TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+ALTER TABLE public.route_change_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Service role full access on route_change_requests" ON public.route_change_requests;
+CREATE POLICY "Service role full access on route_change_requests" ON public.route_change_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public access on route_change_requests" ON public.route_change_requests;
+CREATE POLICY "Public access on route_change_requests" ON public.route_change_requests FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);

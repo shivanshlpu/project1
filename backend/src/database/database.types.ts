@@ -713,6 +713,8 @@ export interface MonthlyTpItem {
   reimbursement_amount?: number; 
   reimbursement_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   calculation_basis?: 'ROUND_TRIP_BATCH' | 'ROUND_TRIP_CENTER_TO_BOUNDARY' | 'MANUAL';
+  change_request?: RouteChangeRequest;
+  change_request_history?: RouteChangeRequest[];
 }
 
 export interface RouteChangeRequest {
@@ -740,7 +742,7 @@ export interface RouteChangeRequest {
   requested_work_type?: string;
   requested_kol_drs?: string;
   requested_activity?: string;
-  reason: string;
+  reason?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   admin_id?: string;
   admin_name?: string;
@@ -756,6 +758,7 @@ export interface MonthlyTourPlan {
   month: string; 
   status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   entries: MonthlyTpItem[];
+  change_requests?: RouteChangeRequest[];
   submitted_at: string;
   approved_by?: string;
   approved_at?: string;

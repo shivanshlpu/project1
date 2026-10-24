@@ -530,6 +530,58 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
+   * Authoritative route change request persistence: updates in-memory cache,
+   * ensures parent MonthlyTourPlan is updated with embedded request for Supabase JSONB persistence,
+   * flushes to local disk, and attempts direct Supabase upsert.
+   */
+  public async persistRouteChangeRequest(req: RouteChangeRequest): Promise<void> {
+    const idx = this.routeChangeRequests.findIndex((r) => r.id === req.id);
+    if (idx >= 0) {
+      this.routeChangeRequests[idx] = req;
+    } else {
+      this.routeChangeRequests.unshift(req);
+    }
+
+    // Embed in parent monthly tour plan for permanent Supabase PostgreSQL persistence
+    const plan = this.monthlyTourPlans.find((p) => p.id === req.tour_plan_id);
+    if (plan) {
+      if (!Array.isArray(plan.change_requests)) {
+        plan.change_requests = [];
+      }
+      const crIdx = plan.change_requests.findIndex((c) => c.id === req.id);
+      if (crIdx >= 0) {
+        plan.change_requests[crIdx] = req;
+      } else {
+        plan.change_requests.unshift(req);
+      }
+
+      const entry = (plan.entries || []).find((e) => e.id === req.tour_plan_item_id || e.date === req.date);
+      if (entry) {
+        entry.change_request = req;
+        if (!Array.isArray(entry.change_request_history)) {
+          entry.change_request_history = [];
+        }
+        const histIdx = entry.change_request_history.findIndex((h) => h.id === req.id);
+        if (histIdx >= 0) {
+          entry.change_request_history[histIdx] = req;
+        } else {
+          entry.change_request_history.unshift(req);
+        }
+      }
+
+      await this.persistMonthlyTourPlan(plan);
+    } else {
+      this.persistToDisk();
+    }
+
+    if (this.supabase && this.supabase.isConnected) {
+      this.syncRouteChangeRequestToSupabase(req).catch((err) =>
+        console.warn(`[DatabaseService] Async Supabase route change request sync notice: ${err?.message}`),
+      );
+    }
+  }
+
+  /**
    * Delete a monthly tour plan from in-memory cache, disk store, and Supabase
    */
   public async deleteMonthlyTourPlan(planId: string): Promise<void> {
@@ -1441,6 +1493,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     : typeof rtp.entries === 'string'
                     ? JSON.parse(rtp.entries)
                     : [],
+                  change_requests: Array.isArray(rtp.change_requests)
+                    ? rtp.change_requests
+                    : typeof rtp.change_requests === 'string'
+                    ? JSON.parse(rtp.change_requests)
+                    : [],
                   submitted_at: rtp.submitted_at || new Date().toISOString(),
                   created_at: rtp.created_at || new Date().toISOString(),
                 };
@@ -1460,6 +1517,108 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           } catch (tpNotice: any) {
             console.warn('[DatabaseService] Notice syncing monthly tour plans from Supabase:', tpNotice?.message);
+          }
+
+          // Authoritative sync: load route change requests from Supabase dedicated table
+          try {
+            const { data: remoteRcr, error: rcrErr } = await client.from('route_change_requests').select('*');
+            if (!rcrErr && Array.isArray(remoteRcr) && remoteRcr.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteRcr.length} route change requests from Supabase.`);
+              for (const r of remoteRcr) {
+                const item: RouteChangeRequest = {
+                  id: r.id,
+                  mr_id: r.mr_id,
+                  mr_name: r.mr_name,
+                  hq_id: r.hq_id,
+                  hq_name: r.hq_name,
+                  date: r.date,
+                  tour_plan_id: r.tour_plan_id,
+                  tour_plan_item_id: r.tour_plan_item_id,
+                  original_batch_id: r.original_batch_id,
+                  original_batch_code: r.original_batch_code,
+                  original_batch_name: r.original_batch_name,
+                  original_locations: Array.isArray(r.original_locations)
+                    ? r.original_locations
+                    : typeof r.original_locations === 'string'
+                    ? JSON.parse(r.original_locations)
+                    : [],
+                  original_area: r.original_area,
+                  original_work_type: r.original_work_type,
+                  original_kol_drs: r.original_kol_drs,
+                  original_activity: r.original_activity,
+                  requested_batch_id: r.requested_batch_id,
+                  requested_batch_code: r.requested_batch_code,
+                  requested_batch_name: r.requested_batch_name,
+                  requested_locations: Array.isArray(r.requested_locations)
+                    ? r.requested_locations
+                    : typeof r.requested_locations === 'string'
+                    ? JSON.parse(r.requested_locations)
+                    : [],
+                  requested_area: r.requested_area,
+                  requested_work_type: r.requested_work_type,
+                  requested_kol_drs: r.requested_kol_drs,
+                  requested_activity: r.requested_activity,
+                  reason: r.reason,
+                  status: r.status || 'PENDING',
+                  admin_id: r.admin_id,
+                  admin_name: r.admin_name,
+                  admin_remarks: r.admin_remarks,
+                  reviewed_at: r.reviewed_at,
+                  created_at: r.created_at || new Date().toISOString(),
+                };
+                const idx = this.routeChangeRequests.findIndex((rc) => rc.id === item.id);
+                if (idx >= 0) {
+                  this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...item };
+                } else {
+                  this.routeChangeRequests.push(item);
+                }
+              }
+            }
+          } catch (rcrNotice: any) {
+            console.warn('[DatabaseService] Notice querying route_change_requests table:', rcrNotice?.message);
+          }
+
+          // Authoritative sync: extract embedded change requests from all monthly tour plans
+          try {
+            for (const plan of this.monthlyTourPlans) {
+              if (Array.isArray(plan.change_requests)) {
+                for (const cr of plan.change_requests) {
+                  if (cr && cr.id) {
+                    const idx = this.routeChangeRequests.findIndex((r) => r.id === cr.id);
+                    if (idx >= 0) {
+                      this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...cr };
+                    } else {
+                      this.routeChangeRequests.push(cr);
+                    }
+                  }
+                }
+              }
+              if (Array.isArray(plan.entries)) {
+                for (const entry of plan.entries) {
+                  if (entry && (entry as any).change_request && (entry as any).change_request.id) {
+                    const cr = (entry as any).change_request;
+                    const idx = this.routeChangeRequests.findIndex((r) => r.id === cr.id);
+                    if (idx >= 0) {
+                      this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...cr };
+                    } else {
+                      this.routeChangeRequests.push(cr);
+                    }
+                  }
+                  if (Array.isArray((entry as any).change_request_history)) {
+                    for (const cr of (entry as any).change_request_history) {
+                      if (cr && cr.id && !this.routeChangeRequests.some((r) => r.id === cr.id)) {
+                        this.routeChangeRequests.push(cr);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (this.routeChangeRequests.length > 0) {
+              console.log(`[DatabaseService] Synced/extracted ${this.routeChangeRequests.length} route change requests.`);
+            }
+          } catch (embedErr: any) {
+            console.warn('[DatabaseService] Notice extracting embedded change requests:', embedErr?.message);
           }
 
           // Authoritative sync: load orders from Supabase
@@ -2208,6 +2367,50 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       }, { onConflict: 'id' });
     } catch (err: any) {
       console.warn(`[SupabaseSync] Notice syncing monthly tour plan ${plan.id}:`, err?.message);
+    }
+  }
+
+  public async syncRouteChangeRequestToSupabase(req: RouteChangeRequest): Promise<void> {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+
+      await client.from('route_change_requests').upsert({
+        id: req.id,
+        mr_id: req.mr_id,
+        mr_name: req.mr_name,
+        hq_id: req.hq_id || null,
+        hq_name: req.hq_name || null,
+        date: req.date,
+        tour_plan_id: req.tour_plan_id,
+        tour_plan_item_id: req.tour_plan_item_id,
+        original_batch_id: req.original_batch_id || null,
+        original_batch_code: req.original_batch_code || null,
+        original_batch_name: req.original_batch_name || null,
+        original_locations: req.original_locations || [],
+        original_area: req.original_area || null,
+        original_work_type: req.original_work_type || null,
+        original_kol_drs: req.original_kol_drs || null,
+        original_activity: req.original_activity || null,
+        requested_batch_id: req.requested_batch_id || null,
+        requested_batch_code: req.requested_batch_code || null,
+        requested_batch_name: req.requested_batch_name || null,
+        requested_locations: req.requested_locations || [],
+        requested_area: req.requested_area || null,
+        requested_work_type: req.requested_work_type || null,
+        requested_kol_drs: req.requested_kol_drs || null,
+        requested_activity: req.requested_activity || null,
+        reason: req.reason || null,
+        status: req.status || 'PENDING',
+        admin_id: req.admin_id || null,
+        admin_name: req.admin_name || null,
+        admin_remarks: req.admin_remarks || null,
+        reviewed_at: req.reviewed_at || null,
+        created_at: req.created_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Notice syncing route change request ${req.id}:`, err?.message);
     }
   }
 

@@ -1180,6 +1180,7 @@ export class TourPlansService implements OnModuleInit {
     };
 
     this.db.routeChangeRequests.unshift(requestItem);
+    await this.db.persistRouteChangeRequest(requestItem);
     await this.db.flushToDisk();
 
     // Notify admins
@@ -1277,6 +1278,7 @@ export class TourPlansService implements OnModuleInit {
       }
     }
 
+    await this.db.persistRouteChangeRequest(request);
     await this.db.flushToDisk();
 
     this.notificationsService.sendPushNotification(

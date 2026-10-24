@@ -3308,5 +3308,54 @@
   "doctors": [],
   "taskAssignments": [],
   "locationVerifications": [],
-  "approvals": []
+  "approvals": [],
+  "routeChangeRequests": [
+    {
+      "id": "rcr-shd-001",
+      "mr_id": "usr-mr-02",
+      "mr_name": "Aman Rathore",
+      "hq_id": "HQ-SHD-001",
+      "hq_name": "Shahdol",
+      "date": "23-10-2026",
+      "tour_plan_id": "mtp-9518884c",
+      "tour_plan_item_id": "tp-item-93b9452d",
+      "original_batch_id": "rb-shd-b02",
+      "original_batch_code": "SHD-B02",
+      "original_batch_name": "Shahdol - Pali - Navrozabad",
+      "original_locations": [
+        {
+          "id": "loc-eb137685",
+          "name": "Xyz",
+          "address": "ASH Area, Sohagpur, Sohagpur Tahsil, Shahdol, Madhya Pradesh, India",
+          "category": "OFFICE",
+          "latitude": 23.288309,
+          "longitude": 81.352204
+        }
+      ],
+      "original_area": "Main Market",
+      "original_work_type": "Doctor Visit",
+      "original_kol_drs": "Xyz",
+      "original_activity": "Routine Field Detailing & Sampling",
+      "requested_batch_id": "rb-shd-b01",
+      "requested_batch_code": "SHD-B01",
+      "requested_batch_name": "Shahdol - Budhar - Dhanpuri - OPM",
+      "requested_locations": [
+        {
+          "id": "loc-eb137685",
+          "name": "Xyz",
+          "address": "ASH Area, Sohagpur, Sohagpur Tahsil, Shahdol, Madhya Pradesh, India",
+          "category": "OFFICE",
+          "latitude": 23.288309,
+          "longitude": 81.352204
+        }
+      ],
+      "requested_area": "Budhar - Dhanpuri Area",
+      "requested_work_type": "Doctor Visit",
+      "requested_kol_drs": "Xyz",
+      "requested_activity": "Routine Field Detailing & Sampling",
+      "reason": "Route deviation requested for urgent Key Doctor visits and stocker coordination in Budhar/Dhanpuri belt.",
+      "status": "PENDING",
+      "created_at": "2026-10-23T06:30:00.000Z"
+    }
+  ]
 }
