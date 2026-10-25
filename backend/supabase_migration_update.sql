@@ -400,3 +400,25 @@ DROP POLICY IF EXISTS "Service role full access on route_change_requests" ON pub
 CREATE POLICY "Service role full access on route_change_requests" ON public.route_change_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Public access on route_change_requests" ON public.route_change_requests;
 CREATE POLICY "Public access on route_change_requests" ON public.route_change_requests FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- 6. TERRITORY HUBS & WAYPOINTS MIGRATION
+ALTER TABLE public.route_batches ADD COLUMN IF NOT EXISTS route_waypoints JSONB DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS public.territory_hubs (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  aliases JSONB DEFAULT '[]'::jsonb,
+  lat NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  lng NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  area VARCHAR(255) DEFAULT '',
+  region VARCHAR(50) DEFAULT 'other',
+  is_custom BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.territory_hubs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Service role full access on territory_hubs" ON public.territory_hubs;
+CREATE POLICY "Service role full access on territory_hubs" ON public.territory_hubs FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public access on territory_hubs" ON public.territory_hubs;
+CREATE POLICY "Public access on territory_hubs" ON public.territory_hubs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);

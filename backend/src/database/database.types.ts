@@ -435,6 +435,28 @@ export interface Headquarter {
   created_at: string;
 }
 
+export interface RouteWaypoint {
+  id?: string;
+  name: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  isCustom?: boolean;
+}
+
+export interface TerritoryHub {
+  id: string;
+  name: string;
+  aliases?: string[];
+  lat: number;
+  lng: number;
+  area: string;
+  region: 'shahdol' | 'kotma' | 'ambikapur' | 'bilaspur' | 'other';
+  is_custom?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface RouteBatch {
   id: string;
   batch_code: string;
@@ -446,6 +468,7 @@ export interface RouteBatch {
   mr_name?: string;
   territory_name?: string;
   route_stops: string[]; 
+  route_waypoints?: RouteWaypoint[];
   areas: string[]; 
   distance_km: number;
   standard_reimbursement_rate?: number;

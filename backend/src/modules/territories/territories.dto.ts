@@ -71,12 +71,21 @@ export class CreateRouteBatchDto {
   route_stops?: string[];
 
   @IsOptional()
+  route_waypoints?: Array<{
+    id?: string;
+    name: string;
+    lat: number;
+    lng: number;
+    address?: string;
+    isCustom?: boolean;
+  }>;
+
+  @IsOptional()
   areas?: string[];
 
   @IsOptional()
   distance_km?: number;
 
-  @IsOptional()
   @IsOptional()
   standard_reimbursement_rate?: number;
 
@@ -116,6 +125,16 @@ export class UpdateRouteBatchDto {
   route_stops?: string[];
 
   @IsOptional()
+  route_waypoints?: Array<{
+    id?: string;
+    name: string;
+    lat: number;
+    lng: number;
+    address?: string;
+    isCustom?: boolean;
+  }>;
+
+  @IsOptional()
   areas?: string[];
 
   @IsOptional()
@@ -129,6 +148,29 @@ export class UpdateRouteBatchDto {
 
   @IsOptional()
   location_ids?: string[];
+}
+
+export class CreateTerritoryHubDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  lat: number;
+
+  @IsOptional()
+  lng: number;
+
+  @IsString()
+  @IsOptional()
+  area?: string;
+
+  @IsString()
+  @IsOptional()
+  region?: 'shahdol' | 'kotma' | 'ambikapur' | 'bilaspur' | 'other';
+
+  @IsOptional()
+  aliases?: string[];
 }
 
 export class SuggestRouteBatchDto {

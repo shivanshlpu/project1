@@ -48,7 +48,10 @@ import {
   StockageSubmissionRequest,
   StockageSubmissionItem,
   MedicinePackagingVariant,
+  TerritoryHub,
+  RouteWaypoint,
 } from './database.types';
+import { INITIAL_TERRITORY_HUBS } from './initial-hubs.seed';
 import { SupabaseService } from './supabase.service';
 import { computeAttendanceDeviations } from '../modules/attendance/attendance.utils';
 import { decodeBatchFromAddress, encodeBatchInAddress } from './location-batch.utils';
@@ -61,6 +64,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public regions: Region[] = [];
   public areas: Area[] = [];
   public territories: Territory[] = [];
+  public territoryHubs: TerritoryHub[] = [];
   public users: User[] = [];
   public refreshTokens: Map<string, { userId: string; expiresAt: Date }> = new Map();
   public otpStore: Map<string, { otp: string; expiresAt: Date }> = new Map();
@@ -175,6 +179,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         inventoryTransactions: this.inventoryTransactions,
         verificationPhotos: this.verificationPhotos,
         deviceAuthorizations: this.deviceAuthorizations,
+        territoryHubs: this.territoryHubs,
         routeBatches: this.routeBatches,
         headquarters: this.headquarters,
         stockers: this.stockers,
@@ -542,9 +547,41 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       this.routeChangeRequests.unshift(req);
     }
 
+    // Helper to match dates flexibly (YYYY-MM-DD vs DD-MM-YYYY)
+    const matchDates = (d1?: string, d2?: string): boolean => {
+      if (!d1 || !d2) return false;
+      if (d1 === d2) return true;
+      const normalize = (s: string) => {
+        if (s.includes('-')) {
+          const parts = s.split('-');
+          if (parts[0].length === 2 && parts[2]?.length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+        }
+        return s;
+      };
+      return normalize(d1) === normalize(d2);
+    };
+
     // Embed in parent monthly tour plan for permanent Supabase PostgreSQL persistence
-    const plan = this.monthlyTourPlans.find((p) => p.id === req.tour_plan_id);
+    let plan = this.monthlyTourPlans.find((p) => p.id === req.tour_plan_id);
+    if (!plan && req.date) {
+      const dIso = req.date.includes('-') && req.date.split('-')[0].length === 2
+        ? req.date.split('-').reverse().join('-')
+        : req.date;
+      const monthStr = dIso ? dIso.slice(0, 7) : '';
+      plan = this.monthlyTourPlans.find(
+        (p) =>
+          (p.mr_id === req.mr_id || !req.mr_id) &&
+          (p.month === monthStr || (p.entries || []).some((e) => matchDates(e.date, req.date))),
+      );
+    }
+    if (!plan && this.monthlyTourPlans.length > 0) {
+      plan = this.monthlyTourPlans.find((p) => (p.entries || []).some((e) => matchDates(e.date, req.date)));
+    }
+
     if (plan) {
+      req.tour_plan_id = plan.id;
       if (!Array.isArray(plan.change_requests)) {
         plan.change_requests = [];
       }
@@ -555,8 +592,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         plan.change_requests.unshift(req);
       }
 
-      const entry = (plan.entries || []).find((e) => e.id === req.tour_plan_item_id || e.date === req.date);
+      const entry = (plan.entries || []).find((e) => e.id === req.tour_plan_item_id || matchDates(e.date, req.date));
       if (entry) {
+        req.tour_plan_item_id = entry.id;
         entry.change_request = req;
         if (!Array.isArray(entry.change_request_history)) {
           entry.change_request_history = [];
@@ -693,6 +731,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;
         }
+        if (Array.isArray(data.territoryHubs) && data.territoryHubs.length > 0) {
+          this.territoryHubs = data.territoryHubs;
+        }
         if (Array.isArray(data.routeBatches) && data.routeBatches.length > 0) {
           const batchMap = new Map(this.routeBatches.map((b) => [b.id, b]));
           for (const b of data.routeBatches) {
@@ -701,6 +742,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               ...existing,
               ...b,
               location_ids: b.location_ids || existing?.location_ids || [],
+              route_waypoints: b.route_waypoints || existing?.route_waypoints || [],
             });
           }
           this.routeBatches = Array.from(batchMap.values());
@@ -1505,7 +1547,32 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   (p) => p.id === plan.id || (p.mr_id === plan.mr_id && p.month === plan.month),
                 );
                 if (idx >= 0) {
-                  this.monthlyTourPlans[idx] = { ...this.monthlyTourPlans[idx], ...plan };
+                  const existingPlan = this.monthlyTourPlans[idx];
+                  const mergedChangeRequests = (plan.change_requests && plan.change_requests.length > 0)
+                    ? plan.change_requests
+                    : (existingPlan.change_requests || []);
+                  
+                  // Preserve change_request and history on entries if remote didn't have it
+                  const mergedEntries = (plan.entries || []).map((remoteEntry) => {
+                    const existingEntry = (existingPlan.entries || []).find(
+                      (ee) => ee.id === remoteEntry.id || (ee.date && remoteEntry.date && ee.date === remoteEntry.date),
+                    );
+                    if (existingEntry) {
+                      return {
+                        ...remoteEntry,
+                        change_request: remoteEntry.change_request || (existingEntry as any).change_request,
+                        change_request_history: (remoteEntry as any).change_request_history || (existingEntry as any).change_request_history,
+                      };
+                    }
+                    return remoteEntry;
+                  });
+
+                  this.monthlyTourPlans[idx] = {
+                    ...existingPlan,
+                    ...plan,
+                    change_requests: mergedChangeRequests,
+                    entries: mergedEntries,
+                  };
                 } else {
                   this.monthlyTourPlans.push(plan);
                 }
@@ -1616,6 +1683,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
             if (this.routeChangeRequests.length > 0) {
               console.log(`[DatabaseService] Synced/extracted ${this.routeChangeRequests.length} route change requests.`);
+              for (const req of this.routeChangeRequests) {
+                await this.syncRouteChangeRequestToSupabase(req).catch(() => null);
+              }
             }
           } catch (embedErr: any) {
             console.warn('[DatabaseService] Notice extracting embedded change requests:', embedErr?.message);
@@ -1826,6 +1896,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     : [],
                   distance_km: Number(rb.distance_km || 0),
                   standard_reimbursement_rate: Number(rb.standard_reimbursement_rate ?? this.attendanceSettings?.reimbursement_rate_per_km ?? 2.5),
+                  route_waypoints: Array.isArray(rb.route_waypoints)
+                    ? rb.route_waypoints
+                    : typeof rb.route_waypoints === 'string'
+                    ? JSON.parse(rb.route_waypoints)
+                    : [],
                   status: rb.status || 'ACTIVE',
                   created_at: rb.created_at || new Date().toISOString(),
                   updated_at: rb.updated_at || new Date().toISOString(),
@@ -1833,7 +1908,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 const idx = this.routeBatches.findIndex((b) => b.id === batch.id || b.batch_code === batch.batch_code);
                 if (idx >= 0) {
                   const existingLocIds = this.routeBatches[idx].location_ids || [];
-                  this.routeBatches[idx] = { ...this.routeBatches[idx], ...batch, location_ids: existingLocIds };
+                  const existingWaypoints = this.routeBatches[idx].route_waypoints || [];
+                  this.routeBatches[idx] = {
+                    ...this.routeBatches[idx],
+                    ...batch,
+                    location_ids: existingLocIds,
+                    route_waypoints: (batch.route_waypoints && batch.route_waypoints.length > 0) ? batch.route_waypoints : existingWaypoints,
+                  };
                 } else {
                   batch.location_ids = [];
                   this.routeBatches.push(batch);
@@ -1866,6 +1947,40 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           } catch (rbNotice: any) {
             console.warn('[DatabaseService] Notice syncing route batches from Supabase:', rbNotice?.message);
+          }
+
+          // Authoritative sync: load territory hubs from Supabase
+          try {
+            const { data: remoteHubs, error: hubErr } = await client.from('territory_hubs').select('*');
+            if (!hubErr && Array.isArray(remoteHubs) && remoteHubs.length > 0) {
+              console.log(`[DatabaseService] Synced ${remoteHubs.length} territory hubs from Supabase.`);
+              for (const rh of remoteHubs) {
+                const hubItem: TerritoryHub = {
+                  id: rh.id,
+                  name: rh.name,
+                  aliases: Array.isArray(rh.aliases)
+                    ? rh.aliases
+                    : typeof rh.aliases === 'string'
+                    ? JSON.parse(rh.aliases)
+                    : [],
+                  lat: Number(rh.lat ?? rh.latitude ?? 0),
+                  lng: Number(rh.lng ?? rh.longitude ?? 0),
+                  area: rh.area || '',
+                  region: rh.region || 'other',
+                  is_custom: Boolean(rh.is_custom),
+                  created_at: rh.created_at || new Date().toISOString(),
+                  updated_at: rh.updated_at || new Date().toISOString(),
+                };
+                const existingIdx = this.territoryHubs.findIndex((h) => h.id === hubItem.id || h.name.toLowerCase() === hubItem.name.toLowerCase());
+                if (existingIdx >= 0) {
+                  this.territoryHubs[existingIdx] = { ...this.territoryHubs[existingIdx], ...hubItem };
+                } else {
+                  this.territoryHubs.push(hubItem);
+                }
+              }
+            }
+          } catch (hubNotice: any) {
+            console.warn('[DatabaseService] Notice syncing territory hubs from Supabase:', hubNotice?.message);
           }
 
           // Authoritative sync: load attendance settings from Supabase
@@ -2669,7 +2784,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
-      await client.from('route_batches').upsert({
+      const record: any = {
         id: batch.id,
         batch_code: batch.batch_code,
         name: batch.name,
@@ -2680,13 +2795,19 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         mr_name: batch.mr_name || null,
         territory_name: batch.territory_name || null,
         route_stops: batch.route_stops || [],
+        route_waypoints: batch.route_waypoints || [],
         areas: batch.areas || [],
         distance_km: batch.distance_km || 0,
         standard_reimbursement_rate: batch.standard_reimbursement_rate ?? 2.5,
         status: batch.status || 'ACTIVE',
         created_at: batch.created_at || new Date().toISOString(),
         updated_at: batch.updated_at || new Date().toISOString(),
-      }, { onConflict: 'id' });
+      };
+      const { error } = await client.from('route_batches').upsert(record, { onConflict: 'id' });
+      if (error && (error.message?.includes('route_waypoints') || error.code === '42703')) {
+        delete record.route_waypoints;
+        await client.from('route_batches').upsert(record, { onConflict: 'id' });
+      }
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to sync route batch ${batch.id}:`, err?.message);
     }
@@ -2719,6 +2840,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         mr_name: b.mr_name || null,
         territory_name: b.territory_name || null,
         route_stops: b.route_stops || [],
+        route_waypoints: b.route_waypoints || [],
         areas: b.areas || [],
         distance_km: b.distance_km || 0,
         standard_reimbursement_rate: b.standard_reimbursement_rate,
@@ -2726,11 +2848,59 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         created_at: b.created_at || new Date().toISOString(),
         updated_at: b.updated_at || new Date().toISOString(),
       }));
-      await client.from('route_batches').upsert(records, { onConflict: 'id' });
+      const { error } = await client.from('route_batches').upsert(records, { onConflict: 'id' });
+      if (error && (error.message?.includes('route_waypoints') || error.code === '42703')) {
+        records.forEach((r: any) => delete r.route_waypoints);
+        await client.from('route_batches').upsert(records, { onConflict: 'id' });
+      }
       console.log(`[DatabaseService] Successfully synced ${records.length} route batches to Supabase with rate policy.`);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to bulk sync route batches:`, err?.message);
     }
+  }
+
+  public async syncTerritoryHubToSupabase(hub: TerritoryHub) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('territory_hubs').upsert({
+        id: hub.id,
+        name: hub.name,
+        aliases: hub.aliases || [],
+        lat: hub.lat,
+        lng: hub.lng,
+        area: hub.area || '',
+        region: hub.region || 'other',
+        is_custom: hub.is_custom || false,
+        created_at: hub.created_at || new Date().toISOString(),
+        updated_at: hub.updated_at || new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to sync territory hub ${hub.id}:`, err?.message);
+    }
+  }
+
+  public async deleteTerritoryHubFromSupabase(id: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('territory_hubs').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete territory hub ${id}:`, err?.message);
+    }
+  }
+
+  public async persistTerritoryHub(hub: TerritoryHub): Promise<void> {
+    const idx = this.territoryHubs.findIndex((h) => h.id === hub.id);
+    if (idx >= 0) {
+      this.territoryHubs[idx] = { ...this.territoryHubs[idx], ...hub, updated_at: new Date().toISOString() };
+    } else {
+      this.territoryHubs.push({ ...hub, created_at: hub.created_at || new Date().toISOString(), updated_at: new Date().toISOString() });
+    }
+    this.persistToDisk();
+    await this.syncTerritoryHubToSupabase(hub);
   }
 
   public async syncAttendanceSettingsToSupabase(settings: AttendanceSettings) {
