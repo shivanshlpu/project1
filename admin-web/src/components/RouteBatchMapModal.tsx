@@ -35,6 +35,7 @@ interface RouteBatchMapModalProps {
   onClose: () => void;
   batchTitle?: string;
   initialStops?: string[];
+  initialWaypoints?: RouteWaypoint[];
   initialDistanceKm?: number;
   ratePerKm?: number;
   onApplyRoute: (result: {
@@ -42,7 +43,7 @@ interface RouteBatchMapModalProps {
     distanceKm: number;
     suggestedBatchName: string;
     waypoints: RouteWaypoint[];
-  }) => void;
+  }) => Promise<void> | void;
   allSavedLocations?: Array<{ id: string; name: string; latitude?: number; longitude?: number; address?: string }>;
 }
 
@@ -210,6 +211,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   onClose,
   batchTitle,
   initialStops = [],
+  initialWaypoints = [],
   initialDistanceKm,
   ratePerKm = 2.25,
   onApplyRoute,
@@ -224,6 +226,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
   const [calculatedKm, setCalculatedKm] = useState<number>(initialDistanceKm || 0);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
+  const [isApplying, setIsApplying] = useState<boolean>(false);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [selectedBelt, setSelectedBelt] = useState<'all' | 'shahdol' | 'kotma' | 'ambikapur' | 'bilaspur'>('all');
 
@@ -234,8 +237,14 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
   // Parse initialStops whenever modal opens or stops prop changes
   const initialStopsSignature = JSON.stringify(initialStops);
+  const initialWaypointsSignature = JSON.stringify(initialWaypoints || []);
   useEffect(() => {
     if (!isOpen) return;
+
+    if (initialWaypoints && initialWaypoints.length > 0) {
+      setWaypoints(initialWaypoints);
+      return;
+    }
 
     let parsed: RouteWaypoint[] = [];
     if (initialStops && initialStops.length > 0) {
@@ -259,7 +268,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     }
 
     setWaypoints(parsed);
-  }, [isOpen, initialStopsSignature]);
+  }, [isOpen, initialStopsSignature, initialWaypointsSignature]);
 
   // Leaflet Map Initialization
   useEffect(() => {
@@ -610,16 +619,23 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       ? `${waypoints[0].name} Circuit`
       : 'Custom Route Circuit';
 
-  const handleApply = () => {
-    if (waypoints.length === 0) return;
-    const stopNames = waypoints.map((w) => w.name);
-    onApplyRoute({
-      stops: stopNames,
-      distanceKm: calculatedKm || (waypoints.length > 1 ? 30 : 15),
-      suggestedBatchName,
-      waypoints,
-    });
-    onClose();
+  const handleApply = async () => {
+    if (waypoints.length === 0 || isApplying) return;
+    setIsApplying(true);
+    try {
+      const stopNames = waypoints.map((w) => w.name);
+      await onApplyRoute({
+        stops: stopNames,
+        distanceKm: calculatedKm || (waypoints.length > 1 ? 30 : 15),
+        suggestedBatchName,
+        waypoints,
+      });
+      onClose();
+    } catch (err) {
+      console.error('Error applying route:', err);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -1103,17 +1119,17 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               <button
                 type="button"
                 onClick={handleApply}
-                disabled={waypoints.length === 0}
+                disabled={waypoints.length === 0 || isApplying}
                 style={{
                   flex: 2,
                   padding: '9px 12px',
-                  backgroundColor: waypoints.length > 0 ? '#0F8B5A' : '#94A3B8',
+                  backgroundColor: waypoints.length > 0 && !isApplying ? '#0F8B5A' : '#94A3B8',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '0.84rem',
                   fontWeight: 800,
                   color: '#FFFFFF',
-                  cursor: waypoints.length > 0 ? 'pointer' : 'not-allowed',
+                  cursor: waypoints.length > 0 && !isApplying ? 'pointer' : 'not-allowed',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1121,7 +1137,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                 }}
               >
                 <Check size={16} />
-                Apply Route ({calculatedKm} km)
+                {isApplying ? 'Applying Route...' : `Apply Route (${calculatedKm} km)`}
               </button>
             </div>
           </div>

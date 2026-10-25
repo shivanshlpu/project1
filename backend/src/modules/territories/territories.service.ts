@@ -544,6 +544,7 @@ export class TerritoriesService {
       mr_name: mrName,
       territory_name: dto.territory_name || `${hqName} HQ Territory`,
       route_stops: stops,
+      route_waypoints: dto.route_waypoints || [],
       areas: stops,
       distance_km: dto.distance_km || 0,
       standard_reimbursement_rate: dto.standard_reimbursement_rate ?? defaultRate,
@@ -604,6 +605,9 @@ export class TerritoriesService {
     } else if (dto.areas) {
       rb.areas = dto.areas;
       if (!rb.route_stops || rb.route_stops.length === 0) rb.route_stops = dto.areas;
+    }
+    if (dto.route_waypoints !== undefined) {
+      rb.route_waypoints = dto.route_waypoints;
     }
     if (dto.distance_km !== undefined) rb.distance_km = dto.distance_km;
     if (dto.standard_reimbursement_rate !== undefined) {
