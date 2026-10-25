@@ -1043,7 +1043,10 @@ export class InventoryService {
       }
     }
 
-    const items = this.db.stockerInventory.filter((inv) => inv.stocker_id === stockerId);
+    // Only include inventory items for registered master medicines (safely prune any orphan records)
+    const items = this.db.stockerInventory
+      .filter((inv) => inv.stocker_id === stockerId)
+      .filter((inv) => this.db.medicines.some((m) => m.id === inv.medicine_id));
 
     return items.map((inv) => {
       const med = this.db.medicines.find((m) => m.id === inv.medicine_id);
@@ -1155,15 +1158,13 @@ export class InventoryService {
     for (const item of items) {
       if (!item.quantity || item.quantity <= 0) continue;
 
-      // Locate medicine either by product_id or by exact product_name
+      // Locate medicine either by product_id or by exact/normalized product_name (e.g. "AHTRI-S (200 ML)" -> "AHTRI-S")
       let med = item.product_id
-        ? this.db.medicines.find((m) => m.id === item.product_id)
+        ? this.db.findMedicine(item.product_id)
         : null;
 
-      if (!med) {
-        med = this.db.medicines.find(
-          (m) => m.name.toLowerCase() === item.product_name.toLowerCase(),
-        );
+      if (!med && item.product_name) {
+        med = this.db.findMedicine(item.product_name);
       }
 
       if (!med) {
@@ -1178,6 +1179,7 @@ export class InventoryService {
           created_at: new Date().toISOString(),
         };
         this.db.medicines.push(med);
+        this.db.syncMedicineToSupabase(med).catch(() => null);
       }
 
       // Locate stocker inventory record scoped to this stocker & HQ (§13)
@@ -1272,13 +1274,11 @@ export class InventoryService {
       if (!item.quantity || item.quantity <= 0) continue;
 
       let med = item.product_id
-        ? this.db.medicines.find((m) => m.id === item.product_id)
+        ? this.db.findMedicine(item.product_id)
         : null;
 
-      if (!med) {
-        med = this.db.medicines.find(
-          (m) => m.name.toLowerCase() === item.product_name.toLowerCase(),
-        );
+      if (!med && item.product_name) {
+        med = this.db.findMedicine(item.product_name);
       }
 
       if (!med) continue;
@@ -1333,8 +1333,10 @@ export class InventoryService {
 
     for (const inv of inventories) {
       if (inv.quantity <= inv.low_stock_threshold) {
-        const stocker = this.db.stockers.find((s) => s.id === inv.stocker_id);
         const med = this.db.medicines.find((m) => m.id === inv.medicine_id);
+        if (!med) continue; // Skip orphan records without a valid master medicine
+
+        const stocker = this.db.stockers.find((s) => s.id === inv.stocker_id);
         const hq = this.db.headquarters.find((h) => h.id === inv.hq_id);
 
         alerts.push({

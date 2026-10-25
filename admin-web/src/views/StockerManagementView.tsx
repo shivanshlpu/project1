@@ -1721,6 +1721,7 @@ export const StockerManagementView: React.FC = () => {
                 </thead>
                 <tbody>
                   {inventory
+                    .filter((item) => item.medicine_name && item.medicine_name !== 'Unknown Product')
                     .filter((item) =>
                       !searchQuery.trim()
                         ? true
@@ -2918,7 +2919,9 @@ export const StockerManagementView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {alerts.map((al, idx) => (
+                  {alerts
+                    .filter((al) => al.medicine_name && al.medicine_name !== 'Unknown Product' && al.medicine_name !== 'Unknown Medicine')
+                    .map((al, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #FEE2E2', background: '#FFFFFF' }}>
                       <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
                         {al.medicine_name}

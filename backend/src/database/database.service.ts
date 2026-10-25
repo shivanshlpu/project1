@@ -1493,6 +1493,10 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             if (!invErr && Array.isArray(remoteInv) && remoteInv.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteInv.length} stocker inventory records from Supabase.`);
               for (const ri of remoteInv) {
+                // Ignore orphan inventory records whose medicine does not exist in master catalog
+                if (!this.medicines.some((m) => m.id === ri.medicine_id)) {
+                  continue;
+                }
                 const invItem: StockerInventory = {
                   id: ri.id,
                   hq_id: ri.hq_id,
@@ -1513,6 +1517,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                   this.stockerInventory.push(invItem);
                 }
               }
+
+              // Prune any orphan inventory records that do not belong to active master medicines
+              this.stockerInventory = this.stockerInventory.filter((inv) =>
+                this.medicines.some((m) => m.id === inv.medicine_id),
+              );
             }
           } catch (invNotice: any) {
             console.warn('[DatabaseService] Notice syncing stocker inventory from Supabase:', invNotice?.message);
@@ -2690,6 +2699,70 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete medicine ${id} from Supabase:`, err?.message);
     }
+  }
+
+  /**
+   * Resilient medicine finder that resolves ID, Code, Brand Name, or product strings
+   * with embedded packaging sizes e.g. "AHTRI-S (200 ML)" -> "AHTRI-S".
+   */
+  public findMedicine(query?: string): Medicine | undefined {
+    if (!query || typeof query !== 'string') return undefined;
+    const raw = query.trim();
+    if (!raw) return undefined;
+
+    // 1. Direct ID or SKU Code match
+    const byIdOrCode = this.medicines.find(
+      (m) =>
+        m.id.toLowerCase() === raw.toLowerCase() ||
+        (m.code && m.code.toLowerCase() === raw.toLowerCase()),
+    );
+    if (byIdOrCode) return byIdOrCode;
+
+    // 2. Exact Name match (case-insensitive)
+    const exactName = this.medicines.find(
+      (m) => m.name.toLowerCase() === raw.toLowerCase(),
+    );
+    if (exactName) return exactName;
+
+    // 3. Normalized Name match: strip packaging e.g. "(200 ML)", "(100 ML)", "(10X1X10)"
+    const cleanRaw = raw
+      .replace(/\s*\([^)]*\)/g, '')
+      .replace(/[,\/\-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    if (!cleanRaw) return undefined;
+
+    const normalizedMatch = this.medicines.find((m) => {
+      const cleanMed = m.name
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/[,\/\-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+      return cleanMed === cleanRaw;
+    });
+    if (normalizedMatch) return normalizedMatch;
+
+    // 4. Prefix or substring token match (e.g. "AHTRI 5G SYP" vs "AHTRI 5G")
+    const partialMatch = this.medicines.find((m) => {
+      const cleanMed = m.name
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/[,\/\-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+      return (
+        cleanRaw.startsWith(cleanMed) ||
+        cleanMed.startsWith(cleanRaw) ||
+        cleanRaw.includes(cleanMed) ||
+        cleanMed.includes(cleanRaw)
+      );
+    });
+    if (partialMatch) return partialMatch;
+
+    return undefined;
   }
 
   public async syncStockerInventoryToSupabase(inv: StockerInventory) {

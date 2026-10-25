@@ -294,12 +294,9 @@ export class OrdersService {
     mrp: number;
     packagingDisplay?: string;
   } {
-    const matchedMed = this.db.medicines.find(
-      (m) =>
-        (item.product_id && m.id === item.product_id) ||
-        m.code.toLowerCase() === (item.product_id || '').toLowerCase() ||
-        m.name.toLowerCase() === (item.product_name || '').trim().toLowerCase(),
-    );
+    const matchedMed =
+      (item.product_id && this.db.findMedicine(item.product_id)) ||
+      (item.product_name && this.db.findMedicine(item.product_name));
 
     if (!matchedMed) {
       throw new BadRequestException(`Medicine '${item.product_name || item.product_id}' not found in medicine master`);
