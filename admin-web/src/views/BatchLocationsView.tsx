@@ -404,9 +404,29 @@ export const BatchLocationsView: React.FC = () => {
     setEditBatchName(batch.name);
     setEditBatchDistance(String(batch.distance_km));
     setEditBatchRate(String(batch.standard_reimbursement_rate ?? 2.25));
-    setEditBatchStops((batch.route_stops || []).join(', '));
+    const stopsList =
+      batch.route_stops && batch.route_stops.length > 0
+        ? batch.route_stops
+        : batch.name.split('-').map((s) => s.trim()).filter(Boolean);
+    setEditBatchStops(stopsList.join(', '));
     setEditBatchHq(batch.hq_id || 'hq-shahdol');
     setIsEditBatchModalOpen(true);
+  };
+
+  const handleOpenMapForBatch = (batch: RouteBatchItem) => {
+    setEditingBatch(batch);
+    setEditBatchCode(batch.batch_code);
+    setEditBatchName(batch.name);
+    setEditBatchDistance(String(batch.distance_km));
+    setEditBatchRate(String(batch.standard_reimbursement_rate ?? 2.25));
+    const stopsList =
+      batch.route_stops && batch.route_stops.length > 0
+        ? batch.route_stops
+        : batch.name.split('-').map((s) => s.trim()).filter(Boolean);
+    setEditBatchStops(stopsList.join(', '));
+    setEditBatchHq(batch.hq_id || 'hq-shahdol');
+    setMapRouteTarget('EDIT');
+    setIsMapRouteModalOpen(true);
   };
 
   const handleSaveEditBatch = async () => {
@@ -941,6 +961,30 @@ export const BatchLocationsView: React.FC = () => {
                     >
                       {batchLocations.length} Locations
                     </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenMapForBatch(batch);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '6px 12px',
+                        backgroundColor: '#0F8B5A',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                      title="View mapped circuit stops and road driving route on map"
+                    >
+                      <Map size={13} />
+                      Route Map
+                    </button>
 
                     <button
                       onClick={(e) => {
@@ -1866,23 +1910,31 @@ export const BatchLocationsView: React.FC = () => {
       )}
 
       {/* Interactive Map Route & Distance Builder Modal */}
-      <RouteBatchMapModal
-        isOpen={isMapRouteModalOpen}
-        onClose={() => setIsMapRouteModalOpen(false)}
-        initialStops={
-          mapRouteTarget === 'CREATE'
-            ? newBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
-            : editBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
-        }
-        initialDistanceKm={
-          mapRouteTarget === 'CREATE' ? Number(newBatchDistance) || 0 : Number(editBatchDistance) || 0
-        }
-        ratePerKm={
-          mapRouteTarget === 'CREATE' ? Number(newBatchRate) || 2.25 : Number(editBatchRate) || 2.25
-        }
-        allSavedLocations={allLocations}
-        onApplyRoute={handleApplyRouteFromMap}
-      />
+      {isMapRouteModalOpen && (
+        <RouteBatchMapModal
+          key={`${mapRouteTarget}-${editingBatch?.id || 'new'}-${isMapRouteModalOpen}`}
+          isOpen={isMapRouteModalOpen}
+          batchTitle={
+            mapRouteTarget === 'EDIT' && editingBatch
+              ? `[${editingBatch.batch_code}] ${editingBatch.name}`
+              : `New Circuit (${newBatchCode || 'RB'})`
+          }
+          onClose={() => setIsMapRouteModalOpen(false)}
+          initialStops={
+            mapRouteTarget === 'CREATE'
+              ? newBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
+              : editBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
+          }
+          initialDistanceKm={
+            mapRouteTarget === 'CREATE' ? Number(newBatchDistance) || 0 : Number(editBatchDistance) || 0
+          }
+          ratePerKm={
+            mapRouteTarget === 'CREATE' ? Number(newBatchRate) || 2.25 : Number(editBatchRate) || 2.25
+          }
+          allSavedLocations={allLocations}
+          onApplyRoute={handleApplyRouteFromMap}
+        />
+      )}
     </div>
   );
 };
