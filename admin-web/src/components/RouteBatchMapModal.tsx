@@ -19,6 +19,9 @@ import {
   Flag,
   Map as MapIcon,
   Crosshair,
+  Sparkles,
+  Maximize2,
+  AlertTriangle,
 } from 'lucide-react';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
@@ -121,9 +124,9 @@ export const TERRITORY_DIRECTORY: TerritoryHub[] = [
 
   // --- AMBIKAPUR / SURGUJA BELT ---
   { name: 'Ambikapur', aliases: ['ambikapur', 'ambikapur hq', 'surguja'], lat: 23.1200, lng: 83.1900, area: 'Surguja HQ', region: 'ambikapur' },
-  { name: 'Lakhanpur', aliases: ['lakhanpur', 'laknapur'], lat: 22.9833, lng: 83.0500, area: 'South Highway', region: 'ambikapur' },
-  { name: 'Udaipur', aliases: ['udaipur', 'udaypur'], lat: 22.8167, lng: 82.9333, area: 'Forest Route', region: 'ambikapur' },
-  { name: 'Kedma', aliases: ['kedma'], lat: 22.7500, lng: 82.8500, area: 'South West Border', region: 'ambikapur' },
+  { name: 'Lakhanpur', aliases: ['lakhanpur', 'laknapur', 'lakhanpur surguja'], lat: 22.9995, lng: 83.0446, area: 'NH130 Main Market & Bypass', region: 'ambikapur' },
+  { name: 'Udaipur', aliases: ['udaipur', 'udaypur', 'udaipur surguja'], lat: 22.9039, lng: 82.9358, area: 'Udaipur Tehsil Market & NH130', region: 'ambikapur' },
+  { name: 'Kedma', aliases: ['kedma', 'kedma surguja', 'kedama'], lat: 22.7462, lng: 83.0544, area: 'Kedma Junction & Market (NH130)', region: 'ambikapur' },
   { name: 'Batuli', aliases: ['batuli'], lat: 22.9667, lng: 83.3333, area: 'South Route', region: 'ambikapur' },
   { name: 'Sitapur', aliases: ['sitapur'], lat: 22.7833, lng: 83.5000, area: 'Jashpur Highway', region: 'ambikapur' },
   { name: 'Pathalgaon', aliases: ['pathalgaon', 'patthalgawn'], lat: 22.5667, lng: 83.7000, area: 'Commercial Mandi', region: 'ambikapur' },
@@ -245,6 +248,36 @@ function calculateHaversineKm(lat1: number, lon1: number, lat2: number, lon2: nu
   return R * c;
 }
 
+// Find optimal insertion index along current route to prevent accidental 50km loops
+function findBestInsertionIndex(current: RouteWaypoint[], newPoint: RouteWaypoint): number {
+  if (current.length <= 1) return current.length;
+  let bestIdx = current.length;
+  let minAddedDist = Infinity;
+
+  // Check inserting between adjacent stops, keeping Stop 0 (Origin HQ) first
+  for (let i = 1; i <= current.length; i++) {
+    const prev = current[i - 1];
+    const next = current[i]; // undefined if inserting at end
+
+    let addedDist = 0;
+    if (next) {
+      const orig = calculateHaversineKm(prev.lat, prev.lng, next.lat, next.lng);
+      const withNew =
+        calculateHaversineKm(prev.lat, prev.lng, newPoint.lat, newPoint.lng) +
+        calculateHaversineKm(newPoint.lat, newPoint.lng, next.lat, next.lng);
+      addedDist = withNew - orig;
+    } else {
+      addedDist = calculateHaversineKm(prev.lat, prev.lng, newPoint.lat, newPoint.lng);
+    }
+
+    if (addedDist < minAddedDist) {
+      minAddedDist = addedDist;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   isOpen,
   onClose,
@@ -262,7 +295,9 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
   const polylineLayerRef = useRef<L.Polyline | null>(null);
+  const accessLinesLayerRef = useRef<L.LayerGroup | null>(null);
   const isDraggingRef = useRef<boolean>(false);
+  const keepViewportRef = useRef<boolean>(false);
 
   const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
   const [calculatedKm, setCalculatedKm] = useState<number>(initialDistanceKm || 0);
@@ -360,17 +395,23 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
     const map = createOptimizedMap(mapContainerRef.current, {
       center: defaultCenter,
-      zoom: 10,
+      zoom: 11,
       minZoom: 5,
       maxZoom: 19,
     });
 
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
+    accessLinesLayerRef.current = L.layerGroup().addTo(map);
 
     // Map click to add pinpoint waypoint with high-accuracy reverse geocoding (zoom 18)
     map.on('click', async (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
+      keepViewportRef.current = true; // Lock viewport so map doesn't zoom out!
+
+      // Smoothly pan map to center right on the user's pinpoint
+      map.panTo([lat, lng], { animate: true });
+
       let name = `Stop (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
       let address = '';
       try {
@@ -404,14 +445,22 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
         }
       } catch {}
 
-      handleAddWaypoint({
+      const newWp: RouteWaypoint = {
         id: `wp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         name,
         lat,
         lng,
         address,
         isCustom: true,
-      });
+      };
+
+      handleAddWaypoint(newWp, { keepView: true });
+
+      // Open popup on newly marked pinpoint
+      setTimeout(() => {
+        const m = markersMapRef.current.get(newWp.id);
+        if (m) m.openPopup();
+      }, 350);
     });
 
     mapInstanceRef.current = map;
@@ -457,6 +506,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     if (!map || !markersLayerRef.current) return;
     markersLayerRef.current.clearLayers();
     markersMapRef.current.clear();
+    if (accessLinesLayerRef.current) accessLinesLayerRef.current.clearLayers();
 
     if (polylineLayerRef.current) {
       polylineLayerRef.current.remove();
@@ -607,7 +657,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       setIsCalculatingRoute(true);
       try {
         const coordsParam = currentWaypoints.map((w) => `${w.lng},${w.lat}`).join(';');
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
+        // continue_straight=false allows vehicles to turn around at stops, eliminating giant U-turn detours!
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&continue_straight=false`;
 
         const res = await fetch(osrmUrl);
         if (res.ok) {
@@ -621,6 +672,55 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
             const linePoints: [number, number][] = data.routes[0].geometry.coordinates.map(
               (c: [number, number]) => [c[1], c[0]]
             );
+
+            // Directly connect the route polyline to the exact pinpoint markers so it never terminates 1 km away on the highway!
+            if (linePoints.length > 0) {
+              const firstWp = currentWaypoints[0];
+              const lastWp = currentWaypoints[currentWaypoints.length - 1];
+
+              const dStart = calculateHaversineKm(firstWp.lat, firstWp.lng, linePoints[0][0], linePoints[0][1]);
+              if (dStart > 0.015) {
+                linePoints.unshift([firstWp.lat, firstWp.lng]);
+              }
+
+              const dEnd = calculateHaversineKm(
+                lastWp.lat,
+                lastWp.lng,
+                linePoints[linePoints.length - 1][0],
+                linePoints[linePoints.length - 1][1]
+              );
+              if (dEnd > 0.015) {
+                linePoints.push([lastWp.lat, lastWp.lng]);
+              }
+
+              // Draw direct access connector lines for any intermediate waypoints that were snapped off the road
+              if (data.waypoints && data.waypoints.length > 0 && accessLinesLayerRef.current) {
+                currentWaypoints.forEach((wp, wpIdx) => {
+                  const snapped = data.waypoints[wpIdx];
+                  if (snapped && snapped.location) {
+                    const snapLat = snapped.location[1];
+                    const snapLng = snapped.location[0];
+                    const distFromSnap = calculateHaversineKm(wp.lat, wp.lng, snapLat, snapLng);
+                    if (distFromSnap > 0.035 && distFromSnap < 2.0) {
+                      // Draw neat dashed approach connector from road to pinpoint marker
+                      const accessLine = L.polyline(
+                        [
+                          [snapLat, snapLng],
+                          [wp.lat, wp.lng],
+                        ],
+                        {
+                          color: '#2563EB',
+                          weight: 3,
+                          dashArray: '5, 5',
+                          opacity: 0.85,
+                        }
+                      );
+                      accessLinesLayerRef.current?.addLayer(accessLine);
+                    }
+                  }
+                });
+              }
+            }
 
             // Draw clean road route polyline
             const routePoly = L.polyline(linePoints, {
@@ -647,10 +747,11 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       setCalculatedKm(0);
     }
 
-    // Only auto-fit bounds on initial load or stop add/delete, NOT during/after drag!
-    if (bounds.length > 0 && !isDraggingRef.current) {
+    // Only fitBounds on initial modal load, NOT during drag or when user clicks to mark a pinpoint location!
+    if (bounds.length > 0 && !isDraggingRef.current && !keepViewportRef.current) {
       map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [55, 55], maxZoom: 14 });
     }
+    keepViewportRef.current = false;
   };
 
   const fallbackPolyline = (map: L.Map, pts: RouteWaypoint[]) => {
@@ -675,15 +776,29 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     polylineLayerRef.current = poly;
   };
 
-  const handleAddWaypoint = (newWp: RouteWaypoint) => {
-    setWaypoints((prev) => [...prev, newWp]);
+  const handleAddWaypoint = (newWp: RouteWaypoint, options?: { forceEnd?: boolean; keepView?: boolean }) => {
+    if (options?.keepView) {
+      keepViewportRef.current = true;
+    }
+    setWaypoints((prev) => {
+      if (prev.length <= 1 || options?.forceEnd) {
+        return [...prev, newWp];
+      }
+      // Smart insertion to prevent accidental 50km backtracking loops
+      const insertIdx = findBestInsertionIndex(prev, newWp);
+      const copy = [...prev];
+      copy.splice(insertIdx, 0, newWp);
+      return copy;
+    });
   };
 
   const handleRemoveWaypoint = (id: string) => {
+    keepViewportRef.current = true;
     setWaypoints((prev) => prev.filter((w) => w.id !== id));
   };
 
   const handleMoveWaypoint = (index: number, direction: 'UP' | 'DOWN') => {
+    keepViewportRef.current = true;
     setWaypoints((prev) => {
       const target = direction === 'UP' ? index - 1 : index + 1;
       if (target < 0 || target >= prev.length) return prev;
@@ -695,22 +810,93 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     });
   };
 
+  // Fly to exact street/building level (zoom 17) pinpoint location
   const handleLocateWaypoint = (wp: RouteWaypoint) => {
     if (!mapInstanceRef.current) return;
-    mapInstanceRef.current.flyTo([wp.lat, wp.lng], 15, { animate: true, duration: 0.8 });
+    keepViewportRef.current = true;
+    mapInstanceRef.current.flyTo([wp.lat, wp.lng], 17, { animate: true, duration: 0.8 });
     const m = markersMapRef.current.get(wp.id);
     if (m) {
       setTimeout(() => {
         m.openPopup();
-      }, 400);
+      }, 500);
     }
   };
+
+  // 1-Click route sequence optimizer: orders intermediate stops to minimize total distance
+  const handleOptimizeRouteSequence = () => {
+    if (waypoints.length <= 2) return;
+    const start = waypoints[0];
+    const unvisited = [...waypoints.slice(1)];
+    const ordered: RouteWaypoint[] = [start];
+
+    let current = start;
+    while (unvisited.length > 0) {
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+      for (let i = 0; i < unvisited.length; i++) {
+        const d = calculateHaversineKm(current.lat, current.lng, unvisited[i].lat, unvisited[i].lng);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestIdx = i;
+        }
+      }
+      const [nextStop] = unvisited.splice(nearestIdx, 1);
+      ordered.push(nextStop);
+      current = nextStop;
+    }
+
+    keepViewportRef.current = true;
+    setWaypoints(ordered);
+  };
+
+  // Fit all stops on screen when user explicitly requests it
+  const handleFitEntireRoute = () => {
+    if (!mapInstanceRef.current || waypoints.length === 0) return;
+    const b: [number, number][] = waypoints.map((w) => [w.lat, w.lng]);
+    mapInstanceRef.current.fitBounds(b as L.LatLngBoundsExpression, { padding: [55, 55], maxZoom: 14 });
+  };
+
+  // Check if route has unnecessary backtracking
+  const backtrackingWarning = (() => {
+    if (waypoints.length <= 2) return null;
+    let currentDist = 0;
+    for (let i = 1; i < waypoints.length; i++) {
+      currentDist += calculateHaversineKm(waypoints[i - 1].lat, waypoints[i - 1].lng, waypoints[i].lat, waypoints[i].lng);
+    }
+
+    const start = waypoints[0];
+    const unvisited = [...waypoints.slice(1)];
+    let optDist = 0;
+    let curr = start;
+    while (unvisited.length > 0) {
+      let nIdx = 0;
+      let nDist = Infinity;
+      for (let i = 0; i < unvisited.length; i++) {
+        const d = calculateHaversineKm(curr.lat, curr.lng, unvisited[i].lat, unvisited[i].lng);
+        if (d < nDist) {
+          nDist = d;
+          nIdx = i;
+        }
+      }
+      const [nxt] = unvisited.splice(nIdx, 1);
+      optDist += nDist;
+      curr = nxt;
+    }
+
+    const excessKm = Math.round((currentDist - optDist) * 1.25);
+    if (excessKm >= 8) {
+      return { excessKm };
+    }
+    return null;
+  })();
 
   const handleClearAll = () => {
     setWaypoints([]);
     setCalculatedKm(0);
     if (mapInstanceRef.current) {
       if (markersLayerRef.current) markersLayerRef.current.clearLayers();
+      if (accessLinesLayerRef.current) accessLinesLayerRef.current.clearLayers();
       markersMapRef.current.clear();
       if (polylineLayerRef.current) {
         polylineLayerRef.current.remove();
@@ -1235,32 +1421,100 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
             </div>
 
             {/* Selected Stops Ribbon List */}
-            <div style={{ flex: 1, minHeight: '150px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ flex: 1, minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
                   Ordered Circuit Stops ({waypoints.length}):
                 </span>
-                {waypoints.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {waypoints.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={handleOptimizeRouteSequence}
+                      style={{
+                        border: '1px solid #93C5FD',
+                        backgroundColor: '#EFF6FF',
+                        color: '#1D4ED8',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        borderRadius: '4px',
+                        padding: '2px 7px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                      title="Sort intermediate stops along shortest highway path without backtracking"
+                    >
+                      <Sparkles size={11} /> Auto-Sort
+                    </button>
+                  )}
+                  {waypoints.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#EF4444',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      <Trash2 size={12} />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Backtracking alert when route sequence is out of order and adds miles */}
+              {backtrackingWarning && (
+                <div
+                  style={{
+                    backgroundColor: '#FEF3C7',
+                    border: '1px solid #F59E0B',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    fontSize: '0.72rem',
+                    color: '#92400E',
+                    fontWeight: 700,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <AlertTriangle size={13} color="#D97706" style={{ flexShrink: 0 }} />
+                    <span>Sequence adds ~{backtrackingWarning.excessKm} km from backtracking</span>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleClearAll}
+                    onClick={handleOptimizeRouteSequence}
                     style={{
+                      padding: '2px 7px',
+                      backgroundColor: '#D97706',
+                      color: '#FFFFFF',
                       border: 'none',
-                      background: 'transparent',
-                      color: '#EF4444',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
+                      borderRadius: '4px',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '3px',
                     }}
                   >
-                    <Trash2 size={12} />
-                    Clear
+                    <Sparkles size={10} /> Auto-Sort
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
               {waypoints.length === 0 ? (
                 <div
@@ -1553,8 +1807,32 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               <span>Click map to add stop • Drag any pin to fine-tune exact location</span>
             </div>
 
-            {/* Top Right Controls: Satellite Switch */}
-            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }}>
+            {/* Top Right Controls: Satellite Switch & Fit Entire Route */}
+            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: '8px' }}>
+              {waypoints.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleFitEntireRoute}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  title="Fit and zoom to view all route stops"
+                >
+                  <Maximize2 size={14} color="#2563EB" />
+                  Fit Route
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleToggleMapMode}
