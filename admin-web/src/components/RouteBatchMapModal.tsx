@@ -18,6 +18,7 @@ import {
   Building,
   Flag,
   Map as MapIcon,
+  Crosshair,
 } from 'lucide-react';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
@@ -28,6 +29,16 @@ export interface RouteWaypoint {
   lng: number;
   address?: string;
   isCustom?: boolean;
+}
+
+export interface SearchResultItem {
+  id: string;
+  name: string;
+  subtitle: string;
+  lat: number;
+  lng: number;
+  category: 'GPS' | 'Hub' | 'Clinic' | 'Map';
+  address?: string;
 }
 
 interface RouteBatchMapModalProps {
@@ -44,7 +55,16 @@ interface RouteBatchMapModalProps {
     suggestedBatchName: string;
     waypoints: RouteWaypoint[];
   }) => Promise<void> | void;
-  allSavedLocations?: Array<{ id: string; name: string; latitude?: number; longitude?: number; address?: string }>;
+  allSavedLocations?: Array<{
+    id: string;
+    name: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    clinic?: string;
+    doctor_name?: string;
+    category?: string;
+  }>;
 }
 
 export interface TerritoryHub {
@@ -60,15 +80,15 @@ export interface TerritoryHub {
 export const TERRITORY_DIRECTORY: TerritoryHub[] = [
   // --- SHAHDOL HQ BELT ---
   { name: 'Shahdol', aliases: ['shahdol', 'shd', 'shahdol hq', 'shahdol city', 'sohagpur'], lat: 23.2883, lng: 81.3522, area: 'Shahdol Central HQ', region: 'shahdol' },
-  { name: 'Budhar', aliases: ['budhar', 'burhar', 'boodhar', 'bhr'], lat: 23.2083, lng: 81.5456, area: 'Commercial Town', region: 'shahdol' },
-  { name: 'Dhanpuri', aliases: ['dhanpuri', 'dhanpoori'], lat: 23.1678, lng: 81.5644, area: 'Mining Hub', region: 'shahdol' },
-  { name: 'Amlai (OPM)', aliases: ['amlai', 'opm', 'amlai opm', 'orient paper mills', 'amlai (opm)'], lat: 23.1650, lng: 81.6150, area: 'Paper Mill & Township', region: 'shahdol' },
-  { name: 'Bakaho', aliases: ['bakaho', 'bakkaho'], lat: 23.2200, lng: 81.5800, area: 'Sub-Town', region: 'shahdol' },
+  { name: 'Budhar', aliases: ['budhar', 'burhar', 'boodhar'], lat: 23.2167, lng: 81.5333, area: 'Commercial Town', region: 'shahdol' },
+  { name: 'Dhanpuri', aliases: ['dhanpuri', 'dhanpoori'], lat: 23.1833, lng: 81.5667, area: 'Mining Hub', region: 'shahdol' },
+  { name: 'Amlai (OPM)', aliases: ['amlai', 'opm', 'amlai opm', 'orient paper mills', 'amlai (opm)'], lat: 23.1950, lng: 81.6120, area: 'Paper Mill & Township', region: 'shahdol' },
+  { name: 'Bakaho', aliases: ['bakaho', 'bakkaho'], lat: 23.2350, lng: 81.5120, area: 'Sub-Town', region: 'shahdol' },
   { name: 'Pali', aliases: ['pali', 'birsinghpur pali', 'birsinghpur', 'birshingpur pali'], lat: 23.3644, lng: 81.0425, area: 'Thermal Town', region: 'shahdol' },
   { name: 'Nowrozabad', aliases: ['nowrozabad', 'navrozabad', 'naurozabad'], lat: 23.4000, lng: 80.9333, area: 'Colliery Belt', region: 'shahdol' },
   { name: 'Gohparu', aliases: ['gohparu', 'gohparoo'], lat: 23.4682, lng: 81.4428, area: 'Sub-district', region: 'shahdol' },
   { name: 'Jaisinghnagar', aliases: ['jaisinghnagar', 'jaisingh nagar'], lat: 23.7000, lng: 81.3833, area: 'North Route', region: 'shahdol' },
-  { name: 'Jaitpur', aliases: ['jaitpur'], lat: 23.3667, lng: 81.6833, area: 'Rural Hub', region: 'shahdol' },
+  { name: 'Jaitpur', aliases: ['jaitpur', 'jaitpur shahdol'], lat: 23.4791, lng: 81.7289, area: 'Rural Hub', region: 'shahdol' },
   { name: 'Manpur', aliases: ['manpur', 'maanpur'], lat: 23.6339, lng: 81.0825, area: 'Forest Route', region: 'shahdol' },
   { name: 'Singhpur', aliases: ['singhpur'], lat: 23.2100, lng: 81.3800, area: 'Sub-district', region: 'shahdol' },
   { name: 'Beohari', aliases: ['beohari', 'byohari'], lat: 24.0333, lng: 81.3833, area: 'North Highway', region: 'shahdol' },
@@ -78,24 +98,25 @@ export const TERRITORY_DIRECTORY: TerritoryHub[] = [
   { name: 'Chuhiri', aliases: ['chuhiri', 'chuhiree'], lat: 23.5167, lng: 81.4667, area: 'Township', region: 'shahdol' },
 
   // --- KOTMA / ANUPPUR BELT ---
-  { name: 'Kotma', aliases: ['kotma', 'kotma hq', 'kotma town'], lat: 23.2014, lng: 81.9669, area: 'Colliery Belt HQ', region: 'kotma' },
+  { name: 'Kotma', aliases: ['kotma', 'kotma hq', 'kotma town'], lat: 23.2042, lng: 81.9790, area: 'Colliery Belt HQ & Station', region: 'kotma' },
   { name: 'Anuppur', aliases: ['anuppur', 'anuppur hq', 'anuppur town'], lat: 23.1044, lng: 81.6881, area: 'District HQ', region: 'kotma' },
   { name: 'Jaithari', aliases: ['jaithari', 'jaitharee'], lat: 23.0336, lng: 81.7958, area: 'Thermal Power Hub', region: 'kotma' },
   { name: 'Rajendragram', aliases: ['rajendragram', 'rajendragram pusprajgarh', 'pushprajgarh'], lat: 22.8256, lng: 81.7139, area: 'Highland Route', region: 'kotma' },
-  { name: 'Amarkantak', aliases: ['amarkantak'], lat: 22.6738, lng: 81.7589, area: 'Holy Hill Town', region: 'kotma' },
-  { name: 'Bijuri', aliases: ['bijuri', 'bijuri colliery'], lat: 23.2681, lng: 82.1289, area: 'Border Belt', region: 'kotma' },
+  { name: 'Amarkantak', aliases: ['amarkantak'], lat: 22.6705, lng: 81.7588, area: 'Holy Hill Town', region: 'kotma' },
+  { name: 'Bijuri', aliases: ['bijuri', 'bijuri colliery'], lat: 23.2657, lng: 82.1233, area: 'Border Belt', region: 'kotma' },
   { name: 'Kelhari', aliases: ['kelhari'], lat: 23.3986, lng: 82.1931, area: 'North Mining Belt', region: 'kotma' },
   { name: 'Janakpur', aliases: ['janakpur', 'bharatpur'], lat: 23.7428, lng: 82.0250, area: 'Northern Border', region: 'kotma' },
-  { name: 'Marwahi', aliases: ['marwahi'], lat: 22.9833, lng: 82.0333, area: 'CG Belt', region: 'kotma' },
-  { name: 'Dhanikundi', aliases: ['dhanikundi', 'dhankundi'], lat: 22.9333, lng: 82.1167, area: 'Border Route', region: 'kotma' },
-  { name: 'Keswahi', aliases: ['keswahi', 'keshwahi', 'keshavwahi'], lat: 23.3167, lng: 81.7833, area: 'Central Route', region: 'kotma' },
-  { name: 'Girva', aliases: ['girva', 'girwa'], lat: 23.2500, lng: 81.7500, area: 'Rural Sector', region: 'kotma' },
-  { name: 'Khamhidol', aliases: ['khamhidol', 'khamhidhol'], lat: 23.3833, lng: 81.8500, area: 'Rural Sector', region: 'kotma' },
+  { name: 'Marwahi', aliases: ['marwahi'], lat: 23.0044, lng: 82.0572, area: 'Marwahi Tehsil Market', region: 'kotma' },
+  { name: 'Dhanikundi', aliases: ['dhanikundi', 'dhankundi', 'danikundi'], lat: 22.9309, lng: 82.1079, area: 'PHC Danikundi Border', region: 'kotma' },
+  { name: 'Keswahi', aliases: ['keswahi', 'keshwahi', 'keshavwahi', 'keswani', 'keshwani'], lat: 23.2991, lng: 81.7760, area: 'PHC Keshwahi Central Route', region: 'kotma' },
+  { name: 'Girva', aliases: ['girva', 'girwa', 'girba'], lat: 23.2620, lng: 81.6974, area: 'Girva Sub-centre & Village', region: 'kotma' },
+  { name: 'Khamhidol', aliases: ['khamhidol', 'khamhidhol', 'khamhi dol'], lat: 23.3673, lng: 81.7267, area: 'Khamhidol Village', region: 'kotma' },
   { name: 'Manendragarh', aliases: ['manendragarh', 'manendragarh city'], lat: 23.2144, lng: 82.2039, area: 'District Border', region: 'kotma' },
   { name: 'Chirmiri', aliases: ['chirmiri', 'chirimiri'], lat: 23.1814, lng: 82.3533, area: 'Coal City', region: 'kotma' },
   { name: 'Baikunthpur', aliases: ['baikunthpur'], lat: 23.2667, lng: 82.5500, area: 'District HQ (Koriya)', region: 'kotma' },
   { name: 'Gaurela', aliases: ['gaurela', 'pendra', 'pendra road', 'gaurella'], lat: 22.7667, lng: 81.9167, area: 'Railway Junction', region: 'kotma' },
-  { name: 'Venkatnagar', aliases: ['venkatnagar', 'vynkatnagar'], lat: 23.0833, lng: 82.0333, area: 'Border Belt', region: 'kotma' },
+  { name: 'Pendra', aliases: ['pendra', 'pendra town', 'pendra road'], lat: 22.7743, lng: 81.9602, area: 'Pendra Town', region: 'kotma' },
+  { name: 'Venkatnagar', aliases: ['venkatnagar', 'vynkatnagar'], lat: 22.9254, lng: 81.8764, area: 'Border Belt', region: 'kotma' },
   { name: 'Jamuna Colliery', aliases: ['jamuna colliery', 'jamuna'], lat: 23.1833, lng: 81.9333, area: 'Mining Colony', region: 'kotma' },
 
   // --- AMBIKAPUR / SURGUJA BELT ---
@@ -133,7 +154,16 @@ export const TERRITORY_DIRECTORY: TerritoryHub[] = [
 export function resolveStopCoordinate(
   stopName: string,
   idx: number,
-  allSavedLocations: Array<{ id: string; name: string; latitude?: number; longitude?: number; address?: string }> = [],
+  allSavedLocations: Array<{
+    id: string;
+    name: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    clinic?: string;
+    doctor_name?: string;
+    category?: string;
+  }> = [],
   previousWaypoint?: RouteWaypoint
 ): RouteWaypoint {
   const clean = stopName.trim();
@@ -146,7 +176,9 @@ export function resolveStopCoordinate(
     if (hClean === lower) return true;
     return h.aliases.some((a) => {
       const aClean = a.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return aClean === lower || lower.includes(aClean) || aClean.includes(lower);
+      if (aClean === lower) return true;
+      if (aClean.length >= 4 && (lower.includes(aClean) || aClean.includes(lower))) return true;
+      return false;
     });
   });
 
@@ -160,21 +192,28 @@ export function resolveStopCoordinate(
     };
   }
 
-  // 2. Check allSavedLocations
+  // 2. Check allSavedLocations (clinics, doctors, facilities)
   const locMatch = allSavedLocations.find((l) => {
     if (!l.latitude || !l.longitude) return false;
-    const lName = l.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const lName = (l.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const lClinic = (l.clinic || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const lDoc = (l.doctor_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const lAddr = (l.address || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    return lName.includes(lower) || lower.includes(lName) || lAddr.includes(lower);
+    return (
+      (lName && (lName.includes(lower) || lower.includes(lName))) ||
+      (lClinic && (lClinic.includes(lower) || lower.includes(lClinic))) ||
+      (lDoc && (lDoc.includes(lower) || lower.includes(lDoc))) ||
+      (lAddr && lAddr.includes(lower))
+    );
   });
 
   if (locMatch && locMatch.latitude && locMatch.longitude) {
     return {
       id: `wp-${idx}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      name: locMatch.name,
+      name: locMatch.clinic || locMatch.name || clean,
       lat: locMatch.latitude,
       lng: locMatch.longitude,
-      address: locMatch.address,
+      address: locMatch.address || locMatch.clinic,
     };
   }
 
@@ -221,7 +260,9 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.Layer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
   const polylineLayerRef = useRef<L.Polyline | null>(null);
+  const isDraggingRef = useRef<boolean>(false);
 
   const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
   const [calculatedKm, setCalculatedKm] = useState<number>(initialDistanceKm || 0);
@@ -232,7 +273,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
   // Parse initialStops whenever modal opens or stops prop changes
@@ -268,6 +309,41 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     }
 
     setWaypoints(parsed);
+
+    // Background accuracy refinement: for any stop flagged as isCustom (not matched in territory directory),
+    // query OpenStreetMap bounded to Central India to verify exact coordinates
+    parsed.forEach((wp, wIdx) => {
+      if (wp.isCustom) {
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            wp.name
+          )}&viewbox=80.0,24.5,84.5,21.5&bounded=0&limit=1&countrycodes=in`
+        )
+          .then((res) => (res.ok ? res.json() : []))
+          .then((data) => {
+            if (data && data.length > 0) {
+              const matchedLat = parseFloat(data[0].lat);
+              const matchedLng = parseFloat(data[0].lon);
+              if (!isNaN(matchedLat) && !isNaN(matchedLng)) {
+                setWaypoints((current) => {
+                  const updated = [...current];
+                  if (updated[wIdx] && updated[wIdx].id === wp.id) {
+                    updated[wIdx] = {
+                      ...updated[wIdx],
+                      lat: matchedLat,
+                      lng: matchedLng,
+                      address: data[0].display_name?.split(',').slice(0, 3).join(', ') || updated[wIdx].address,
+                      isCustom: false,
+                    };
+                  }
+                  return updated;
+                });
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    });
   }, [isOpen, initialStopsSignature, initialWaypointsSignature]);
 
   // Leaflet Map Initialization
@@ -292,32 +368,48 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
 
-    // Map click to add custom waypoint
+    // Map click to add pinpoint waypoint with high-accuracy reverse geocoding (zoom 18)
     map.on('click', async (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
-      let name = `Stop (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
+      let name = `Stop (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      let address = '';
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
         );
         if (res.ok) {
           const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
+          const road = data.address?.road;
+          const villageOrTown =
             data.address?.village ||
+            data.address?.town ||
+            data.address?.city ||
             data.address?.suburb ||
-            data.address?.county ||
-            data.name;
-          if (city) name = city;
+            data.address?.hamlet;
+          const amenity = data.address?.amenity || data.address?.hospital || data.address?.clinic;
+
+          if (amenity && villageOrTown) {
+            name = `${amenity}, ${villageOrTown}`;
+          } else if (amenity) {
+            name = amenity;
+          } else if (villageOrTown && road) {
+            name = `${villageOrTown} (${road})`;
+          } else if (villageOrTown) {
+            name = villageOrTown;
+          } else if (data.name) {
+            name = data.name;
+          }
+
+          address = data.display_name?.split(',').slice(0, 3).join(', ') || '';
         }
       } catch {}
 
       handleAddWaypoint({
-        id: `wp-${Date.now()}`,
+        id: `wp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         name,
         lat,
         lng,
+        address,
         isCustom: true,
       });
     });
@@ -360,10 +452,11 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     }
   };
 
-  // Render Waypoints & Polyline Route on map
+  // Render Waypoints & Polyline Route on map (markers are draggable to fine-tune exact locations)
   const renderMarkersAndRoute = async (map: L.Map, currentWaypoints: RouteWaypoint[]) => {
     if (!map || !markersLayerRef.current) return;
     markersLayerRef.current.clearLayers();
+    markersMapRef.current.clear();
 
     if (polylineLayerRef.current) {
       polylineLayerRef.current.remove();
@@ -399,6 +492,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
           border: 2.5px solid #FFFFFF;
           box-shadow: 0 4px 10px rgba(0,0,0,0.35);
           position: relative;
+          cursor: grab;
         ">
           ${badgeText}
           <div style="
@@ -423,9 +517,20 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
         popupAnchor: [0, -38],
       });
 
-      const marker = L.marker([wp.lat, wp.lng], { icon: customIcon });
+      const marker = L.marker([wp.lat, wp.lng], {
+        icon: customIcon,
+        draggable: true,
+        autoPan: true,
+      });
+
+      marker.bindTooltip('🖐️ Drag to adjust location', {
+        direction: 'top',
+        offset: [0, -38],
+        opacity: 0.9,
+      });
+
       marker.bindPopup(`
-        <div style="font-family: inherit; font-size: 12px; line-height: 1.4;">
+        <div style="font-family: inherit; font-size: 12px; line-height: 1.4; min-width: 170px;">
           <div style="font-size: 10px; font-weight: 800; color: ${bgColor}; text-transform: uppercase;">
             ${roleLabel}
           </div>
@@ -433,9 +538,67 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
             ${wp.name}
           </div>
           ${wp.address ? `<div style="font-size: 11px; color: #64748B; margin-top: 2px;">${wp.address}</div>` : ''}
-          <div style="font-size: 10px; color: #94A3B8; margin-top: 4px;">Lat: ${wp.lat.toFixed(4)}, Lng: ${wp.lng.toFixed(4)}</div>
+          <div style="font-size: 10px; color: #2563EB; font-weight: 700; margin-top: 4px;">
+            📍 ${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}
+          </div>
+          <div style="font-size: 10px; color: #94A3B8; margin-top: 3px; font-style: italic;">
+            Tip: Drag pin to fine-tune exact clinic / village location
+          </div>
         </div>
       `);
+
+      marker.on('dragstart', () => {
+        isDraggingRef.current = true;
+        marker.closePopup();
+      });
+
+      marker.on('dragend', async () => {
+        const newPos = marker.getLatLng();
+        const newLat = parseFloat(newPos.lat.toFixed(6));
+        const newLng = parseFloat(newPos.lng.toFixed(6));
+
+        setWaypoints((prev) => {
+          const next = [...prev];
+          if (next[idx]) {
+            next[idx] = {
+              ...next[idx],
+              lat: newLat,
+              lng: newLng,
+              isCustom: true,
+            };
+          }
+          return next;
+        });
+
+        // Background reverse geocode to fetch updated landmark / address details
+        try {
+          const revRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLng}&zoom=18&addressdetails=1`
+          );
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            const shortAddr = revData.display_name?.split(',').slice(0, 3).join(', ');
+            if (shortAddr) {
+              setWaypoints((prev) => {
+                const next = [...prev];
+                if (next[idx]) {
+                  next[idx] = {
+                    ...next[idx],
+                    address: shortAddr,
+                  };
+                }
+                return next;
+              });
+            }
+          }
+        } catch {}
+
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 400);
+      });
+
+      markersMapRef.current.set(wp.id, marker);
       markersLayerRef.current?.addLayer(marker);
     });
 
@@ -484,7 +647,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       setCalculatedKm(0);
     }
 
-    if (bounds.length > 0) {
+    // Only auto-fit bounds on initial load or stop add/delete, NOT during/after drag!
+    if (bounds.length > 0 && !isDraggingRef.current) {
       map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [55, 55], maxZoom: 14 });
     }
   };
@@ -531,11 +695,23 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     });
   };
 
+  const handleLocateWaypoint = (wp: RouteWaypoint) => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.flyTo([wp.lat, wp.lng], 15, { animate: true, duration: 0.8 });
+    const m = markersMapRef.current.get(wp.id);
+    if (m) {
+      setTimeout(() => {
+        m.openPopup();
+      }, 400);
+    }
+  };
+
   const handleClearAll = () => {
     setWaypoints([]);
     setCalculatedKm(0);
     if (mapInstanceRef.current) {
       if (markersLayerRef.current) markersLayerRef.current.clearLayers();
+      markersMapRef.current.clear();
       if (polylineLayerRef.current) {
         polylineLayerRef.current.remove();
         polylineLayerRef.current = null;
@@ -543,63 +719,151 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     }
   };
 
-  // Search cities / areas
+  // High-accuracy location finding with GPS parsing, local directory, clinics, and viewbox-bounded OSM
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
+    if (!query) return;
 
     setIsSearching(true);
     setSearchResults([]);
 
     try {
-      const qLower = searchQuery.toLowerCase().trim();
+      const results: SearchResultItem[] = [];
 
-      // 1. Search local directory first
-      const dirMatches = TERRITORY_DIRECTORY.filter((h) => {
-        return (
-          h.name.toLowerCase().includes(qLower) ||
-          h.aliases.some((a) => a.toLowerCase().includes(qLower)) ||
-          h.area.toLowerCase().includes(qLower)
-        );
-      }).map((h) => ({
-        name: h.name,
-        lat: h.lat,
-        lng: h.lng,
-      }));
+      // 1. Direct GPS coordinate entry (e.g. "23.3673, 81.7267", "23.3673 81.7267", "23.3673° N, 81.7267° E")
+      const coordClean = query.replace(/[°NSEWnsew]/g, ' ').trim().replace(/\s+/g, ' ');
+      const coordParts = coordClean.split(/[\s,]+/);
+      if (coordParts.length === 2) {
+        const pLat = parseFloat(coordParts[0]);
+        const pLng = parseFloat(coordParts[1]);
+        if (!isNaN(pLat) && !isNaN(pLng) && pLat >= -90 && pLat <= 90 && pLng >= -180 && pLng <= 180) {
+          results.push({
+            id: `gps-${Date.now()}`,
+            name: `Direct GPS Pin (${pLat.toFixed(4)}, ${pLng.toFixed(4)})`,
+            subtitle: `Coordinates: ${pLat.toFixed(6)}, ${pLng.toFixed(6)} • Exact Coordinates`,
+            lat: pLat,
+            lng: pLng,
+            category: 'GPS',
+          });
 
-      // 2. Search local saved locations
-      const localMatches = allSavedLocations
-        .filter(
-          (l) =>
-            l.latitude &&
-            l.longitude &&
-            (l.name.toLowerCase().includes(qLower) || (l.address && l.address.toLowerCase().includes(qLower)))
-        )
-        .map((l) => ({
-          name: l.name,
-          lat: l.latitude!,
-          lng: l.longitude!,
-        }));
-
-      // 3. Online OpenStreetMap Geocoding bounded to central India
-      let remoteMatches: Array<{ name: string; lat: number; lng: number }> = [];
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery + ' Madhya Pradesh India'
-        )}&limit=5&countrycodes=in`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        remoteMatches = data.map((d: any) => ({
-          name: d.display_name.split(',')[0],
-          lat: parseFloat(d.lat),
-          lng: parseFloat(d.lon),
-        }));
+          // Fast reverse geocoding to find landmark name at these coordinates
+          try {
+            const revRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pLat}&lon=${pLng}&zoom=18&addressdetails=1`
+            );
+            if (revRes.ok) {
+              const revData = await revRes.json();
+              const placeName =
+                revData.name ||
+                revData.address?.amenity ||
+                revData.address?.hospital ||
+                revData.address?.clinic ||
+                revData.address?.village ||
+                revData.address?.town ||
+                revData.address?.road;
+              if (placeName) {
+                results[0].name = `${placeName} (${pLat.toFixed(4)}, ${pLng.toFixed(4)})`;
+                results[0].subtitle = revData.display_name?.split(',').slice(0, 3).join(', ') || results[0].subtitle;
+              }
+            }
+          } catch {}
+        }
       }
 
-      setSearchResults([...dirMatches, ...localMatches, ...remoteMatches]);
+      const qLower = query.toLowerCase();
+
+      // 2. Search local territory directory
+      TERRITORY_DIRECTORY.forEach((h) => {
+        const nameMatch = h.name.toLowerCase().includes(qLower);
+        const aliasMatch = h.aliases.some((a) => a.toLowerCase().includes(qLower));
+        const areaMatch = h.area.toLowerCase().includes(qLower);
+        if (nameMatch || aliasMatch || areaMatch) {
+          results.push({
+            id: `hub-${h.name}`,
+            name: h.name,
+            subtitle: `${h.area} • ${h.region.toUpperCase()}`,
+            lat: h.lat,
+            lng: h.lng,
+            category: 'Hub',
+            address: h.area,
+          });
+        }
+      });
+
+      // 3. Search saved doctor clinics & field locations
+      allSavedLocations.forEach((l) => {
+        if (!l.latitude || !l.longitude) return;
+        const nameMatch = (l.name || '').toLowerCase().includes(qLower);
+        const clinicMatch = (l.clinic || '').toLowerCase().includes(qLower);
+        const docMatch = (l.doctor_name || '').toLowerCase().includes(qLower);
+        const addrMatch = (l.address || '').toLowerCase().includes(qLower);
+        if (nameMatch || clinicMatch || docMatch || addrMatch) {
+          const displayTitle = l.clinic || l.name;
+          const details = [l.doctor_name, l.address, l.category].filter(Boolean).join(' • ');
+          results.push({
+            id: `clinic-${l.id}`,
+            name: displayTitle,
+            subtitle: details || 'Saved Clinic Location',
+            lat: l.latitude,
+            lng: l.longitude,
+            category: 'Clinic',
+            address: l.address,
+          });
+        }
+      });
+
+      // 4. Online OpenStreetMap Geocoding prioritized by map viewbox / regional envelope
+      let viewboxParam = '80.0,24.5,84.5,21.5'; // Central India (Shahdol, Anuppur, Bilaspur, Surguja, Koriya)
+      if (mapInstanceRef.current) {
+        const b = mapInstanceRef.current.getBounds();
+        viewboxParam = `${b.getWest().toFixed(4)},${b.getNorth().toFixed(4)},${b.getEast().toFixed(4)},${b.getSouth().toFixed(4)}`;
+      }
+
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        query
+      )}&viewbox=${viewboxParam}&bounded=0&limit=6&countrycodes=in&addressdetails=1`;
+
+      const res = await fetch(nominatimUrl);
+      if (res.ok) {
+        const data = await res.json();
+        data.forEach((d: any, idx: number) => {
+          const primaryName =
+            d.name ||
+            d.address?.village ||
+            d.address?.town ||
+            d.address?.city ||
+            d.address?.suburb ||
+            d.display_name.split(',')[0];
+          const subParts = [
+            d.address?.county || d.address?.state_district,
+            d.address?.state,
+          ].filter(Boolean);
+          const subtitle = subParts.length > 0 ? subParts.join(', ') : d.display_name;
+
+          // Don't add duplicate if coordinates match an existing item closely
+          const dLat = parseFloat(d.lat);
+          const dLng = parseFloat(d.lon);
+          const isDup = results.some(
+            (r) => Math.abs(r.lat - dLat) < 0.001 && Math.abs(r.lng - dLng) < 0.001
+          );
+          if (!isDup) {
+            results.push({
+              id: `osm-${idx}-${d.place_id || Date.now()}`,
+              name: primaryName,
+              subtitle: subtitle,
+              lat: dLat,
+              lng: dLng,
+              category: 'Map',
+              address: d.display_name,
+            });
+          }
+        });
+      }
+
+      setSearchResults(results);
     } catch {
-      // Silent error handling
+      // Keep existing results if network fails
     } finally {
       setIsSearching(false);
     }
@@ -803,13 +1067,13 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               </div>
             </div>
 
-            {/* City / Landmark Search Box */}
+            {/* City, Tehsil, Clinic, or GPS Coordinate Search Box */}
             <div>
               <form onSubmit={handleSearch} style={{ display: 'flex', gap: '6px' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                   <input
                     type="text"
-                    placeholder="Search city, tehsil, clinic..."
+                    placeholder="Search town, tehsil, clinic, or GPS (lat, lng)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
@@ -840,49 +1104,132 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                 </button>
               </form>
 
-              {/* Search Results Dropdown List */}
+              {/* Enhanced Search Results Dropdown List with Badges and Coordinates */}
               {searchResults.length > 0 && (
                 <div
                   style={{
                     marginTop: '6px',
                     backgroundColor: '#FFFFFF',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '6px',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                    maxHeight: '140px',
+                    border: '1.5px solid #93C5FD',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                    maxHeight: '190px',
                     overflowY: 'auto',
+                    zIndex: 20,
                   }}
                 >
-                  {searchResults.map((sr, sIdx) => (
-                    <div
-                      key={sIdx}
-                      onClick={() => {
-                        handleAddWaypoint({
-                          id: `search-${sIdx}-${Date.now()}`,
-                          name: sr.name,
-                          lat: sr.lat,
-                          lng: sr.lng,
-                        });
-                        setSearchResults([]);
-                        setSearchQuery('');
-                      }}
-                      style={{
-                        padding: '6px 10px',
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #F1F5F9',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        color: '#1E293B',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#EFF6FF')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
+                  <div
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: '#64748B',
+                      backgroundColor: '#F8FAFC',
+                      borderBottom: '1px solid #E2E8F0',
+                      textTransform: 'uppercase',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>Found Locations ({searchResults.length}):</span>
+                    <span
+                      style={{ cursor: 'pointer', color: '#2563EB', textTransform: 'none', fontWeight: 600 }}
+                      onClick={() => setSearchResults([])}
                     >
-                      <MapPin size={12} color="#2563EB" />
-                      <span style={{ fontWeight: 600 }}>{sr.name}</span>
-                    </div>
-                  ))}
+                      Dismiss
+                    </span>
+                  </div>
+                  {searchResults.map((sr) => {
+                    const badgeBg =
+                      sr.category === 'GPS'
+                        ? '#4F46E5'
+                        : sr.category === 'Clinic'
+                        ? '#059669'
+                        : sr.category === 'Hub'
+                        ? '#2563EB'
+                        : '#64748B';
+
+                    return (
+                      <div
+                        key={sr.id}
+                        onClick={() => {
+                          handleAddWaypoint({
+                            id: `wp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+                            name: sr.name,
+                            lat: sr.lat,
+                            lng: sr.lng,
+                            address: sr.address || sr.subtitle,
+                            isCustom: sr.category !== 'Hub',
+                          });
+                          if (mapInstanceRef.current) {
+                            mapInstanceRef.current.flyTo([sr.lat, sr.lng], 14, { animate: true });
+                          }
+                          setSearchResults([]);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          padding: '7px 10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #F1F5F9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          color: '#1E293B',
+                          transition: 'background-color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#EFF6FF')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                padding: '1px 5px',
+                                borderRadius: '3px',
+                                backgroundColor: badgeBg,
+                                color: '#FFFFFF',
+                                textTransform: 'uppercase',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {sr.category}
+                            </span>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {sr.name}
+                            </span>
+                          </div>
+                          {sr.subtitle && (
+                            <div
+                              style={{
+                                fontSize: '0.7rem',
+                                color: '#64748B',
+                                marginTop: '1px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {sr.subtitle}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontFamily: 'monospace', flexShrink: 0 }}>
+                          {sr.lat.toFixed(3)}, {sr.lng.toFixed(3)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -929,7 +1276,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                   <MapPin size={24} color="#94A3B8" style={{ margin: '0 auto 6px auto' }} />
                   <div>No stops picked yet.</div>
                   <div style={{ fontSize: '0.72rem', marginTop: '2px', color: '#94A3B8' }}>
-                    Click towns above or click anywhere directly on the map.
+                    Click towns above, search by name/GPS, or click directly on map.
                   </div>
                 </div>
               ) : (
@@ -953,7 +1300,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                           <span
                             style={{
                               width: '20px',
@@ -971,17 +1318,54 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                           >
                             {idx + 1}
                           </span>
-                          <div>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div
+                              style={{
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
                               {wp.name}
                             </div>
-                            <div style={{ fontSize: '0.68rem', color: isStart ? '#059669' : isEnd ? '#7C3AED' : '#64748B', fontWeight: 600 }}>
-                              {isStart ? 'Origin (Start HQ)' : isEnd ? 'Final Destination' : 'Transit Stop'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.68rem',
+                                  color: isStart ? '#059669' : isEnd ? '#7C3AED' : '#64748B',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {isStart ? 'Origin (Start HQ)' : isEnd ? 'Final Destination' : 'Transit Stop'}
+                              </span>
+                              <span style={{ fontSize: '0.66rem', color: '#94A3B8', fontFamily: 'monospace' }}>
+                                • {wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleLocateWaypoint(wp)}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: '#2563EB',
+                              padding: '3px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title="Locate & zoom to stop on map"
+                          >
+                            <Crosshair size={15} />
+                          </button>
                           <button
                             type="button"
                             disabled={idx === 0}
@@ -1146,7 +1530,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
 
-            {/* Top Overlay: Click Anywhere Banner */}
+            {/* Top Overlay: Click Anywhere / Drag Pin Banner */}
             <div
               style={{
                 position: 'absolute',
@@ -1154,7 +1538,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                 left: 12,
                 zIndex: 10,
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                padding: '6px 12px',
+                padding: '6px 14px',
                 borderRadius: '20px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                 display: 'flex',
@@ -1166,7 +1550,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               }}
             >
               <Info size={14} color="#2563EB" />
-              <span>Click anywhere on map to add custom waypoint stop</span>
+              <span>Click map to add stop • Drag any pin to fine-tune exact location</span>
             </div>
 
             {/* Top Right Controls: Satellite Switch */}
