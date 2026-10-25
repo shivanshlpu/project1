@@ -61,8 +61,8 @@ export const SalesmanPortalView: React.FC = () => {
   });
 
   
-  const [simIdentifier, setSimIdentifier] = useState('aman@ahtri.com');
-  const [simPassword, setSimPassword] = useState('AmanRathoreSHD');
+  const [simIdentifier, setSimIdentifier] = useState('');
+  const [simPassword, setSimPassword] = useState('');
   const [isSimulatingOtherPhone, setIsSimulatingOtherPhone] = useState(false);
   const [simStep, setSimStep] = useState<'credentials' | 'otp_challenge'>('credentials');
   const [simRequestId, setSimRequestId] = useState('');

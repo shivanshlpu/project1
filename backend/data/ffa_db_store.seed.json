@@ -1,131 +1,6 @@
 {
-  "tasks": [
-    {
-      "id": "task-tp-23102026",
-      "title": "Visit: Xyz",
-      "description": "Scheduled TP call at Xyz (Shahdol - Pali - Navrozabad). Geofenced check-in required.",
-      "assigned_mr_id": "usr-mr-02",
-      "assigned_mr_name": "Aman Rathore",
-      "created_by": "usr-admin-01",
-      "date": "23-10-2026",
-      "time": "10:00 AM",
-      "latitude": 23.288309,
-      "longitude": 81.352204,
-      "geofence_radius_m": 50,
-      "priority": "HIGH",
-      "status": "ASSIGNED",
-      "source": "TourPlan",
-      "tp_id": "mtp-ddf6d444",
-      "tp_entry_id": "tp-item-93b9452d",
-      "location_name": "Xyz",
-      "route_batch_id": "rb-shd-b02",
-      "route_batch_name": "Shahdol - Pali - Navrozabad",
-      "sequence_order": 1,
-      "hq_accepted": true,
-      "created_at": "2026-10-24T22:29:47.307Z"
-    }
-  ],
-  "orders": [
-    {
-      "id": "ord-5e8d591c",
-      "order_number": "ORD-20261021-591c",
-      "task_id": "task-5e8d591c",
-      "mr_id": "usr-mr-02",
-      "mr_name": "Aman Rathore",
-      "customer_name": "tea bhatti",
-      "location_name": "tea bhatti",
-      "hq_id": "HQ-SHD-001",
-      "hq_name": "Shahdol",
-      "stocker_id": "stk-shd-01",
-      "stocker_name": "Tara Pharmacy",
-      "items": [
-        {
-          "product_name": "AHTYME (200 ML)",
-          "quantity": 6,
-          "unit_price": 36.8,
-          "total_amount": 220.79999999999998,
-          "distributor": "Tara Pharmacy",
-          "stock_status": "OUT_OF_STOCK",
-          "available_stock": 0
-        },
-        {
-          "product_name": "AHTRI-A2Z (200 ML)",
-          "quantity": 9,
-          "unit_price": 36.8,
-          "total_amount": 331.2,
-          "distributor": "Tara Pharmacy",
-          "stock_status": "OUT_OF_STOCK",
-          "available_stock": 0
-        },
-        {
-          "product_name": "AHTRI-A2Z (200 ML)",
-          "quantity": 9,
-          "unit_price": 36.8,
-          "total_amount": 331.2,
-          "distributor": "Tara Pharmacy",
-          "stock_status": "OUT_OF_STOCK",
-          "available_stock": 0
-        }
-      ],
-      "total_units": 24,
-      "total_amount": 883.2,
-      "delivery_status": "DELIVERED",
-      "delivered_at": "2026-10-21T16:49:54.972+00:00",
-      "delivered_by_user_id": "usr-mr-02",
-      "hq_accepted": false,
-      "inventory_deducted": false,
-      "has_stock_warning": true,
-      "stock_warning_type": "OUT_OF_STOCK",
-      "stock_warning_summary": "AHTYME (200 ML), AHTRI-A2Z (200 ML) out of stock at Shahdol",
-      "created_at": "2026-10-21T16:47:54.265+00:00",
-      "updated_at": "2026-10-21T16:49:54.972+00:00"
-    },
-    {
-      "id": "ord-500bf793",
-      "order_number": "ORD-20261021-f793",
-      "task_id": "task-500bf793",
-      "mr_id": "usr-mr-01",
-      "mr_name": "Amar Dwivedi",
-      "customer_name": "Marked Facility",
-      "location_name": "Marked Facility",
-      "hq_id": "HQ-KOT-001",
-      "hq_name": "Kotma",
-      "stocker_id": "stk-shd-01",
-      "stocker_name": "Triyash Medical Agency",
-      "items": [
-        {
-          "product_name": "AHTRI-S (200 ML)",
-          "quantity": 20,
-          "unit_price": 38.4,
-          "total_amount": 768,
-          "distributor": "Triyash Medical Agency",
-          "stock_status": "OUT_OF_STOCK",
-          "available_stock": 0
-        },
-        {
-          "product_name": "AHTRI-A2Z (200 ML)",
-          "quantity": 23,
-          "unit_price": 36.8,
-          "total_amount": 846.4,
-          "distributor": "Triyash Medical Agency",
-          "stock_status": "OUT_OF_STOCK",
-          "available_stock": 0
-        }
-      ],
-      "total_units": 43,
-      "total_amount": 1614.4,
-      "delivery_status": "DELIVERED",
-      "delivered_at": "2026-10-21T16:50:06.974+00:00",
-      "delivered_by_user_id": "usr-mr-01",
-      "hq_accepted": false,
-      "inventory_deducted": false,
-      "has_stock_warning": true,
-      "stock_warning_type": "OUT_OF_STOCK",
-      "stock_warning_summary": "AHTRI-S (200 ML), AHTRI-A2Z (200 ML) out of stock at Kotma",
-      "created_at": "2026-10-18T13:56:48.693+00:00",
-      "updated_at": "2026-10-21T16:50:06.974+00:00"
-    }
-  ],
+  "tasks": [],
+  "orders": [],
   "attendance": [],
   "attendanceSettings": {
     "id": "att-settings-default",
@@ -183,7 +58,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-02",
@@ -193,7 +73,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-03",
@@ -203,7 +88,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-04",
@@ -213,7 +103,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-05",
@@ -223,7 +118,12 @@
       "packaging_display": "20*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-06",
@@ -233,7 +133,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-07",
@@ -243,7 +148,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-08",
@@ -253,7 +163,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-09",
@@ -263,7 +178,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-10",
@@ -273,7 +193,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-11",
@@ -283,7 +208,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-12",
@@ -293,7 +223,12 @@
       "packaging_display": "50 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-13",
@@ -303,7 +238,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-14",
@@ -313,7 +253,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-15",
@@ -323,7 +268,12 @@
       "packaging_display": "30 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-16",
@@ -333,7 +283,12 @@
       "packaging_display": "60 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-01-med-17",
@@ -343,7 +298,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-01",
@@ -353,7 +313,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-02",
@@ -363,7 +328,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-03",
@@ -373,7 +343,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-04",
@@ -383,7 +358,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-05",
@@ -393,7 +373,12 @@
       "packaging_display": "20*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-06",
@@ -403,7 +388,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-07",
@@ -413,7 +403,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-08",
@@ -423,7 +418,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-09",
@@ -433,7 +433,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-10",
@@ -443,7 +448,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-11",
@@ -453,7 +463,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-12",
@@ -463,7 +478,12 @@
       "packaging_display": "50 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-13",
@@ -473,7 +493,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-14",
@@ -483,7 +508,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-15",
@@ -493,7 +523,12 @@
       "packaging_display": "30 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-16",
@@ -503,7 +538,12 @@
       "packaging_display": "60 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-shd-02-med-17",
@@ -513,7 +553,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-01",
@@ -523,7 +568,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-02",
@@ -533,7 +583,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-03",
@@ -543,7 +598,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-04",
@@ -553,7 +613,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-05",
@@ -563,7 +628,12 @@
       "packaging_display": "20*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-06",
@@ -573,7 +643,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-07",
@@ -583,7 +658,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-08",
@@ -593,7 +673,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-09",
@@ -603,7 +688,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-10",
@@ -613,7 +703,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-11",
@@ -623,7 +718,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-12",
@@ -633,7 +733,12 @@
       "packaging_display": "50 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-13",
@@ -643,7 +748,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-14",
@@ -653,7 +763,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-15",
@@ -663,7 +778,12 @@
       "packaging_display": "30 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-16",
@@ -673,7 +793,12 @@
       "packaging_display": "60 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-ktm-01-med-17",
@@ -683,7 +808,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-01",
@@ -693,7 +823,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-02",
@@ -703,7 +838,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-03",
@@ -713,7 +853,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-04",
@@ -723,7 +868,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-05",
@@ -733,7 +883,12 @@
       "packaging_display": "20*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-06",
@@ -743,7 +898,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-07",
@@ -753,7 +913,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-08",
@@ -763,7 +928,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-09",
@@ -773,7 +943,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-10",
@@ -783,7 +958,12 @@
       "packaging_display": "10*1*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-11",
@@ -793,7 +973,12 @@
       "packaging_display": "30 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-12",
@@ -803,7 +988,12 @@
       "packaging_display": "50 GM",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-13",
@@ -813,7 +1003,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-14",
@@ -823,7 +1018,12 @@
       "packaging_display": "10*10",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-15",
@@ -833,7 +1033,12 @@
       "packaging_display": "30 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-16",
@@ -843,7 +1048,12 @@
       "packaging_display": "60 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     },
     {
       "id": "inv-stk-amb-01-med-17",
@@ -853,7 +1063,12 @@
       "packaging_display": "200 ML",
       "quantity": 0,
       "low_stock_threshold": 15,
-      "updated_at": "2026-10-13T09:00:32.170Z"
+      "updated_at": "2026-10-25T23:14:59.721Z",
+      "available_stock": 0,
+      "opening_stock": 0,
+      "closing_stock": 0,
+      "status": "Out of Stock",
+      "is_out_of_stock": true
     }
   ],
   "verificationPhotos": [],
@@ -3317,79 +3532,19 @@
       "requires_device_otp_on_login": false
     }
   ],
-  "saved_at": "2026-10-14T12:30:56.005Z",
+  "saved_at": "2026-10-25T23:14:59.721Z",
   "deletedOrderIds": [
-    "ord-b03eb79b",
-    "ord-a800818a",
-    "ord-shd-01",
-    "ord-amb-01",
-    "ord-task-e4014a4a",
-    "ord-task-0ff44e9b",
-    "ORD-20261014-4a4a",
-    "ORD-20261015-4e9b",
     "ord-test-purge-100",
     "ORD-PURGE-100"
   ],
   "doctors": [],
-  "taskAssignments": [
-    {
-      "id": "ta-23102026",
-      "task_id": "task-tp-23102026",
-      "mr_id": "usr-mr-02",
-      "assigned_at": "2026-10-24T22:29:47.307Z"
-    }
-  ],
+  "taskAssignments": [],
   "locationVerifications": [],
   "approvals": [],
-  "routeChangeRequests": [
-    {
-      "id": "rcr-shd-001",
-      "mr_id": "usr-mr-02",
-      "mr_name": "Aman Rathore",
-      "hq_id": "HQ-SHD-001",
-      "hq_name": "Shahdol",
-      "date": "23-10-2026",
-      "tour_plan_id": "mtp-9518884c",
-      "tour_plan_item_id": "tp-item-93b9452d",
-      "original_batch_id": "rb-shd-b02",
-      "original_batch_code": "SHD-B02",
-      "original_batch_name": "Shahdol - Pali - Navrozabad",
-      "original_locations": [
-        {
-          "id": "loc-eb137685",
-          "name": "Xyz",
-          "address": "ASH Area, Sohagpur, Sohagpur Tahsil, Shahdol, Madhya Pradesh, India",
-          "category": "OFFICE",
-          "latitude": 23.288309,
-          "longitude": 81.352204
-        }
-      ],
-      "original_area": "Main Market",
-      "original_work_type": "Doctor Visit",
-      "original_kol_drs": "Xyz",
-      "original_activity": "Routine Field Detailing & Sampling",
-      "requested_batch_id": "rb-shd-b01",
-      "requested_batch_code": "SHD-B01",
-      "requested_batch_name": "Shahdol - Budhar - Dhanpuri - OPM",
-      "requested_locations": [
-        {
-          "id": "loc-eb137685",
-          "name": "Xyz",
-          "address": "ASH Area, Sohagpur, Sohagpur Tahsil, Shahdol, Madhya Pradesh, India",
-          "category": "OFFICE",
-          "latitude": 23.288309,
-          "longitude": 81.352204
-        }
-      ],
-      "requested_area": "Budhar - Dhanpuri Area",
-      "requested_work_type": "Doctor Visit",
-      "requested_kol_drs": "Xyz",
-      "requested_activity": "Routine Field Detailing & Sampling",
-      "reason": "Route deviation requested for urgent Key Doctor visits and stocker coordination in Budhar/Dhanpuri belt.",
-      "status": "REJECTED",
-      "created_at": "2026-10-23T06:30:00.000Z",
-      "admin_remarks": "Change request declined",
-      "reviewed_at": "2026-10-24T22:29:47.306Z"
-    }
-  ]
+  "routeChangeRequests": [],
+  "savedLocations": [],
+  "monthlyStockEntries": [],
+  "inventoryTransactions": [],
+  "notifications": [],
+  "fcmTokens": []
 }

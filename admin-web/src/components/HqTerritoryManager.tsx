@@ -38,57 +38,9 @@ export interface SubAreaItem {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
-export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [
-  { id: 'HQ-SHD-001', name: 'Shahdol', code: 'SHD', state: 'Madhya Pradesh', status: 'ACTIVE', hq_id: 'HQ-SHD-001', hq_code: 'SHD' },
-  { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT', state: 'Madhya Pradesh', status: 'ACTIVE', hq_id: 'HQ-KOT-001', hq_code: 'KOT' },
-  { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'AMB', state: 'Chhattisgarh', status: 'ACTIVE', hq_id: 'HQ-AMB-001', hq_code: 'AMB' },
-  { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'BSP', state: 'Chhattisgarh', status: 'ACTIVE', hq_id: 'HQ-BSP-001', hq_code: 'BSP' },
-];
+export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [];
 
-export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [
-  
-  { id: 'area-shd-01', hq_id: 'HQ-SHD-001', name: 'Burhar', status: 'ACTIVE' },
-  { id: 'area-shd-02', hq_id: 'HQ-SHD-001', name: 'Gohparu', status: 'ACTIVE' },
-  { id: 'area-shd-03', hq_id: 'HQ-SHD-001', name: 'Beohari', status: 'ACTIVE' },
-  { id: 'area-shd-04', hq_id: 'HQ-SHD-001', name: 'Jaisinghnagar', status: 'ACTIVE' },
-  { id: 'area-shd-05', hq_id: 'HQ-SHD-001', name: 'Sohagpur', status: 'ACTIVE' },
-  { id: 'area-shd-06', hq_id: 'HQ-SHD-001', name: 'Singhpur', status: 'ACTIVE' },
-  { id: 'area-shd-07', hq_id: 'HQ-SHD-001', name: 'Shahdol Central', status: 'ACTIVE' },
-  { id: 'area-shd-08', hq_id: 'HQ-SHD-001', name: 'Amdih', status: 'ACTIVE' },
-  { id: 'area-shd-09', hq_id: 'HQ-SHD-001', name: 'Janakpur Road', status: 'ACTIVE' },
-  { id: 'area-shd-10', hq_id: 'HQ-SHD-001', name: 'Dhanpuri', status: 'ACTIVE' },
-  { id: 'area-shd-11', hq_id: 'HQ-SHD-001', name: 'Amlai', status: 'ACTIVE' },
-  { id: 'area-shd-12', hq_id: 'HQ-SHD-001', name: 'Bakaho', status: 'ACTIVE' },
-
-  
-  { id: 'area-amb-01', hq_id: 'HQ-AMB-001', name: 'Sitapur', status: 'ACTIVE' },
-  { id: 'area-amb-02', hq_id: 'HQ-AMB-001', name: 'Lundra', status: 'ACTIVE' },
-  { id: 'area-amb-03', hq_id: 'HQ-AMB-001', name: 'Batoli', status: 'ACTIVE' },
-  { id: 'area-amb-04', hq_id: 'HQ-AMB-001', name: 'Mainpat', status: 'ACTIVE' },
-  { id: 'area-amb-05', hq_id: 'HQ-AMB-001', name: 'Udaipur', status: 'ACTIVE' },
-  { id: 'area-amb-06', hq_id: 'HQ-AMB-001', name: 'Lakhanpur', status: 'ACTIVE' },
-  { id: 'area-amb-07', hq_id: 'HQ-AMB-001', name: 'Surguja', status: 'ACTIVE' },
-  { id: 'area-amb-08', hq_id: 'HQ-AMB-001', name: 'Ramanujganj', status: 'ACTIVE' },
-  { id: 'area-amb-09', hq_id: 'HQ-AMB-001', name: 'Ambikapur Central', status: 'ACTIVE' },
-
-  
-  { id: 'area-bsp-01', hq_id: 'HQ-BSP-001', name: 'Kota', status: 'ACTIVE' },
-  { id: 'area-bsp-02', hq_id: 'HQ-BSP-001', name: 'Takhatpur', status: 'ACTIVE' },
-  { id: 'area-bsp-03', hq_id: 'HQ-BSP-001', name: 'Masturi', status: 'ACTIVE' },
-  { id: 'area-bsp-04', hq_id: 'HQ-BSP-001', name: 'Bilha', status: 'ACTIVE' },
-  { id: 'area-bsp-05', hq_id: 'HQ-BSP-001', name: 'Ratanpur', status: 'ACTIVE' },
-  { id: 'area-bsp-06', hq_id: 'HQ-BSP-001', name: 'Bodri', status: 'ACTIVE' },
-  { id: 'area-bsp-07', hq_id: 'HQ-BSP-001', name: 'Sakri', status: 'ACTIVE' },
-  { id: 'area-bsp-08', hq_id: 'HQ-BSP-001', name: 'Bilaspur City', status: 'ACTIVE' },
-
-  
-  { id: 'area-ktm-01', hq_id: 'HQ-KOT-001', name: 'Kotma Town', status: 'ACTIVE' },
-  { id: 'area-ktm-02', hq_id: 'HQ-KOT-001', name: 'Anuppur', status: 'ACTIVE' },
-  { id: 'area-ktm-03', hq_id: 'HQ-KOT-001', name: 'Jaithari', status: 'ACTIVE' },
-  { id: 'area-ktm-04', hq_id: 'HQ-KOT-001', name: 'Bijuri', status: 'ACTIVE' },
-  { id: 'area-ktm-05', hq_id: 'HQ-KOT-001', name: 'Rajendragram', status: 'ACTIVE' },
-  { id: 'area-ktm-06', hq_id: 'HQ-KOT-001', name: 'Bhalumuda', status: 'ACTIVE' },
-];
+export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [];
 
 export const HqTerritoryManager: React.FC = () => {
   const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
@@ -263,54 +215,38 @@ export const HqTerritoryManager: React.FC = () => {
       const resHqs = await fetch(`${apiUrl}/inventory/hqs`, { headers: getAuthHeaders() });
       if (resHqs.ok) {
         const dataHqs = await resHqs.json();
-        const map = new Map<string, HeadquarterItem>();
-        hqs.forEach((h) => {
-          const normKey = (h.name || '').toLowerCase().trim();
-          if (normKey) map.set(normKey, h);
-        });
-        dataHqs.forEach((h: any) => {
-          const normKey = (h.name || '').toLowerCase().trim();
-          if (!normKey) return;
-          const hId = h.hq_id || h.id;
-          const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
-          const existing = map.get(normKey);
-          const fallbackCoords = findKnownCityCoordinates(h.name) || { lat: 23.2953, lng: 81.3586 };
-          map.set(normKey, {
-            id: hId,
-            name: h.name,
-            code: hCode,
-            state: h.state || existing?.state || '',
-            status: h.status || 'ACTIVE',
-            hq_id: h.hq_id || hId,
-            hq_code: h.hq_code || hCode,
-            latitude: existing?.latitude ?? fallbackCoords.lat,
-            longitude: existing?.longitude ?? fallbackCoords.lng,
+        if (Array.isArray(dataHqs)) {
+          const loadedHqs = dataHqs.map((h: any) => {
+            const hId = h.hq_id || h.id;
+            const hCode = h.code || h.hq_code || (h.name ? `HQ-${h.name.substring(0, 3).toUpperCase()}` : 'HQ-SHD');
+            const fallbackCoords = findKnownCityCoordinates(h.name) || { lat: 23.2953, lng: 81.3586 };
+            return {
+              id: hId,
+              name: h.name,
+              code: hCode,
+              state: h.state || '',
+              status: h.status || 'ACTIVE',
+              hq_id: h.hq_id || hId,
+              hq_code: h.hq_code || hCode,
+              latitude: typeof h.latitude === 'number' ? h.latitude : fallbackCoords.lat,
+              longitude: typeof h.longitude === 'number' ? h.longitude : fallbackCoords.lng,
+            };
           });
-        });
-        const mergedHqs = Array.from(map.values());
-        if (mergedHqs.length > 0) {
-          persistHqs(mergedHqs);
+          persistHqs(loadedHqs);
         }
       }
 
-      
       const resAreas = await fetch(`${apiUrl}/inventory/areas`, { headers: getAuthHeaders() });
       if (resAreas.ok) {
         const dataAreas = await resAreas.json();
-        if (Array.isArray(dataAreas) && dataAreas.length > 0) {
-          const map = new Map<string, SubAreaItem>();
-          DEFAULT_MANAGED_AREAS.forEach((a) => map.set(a.id, a));
-          areas.forEach((a) => map.set(a.id, a));
-          dataAreas.forEach((a: any) => {
-            map.set(a.id, {
-              id: a.id,
-              hq_id: a.hq_id,
-              name: a.name,
-              status: a.status || 'ACTIVE',
-            });
-          });
-          const mergedAreas = Array.from(map.values());
-          persistAreas(mergedAreas);
+        if (Array.isArray(dataAreas)) {
+          const loadedAreas = dataAreas.map((a: any) => ({
+            id: a.id,
+            hq_id: a.hq_id,
+            name: a.name,
+            status: a.status || 'ACTIVE',
+          }));
+          persistAreas(loadedAreas);
         }
       }
     } catch (e) {
@@ -1091,28 +1027,8 @@ export const HqTerritoryManager: React.FC = () => {
                 No sub-areas configured for {activeHq.name} yet.
               </div>
               <p style={{ fontSize: '12px', color: '#64748B', maxWidth: '380px', margin: '4px auto 14px auto' }}>
-                Use the box above to enter village names, or click below to seed common villages for this district.
+                Use the quick add input above to enter village/town areas for this district.
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  const demo = DEFAULT_MANAGED_AREAS.filter((a) => a.hq_id === activeHq.id);
-                  if (demo.length > 0) {
-                    persistAreas([...areas.filter((a) => a.hq_id !== activeHq.id), ...demo]);
-                    showNotice('success', `Populated ${demo.length} default areas for ${activeHq.name}!`);
-                  }
-                }}
-                className="btn-enterprise secondary"
-                style={{
-                  padding: '8px 18px',
-                  borderColor: '#1A3C6E',
-                  color: '#1A3C6E',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                }}
-              >
-                + Load Recommended District Villages
-              </button>
             </div>
           ) : (
             <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

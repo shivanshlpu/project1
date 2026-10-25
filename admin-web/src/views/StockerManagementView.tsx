@@ -54,52 +54,7 @@ export const matchesHqId = (sHq: string, targetHq: string): boolean => {
   return false;
 };
 
-export const DEFAULT_AUTHENTIC_STOCKERS: StockerItem[] = [
-  {
-    id: 'stk-shd-01',
-    hq_id: 'HQ-SHD-001',
-    hq_name: 'Shahdol',
-    name: 'Tara Pharmacy',
-    sub_area: 'Shahdol Central',
-    contact_person: '',
-    phone: '',
-    address: 'Shahdol, MP',
-    status: 'ACTIVE',
-  },
-  {
-    id: 'stk-shd-02',
-    hq_id: 'HQ-SHD-001',
-    hq_name: 'Shahdol',
-    name: 'Parth Medical Agency',
-    sub_area: 'Shahdol Central',
-    contact_person: '',
-    phone: '',
-    address: 'Shahdol, MP',
-    status: 'ACTIVE',
-  },
-  {
-    id: 'stk-ktm-01',
-    hq_id: 'HQ-KOT-001',
-    hq_name: 'Kotma',
-    name: 'Triyash Medical Agency',
-    sub_area: 'Kotma Town',
-    contact_person: '',
-    phone: '',
-    address: 'Kotma, MP',
-    status: 'ACTIVE',
-  },
-  {
-    id: 'stk-amb-01',
-    hq_id: 'HQ-AMB-001',
-    hq_name: 'Ambikapur',
-    name: 'Kismira Medical Agency',
-    sub_area: 'Ambikapur Central',
-    contact_person: '',
-    phone: '',
-    address: 'Ambikapur, CG',
-    status: 'ACTIVE',
-  },
-];
+export const DEFAULT_AUTHENTIC_STOCKERS: StockerItem[] = [];
 
 export const DEFAULT_HQ_AREAS_MAP: Record<string, string[]> = {
   'hq-shahdol': [
@@ -619,9 +574,8 @@ export const StockerManagementView: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setStockers(data);
-          
           try {
             const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
             const otherStockers = savedStkRaw
@@ -629,38 +583,20 @@ export const StockerManagementView: React.FC = () => {
               : [];
             localStorage.setItem('ahtri_inventory_stockers', JSON.stringify([...otherStockers, ...data]));
           } catch {}
-          setSelectedStockerId((prev) => (data.some((m) => m.id === prev) ? prev : data[0].id));
+          if (data.length > 0) {
+            setSelectedStockerId((prev) => (data.some((m) => m.id === prev) ? prev : data[0].id));
+          } else {
+            setSelectedStockerId('');
+            setInventory([]);
+          }
           return;
         }
       }
     } catch {}
 
-    
-    try {
-      const savedStkRaw = localStorage.getItem('ahtri_inventory_stockers');
-      if (savedStkRaw) {
-        const allSaved = JSON.parse(savedStkRaw);
-        if (Array.isArray(allSaved)) {
-          const localForHq = allSaved.filter((s: any) => matchesHqId(s.hq_id, selectedHqId));
-          if (localForHq.length > 0) {
-            setStockers(localForHq);
-            setSelectedStockerId((prev) => (localForHq.some((m) => m.id === prev) ? prev : localForHq[0].id));
-            return;
-          }
-        }
-      }
-    } catch {}
-
-    
-    const fallbackForHq = DEFAULT_AUTHENTIC_STOCKERS.filter((s) => matchesHqId(s.hq_id, selectedHqId));
-    if (fallbackForHq.length > 0) {
-      setStockers(fallbackForHq);
-      setSelectedStockerId((prev) => (fallbackForHq.some((m) => m.id === prev) ? prev : fallbackForHq[0].id));
-    } else {
-      setStockers([]);
-      setSelectedStockerId('');
-      setInventory([]);
-    }
+    setStockers([]);
+    setSelectedStockerId('');
+    setInventory([]);
   };
 
   useEffect(() => {

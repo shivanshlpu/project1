@@ -146,11 +146,7 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-const DEFAULT_MRS_FALLBACK = [
-  { id: 'usr-mr-01', name: 'Amar Dwivedi', phone: '9876543212', hq_id: 'HQ-KOT-001', hq_name: 'Kotma' },
-  { id: 'usr-mr-02', name: 'Aman Rathore', phone: '9876543213', hq_id: 'HQ-SHD-001', hq_name: 'Shahdol' },
-  { id: 'usr-mr-03', name: 'Ashish Soni', phone: '9876543214', hq_id: 'HQ-AMB-001', hq_name: 'Ambikapur' },
-];
+
 
   
   const [permissions, setPermissions] = useState<MonthlyPermission[]>([]);
@@ -161,7 +157,7 @@ const DEFAULT_MRS_FALLBACK = [
   const [permHqId, setPermHqId] = useState<string>('ALL');
   const [permStockerId, setPermStockerId] = useState<string>('ALL');
   const [permNotes, setPermNotes] = useState<string>('');
-  const [allMrs, setAllMrs] = useState<Array<{ id: string; name: string; phone?: string; hq_id?: string }>>(DEFAULT_MRS_FALLBACK);
+  const [allMrs, setAllMrs] = useState<Array<{ id: string; name: string; phone?: string; hq_id?: string }>>([]);
   const [selectedMrIds, setSelectedMrIds] = useState<string[]>([]);
   const [permStatusFilter, setPermStatusFilter] = useState<string>('ALL');
 
@@ -224,7 +220,8 @@ const DEFAULT_MRS_FALLBACK = [
     } catch (err) {
       console.warn('Failed to fetch MR list', err);
     }
-    setAllMrs((prev) => (prev.length > 0 ? prev : DEFAULT_MRS_FALLBACK));
+    // No hardcoded fallback; MRs flow from database
+    setAllMrs((prev) => prev);
   };
 
   const fetchPermissions = async () => {

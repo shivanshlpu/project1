@@ -15,112 +15,7 @@ export interface TerritoryZone {
   subAreas?: string[];
 }
 
-export const INITIAL_SAVED_LOCATIONS: DoctorItem[] = [
-  {
-    id: 'loc-01',
-    name: 'District Hospital Shahdol',
-    clinic: 'Shahdol Civil Hospital & Trauma Centre',
-    doctor_name: 'Dr. R. K. Mishra',
-    qualification: 'Civil Surgeon, MS',
-    specialization: 'District Healthcare Centre',
-    class: 'A',
-    potential_score: 97,
-    phone: '+91 7652 240100',
-    address: 'Hospital Road, Bicharpur, Shahdol, MP',
-    latitude: 23.2953,
-    longitude: 81.3586,
-    category: 'HOSPITAL',
-    created_by_role: 'ADMIN',
-    created_by_name: 'System Admin (Owner)',
-    area_name: 'Shahdol HQ Territory',
-    visit_count: 14,
-    is_new: false,
-  },
-  {
-    id: 'loc-02',
-    name: 'Shree Ram Pharmacy',
-    clinic: 'Shree Ram Medicos Shahdol',
-    doctor_name: 'Manoj Tiwari',
-    qualification: 'Lead Chemist & Distributor',
-    specialization: 'Retail Chemist Partner',
-    class: 'A',
-    potential_score: 92,
-    phone: '+91 7652 245678',
-    address: 'Main Market, Station Road, Shahdol, MP',
-    latitude: 23.3012,
-    longitude: 81.3620,
-    category: 'PHARMACY',
-    created_by: 'usr-mr-01',
-    created_by_role: 'MR',
-    created_by_name: 'Amar Dwivedi (usr-mr-01)',
-    area_name: 'Kotma HQ Territory',
-    visit_count: 8,
-    is_new: false,
-    batch_id: 'rb-kot-b01',
-    batch_code: 'KOT-B01',
-    batch_name: 'Kotma - Marwahi - Dhanikundi',
-  },
-  {
-    id: 'loc-03',
-    name: 'Ambikapur Civil Hospital',
-    clinic: 'Surguja District Hospital & Trauma Centre',
-    doctor_name: 'Dr. S. K. Singh',
-    qualification: 'Chief Medical Officer',
-    specialization: 'Multispecialty Public Healthcare',
-    class: 'A',
-    potential_score: 95,
-    phone: '+91 7774 223400',
-    address: 'Hospital Chowk, Ambikapur, Chhattisgarh',
-    latitude: 23.1197,
-    longitude: 83.1979,
-    category: 'HOSPITAL',
-    created_by_role: 'ADMIN',
-    created_by_name: 'System Admin (Owner)',
-    area_name: 'Ambikapur HQ Territory',
-    visit_count: 11,
-    is_new: false,
-  },
-  {
-    id: 'loc-04',
-    name: 'Bilaspur Healthcare Centre',
-    clinic: 'Bilaspur Central Polyclinic & Diagnostics',
-    doctor_name: 'Dr. V. K. Agrawal',
-    qualification: 'MD (General Medicine)',
-    specialization: 'Internal Medicine & Cardiology',
-    class: 'B',
-    potential_score: 88,
-    phone: '+91 7752 234567',
-    address: 'Old Bus Stand Road, Bilaspur, Chhattisgarh',
-    latitude: 22.0797,
-    longitude: 82.1409,
-    category: 'CLINIC',
-    created_by_role: 'ADMIN',
-    created_by_name: 'System Admin (Owner)',
-    area_name: 'Bilaspur HQ Territory',
-    visit_count: 6,
-    is_new: false,
-  },
-  {
-    id: 'loc-05',
-    name: 'Kotma Primary Healthcare Center',
-    clinic: 'Kotma Community Health Center',
-    doctor_name: 'Dr. N. P. Sharma',
-    qualification: 'Medical Officer',
-    specialization: 'Community Medicine',
-    class: 'B',
-    potential_score: 84,
-    phone: '+91 7658 221122',
-    address: 'Colliery Chowk, Kotma, Anuppur, MP',
-    latitude: 23.2035,
-    longitude: 81.9669,
-    category: 'CLINIC',
-    created_by_role: 'ADMIN',
-    created_by_name: 'System Admin (Owner)',
-    area_name: 'Kotma HQ Territory',
-    visit_count: 4,
-    is_new: false,
-  },
-];
+export const INITIAL_SAVED_LOCATIONS: DoctorItem[] = [];
 
 export const DEFAULT_TERRITORY_ZONES: TerritoryZone[] = [
   {
@@ -515,12 +410,7 @@ export function getStoredSavedLocations(): DoctorItem[] {
       }
     }
     
-    const initialized = localStorage.getItem('ahtri_locations_initialized');
-    if (initialized === 'true') {
-      return [];
-    }
-
-    return INITIAL_SAVED_LOCATIONS.filter((l) => l && !deletedIds.includes(l.id));
+    return [];
   } catch {
     return [];
   }

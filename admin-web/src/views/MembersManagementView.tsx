@@ -69,72 +69,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         }
       }
     } catch {}
-    return [
-      {
-        id: 'usr-admin-01',
-        name: 'Shivansh',
-        email: 'shivanshti10@gmail.com',
-        phone: '9009149694',
-        role: 'SUPER_ADMIN',
-        status: 'ACTIVE',
-        last_login_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'usr-mr-01',
-        name: 'Amar Dwivedi',
-        email: 'amarkotma478@gmail.com',
-        phone: '9399604625',
-        role: 'MR',
-        hq_id: 'HQ-KOT-001',
-        hq_code: 'KOT',
-        hq_name: 'Kotma',
-        assigned_territory: 'Kotma HQ Territory',
-        assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
-        status: 'ACTIVE',
-        device_id: 'dev-hw-s22-9f8a2c',
-        device_model: 'Samsung Galaxy S22 (SM-S901B)',
-        device_bound_at: '2026-10-10T08:00:00.000Z',
-        last_login_at: '2026-10-10T08:30:00.000Z',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'usr-mr-02',
-        name: 'Aman Rathore',
-        email: 'amanrathour4453@gmail.com',
-        phone: '6261654453',
-        role: 'MR',
-        hq_id: 'HQ-SHD-001',
-        hq_code: 'SHD',
-        hq_name: 'Shahdol',
-        assigned_territory: 'Shahdol HQ Territory',
-        assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
-        status: 'ACTIVE',
-        device_id: 'dev-hw-oneplus-71b4e0',
-        device_model: 'OnePlus 11 5G (CPH2449)',
-        device_bound_at: '2026-10-14T09:15:00.000Z',
-        last_login_at: '2026-10-15T06:37:35.000Z',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'usr-mr-03',
-        name: 'Ashish Soni',
-        email: 'ashish103020@gmail.com',
-        phone: '9343052283',
-        role: 'MR',
-        hq_id: 'HQ-AMB-001',
-        hq_code: 'AMB',
-        hq_name: 'Ambikapur',
-        assigned_territory: 'Ambikapur HQ Territory',
-        assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
-        status: 'ACTIVE',
-        device_id: 'dev-hw-pixel7-5a2e1d',
-        device_model: 'Google Pixel 7 (GVU6C)',
-        device_bound_at: '2026-10-08T00:15:00.000Z',
-        last_login_at: '2026-10-08T00:32:30.000Z',
-        created_at: new Date().toISOString(),
-      },
-    ];
+    return [];
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string>('usr-admin-01');
   const [activeTab, setActiveTab] = useState<'performance' | 'locations' | 'leaves' | 'security'>('performance');

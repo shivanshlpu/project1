@@ -138,8 +138,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [selectedPresetId, setSelectedPresetId] = useState<string>('custom');
   const [taskTitle, setTaskTitle] = useState('');
   const [callCategory, setCallCategory] = useState<'DETAILING' | 'LAUNCH' | 'POB' | 'SAMPLE' | 'HOSPITAL'>('DETAILING');
-  const [assignedMrId, setAssignedMrId] = useState<string>('usr-mr-02');
-  const [assignedMr, setAssignedMr] = useState('Aman Rathore');
+  const [assignedMrId, setAssignedMrId] = useState<string>('');
+  const [assignedMr, setAssignedMr] = useState('');
   const [taskLocationName, setTaskLocationName] = useState('');
   const [taskAddress, setTaskAddress] = useState('');
   const getTodayDateString = () => {
@@ -167,8 +167,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState('');
-  const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('usr-mr-02');
-  const [editTaskAssignedMrName, setEditTaskAssignedMrName] = useState('Aman Rathore');
+  const [editTaskAssignedMrId, setEditTaskAssignedMrId] = useState('');
+  const [editTaskAssignedMrName, setEditTaskAssignedMrName] = useState('');
   const [editTaskDate, setEditTaskDate] = useState('');
   const [editTaskTime, setEditTaskTime] = useState('');
   const [editTaskPriority, setEditTaskPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
@@ -525,7 +525,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           <div style="font-size:11.5px;color:#0F8B5A;font-weight:600;">${loc.doctor_name ? 'Dr. ' + loc.doctor_name : loc.specialization || ''}</div>
           <div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.3;">${loc.address}</div>
           <div style="font-size:11px;color:#0F8B5A;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px;">
-            📍 Marked by: ${loc.created_by_name || 'Aman Rathore (Field MR)'}
+            📍 Marked by: ${loc.created_by_name || 'Field Representative'}
           </div>
           <div style="margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:10px;font-weight:700;background:#EFF6FF;color:#1A3C6E;padding:2px 6px;border-radius:4px;">${loc.category || 'CLINIC'}</span>
@@ -1210,7 +1210,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setEditingTask(task);
     setEditTaskTitle(task.title || '');
     setEditTaskAssignedMrId(task.assigned_mr_id || 'usr-mr-02');
-    setEditTaskAssignedMrName(task.assigned_mr_name || 'Aman Rathore');
+    setEditTaskAssignedMrName(task.assigned_mr_name || '');
     setEditTaskDate(task.date || getTodayDateString());
     setEditTaskTime(task.time || '10:00 AM');
     setEditTaskPriority(task.priority || 'HIGH');

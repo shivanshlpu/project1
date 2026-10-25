@@ -74,32 +74,9 @@ interface RewardClaimItem {
   notes?: string;
 }
 
-const DEFAULT_COMP_HQS: Array<{ id: string; name: string }> = [
-  { id: 'HQ-SHD-001', name: 'Shahdol' },
-  { id: 'HQ-KOT-001', name: 'Kotma' },
-  { id: 'HQ-AMB-001', name: 'Ambikapur' },
-  { id: 'HQ-BSP-001', name: 'Bilaspur' },
-];
+const DEFAULT_COMP_HQS: Array<{ id: string; name: string }> = [];
 
-const DEFAULT_COMP_MEDICINES: Array<{ id: string; name: string }> = [
-  { id: 'med-01', name: 'AHTRI -S' },
-  { id: 'med-02', name: 'AHTRI -A A2Z' },
-  { id: 'med-03', name: 'AHTYME' },
-  { id: 'med-04', name: 'ATHRIMOX CV 625' },
-  { id: 'med-05', name: 'AHTRI -P' },
-  { id: 'med-06', name: 'TRIPAN DSR' },
-  { id: 'med-07', name: 'AHTRI SP' },
-  { id: 'med-08', name: 'TRIZOLE OC' },
-  { id: 'med-09', name: 'TRIZOLE 200' },
-  { id: 'med-10', name: 'AHTRI K27' },
-  { id: 'med-11', name: 'TRIDIC GEL' },
-  { id: 'med-12', name: 'AHTRI STRETCH MARK CREAM' },
-  { id: 'med-13', name: 'AHTRI 5G SYP' },
-  { id: 'med-14', name: 'TRIRAB DSR' },
-  { id: 'med-15', name: 'AHTRIMOX CV SUSPENSION' },
-  { id: 'med-16', name: 'MAFTRI P' },
-  { id: 'med-17', name: 'AHTRI 9G' },
-];
+const DEFAULT_COMP_MEDICINES: Array<{ id: string; name: string }> = [];
 
 export const CompetitionsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CAMPAIGNS' | 'CLAIMS'>(() => {
@@ -130,7 +107,7 @@ export const CompetitionsView: React.FC = () => {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((h: any) => ({ id: h.id, name: h.name }));
       }
     } catch { }
-    return DEFAULT_COMP_HQS;
+    return [];
   });
   const [medicines, setMedicines] = useState<Array<{ id: string; name: string }>>(() => {
     try {
@@ -140,7 +117,7 @@ export const CompetitionsView: React.FC = () => {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map((m: any) => ({ id: m.id, name: m.name }));
       }
     } catch { }
-    return DEFAULT_COMP_MEDICINES;
+    return [];
   });
 
   
@@ -1065,7 +1042,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setCompHqId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {(hqs.length > 0 ? hqs : DEFAULT_COMP_HQS).map((hq) => (
+                  {hqs.map((hq) => (
                     <option key={hq.id} value={hq.id}>{hq.name}</option>
                   ))}
                 </select>
@@ -1080,7 +1057,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setCompMedicineId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {(medicines.length > 0 ? medicines : DEFAULT_COMP_MEDICINES).map((m) => (
+                  {medicines.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
@@ -1232,7 +1209,7 @@ export const CompetitionsView: React.FC = () => {
                   onChange={(e) => setEditCompHqId(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
-                  {(hqs.length > 0 ? hqs : DEFAULT_COMP_HQS).map((hq) => (
+                  {hqs.map((hq) => (
                     <option key={hq.id} value={hq.id}>
                       {hq.name}
                     </option>
@@ -1250,7 +1227,7 @@ export const CompetitionsView: React.FC = () => {
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 12.5, background: '#FFFFFF' }}
                 >
                   <option value="">-- All Products in HQ --</option>
-                  {(medicines.length > 0 ? medicines : DEFAULT_COMP_MEDICINES).map((m) => (
+                  {medicines.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
