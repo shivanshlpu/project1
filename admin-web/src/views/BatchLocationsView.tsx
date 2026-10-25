@@ -21,9 +21,9 @@ import {
   Edit3,
   Map,
 } from 'lucide-react';
-import { getApiBaseUrl } from '../utils/apiHelper';
+import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
 import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
-import { RouteBatchMapModal } from '../components/RouteBatchMapModal';
+import { RouteBatchMapModal, RouteWaypoint } from '../components/RouteBatchMapModal';
 
 interface BatchLocation {
   id: string;
@@ -52,6 +52,7 @@ interface RouteBatchItem {
   mr_name?: string;
   distance_km: number;
   route_stops: string[];
+  route_waypoints?: RouteWaypoint[];
   location_ids?: string[];
   locations?: BatchLocation[];
   locations_count?: number;
@@ -106,22 +107,15 @@ export const BatchLocationsView: React.FC = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       // 1. Fetch batches with locations
-      const batchRes = await fetch(`${baseUrl}/territories/route-batches/with-locations`, { headers });
+      const batchRes = await resilientFetch('/territories/route-batches/with-locations');
       let batchData: RouteBatchItem[] = [];
       if (batchRes.ok) {
         batchData = await batchRes.json();
       }
 
       // 2. Fetch all saved locations
-      const locRes = await fetch(`${baseUrl}/locations`, { headers });
+      const locRes = await resilientFetch('/locations');
       let locData: BatchLocation[] = [];
       if (locRes.ok) {
         locData = await locRes.json();
@@ -161,16 +155,8 @@ export const BatchLocationsView: React.FC = () => {
 
     setIsSubmittingAssign(true);
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${baseUrl}/territories/route-batches/${assigningBatch.id}/assign-location`, {
+      const res = await resilientFetch(`/territories/route-batches/${assigningBatch.id}/assign-location`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           location_id: selectedLocationToAssign,
           action: 'ASSIGN',
@@ -189,7 +175,8 @@ export const BatchLocationsView: React.FC = () => {
         window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_ASSIGN' } }));
         fetchData();
       } else {
-        throw new Error('Server returned an error');
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Server returned an error');
       }
     } catch (err: any) {
       showCenteredNotice({
@@ -238,16 +225,8 @@ export const BatchLocationsView: React.FC = () => {
     );
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${baseUrl}/territories/route-batches/${batchId}/assign-location`, {
+      const res = await resilientFetch(`/territories/route-batches/${batchId}/assign-location`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           location_id: locationId,
           action: 'REMOVE',
@@ -289,26 +268,19 @@ export const BatchLocationsView: React.FC = () => {
     }
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const stopsArray = newBatchStops
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const res = await fetch(`${baseUrl}/territories/route-batches`, {
+      const res = await resilientFetch('/territories/route-batches', {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           batch_code: newBatchCode.trim().toUpperCase(),
           name: newBatchName.trim(),
           distance_km: Number(newBatchDistance) || 30,
           route_stops: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
+          areas: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
           hq_id: newBatchHq,
           standard_reimbursement_rate: Number(newBatchRate) || 2.25,
         }),
@@ -328,6 +300,9 @@ export const BatchLocationsView: React.FC = () => {
         window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_CREATED' } }));
         fetchData();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Server error creating route batch');
       }
     } catch (err: any) {
       showCenteredNotice({
@@ -358,16 +333,8 @@ export const BatchLocationsView: React.FC = () => {
 
     setIsSavingBatchRate(true);
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${baseUrl}/territories/route-batches/${editingRateBatch.id}`, {
+      const res = await resilientFetch(`/territories/route-batches/${editingRateBatch.id}`, {
         method: 'PATCH',
-        headers,
         body: JSON.stringify({
           standard_reimbursement_rate: rateVal,
         }),
@@ -385,7 +352,8 @@ export const BatchLocationsView: React.FC = () => {
         window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'RATE_UPDATED' } }));
         fetchData();
       } else {
-        throw new Error('Failed to update rate');
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Failed to update rate');
       }
     } catch (err: any) {
       showCenteredNotice({
@@ -442,29 +410,24 @@ export const BatchLocationsView: React.FC = () => {
 
     setIsSavingBatch(true);
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const stopsArray = editBatchStops
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const res = await fetch(`${baseUrl}/territories/route-batches/${editingBatch.id}`, {
+      const payload = {
+        batch_code: editBatchCode.trim().toUpperCase(),
+        name: editBatchName.trim(),
+        distance_km: Number(editBatchDistance) || 30,
+        route_stops: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
+        areas: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
+        standard_reimbursement_rate: Number(editBatchRate) || 2.25,
+        hq_id: editBatchHq,
+      };
+
+      const res = await resilientFetch(`/territories/route-batches/${editingBatch.id}`, {
         method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          batch_code: editBatchCode.trim().toUpperCase(),
-          name: editBatchName.trim(),
-          distance_km: Number(editBatchDistance) || 30,
-          route_stops: stopsArray.length > 0 ? stopsArray : ['Shahdol', 'Area'],
-          standard_reimbursement_rate: Number(editBatchRate) || 2.25,
-          hq_id: editBatchHq,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -505,16 +468,8 @@ export const BatchLocationsView: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const token = localStorage.getItem('ahtri_auth_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${baseUrl}/territories/route-batches/${batch.id}`, {
+      const res = await resilientFetch(`/territories/route-batches/${batch.id}`, {
         method: 'DELETE',
-        headers,
       });
 
       if (res.ok) {
@@ -540,22 +495,98 @@ export const BatchLocationsView: React.FC = () => {
     }
   };
 
-  const handleApplyRouteFromMap = (result: {
+  const handleApplyRouteFromMap = async (result: {
     stops: string[];
     distanceKm: number;
     suggestedBatchName: string;
+    waypoints?: RouteWaypoint[];
   }) => {
+    const stopsName = result.stops.length >= 2 ? result.stops.join(' - ') : result.suggestedBatchName;
+
     if (mapRouteTarget === 'CREATE') {
       setNewBatchDistance(String(result.distanceKm));
       setNewBatchStops(result.stops.join(', '));
       if (!newBatchName.trim() || newBatchName.toLowerCase().includes('circuit')) {
-        setNewBatchName(result.suggestedBatchName);
+        setNewBatchName(stopsName);
       }
+      showCenteredNotice({
+        title: 'Route Distance Applied',
+        message: `Route of ${result.distanceKm} km (${result.stops.join(' → ')}) applied to new batch draft. Complete remaining fields and click Create Batch.`,
+        type: 'info',
+      });
     } else {
       setEditBatchDistance(String(result.distanceKm));
       setEditBatchStops(result.stops.join(', '));
-      if (!editBatchName.trim() || editBatchName.toLowerCase().includes('circuit')) {
-        setEditBatchName(result.suggestedBatchName);
+      if (!editBatchName.trim() || editBatchName.toLowerCase().includes('circuit') || editBatchName.includes(' - ')) {
+        setEditBatchName(stopsName);
+      }
+
+      // If editing an existing batch, persist directly to backend immediately!
+      if (editingBatch) {
+        try {
+          const finalName =
+            !editBatchName.trim() || editBatchName.toLowerCase().includes('circuit') || editBatchName.includes(' - ')
+              ? stopsName
+              : editBatchName.trim();
+
+          const payload = {
+            batch_code: editingBatch.batch_code,
+            name: finalName,
+            distance_km: Number(result.distanceKm),
+            route_stops: result.stops,
+            areas: result.stops,
+            route_waypoints: result.waypoints,
+            standard_reimbursement_rate: Number(editBatchRate) || editingBatch.standard_reimbursement_rate || 2.25,
+            hq_id: editBatchHq || editingBatch.hq_id,
+          };
+
+          const res = await resilientFetch(`/territories/route-batches/${editingBatch.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            // Optimistically update editingBatch state
+            setEditingBatch((prev) => (prev ? { ...prev, ...payload } : null));
+
+            // Optimistically update batches array immediately for instant UI reactivity
+            setBatches((prevBatches) =>
+              prevBatches.map((b) =>
+                b.id === editingBatch.id || b.batch_code === editingBatch.batch_code
+                  ? {
+                      ...b,
+                      ...payload,
+                    }
+                  : b
+              )
+            );
+
+            showCenteredNotice({
+              title: 'Route Saved & Applied',
+              message: `Route Circuit [${editingBatch.batch_code}] successfully updated: ${result.distanceKm} km with stops (${result.stops.join(' → ')}). Driving distance and reimbursement rates are now active!`,
+              type: 'success',
+            });
+
+            // Dispatch global synchronizing events
+            window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+            window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+            window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_UPDATED' } }));
+
+            // Re-fetch backend data
+            await fetchData();
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.message || 'Server error updating route batch');
+          }
+        } catch (err: any) {
+          console.error('Failed to save route changes:', err);
+          showCenteredNotice({
+            title: 'Update Failed',
+            message: err.message || 'Could not save route changes to the server.',
+            type: 'error',
+          });
+          throw err;
+        }
       }
     }
   };
@@ -1924,6 +1955,11 @@ export const BatchLocationsView: React.FC = () => {
             mapRouteTarget === 'CREATE'
               ? newBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
               : editBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
+          }
+          initialWaypoints={
+            mapRouteTarget === 'EDIT' && editingBatch?.route_waypoints
+              ? editingBatch.route_waypoints
+              : undefined
           }
           initialDistanceKm={
             mapRouteTarget === 'CREATE' ? Number(newBatchDistance) || 0 : Number(editBatchDistance) || 0

@@ -609,7 +609,29 @@ export class TerritoriesService {
     if (dto.route_waypoints !== undefined) {
       rb.route_waypoints = dto.route_waypoints;
     }
-    if (dto.distance_km !== undefined) rb.distance_km = dto.distance_km;
+    if (dto.distance_km !== undefined) {
+      rb.distance_km = dto.distance_km;
+      // Cascade updated batch distance to all matching monthly tour plan entries
+      for (const plan of this.db.monthlyTourPlans || []) {
+        let changed = false;
+        for (const entry of plan.entries || []) {
+          const matchesBatch =
+            (entry.route_batch_id && (entry.route_batch_id === rb.id || entry.route_batch_id === rb.batch_code)) ||
+            (entry.route_batch_code && entry.route_batch_code.toLowerCase() === rb.batch_code.toLowerCase());
+          if (matchesBatch) {
+            entry.one_way_distance_km = dto.distance_km;
+            entry.round_trip_distance_km = dto.distance_km * 2;
+            entry.distance_km = dto.distance_km * 2;
+            const rate = entry.reimbursement_rate || rb.standard_reimbursement_rate || 2.25;
+            entry.reimbursement_amount = Math.round(dto.distance_km * 2 * rate * 100) / 100;
+            changed = true;
+          }
+        }
+        if (changed) {
+          this.db.persistMonthlyTourPlan(plan).catch(() => null);
+        }
+      }
+    }
     if (dto.standard_reimbursement_rate !== undefined) {
       rb.standard_reimbursement_rate = dto.standard_reimbursement_rate;
       // Cascade assigned batch rate to all matching monthly tour plan entries
