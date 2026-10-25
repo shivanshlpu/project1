@@ -22,6 +22,7 @@ import { create3DMapPinHtml, PinCategory } from '../utils/mapPinGenerator';
 import {
   getStoredSavedLocations,
   persistSavedLocations,
+  deleteSavedLocation,
   syncSavedLocationsWithBackend,
   getOperatingZones,
   TerritoryZone,
@@ -164,9 +165,8 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       });
       if (res.ok) {
         const data: DoctorItem[] = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setLocations((prev) => {
-            
             if (prev.length === data.length) {
               const isIdentical = prev.every((p, idx) => {
                 const d = data[idx];
@@ -174,13 +174,16 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
                   d &&
                   p.id === d.id &&
                   p.is_new === d.is_new &&
-                  p.visit_count === d.visit_count
+                  p.visit_count === d.visit_count &&
+                  p.name === d.name &&
+                  p.address === d.address
                 );
               });
               if (isIdentical) return prev;
             }
             return data;
           });
+          persistSavedLocations(data);
         }
       }
     } catch {
@@ -196,7 +199,11 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     };
     window.addEventListener('ahtri_locations_updated', handleUpdate);
     fetchLocations();
-    const interval = setInterval(fetchLocations, 4000);
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchLocations();
+      }
+    }, 20000);
 
     const handleHqSync = () => {
       setZones(getOperatingZones());
@@ -449,9 +456,9 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
       confirmText: 'Delete Location',
       cancelText: 'Cancel',
       onConfirm: async () => {
-        const next = locations.filter((l) => l.id !== id);
+        // 1. Immediately delete locally and persist
+        const next = deleteSavedLocation(id);
         setLocations(next);
-        persistSavedLocations(next);
         if (selectedLocation?.id === id) {
           setSelectedLocation(null);
         }
@@ -461,22 +468,16 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-          
+          // 2. Perform backend delete without triggering full-app reloads
           await fetch(`${apiUrl}/locations/${id}`, { method: 'DELETE', headers });
-          
-          await fetch(`${apiUrl}/tasks?location=${encodeURIComponent(name)}`, { method: 'DELETE', headers });
-          window.dispatchEvent(new Event('ahtri_approvals_updated'));
-          window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'LOCATION_DELETED' } }));
-          window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
-          window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
-          fetchLocations();
+          window.dispatchEvent(new CustomEvent('ahtri_locations_updated', { detail: next }));
         } catch (err) {
           console.warn('Backend delete location warning:', err);
         }
 
         showCenteredNotice({
           title: 'Location Deleted',
-          message: `Location "${name}" and its associated tasks have been removed.`,
+          message: `Location "${name}" has been permanently removed.`,
           type: 'success',
         });
       },

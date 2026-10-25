@@ -276,7 +276,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   useEffect(() => {
     fetchBackendTasks();
-    const interval = setInterval(fetchBackendTasks, 4000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchBackendTasks();
+    }, 20000);
     const handleTasksUpdate = () => fetchBackendTasks();
     window.addEventListener('ahtri_tasks_updated', handleTasksUpdate);
     window.addEventListener('ahtri_approvals_updated', handleTasksUpdate);

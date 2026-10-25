@@ -41,11 +41,18 @@ export class LocationsService implements OnModuleInit {
   constructor(private readonly db: DatabaseService) {}
 
   async onModuleInit() {
-    this.seedDefaultLocations();
-    if (this.db.savedLocations && this.db.savedLocations.length > 0) {
-      this.locations = this.db.savedLocations;
+    // Only seed initial default locations if the database has never been populated or had locations deleted
+    if ((!this.db.savedLocations || this.db.savedLocations.length === 0) && this.db.deletedLocationIds.size === 0) {
+      this.seedDefaultLocations();
+    } else if (this.db.savedLocations) {
+      this.locations = this.db.savedLocations.filter(
+        (l) => l && !this.db.deletedLocationIds.has(l.id),
+      );
     }
     await this.syncFromSupabase();
+    this.locations = this.locations.filter(
+      (l) => l && !this.db.deletedLocationIds.has(l.id),
+    );
     this.db.savedLocations = this.locations;
   }
 
@@ -121,10 +128,14 @@ export class LocationsService implements OnModuleInit {
     if (!client) return;
     try {
       const { data, error } = await client.from('saved_locations').select('*').order('created_at', { ascending: false });
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const remoteLocations = data.map((d: any) => this.mapSupabaseRecordToSavedLocation(d));
+      if (!error && Array.isArray(data)) {
+        const remoteLocations = data
+          .map((d: any) => this.mapSupabaseRecordToSavedLocation(d))
+          .filter((l) => l && !this.db.deletedLocationIds.has(l.id));
         const remoteIds = new Set(remoteLocations.map((l) => l.id));
-        const keptLocal = this.locations.filter((l) => !remoteIds.has(l.id));
+        const keptLocal = this.locations.filter(
+          (l) => !remoteIds.has(l.id) && !this.db.deletedLocationIds.has(l.id),
+        );
         this.locations = [...remoteLocations, ...keptLocal];
         this.db.savedLocations = this.locations;
         console.log(`[LocationsService] Loaded ${this.locations.length} live saved locations from data store.`);
@@ -182,31 +193,6 @@ export class LocationsService implements OnModuleInit {
         batch_code: 'KOT-B01',
         batch_name: 'Kotma - Marwahi - Dhanikundi',
         created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-      },
-      {
-        id: 'loc-85cc2c5d',
-        name: 'Marked Facility',
-        clinic: 'Marked Facility',
-        doctor_name: 'Medical Specialist',
-        qualification: 'Registered Practice',
-        specialization: 'General Practice',
-        class: 'A',
-        potential_score: 85,
-        phone: 'N/A',
-        address: 'Law gate, Phagwara Tahsil, Kapurthala, Punjab, 144411, India',
-        latitude: 31.2544044407956,
-        longitude: 75.6915811690241,
-        category: 'OTHER',
-        created_by: 'usr-mr-01',
-        created_by_role: 'MR',
-        created_by_name: 'Amar Dwivedi (usr-mr-01)',
-        area_name: 'Kotma HQ Territory',
-        visit_count: 0,
-        is_new: false,
-        batch_id: 'rb-kot-b01',
-        batch_code: 'KOT-B01',
-        batch_name: 'Kotma - Marwahi - Dhanikundi',
-        created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
       },
       {
         id: 'loc-03',
@@ -666,6 +652,8 @@ export class LocationsService implements OnModuleInit {
   }
 
   async deleteLocation(id: string): Promise<{ success: boolean; message: string; id: string }> {
+    this.db.deletedLocationIds.add(id);
+
     const locIndex = this.locations.findIndex((l) => l.id === id);
     if (locIndex !== -1) {
       this.locations.splice(locIndex, 1);

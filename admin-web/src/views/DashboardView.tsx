@@ -161,7 +161,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ lang = 'en' }) => 
 
   useEffect(() => {
     fetchDashboardRealData();
-    const interval = setInterval(fetchDashboardRealData, 4000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchDashboardRealData();
+    }, 25000);
 
     const handleSync = () => fetchDashboardRealData();
     window.addEventListener('ahtri_tasks_updated', handleSync);

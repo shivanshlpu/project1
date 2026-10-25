@@ -61,30 +61,6 @@ export const INITIAL_SAVED_LOCATIONS: DoctorItem[] = [
     batch_name: 'Kotma - Marwahi - Dhanikundi',
   },
   {
-    id: 'loc-85cc2c5d',
-    name: 'Marked Facility',
-    clinic: 'Marked Facility',
-    doctor_name: 'Medical Specialist',
-    qualification: 'Registered Practice',
-    specialization: 'General Practice',
-    class: 'A',
-    potential_score: 85,
-    phone: 'N/A',
-    address: 'Law gate, Phagwara Tahsil, Kapurthala, Punjab, 144411, India',
-    latitude: 31.2544,
-    longitude: 75.6916,
-    category: 'OTHER',
-    created_by: 'usr-mr-01',
-    created_by_role: 'MR',
-    created_by_name: 'Amar Dwivedi (usr-mr-01)',
-    area_name: 'Kotma HQ Territory',
-    visit_count: 0,
-    is_new: false,
-    batch_id: 'rb-kot-b01',
-    batch_code: 'KOT-B01',
-    batch_name: 'Kotma - Marwahi - Dhanikundi',
-  },
-  {
     id: 'loc-03',
     name: 'Ambikapur Civil Hospital',
     clinic: 'Surguja District Hospital & Trauma Centre',
@@ -525,15 +501,26 @@ export function getOperatingZones(): TerritoryZone[] {
 
 export function getStoredSavedLocations(): DoctorItem[] {
   try {
+    let deletedIds: string[] = [];
+    try {
+      const rawDeleted = localStorage.getItem('ahtri_deleted_location_ids');
+      if (rawDeleted) deletedIds = JSON.parse(rawDeleted);
+    } catch {}
+
     const raw = localStorage.getItem('ahtri_saved_locations');
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((l) => l && !deletedIds.includes(l.id));
       }
     }
     
-    return INITIAL_SAVED_LOCATIONS;
+    const initialized = localStorage.getItem('ahtri_locations_initialized');
+    if (initialized === 'true') {
+      return [];
+    }
+
+    return INITIAL_SAVED_LOCATIONS.filter((l) => l && !deletedIds.includes(l.id));
   } catch {
     return [];
   }
@@ -542,11 +529,20 @@ export function getStoredSavedLocations(): DoctorItem[] {
 export function persistSavedLocations(locs: DoctorItem[]) {
   try {
     localStorage.setItem('ahtri_saved_locations', JSON.stringify(locs));
+    localStorage.setItem('ahtri_locations_initialized', 'true');
     window.dispatchEvent(new CustomEvent('ahtri_locations_updated', { detail: locs }));
   } catch {}
 }
 
 export function deleteSavedLocation(id: string): DoctorItem[] {
+  try {
+    const rawDeleted = localStorage.getItem('ahtri_deleted_location_ids');
+    const deletedIds: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      localStorage.setItem('ahtri_deleted_location_ids', JSON.stringify(deletedIds));
+    }
+  } catch {}
   const current = getStoredSavedLocations();
   const filtered = current.filter((l) => l.id !== id);
   persistSavedLocations(filtered);

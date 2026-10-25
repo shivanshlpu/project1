@@ -106,7 +106,9 @@ export const SalesmanPortalView: React.FC = () => {
 
   React.useEffect(() => {
     fetchSalesmanCalls();
-    const interval = setInterval(fetchSalesmanCalls, 4000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchSalesmanCalls();
+    }, 25000);
     return () => clearInterval(interval);
   }, [salesmanUser?.id]);
 

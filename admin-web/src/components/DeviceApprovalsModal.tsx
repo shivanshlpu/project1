@@ -69,10 +69,13 @@ export const DeviceApprovalsModal: React.FC<DeviceApprovalsModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
     fetchAuthorizations();
-    const interval = setInterval(fetchAuthorizations, 2500);
+    const interval = setInterval(() => {
+      if (!document.hidden && isOpen) fetchAuthorizations();
+    }, 6000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

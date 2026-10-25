@@ -261,7 +261,7 @@ export const App: React.FC = () => {
     };
 
     fetchPendingApprovals();
-    const interval = setInterval(fetchPendingApprovals, 4000);
+    const interval = setInterval(fetchPendingApprovals, 20000);
     window.addEventListener('ahtri_approvals_updated', fetchPendingApprovals);
     return () => {
       clearInterval(interval);
@@ -319,7 +319,7 @@ export const App: React.FC = () => {
     };
 
     fetchPendingTp();
-    const interval = setInterval(fetchPendingTp, 4000);
+    const interval = setInterval(fetchPendingTp, 25000);
     window.addEventListener('ahtri_tp_updated', fetchPendingTp);
     window.addEventListener('ahtri_approvals_updated', fetchPendingTp);
     window.addEventListener('ahtri_notification_received', fetchPendingTp);
@@ -344,7 +344,7 @@ export const App: React.FC = () => {
       }
     };
     fetchPendingCount();
-    const timer = setInterval(fetchPendingCount, 3000);
+    const timer = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -371,7 +371,7 @@ export const App: React.FC = () => {
       }
     };
     fetchRecentLocations();
-    const timer = setInterval(fetchRecentLocations, 3500);
+    const timer = setInterval(fetchRecentLocations, 25000);
     return () => clearInterval(timer);
   }, []);
 
@@ -423,7 +423,7 @@ export const App: React.FC = () => {
       }
     };
     fetchRecentCompletions();
-    const timer = setInterval(fetchRecentCompletions, 3500);
+    const timer = setInterval(fetchRecentCompletions, 25000);
     return () => clearInterval(timer);
   }, [acknowledgedCompletionIds]);
 

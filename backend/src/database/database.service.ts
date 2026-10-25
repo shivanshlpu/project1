@@ -73,6 +73,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public tasks: Task[] = [];
   public orders: Order[] = [];
   public deletedOrderIds: Set<string> = new Set();
+  public deletedLocationIds: Set<string> = new Set();
   public taskAssignments: TaskAssignment[] = [];
   public locationVerifications: LocationVerification[] = [];
 
@@ -162,6 +163,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         approvals: this.approvals,
         orders: this.orders,
         deletedOrderIds: Array.from(this.deletedOrderIds),
+        deletedLocationIds: Array.from(this.deletedLocationIds),
         attendance: this.attendance,
         attendanceSettings: this.attendanceSettings,
         doctorVisits: this.doctorVisits,
@@ -723,8 +725,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
         if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
-        if (Array.isArray(data.savedLocations) && data.savedLocations.length > 0) {
-          this.savedLocations = data.savedLocations;
+        if (Array.isArray(data.deletedLocationIds)) {
+          data.deletedLocationIds.forEach((id: string) => this.deletedLocationIds.add(id));
+        }
+        if (Array.isArray(data.savedLocations)) {
+          this.savedLocations = data.savedLocations.filter(
+            (l: any) => l && !this.deletedLocationIds.has(l.id)
+          );
         }
         if (Array.isArray(data.routeChangeRequests)) this.routeChangeRequests = data.routeChangeRequests;
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
