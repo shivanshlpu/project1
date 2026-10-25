@@ -150,7 +150,7 @@ export class TerritoriesController {
   }
 
   @Delete('route-batches/:id')
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async deleteRouteBatch(@Param('id') id: string) {
     return this.territoriesService.deleteRouteBatch(id);
   }
