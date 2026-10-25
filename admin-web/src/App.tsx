@@ -295,14 +295,19 @@ export const App: React.FC = () => {
           if (plansRes && plansRes.ok) {
             const pData = await plansRes.json();
             if (Array.isArray(pData)) {
-              const uniquePlans = new Set(pData.map((d: any) => d.tp_id || d.plan_id || d.id));
+              const pendingItems = pData.filter(
+                (d: any) =>
+                  (d.reimbursement_status || d.status || '').toUpperCase() === 'SUBMITTED' ||
+                  (d.reimbursement_status || d.status || '').toUpperCase() === 'PENDING',
+              );
+              const uniquePlans = new Set(pendingItems.map((d: any) => d.tp_id || d.plan_id || d.id));
               pCount = uniquePlans.size;
             }
           }
           if (rcRes && rcRes.ok) {
             const rcData = await rcRes.json();
             if (Array.isArray(rcData)) {
-              rCount = rcData.length;
+              rCount = rcData.filter((r: any) => (r.status || '').toUpperCase() === 'PENDING').length;
             }
           }
           count = pCount + rCount;

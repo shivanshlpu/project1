@@ -1497,7 +1497,24 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           }}
         >
           <Calendar size={15} />
-          <span>Monthly TP Schedules & Reimbursements ({plans.length})</span>
+          <span>
+            Monthly TP Schedules & Reimbursements
+            {kpiStats.pendingCount > 0 && (
+              <span
+                style={{
+                  marginLeft: 6,
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  padding: '2px 7px',
+                  borderRadius: 10,
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                {kpiStats.pendingCount}
+              </span>
+            )}
+          </span>
         </button>
 
         <button
@@ -1549,11 +1566,11 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           <RefreshCw size={15} />
           <span>
             Route Change Requests
-            {pendingChangeRequestsCount > 0 ? (
+            {pendingChangeRequestsCount > 0 && (
               <span
                 style={{
                   marginLeft: 6,
-                  background: '#F59E0B',
+                  background: '#EF4444',
                   color: '#FFFFFF',
                   padding: '2px 7px',
                   borderRadius: 10,
@@ -1561,10 +1578,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                   fontWeight: 800,
                 }}
               >
-                {pendingChangeRequestsCount} Pending
+                {pendingChangeRequestsCount}
               </span>
-            ) : (
-              ` (${routeChangeRequests.length})`
             )}
           </span>
         </button>

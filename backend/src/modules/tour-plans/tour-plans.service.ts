@@ -56,6 +56,22 @@ export class TourPlansService implements OnModuleInit {
         console.warn(`[TourPlansService] Restore original task notice: ${err?.message}`),
       );
     }
+
+    // Ensure all plans whose entries are already completely decided have their status updated
+    for (const plan of this.db.monthlyTourPlans) {
+      const entries = plan.entries || [];
+      if (entries.length > 0) {
+        const hasPending = entries.some(
+          (e) =>
+            (e.reimbursement_status || '').toUpperCase() !== 'APPROVED' &&
+            (e.reimbursement_status || '').toUpperCase() !== 'REJECTED',
+        );
+        if (!hasPending) {
+          const hasAnyApproved = entries.some((e) => (e.reimbursement_status || '').toUpperCase() === 'APPROVED');
+          plan.status = hasAnyApproved ? 'APPROVED' : 'REJECTED';
+        }
+      }
+    }
   }
 
   /**
@@ -807,11 +823,16 @@ export class TourPlansService implements OnModuleInit {
       await this.removeTasksForEntry(plan, entry.id, entry.date);
     }
 
-    // If all entries are approved, update the parent plan status to APPROVED
-    const allApproved = plan.entries.length > 0 && plan.entries.every((e) => e.reimbursement_status === 'APPROVED');
-    const planStatusUpper = (plan.status || '').toUpperCase();
-    if (allApproved && (planStatusUpper === 'SUBMITTED' || planStatusUpper === 'PENDING' || !plan.status)) {
-      plan.status = 'APPROVED';
+    // If all entries in the plan are decided (none pending), update the parent plan status
+    const entries = plan.entries || [];
+    const hasPendingEntries = entries.some(
+      (e) =>
+        (e.reimbursement_status || '').toUpperCase() !== 'APPROVED' &&
+        (e.reimbursement_status || '').toUpperCase() !== 'REJECTED',
+    );
+    if (!hasPendingEntries && entries.length > 0) {
+      const hasAnyApproved = entries.some((e) => (e.reimbursement_status || '').toUpperCase() === 'APPROVED');
+      plan.status = hasAnyApproved ? 'APPROVED' : 'REJECTED';
       plan.approved_by = adminId;
       plan.approved_at = new Date().toISOString();
     }
@@ -1550,12 +1571,24 @@ export class TourPlansService implements OnModuleInit {
     pending_requests: number;
     total_pending: number;
   }> {
-    const pendingPlans = (this.db.monthlyTourPlans || []).filter(
-      (p) => (p.status || '').toUpperCase() === 'SUBMITTED' || (p.status || '').toUpperCase() === 'PENDING',
-    ).length;
+    const pendingPlans = (this.db.monthlyTourPlans || []).filter((p) => {
+      const planStatus = (p.status || '').toUpperCase();
+      if (planStatus === 'APPROVED' || planStatus === 'REJECTED') return false;
+      const entries = p.entries || [];
+      if (entries.length === 0) {
+        return planStatus === 'SUBMITTED' || planStatus === 'PENDING';
+      }
+      // If every entry in the plan is already decided (APPROVED or REJECTED), the plan is NOT pending!
+      const hasPendingEntry = entries.some(
+        (e) => (e.reimbursement_status || '').toUpperCase() === 'PENDING' || !e.reimbursement_status,
+      );
+      return hasPendingEntry;
+    }).length;
+
     const pendingRequests = (this.db.routeChangeRequests || []).filter(
       (r) => (r.status || '').toUpperCase() === 'PENDING',
     ).length;
+
     return {
       pending_plans: pendingPlans,
       pending_requests: pendingRequests,
