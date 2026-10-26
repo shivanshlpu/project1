@@ -1,18 +1,18 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.47",
-  "latestVersionCode": 48,
+  "latestVersion": "1.0.48",
+  "latestVersionCode": 49,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.47/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.48/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-24",
-  "publishedAt": "2026-10-24T17:15:00.000Z",
+  "releaseDate": "2026-10-26",
+  "publishedAt": "2026-10-26T22:20:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Permanent Route Batch Geotag Persistence: Fixed location batch assignment so assigned batches persist across cloud syncs, app updates, and server restarts without loss",
-    "Offline Geotag Sync Buffer: Locations marked offline are now reliably backed up to device storage and auto-synchronized to the server as soon as connection is restored",
-    "Optional Address Validation: Flexible location geotagging ensuring clinic and store coordinates save immediately without requiring manual address inputs"
+    "Authoritative Admin Sync: Real-time synchronization ensuring that whenever tasks, orders, or tour plans are deleted from the Admin Panel, they are immediately cleared from the mobile app without local ghost records",
+    "Smart Cache Management: Automatic startup cache purge clearing stale tasks and order deliveries from local storage while strictly preserving user login and device authentication",
+    "On-Demand Re-Sync: Added 'Reset Local Cache & Re-sync from Admin' in Profile menu to instantly flush offline cache and fetch fresh server data at any time"
   ]
 }

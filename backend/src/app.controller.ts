@@ -25,23 +25,21 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.44',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '45', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.48',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '49', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.44/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.48/ahtri-ffa-mobile.apk',
   forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Storage / Depot Facility Geotagging: Dedicated Storage / Depot facility marking with custom 3D depot map pins and automated 50m presence geofencing',
-    'Unassigned Location Isolation: Eliminated false batch associations where unassigned clinics were matched to every batch',
-    'Responsive Facility Type Selector: Clean wrapping grid for Clinic, Hospital, Pharmacy, Chemist, and Storage / Depot options',
-    'Strict Tour Plan & Route Change Location Sync: Locations are strictly grouped under their assigned route circuits without address overlap',
-    'Depot Badge & Management: MR doctor directory cards now display prominent Storage Depot tags with specialized inventory roles',
+    'Authoritative Admin Sync: Real-time synchronization ensuring that whenever tasks, orders, or tour plans are deleted from the Admin Panel, they are immediately cleared from the mobile app without local ghost records',
+    'Smart Cache Management: Automatic startup cache purge clearing stale tasks and order deliveries from local storage while strictly preserving user login and device authentication',
+    'On-Demand Re-Sync: Added Reset Local Cache & Re-sync from Admin in Profile menu to instantly flush offline cache and fetch fresh server data at any time',
   ],
 };
 

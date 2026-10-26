@@ -105,9 +105,9 @@ jobs:
             ## 🚀 AHTRI Field Force Automation Mobile v${{ steps.get_version.outputs.VERSION }}
             
             ### ✨ What's new in this build:
-            - **Free Touch Map Gestures**: 360° fluid touch panning, tap-to-pinpoint, and 5x5 tile buffer without parent scroll conflict.
-            - **Automatic In-App Updates**: Persistent version tracking suppressing redundant update dialogs after upgrading.
-            - **Resilient Server Connectivity**: Automatic backend warm-up, extended cold-start tolerance, and live latency diagnostics.
+            - **Authoritative Admin Sync**: Real-time synchronization ensuring that deletions from the Admin Panel immediately reflect in the mobile app without ghost tasks, orders, or tour plans.
+            - **Automatic Cache Purge**: Stale tasks, order deliveries, and tour plan cache are automatically cleared on startup while strictly preserving user login and device authentication.
+            - **On-Demand Re-Sync**: Dedicated 'Reset Local Cache & Re-sync from Admin' in Profile menu to refresh data directly from the server at any time.
             
             ### 📲 Direct Download:
             Download and install the APK directly on any Android phone:
