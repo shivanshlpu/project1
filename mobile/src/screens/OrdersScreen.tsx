@@ -159,29 +159,15 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders(currentUserId);
 
-      
       const res = await fetch(`${baseUrl}/orders`, { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const deletedIds = new Set([
-            'ord-b03eb79b',
-            'ord-a800818a',
-            'ord-shd-01',
-            'ord-amb-01',
-            'ord-task-e4014a4a',
-            'ord-task-0ff44e9b',
-            'ORD-20261014-4a4a',
-            'ORD-20261015-4e9b',
-          ]);
-          const freshOrders = data.filter(
-            (o: MobileOrder) => !deletedIds.has(o.id) && !deletedIds.has(o.order_number),
-          );
-
-          setOrders(freshOrders);
+          // Server response is authoritative. Deleted orders are permanently removed.
+          setOrders(data);
           await AsyncStorage.setItem(
             `@ahtri_orders_cache_${currentUserId}`,
-            JSON.stringify(freshOrders),
+            JSON.stringify(data),
           ).catch(() => {});
         }
       }
@@ -191,21 +177,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed)) {
-            const deletedIds = new Set([
-              'ord-b03eb79b',
-              'ord-a800818a',
-              'ord-shd-01',
-              'ord-amb-01',
-              'ord-task-e4014a4a',
-              'ord-task-0ff44e9b',
-              'ORD-20261014-4a4a',
-              'ORD-20261015-4e9b',
-            ]);
-            setOrders(
-              parsed.filter(
-                (o: any) => !deletedIds.has(o.id) && !deletedIds.has(o.order_number),
-              ),
-            );
+            setOrders(parsed);
           }
         }
       } catch {}
@@ -214,13 +186,6 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
       setRefreshing(false);
     }
   }, [currentUserId]);
-
-  useEffect(() => {
-    AsyncStorage.setItem(
-      `@ahtri_orders_cache_${currentUserId}`,
-      JSON.stringify(orders),
-    ).catch(() => {});
-  }, [orders, currentUserId]);
 
   useEffect(() => {
     fetchOrders();

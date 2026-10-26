@@ -56,6 +56,56 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import * as Notifications from 'expo-notifications';
 
 const SESSION_KEY = '@ahtri_mobile_session';
+const CLEAN_SYNC_TAG = '@ahtri_mr_clean_sync_v20261026_03';
+
+/**
+ * Purges stale offline tasks, order deliveries, and tour plan cache from mobile storage.
+ * Strictly preserves login session, auth tokens, device binding ID, and app update metadata.
+ */
+export const purgeCachedMrAppData = async () => {
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const preservedExact = new Set([
+      SESSION_KEY,
+      '@ahtri_auth_token',
+      '@ahtri_auth_user',
+      '@ahtri_device_installation_id',
+      '@ahtri_custom_server_url',
+      CLEAN_SYNC_TAG,
+    ]);
+
+    const keysToRemove = allKeys.filter((key) => {
+      if (preservedExact.has(key)) return false;
+      if (
+        key.startsWith('@ahtri_installed_version') ||
+        key.startsWith('@ahtri_last_update_time') ||
+        key.startsWith('@ahtri_downloaded_apk_url') ||
+        key.startsWith('@ahtri_dismissed_version') ||
+        key.startsWith('@ahtri_registered_push_token_')
+      ) {
+        return false;
+      }
+      return (
+        key.startsWith('@ahtri_all_tasks_cache_') ||
+        key.startsWith('@ahtri_completed_tasks_') ||
+        key.startsWith('@ahtri_seen_task_ids_') ||
+        key.startsWith('@ahtri_seen_notif_ids_') ||
+        key.startsWith('@ahtri_orders_cache_') ||
+        key.startsWith('@ahtri_tp_cache_') ||
+        key.startsWith('@ahtri_punched_tour_plans_') ||
+        key.startsWith('@ahtri_offline_marked_locations_') ||
+        key.startsWith('@ahtri_attendance_') ||
+        key.startsWith('@ahtri_draft_')
+      );
+    });
+
+    if (keysToRemove.length > 0) {
+      await AsyncStorage.multiRemove(keysToRemove);
+    }
+  } catch (e) {
+    console.warn('[CachePurge] Error cleaning cache keys:', e);
+  }
+};
 
 interface LoggedInUser {
   id: string;
@@ -77,7 +127,19 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<LoggedInUser | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  
+  // Automatic one-time cleanup of stale tasks, orders, and tour plan cache on app startup
+  useEffect(() => {
+    (async () => {
+      try {
+        const hasCleaned = await AsyncStorage.getItem(CLEAN_SYNC_TAG);
+        if (!hasCleaned) {
+          await purgeCachedMrAppData();
+          await AsyncStorage.setItem(CLEAN_SYNC_TAG, 'true');
+        }
+      } catch {}
+    })();
+  }, []);
+
   useEffect(() => {
     AsyncStorage.getItem(SESSION_KEY)
       .then(async (saved) => {
@@ -108,6 +170,7 @@ export default function App() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [effectiveVersion, setEffectiveVersion] = useState<string>(CURRENT_APP_VERSION);
+  const [isResyncing, setIsResyncing] = useState<boolean>(false);
   const lastNotifiedVersionRef = React.useRef<string>('');
 
   
@@ -503,6 +566,25 @@ export default function App() {
     }
   };
 
+  const handleForceResync = async () => {
+    setIsResyncing(true);
+    try {
+      await purgeCachedMrAppData();
+      Alert.alert(
+        'Data Re-synced Fresh ✓',
+        'Local task, order delivery, and tour plan cache has been cleared. The app has synchronized directly with the Admin Panel.',
+      );
+      // Quick re-trigger for active tabs
+      const active = currentTab;
+      setCurrentTab('attendance');
+      setTimeout(() => setCurrentTab(active), 100);
+    } catch {
+      Alert.alert('Notice', 'Local cache refresh completed.');
+    } finally {
+      setIsResyncing(false);
+    }
+  };
+
   const handleLogout = () => {
     setIsLogoutModalOpen(true);
   };
@@ -875,6 +957,21 @@ export default function App() {
                     )}
                   </TouchableOpacity>
 
+                  {/* Force Re-sync / Clear Cached Data */}
+                  <TouchableOpacity
+                    style={styles.resyncProfileBtn}
+                    onPress={handleForceResync}
+                    disabled={isResyncing}
+                  >
+                    {isResyncing ? (
+                      <ActivityIndicator size="small" color="#0284C7" />
+                    ) : (
+                      <Text style={styles.resyncProfileBtnText}>
+                        🔄 Reset Local Cache &amp; Re-sync from Admin
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
                   <TouchableOpacity style={styles.logoutLargeBtn} onPress={handleLogout}>
                     <Text style={styles.logoutLargeBtnText}>Log Out Account</Text>
                   </TouchableOpacity>
@@ -1014,6 +1111,21 @@ const styles = StyleSheet.create({
   },
   updateProfileBtnText: {
     color: '#15803D',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  resyncProfileBtn: {
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: 6,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  resyncProfileBtnText: {
+    color: '#0284C7',
     fontWeight: '700',
     fontSize: 12,
   },

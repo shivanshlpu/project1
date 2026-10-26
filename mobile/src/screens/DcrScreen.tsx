@@ -45,11 +45,8 @@ export const DcrScreen: React.FC<DcrScreenProps> = ({
           });
           if (res.ok) {
             const serverTasks = await res.json();
-            if (Array.isArray(serverTasks) && serverTasks.length > 0) {
-              const map = new Map();
-              localTasks.forEach((t) => map.set(t.id, t));
-              serverTasks.forEach((t) => map.set(t.id, t));
-              setCompletedVisits(Array.from(map.values()));
+            if (Array.isArray(serverTasks)) {
+              setCompletedVisits(serverTasks);
               setIsLoading(false);
               return;
             }

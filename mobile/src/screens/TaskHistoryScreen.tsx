@@ -166,63 +166,70 @@ function normalizeTaskOrders(raw: any) {
 
   
   const fetchCompletedTasks = useCallback(async () => {
-    const combinedMap = new Map<string, CompletedTask>();
+    let serverResponded = false;
+    const serverMap = new Map<string, CompletedTask>();
 
-    
-    try {
-      const localRaw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
-      if (localRaw) {
-        const localList: CompletedTask[] = JSON.parse(localRaw);
-        if (Array.isArray(localList)) {
-          for (const item of localList) {
-            if (item && item.id) {
-              combinedMap.set(item.id, { ...item, orders: normalizeTaskOrders(item.orders) });
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('AsyncStorage task history read error:', e);
-    }
-
-    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const res = await fetch(`${baseUrl}/tasks?status=COMPLETED`, { headers });
+      const res = await fetch(`${baseUrl}/tasks?status=COMPLETED&mr_id=${encodeURIComponent(currentUserId)}`, { headers });
       if (res.ok) {
+        serverResponded = true;
         const data = await res.json();
         if (Array.isArray(data)) {
           data
             .filter((t: any) => t && t.status === 'COMPLETED')
             .forEach((t: any) => {
-              if (t.id) combinedMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
+              if (t.id) serverMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
             });
         }
       }
     } catch {}
 
-    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
       const res = await fetch(`${baseUrl}/tasks/my`, { headers });
       if (res.ok) {
+        serverResponded = true;
         const data = await res.json();
         if (Array.isArray(data)) {
           data
             .filter((t: any) => t && t.status === 'COMPLETED')
             .forEach((t: any) => {
-              if (t.id) combinedMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
+              if (t.id) serverMap.set(t.id, { ...t, orders: normalizeTaskOrders(t.orders) });
             });
         }
       }
     } catch {}
 
-    const completed = Array.from(combinedMap.values()).sort(
+    let finalTasks: CompletedTask[] = [];
+    if (serverResponded) {
+      // Backend is authoritative. If admin deleted tasks, they are removed from mobile view!
+      finalTasks = Array.from(serverMap.values());
+      await AsyncStorage.setItem(
+        `@ahtri_completed_tasks_${currentUserId}`,
+        JSON.stringify(finalTasks)
+      ).catch(() => {});
+    } else {
+      // Offline fallback only when network fails completely
+      try {
+        const localRaw = await AsyncStorage.getItem(`@ahtri_completed_tasks_${currentUserId}`);
+        if (localRaw) {
+          const localList: CompletedTask[] = JSON.parse(localRaw);
+          if (Array.isArray(localList)) {
+            finalTasks = localList.map((item) => ({ ...item, orders: normalizeTaskOrders(item.orders) }));
+          }
+        }
+      } catch (e) {
+        console.warn('AsyncStorage task history read error:', e);
+      }
+    }
+
+    finalTasks.sort(
       (a, b) => (b.completed_at || b.date || '').localeCompare(a.completed_at || a.date || '')
     );
-    setAllCompletedTasks(completed);
+    setAllCompletedTasks(finalTasks);
   }, [currentUserId, currentUserName]);
 
   useEffect(() => {

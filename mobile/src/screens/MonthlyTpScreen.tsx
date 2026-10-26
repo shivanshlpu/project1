@@ -771,7 +771,11 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         const list = await res.json();
         if (Array.isArray(list)) {
           setMrChangeRequests(list);
+        } else {
+          setMrChangeRequests([]);
         }
+      } else {
+        setMrChangeRequests([]);
       }
     } catch {}
   };
@@ -784,26 +788,15 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          let cachedPlans: any[] = [];
-          try {
-            const raw = await AsyncStorage.getItem(`@ahtri_tp_cache_${currentUserId}`);
-            if (raw) cachedPlans = JSON.parse(raw);
-          } catch {}
-
           const monthMap = new Map<string, any>();
           // Server records are authoritative and primary
           data.forEach((p: any) => {
             const key = p.month || p.id;
             if (key) monthMap.set(key, p);
           });
-          // Only add cached offline-only plans if not present on server
-          cachedPlans.forEach((p: any) => {
-            const key = p.month || p.id;
-            if (key && !monthMap.has(key)) {
-              monthMap.set(key, p);
-            }
-          });
 
+          // CRITICAL FIX: Do NOT resurrect deleted plans from local cache!
+          // When Admin deletes plans, server returns empty array and local state/cache is cleared.
           const merged = Array.from(monthMap.values());
           merged.sort(
             (a, b) =>
@@ -812,12 +805,11 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           );
           const normalized = normalizeTourPlans(merged);
           setSubmittedPlans(normalized);
-          if (normalized.length > 0) {
-            await AsyncStorage.setItem(
-              `@ahtri_tp_cache_${currentUserId}`,
-              JSON.stringify(normalized),
-            ).catch(() => {});
-          }
+          // Always persist authoritative normalized list (including empty array)
+          await AsyncStorage.setItem(
+            `@ahtri_tp_cache_${currentUserId}`,
+            JSON.stringify(normalized),
+          ).catch(() => {});
         }
       }
     } catch {

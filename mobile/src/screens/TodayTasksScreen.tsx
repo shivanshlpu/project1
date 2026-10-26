@@ -408,20 +408,22 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             data.filter((t: any) => isCancelledTask(t.status) || t.deleted_at).map((t: any) => t.id)
           );
 
-          
+          const backendIdSet = new Set(activeBackendTasks.map((t: any) => t.id));
+
+          // 3. Merge: backendMapped is primary.
+          // CRITICAL FIX: Only preserve locally completed tasks if their ID still exists on the server!
+          // If the task was deleted from Admin Panel, it will NOT be in backendIdSet and will NOT be resurrected.
           const mergedMap = new Map<string, MobileTaskItem>();
           backendMapped.forEach((t) => mergedMap.set(t.id, t));
           locallyCompleted.forEach((lc) => {
-            if (!explicitlyCancelledIds.has(lc.id) && !isCancelledTask(lc.status)) {
+            if (backendIdSet.has(lc.id) && !explicitlyCancelledIds.has(lc.id) && !isCancelledTask(lc.status)) {
               mergedMap.set(lc.id, lc);
             }
           });
 
-          
-          // 4. Final tasks: backend is authoritative for active tasks, local completions preserved
+          // 4. Final tasks: backend is authoritative, deleted tasks are permanently eliminated
           const finalTasks = Array.from(mergedMap.values());
 
-          
           const finalCompleted = finalTasks.filter((t) => t.status === 'COMPLETED');
           await AsyncStorage.setItem(
             `@ahtri_completed_tasks_${currentUserId}`,
@@ -432,7 +434,14 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             JSON.stringify(finalTasks)
           ).catch(() => {});
 
-          
+          if (finalTasks.length === 0) {
+            seenTaskIdsRef.current.clear();
+            await AsyncStorage.setItem(
+              `@ahtri_seen_task_ids_${currentUserId}`,
+              JSON.stringify([])
+            ).catch(() => {});
+          }
+
           const rawSeen = await AsyncStorage.getItem(`@ahtri_seen_task_ids_${currentUserId}`).catch(() => null);
           if (rawSeen) {
             try {
