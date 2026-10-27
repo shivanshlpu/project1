@@ -1365,6 +1365,14 @@ export class TourPlansService implements OnModuleInit {
   }
 
   /**
+   * Admin permanently deletes a route change request
+   */
+  async deleteRouteChangeRequest(id: string, user: any) {
+    await this.db.deleteRouteChangeRequest(id);
+    return { success: true, message: 'Route change request permanently deleted', id };
+  }
+
+  /**
    * When a Route Change Request is REJECTED by Admin:
    * Restores/retains the MR's original assigned route, location stops, and tasks
    * so the MR stays on their original approved destination.

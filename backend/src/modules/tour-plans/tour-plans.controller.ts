@@ -134,6 +134,15 @@ export class TourPlansController {
     return this.tourPlansService.reviewRouteChangeRequest(id, dto, user);
   }
 
+  @Delete('route-change-requests/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async deleteRouteChangeRequest(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.tourPlansService.deleteRouteChangeRequest(id, user);
+  }
+
   @Get('pending-count')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   async getPendingCount() {

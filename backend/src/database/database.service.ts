@@ -76,6 +76,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public deletedLocationIds: Set<string> = new Set();
   public deletedTaskIds: Set<string> = new Set();
   public deletedPermissionIds: Set<string> = new Set();
+  public deletedRouteChangeRequestIds: Set<string> = new Set();
   public taskAssignments: TaskAssignment[] = [];
   public locationVerifications: LocationVerification[] = [];
 
@@ -168,6 +169,7 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         deletedLocationIds: Array.from(this.deletedLocationIds),
         deletedTaskIds: Array.from(this.deletedTaskIds),
         deletedPermissionIds: Array.from(this.deletedPermissionIds),
+        deletedRouteChangeRequestIds: Array.from(this.deletedRouteChangeRequestIds),
         attendance: this.attendance,
         attendanceSettings: this.attendanceSettings,
         doctorVisits: this.doctorVisits,
@@ -647,6 +649,43 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
+   * Permanently delete a route change request from in-memory cache, disk store,
+   * embedded monthly tour plans, and Supabase.
+   */
+  public async deleteRouteChangeRequest(id: string): Promise<void> {
+    this.deletedRouteChangeRequestIds.add(id);
+    this.routeChangeRequests = this.routeChangeRequests.filter((r) => r.id !== id);
+    for (const plan of this.monthlyTourPlans) {
+      let modified = false;
+      if (Array.isArray(plan.change_requests)) {
+        const prevLen = plan.change_requests.length;
+        plan.change_requests = plan.change_requests.filter((c: any) => c && c.id !== id);
+        if (plan.change_requests.length !== prevLen) modified = true;
+      }
+      if (Array.isArray(plan.entries)) {
+        for (const entry of plan.entries) {
+          if ((entry as any).change_request && (entry as any).change_request.id === id) {
+            delete (entry as any).change_request;
+            modified = true;
+          }
+          if (Array.isArray((entry as any).change_request_history)) {
+            const prevHistLen = (entry as any).change_request_history.length;
+            (entry as any).change_request_history = (entry as any).change_request_history.filter(
+              (h: any) => h && h.id !== id
+            );
+            if ((entry as any).change_request_history.length !== prevHistLen) modified = true;
+          }
+        }
+      }
+      if (modified) {
+        await this.syncMonthlyTourPlanToSupabase(plan).catch(() => null);
+      }
+    }
+    await this.flushToDisk();
+    await this.deleteRouteChangeRequestFromSupabase(id);
+  }
+
+  /**
    * Authoritative attendance persistence: updates in-memory cache, triggers debounced
    * disk store write, and asynchronously synchronizes directly to PostgreSQL/Supabase.
    */
@@ -695,6 +734,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         if (Array.isArray(data.deletedPermissionIds)) {
           data.deletedPermissionIds.forEach((id: string) => this.deletedPermissionIds.add(id));
         }
+        if (Array.isArray(data.deletedRouteChangeRequestIds)) {
+          data.deletedRouteChangeRequestIds.forEach((id: string) => this.deletedRouteChangeRequestIds.add(id));
+        }
         this.tasks = data.tasks.filter((t: any) => t && !this.deletedTaskIds.has(t.id));
         for (const t of this.tasks) {
           if (this.deletedOrderIds.has(t.order_id || '') || this.deletedOrderIds.has(t.id)) {
@@ -732,7 +774,30 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           this.leaveQuotas = Array.from(quotaMap.values());
         }
         if (Array.isArray(data.tourPlans)) this.tourPlans = data.tourPlans;
-        if (Array.isArray(data.monthlyTourPlans)) this.monthlyTourPlans = data.monthlyTourPlans;
+        if (Array.isArray(data.monthlyTourPlans)) {
+          this.monthlyTourPlans = data.monthlyTourPlans;
+          if (this.deletedRouteChangeRequestIds.size > 0) {
+            for (const plan of this.monthlyTourPlans) {
+              if (Array.isArray(plan.change_requests)) {
+                plan.change_requests = plan.change_requests.filter(
+                  (c: any) => c && !this.deletedRouteChangeRequestIds.has(c.id)
+                );
+              }
+              if (Array.isArray(plan.entries)) {
+                for (const entry of plan.entries) {
+                  if ((entry as any).change_request && this.deletedRouteChangeRequestIds.has((entry as any).change_request.id)) {
+                    delete (entry as any).change_request;
+                  }
+                  if (Array.isArray((entry as any).change_request_history)) {
+                    (entry as any).change_request_history = (entry as any).change_request_history.filter(
+                      (h: any) => h && !this.deletedRouteChangeRequestIds.has(h.id)
+                    );
+                  }
+                }
+              }
+            }
+          }
+        }
         if (Array.isArray(data.deletedLocationIds)) {
           data.deletedLocationIds.forEach((id: string) => this.deletedLocationIds.add(id));
         }
@@ -741,7 +806,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             (l: any) => l && !this.deletedLocationIds.has(l.id)
           );
         }
-        if (Array.isArray(data.routeChangeRequests)) this.routeChangeRequests = data.routeChangeRequests;
+        if (Array.isArray(data.routeChangeRequests)) {
+          this.routeChangeRequests = data.routeChangeRequests.filter(
+            (r: any) => r && !this.deletedRouteChangeRequestIds.has(r.id)
+          );
+        }
         if (Array.isArray(data.verificationPhotos)) this.verificationPhotos = data.verificationPhotos;
         if (Array.isArray(data.deviceAuthorizations)) {
           this.deviceAuthorizations = data.deviceAuthorizations;
@@ -1614,6 +1683,12 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             if (!rcrErr && Array.isArray(remoteRcr) && remoteRcr.length > 0) {
               console.log(`[DatabaseService] Synced ${remoteRcr.length} route change requests from Supabase.`);
               for (const r of remoteRcr) {
+                if (this.deletedRouteChangeRequestIds.has(r.id)) {
+                  try {
+                    await client.from('route_change_requests').delete().eq('id', r.id);
+                  } catch {}
+                  continue;
+                }
                 const item: RouteChangeRequest = {
                   id: r.id,
                   mr_id: r.mr_id,
@@ -1671,8 +1746,11 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           try {
             for (const plan of this.monthlyTourPlans) {
               if (Array.isArray(plan.change_requests)) {
+                plan.change_requests = plan.change_requests.filter(
+                  (c: any) => c && !this.deletedRouteChangeRequestIds.has(c.id)
+                );
                 for (const cr of plan.change_requests) {
-                  if (cr && cr.id) {
+                  if (cr && cr.id && !this.deletedRouteChangeRequestIds.has(cr.id)) {
                     const idx = this.routeChangeRequests.findIndex((r) => r.id === cr.id);
                     if (idx >= 0) {
                       this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...cr };
@@ -1684,18 +1762,25 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               }
               if (Array.isArray(plan.entries)) {
                 for (const entry of plan.entries) {
-                  if (entry && (entry as any).change_request && (entry as any).change_request.id) {
-                    const cr = (entry as any).change_request;
-                    const idx = this.routeChangeRequests.findIndex((r) => r.id === cr.id);
-                    if (idx >= 0) {
-                      this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...cr };
-                    } else {
-                      this.routeChangeRequests.push(cr);
+                  if (entry && (entry as any).change_request) {
+                    if (this.deletedRouteChangeRequestIds.has((entry as any).change_request.id)) {
+                      delete (entry as any).change_request;
+                    } else if ((entry as any).change_request.id) {
+                      const cr = (entry as any).change_request;
+                      const idx = this.routeChangeRequests.findIndex((r) => r.id === cr.id);
+                      if (idx >= 0) {
+                        this.routeChangeRequests[idx] = { ...this.routeChangeRequests[idx], ...cr };
+                      } else {
+                        this.routeChangeRequests.push(cr);
+                      }
                     }
                   }
                   if (Array.isArray((entry as any).change_request_history)) {
+                    (entry as any).change_request_history = (entry as any).change_request_history.filter(
+                      (h: any) => h && !this.deletedRouteChangeRequestIds.has(h.id)
+                    );
                     for (const cr of (entry as any).change_request_history) {
-                      if (cr && cr.id && !this.routeChangeRequests.some((r) => r.id === cr.id)) {
+                      if (cr && cr.id && !this.deletedRouteChangeRequestIds.has(cr.id) && !this.routeChangeRequests.some((r) => r.id === cr.id)) {
                         this.routeChangeRequests.push(cr);
                       }
                     }
@@ -1703,10 +1788,15 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 }
               }
             }
+            this.routeChangeRequests = this.routeChangeRequests.filter(
+              (r) => !this.deletedRouteChangeRequestIds.has(r.id)
+            );
             if (this.routeChangeRequests.length > 0) {
               console.log(`[DatabaseService] Synced/extracted ${this.routeChangeRequests.length} route change requests.`);
               for (const req of this.routeChangeRequests) {
-                await this.syncRouteChangeRequestToSupabase(req).catch(() => null);
+                if (!this.deletedRouteChangeRequestIds.has(req.id)) {
+                  await this.syncRouteChangeRequestToSupabase(req).catch(() => null);
+                }
               }
             }
           } catch (embedErr: any) {
@@ -2553,6 +2643,17 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       }, { onConflict: 'id' });
     } catch (err: any) {
       console.warn(`[SupabaseSync] Notice syncing route change request ${req.id}:`, err?.message);
+    }
+  }
+
+  public async deleteRouteChangeRequestFromSupabase(id: string): Promise<void> {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('route_change_requests').delete().eq('id', id);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete route change request ${id} from Supabase:`, err?.message);
     }
   }
 

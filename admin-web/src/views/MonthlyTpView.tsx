@@ -400,6 +400,50 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     }
   };
 
+  const handleDeleteRouteChange = async (rcId: string, mrName: string, date: string) => {
+    const ok = await showConfirmModal({
+      title: 'Delete Route Change Request',
+      message: `Are you sure you want to permanently delete this route change request for ${mrName || 'MR'} on ${formatDateDDMMYYYY(date)}?\n\nThis will permanently remove the record from both local storage and cloud database.`,
+      isDestructive: true,
+      confirmText: 'Yes, Delete Request',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+
+    setProcessingTpId(rcId);
+    try {
+      const res = await resilientFetch(`/tour-plans/route-change-requests/${rcId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setRouteChangeRequests((prev) => prev.filter((r) => r.id !== rcId));
+        setActionNotice({
+          type: 'success',
+          message: '✓ Route change request permanently deleted.',
+        });
+        fetchRouteChangeRequests(true);
+        fetchMonthlyPlans();
+        window.dispatchEvent(new Event('ahtri_tasks_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
+        window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setActionNotice({
+          type: 'error',
+          message: err.message || 'Failed to delete route change request.',
+        });
+      }
+    } catch {
+      setActionNotice({
+        type: 'error',
+        message: 'Network error deleting route change request.',
+      });
+    } finally {
+      setProcessingTpId(null);
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
+
   
   const fetchMonthlyPlans = async () => {
     setIsLoading(true);
@@ -1849,6 +1893,29 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                             >
                               ● {rc.status}
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRouteChange(rc.id, rc.mr_name, rc.date)}
+                              disabled={isProcessing}
+                              title="Permanently delete this route change request"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: '#FEF2F2',
+                                border: '1px solid #FECACA',
+                                borderRadius: 6,
+                                color: '#DC2626',
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                padding: '3px 8px',
+                                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
                           </div>
                         </div>
 
@@ -1909,7 +1976,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                         )}
 
                         {/* Actions */}
-                        {isPending && (
+                        {isPending ? (
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
                             <button
                               type="button"
@@ -1930,6 +1997,30 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                             >
                               <Check size={14} style={{ marginRight: 4 }} />
                               {isProcessing ? 'Applying...' : 'Approve & Update Tour Plan'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRouteChange(rc.id, rc.mr_name, rc.date)}
+                              disabled={isProcessing}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                background: '#FFF5F5',
+                                border: '1px solid #FECACA',
+                                borderRadius: 6,
+                                color: '#DC2626',
+                                padding: '5px 12px',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              <Trash2 size={13} />
+                              <span>Delete Request</span>
                             </button>
                           </div>
                         )}
