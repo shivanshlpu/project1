@@ -1673,18 +1673,16 @@ export class InventoryService {
   }
 
   async deleteStockagePermission(permId: string): Promise<{ success: boolean; message: string }> {
+    this.db.deletedPermissionIds.add(permId);
     const idx = this.db.monthlyStockagePermissions.findIndex((p) => p.id === permId);
     if (idx === -1) throw new NotFoundException('Permission not found');
     const perm = this.db.monthlyStockagePermissions[idx];
     this.db.monthlyStockagePermissions.splice(idx, 1);
 
-    // If there is any associated request that was in PENDING for this deleted permission, remove it
-    const reqIdx = this.db.stockageSubmissionRequests.findIndex(
-      (r) => r.permission_id === permId && r.status === 'PENDING',
+    // If there is any associated request for this deleted permission, remove it
+    this.db.stockageSubmissionRequests = this.db.stockageSubmissionRequests.filter(
+      (r) => r.permission_id !== permId,
     );
-    if (reqIdx !== -1) {
-      this.db.stockageSubmissionRequests.splice(reqIdx, 1);
-    }
 
     this.db.persistToDisk();
 

@@ -781,6 +781,7 @@ export class TasksService {
   }
 
   async deleteTask(id: string): Promise<{ success: boolean; message: string }> {
+    this.db.deletedTaskIds.add(id);
     const idx = this.db.tasks.findIndex((t) => t.id === id);
     if (idx !== -1) {
       this.db.tasks.splice(idx, 1);
@@ -794,6 +795,7 @@ export class TasksService {
 
   async clearAllTasks(): Promise<{ success: boolean; count: number; message: string }> {
     const count = this.db.tasks.length;
+    this.db.tasks.forEach((t) => this.db.deletedTaskIds.add(t.id));
     this.db.tasks = [];
     this.db.taskAssignments = [];
     this.db.locationVerifications = [];
@@ -804,6 +806,7 @@ export class TasksService {
 
   async purgeSuspendedTasks(): Promise<{ success: boolean; count: number; message: string }> {
     const suspendedIds = this.db.tasks.filter((t) => t.status === 'SUSPENDED').map((t) => t.id);
+    suspendedIds.forEach((id) => this.db.deletedTaskIds.add(id));
     const before = this.db.tasks.length;
     this.db.tasks = this.db.tasks.filter((t) => t.status !== 'SUSPENDED');
     const removed = before - this.db.tasks.length;
@@ -814,14 +817,19 @@ export class TasksService {
 
   async deleteTasksByLocation(locationQuery: string): Promise<{ success: boolean; count: number }> {
     const q = locationQuery.toLowerCase().trim();
-    const before = this.db.tasks.length;
-    this.db.tasks = this.db.tasks.filter((t) => {
+    const toDelete = this.db.tasks.filter((t) => {
       const locName = (t.location_name || '').toLowerCase();
       const title = (t.title || '').toLowerCase();
-      return !locName.includes(q) && !title.includes(q);
+      return locName.includes(q) || title.includes(q);
     });
+    toDelete.forEach((t) => this.db.deletedTaskIds.add(t.id));
+    const before = this.db.tasks.length;
+    this.db.tasks = this.db.tasks.filter((t) => !this.db.deletedTaskIds.has(t.id));
     const count = before - this.db.tasks.length;
     this.db.persistToDisk();
+    for (const t of toDelete) {
+      await this.db.deleteTaskFromSupabase(t.id).catch(() => {});
+    }
     return { success: true, count };
   }
 }

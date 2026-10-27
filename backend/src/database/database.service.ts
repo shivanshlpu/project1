@@ -74,6 +74,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   public orders: Order[] = [];
   public deletedOrderIds: Set<string> = new Set();
   public deletedLocationIds: Set<string> = new Set();
+  public deletedTaskIds: Set<string> = new Set();
+  public deletedPermissionIds: Set<string> = new Set();
   public taskAssignments: TaskAssignment[] = [];
   public locationVerifications: LocationVerification[] = [];
 
@@ -164,6 +166,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
         orders: this.orders,
         deletedOrderIds: Array.from(this.deletedOrderIds),
         deletedLocationIds: Array.from(this.deletedLocationIds),
+        deletedTaskIds: Array.from(this.deletedTaskIds),
+        deletedPermissionIds: Array.from(this.deletedPermissionIds),
         attendance: this.attendance,
         attendanceSettings: this.attendanceSettings,
         doctorVisits: this.doctorVisits,
@@ -682,12 +686,16 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       const raw = fs.readFileSync(targetPath, 'utf-8');
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.tasks)) {
-        this.tasks = data.tasks;
         if (Array.isArray(data.deletedOrderIds)) {
-          data.deletedOrderIds
-            .filter((id: string) => !id.startsWith('ORD-2026-000') && id !== 'ORD-2026-0001' && id !== 'ORD-2026-0002')
-            .forEach((id: string) => this.deletedOrderIds.add(id));
+          data.deletedOrderIds.forEach((id: string) => this.deletedOrderIds.add(id));
         }
+        if (Array.isArray(data.deletedTaskIds)) {
+          data.deletedTaskIds.forEach((id: string) => this.deletedTaskIds.add(id));
+        }
+        if (Array.isArray(data.deletedPermissionIds)) {
+          data.deletedPermissionIds.forEach((id: string) => this.deletedPermissionIds.add(id));
+        }
+        this.tasks = data.tasks.filter((t: any) => t && !this.deletedTaskIds.has(t.id));
         for (const t of this.tasks) {
           if (this.deletedOrderIds.has(t.order_id || '') || this.deletedOrderIds.has(t.id)) {
             t.order_id = undefined;
@@ -793,7 +801,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           });
         }
         if (Array.isArray(data.monthlyStockagePermissions) && data.monthlyStockagePermissions.length > 0) {
-          this.monthlyStockagePermissions = data.monthlyStockagePermissions;
+          this.monthlyStockagePermissions = data.monthlyStockagePermissions.filter(
+            (p: any) => p && !this.deletedPermissionIds.has(p.id)
+          );
         }
         if (Array.isArray(data.stockageSubmissionRequests) && data.stockageSubmissionRequests.length > 0) {
           this.stockageSubmissionRequests = data.stockageSubmissionRequests;
@@ -1154,14 +1164,14 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             }
           }
 
-          // Sync tasks with Supabase (Authoritative: prune tasks deleted in Supabase)
+          // Sync tasks with Supabase (Authoritative: prune tasks deleted in Supabase or marked deleted)
           const { data: remoteTasks, error: taskErr } = await client.from('tasks').select('*');
-          if (!taskErr && remoteTasks && remoteTasks.length > 0) {
+          if (!taskErr && Array.isArray(remoteTasks)) {
             console.log(`[DatabaseService] Synced ${remoteTasks.length} tasks from Supabase.`);
             const DUMMY_IDS = new Set(['task-01', 'task-02', 'task-03', 'task-04', 'task-05']);
-            const cleanRemoteTasks = remoteTasks.filter((rt) => !DUMMY_IDS.has(rt.id));
+            const cleanRemoteTasks = remoteTasks.filter((rt) => !DUMMY_IDS.has(rt.id) && !this.deletedTaskIds.has(rt.id));
             const remoteTaskIds = new Set(cleanRemoteTasks.map((t) => t.id));
-            this.tasks = this.tasks.filter((t) => remoteTaskIds.has(t.id));
+            this.tasks = this.tasks.filter((t) => remoteTaskIds.has(t.id) && !this.deletedTaskIds.has(t.id));
             for (const rt of cleanRemoteTasks) {
               const idx = this.tasks.findIndex((t) => t.id === rt.id);
               if (idx >= 0) {
@@ -1169,10 +1179,6 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
               } else {
                 this.tasks.push(rt);
               }
-            }
-          } else if (this.tasks.length > 0) {
-            for (const task of this.tasks) {
-              await this.syncTaskToSupabase(task);
             }
           }
 
@@ -2098,9 +2104,17 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
             const { data: remotePerms, error: permErr } = await client
               .from('monthly_stockage_permissions')
               .select('*');
-            if (!permErr && Array.isArray(remotePerms) && remotePerms.length > 0) {
+            if (!permErr && Array.isArray(remotePerms)) {
               console.log(`[DatabaseService] Synced ${remotePerms.length} monthly stockage permissions from Supabase.`);
-              for (const rp of remotePerms) {
+              const validRemotePerms = remotePerms.filter((rp) => !this.deletedPermissionIds.has(rp.id));
+              const remotePermIds = new Set(validRemotePerms.map((rp) => rp.id));
+
+              // Authoritative prune: retain only permissions that exist in Supabase AND are not marked deleted
+              this.monthlyStockagePermissions = this.monthlyStockagePermissions.filter(
+                (p) => remotePermIds.has(p.id) && !this.deletedPermissionIds.has(p.id)
+              );
+
+              for (const rp of validRemotePerms) {
                 const parts = (rp.month_year || '').split('-');
                 const y = parseInt(parts[0], 10) || new Date().getFullYear();
                 const m = parseInt(parts[1], 10) || new Date().getMonth() + 1;
@@ -2136,11 +2150,6 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                 } else {
                   this.monthlyStockagePermissions.push(perm);
                 }
-              }
-            } else if (this.monthlyStockagePermissions.length > 0) {
-              // Bidirectional initial sync: push local permissions to Supabase
-              for (const perm of this.monthlyStockagePermissions) {
-                await this.syncStockagePermissionToSupabase(perm);
               }
             }
           } catch (pNotice: any) {
@@ -2389,9 +2398,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
-      await client.from('tasks').delete().eq('id', id);
-      await client.from('task_assignments').delete().eq('task_id', id);
       await client.from('location_verifications').delete().eq('task_id', id);
+      await client.from('task_assignments').delete().eq('task_id', id);
+      await client.from('tasks').delete().eq('id', id);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete task ${id} from Supabase:`, err?.message);
     }
@@ -2403,6 +2412,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
       const client = this.supabase.getClient();
       if (!client) return;
       if (ids && ids.length > 0) {
+        await client.from('location_verifications').delete().in('task_id', ids);
+        await client.from('task_assignments').delete().in('task_id', ids);
         await client.from('tasks').delete().in('id', ids);
       }
       await client.from('tasks').delete().eq('status', 'SUSPENDED');
@@ -2416,9 +2427,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
-      await client.from('tasks').delete().neq('id', '_____never_____');
-      await client.from('task_assignments').delete().neq('id', '_____never_____');
       await client.from('location_verifications').delete().neq('id', '_____never_____');
+      await client.from('task_assignments').delete().neq('id', '_____never_____');
+      await client.from('tasks').delete().neq('id', '_____never_____');
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to clear all tasks from Supabase:`, err?.message);
     }
@@ -3093,6 +3104,20 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     try {
       const client = this.supabase.getClient();
       if (!client) return;
+
+      // 1. Delete associated items and submission requests first to satisfy foreign key constraints
+      const { data: reqs } = await client
+        .from('stockage_submission_requests')
+        .select('id')
+        .eq('permission_id', permId);
+
+      if (reqs && reqs.length > 0) {
+        const reqIds = reqs.map((r: any) => r.id);
+        await client.from('stockage_submission_items').delete().in('request_id', reqIds);
+        await client.from('stockage_submission_requests').delete().eq('permission_id', permId);
+      }
+
+      // 2. Delete the permission record itself
       await client.from('monthly_stockage_permissions').delete().eq('id', permId);
     } catch (err: any) {
       console.warn(`[SupabaseSync] Failed to delete monthly stockage permission ${permId}:`, err?.message);
