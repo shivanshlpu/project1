@@ -114,44 +114,91 @@ export const AppUpdateService = {
   
   async checkForUpdates(): Promise<UpdateCheckResult> {
     const effectiveVersion = CURRENT_APP_VERSION;
+    let serverResult: UpdateCheckResult | null = null;
 
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
-      
       const res = await ApiConfig.fetchWithRetry(
         `${baseUrl}/api/app/version`,
         { headers: { Accept: 'application/json' } },
         2,
-        15000
+        10000
       );
 
-      if (!res.ok) {
-        
+      if (res.ok) {
+        const data: AppVersionInfo = await res.json();
+        serverResult = await this.evaluateVersion(data, effectiveVersion);
+      } else {
         const resFallback = await fetch(`${baseUrl}/app/version`, {
           headers: { Accept: 'application/json' },
         });
-        if (!resFallback.ok) {
+        if (resFallback.ok) {
+          const data: AppVersionInfo = await resFallback.json();
+          serverResult = await this.evaluateVersion(data, effectiveVersion);
+        }
+      }
+    } catch {
+      // Fall through to GitHub fallback
+    }
+
+    if (serverResult && serverResult.hasUpdate) {
+      return serverResult;
+    }
+
+    // Direct GitHub Releases fallback if backend does not show update or is unreachable
+    try {
+      const ghRes = await fetch('https://api.github.com/repos/shivanshlpu/project1/releases/latest', {
+        headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'AHTRI-Mobile' },
+      });
+      if (ghRes.ok) {
+        const ghData = await ghRes.json();
+        const ghTag = (ghData.tag_name || '').replace(/^v/, '');
+        if (ghTag && compareSemVer(ghTag, effectiveVersion) > 0) {
+          const apkAsset = ghData.assets?.find((a: any) => a.name?.endsWith('.apk'));
+          const downloadUrl =
+            apkAsset?.browser_download_url ||
+            `https://github.com/shivanshlpu/project1/releases/download/v${ghTag}/ahtri-ffa-mobile.apk`;
+
+          const notes = ghData.body
+            ? ghData.body
+                .split('\n')
+                .map((l: string) => l.trim())
+                .filter((l: string) => l.startsWith('-') || l.startsWith('*'))
+                .map((l: string) => l.replace(/^[-*]\s*/, '').trim())
+            : ['New performance updates and bug fixes'];
+
+          const ghInfo: AppVersionInfo = {
+            appName: 'AHTRI FFA',
+            packageName: 'com.ahtri.ffa',
+            latestVersion: ghTag,
+            latestVersionCode: 9999,
+            minimumVersion: '1.0.0',
+            downloadUrl,
+            forceUpdate: false,
+            releaseDate: ghData.published_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            releaseNotes: notes.length > 0 ? notes : ['New update available for download'],
+            isActive: true,
+          };
+
           return {
-            hasUpdate: false,
+            hasUpdate: true,
             isMandatory: false,
             currentVersion: effectiveVersion,
-            error: `Server returned HTTP ${resFallback.status}`,
+            info: ghInfo,
           };
         }
-        const data: AppVersionInfo = await resFallback.json();
-        return await this.evaluateVersion(data, effectiveVersion);
       }
+    } catch {
+      // Fall through
+    }
 
-      const data: AppVersionInfo = await res.json();
-      return await this.evaluateVersion(data, effectiveVersion);
-    } catch (err: any) {
-      return {
+    return (
+      serverResult || {
         hasUpdate: false,
         isMandatory: false,
         currentVersion: effectiveVersion,
-        error: err?.message || 'Could not reach update server',
-      };
-    }
+      }
+    );
   },
 
   

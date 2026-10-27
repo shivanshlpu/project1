@@ -1,18 +1,18 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.48",
-  "latestVersionCode": 49,
+  "latestVersion": "1.0.49",
+  "latestVersionCode": 50,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.48/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.49/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-26",
-  "publishedAt": "2026-10-26T22:20:00.000Z",
+  "releaseDate": "2026-10-27",
+  "publishedAt": "2026-10-27T15:30:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Authoritative Admin Sync: Real-time synchronization ensuring that whenever tasks, orders, or tour plans are deleted from the Admin Panel, they are immediately cleared from the mobile app without local ghost records",
-    "Smart Cache Management: Automatic startup cache purge clearing stale tasks and order deliveries from local storage while strictly preserving user login and device authentication",
-    "On-Demand Re-Sync: Added 'Reset Local Cache & Re-sync from Admin' in Profile menu to instantly flush offline cache and fetch fresh server data at any time"
+    "Packaging Variants Management: Added full Edit and Delete support for Medicine Packaging Variants in Stockage Workflow",
+    "HQ Notification Isolation: Enforced strict territory boundaries so monthly Stockage upload permissions are only delivered to MRs belonging to the assigned Headquarter",
+    "Background Notification Engine: Integrated native Android WorkManager task synchronization to reliably receive task and stockage notifications even when the app is closed or in background"
   ]
 }
