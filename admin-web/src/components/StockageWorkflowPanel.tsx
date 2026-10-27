@@ -187,6 +187,43 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
   const [newVarPtr, setNewVarPtr] = useState<string>('85');
   const [newVarMrp, setNewVarMrp] = useState<string>('110');
 
+  // Edit packaging variant states
+  const [editingVariant, setEditingVariant] = useState<PackagingVariant | null>(null);
+  const [isEditVariantModalOpen, setIsEditVariantModalOpen] = useState<boolean>(false);
+  const [editVarLabel, setEditVarLabel] = useState<string>('');
+  const [editVarSize, setEditVarSize] = useState<string>('');
+  const [editVarUnit, setEditVarUnit] = useState<string>('');
+  const [editVarPts, setEditVarPts] = useState<string>('');
+  const [editVarPtr, setEditVarPtr] = useState<string>('');
+  const [editVarMrp, setEditVarMrp] = useState<string>('');
+  const [editVarStatus, setEditVarStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+
+  // Dynamically filter MRs based on selected HQ scope
+  const filteredMrs = useMemo(() => {
+    if (!permHqId || permHqId === 'ALL') return allMrs;
+    const selectedHqObj = hqs.find((h) => h.id === permHqId);
+    const selId = permHqId.toLowerCase();
+    const selName = selectedHqObj?.name?.toLowerCase();
+    const selCode = selectedHqObj?.code?.toLowerCase();
+    return allMrs.filter((m) => {
+      const mrHqId = (m.hq_id || '').toLowerCase();
+      const mrHqName = ((m as any).hq_name || '').toLowerCase();
+      const mrTerritory = ((m as any).assigned_territory || '').toLowerCase();
+      return (
+        mrHqId === selId ||
+        (selName && mrHqName === selName) ||
+        (selName && mrHqId === selName) ||
+        (selCode && mrHqId === selCode) ||
+        (selName && mrTerritory.includes(selName))
+      );
+    });
+  }, [allMrs, permHqId, hqs]);
+
+  const selectedHqName = useMemo(() => {
+    if (!permHqId || permHqId === 'ALL') return '';
+    return hqs.find((h) => h.id === permHqId)?.name || '';
+  }, [permHqId, hqs]);
+
   
   useEffect(() => {
     fetchPermissions();
@@ -576,6 +613,106 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
       await fetchVariants();
     } catch (err: any) {
       showToast('error', err.message || 'Creation failed');
+    }
+  };
+
+  const handleOpenEditVariant = (variant: PackagingVariant) => {
+    setEditingVariant(variant);
+    setEditVarLabel(variant.display_label || variant.variant_name || variant.display_name || variant.packing || '');
+    setEditVarSize(String(variant.package_size ?? variant.size ?? ''));
+    setEditVarUnit(variant.package_unit ?? variant.unit ?? 'ml');
+    setEditVarPts(String(variant.pts_rate ?? ''));
+    setEditVarPtr(variant.ptr_rate != null ? String(variant.ptr_rate) : '');
+    setEditVarMrp(String(variant.mrp ?? ''));
+    setEditVarStatus(variant.status === 'INACTIVE' || variant.is_active === false ? 'INACTIVE' : 'ACTIVE');
+    setIsEditVariantModalOpen(true);
+  };
+
+  const handleUpdateVariant = async () => {
+    if (!editingVariant) return;
+    const sizeNum = parseFloat(editVarSize);
+    const ptsNum = parseFloat(editVarPts);
+    const ptrNum = editVarPtr.trim() ? parseFloat(editVarPtr) : undefined;
+    const mrpNum = parseFloat(editVarMrp);
+
+    if (isNaN(sizeNum) || sizeNum <= 0) {
+      showToast('error', 'Valid package size is required');
+      return;
+    }
+    if (isNaN(ptsNum) || ptsNum <= 0) {
+      showToast('error', 'Authoritative PTS rate must be a positive number');
+      return;
+    }
+    if (isNaN(mrpNum) || mrpNum < ptsNum) {
+      showToast('error', 'MRP must be greater than or equal to PTS rate');
+      return;
+    }
+
+    try {
+      const displayLabel = editVarLabel.trim() || `${sizeNum} ${editVarUnit.trim()}`;
+      const res = await fetch(`${apiUrl}/inventory/packaging-variants/${editingVariant.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          variant_name: displayLabel,
+          display_label: displayLabel,
+          display_name: displayLabel,
+          packing: displayLabel,
+          package_size: sizeNum,
+          package_unit: editVarUnit.trim(),
+          pts_rate: ptsNum,
+          ptr_rate: ptrNum,
+          mrp: mrpNum,
+          status: editVarStatus,
+          is_active: editVarStatus === 'ACTIVE',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to update packaging variant');
+      }
+
+      const updated = await res.json();
+      setVariants((prev) => prev.map((v) => (v.id === editingVariant.id ? { ...v, ...updated } : v)));
+      setIsEditVariantModalOpen(false);
+      setEditingVariant(null);
+      showToast('success', `Packaging variant "${displayLabel}" updated successfully`);
+      await fetchVariants();
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to update packaging variant');
+    }
+  };
+
+  const handleDeleteVariant = async (variant: PackagingVariant) => {
+    const med = effectiveMedicines.find((m) => m.id === variant.medicine_id);
+    const label = variant.display_label || variant.variant_name || variant.packing || 'variant';
+    const medName = med?.name || variant.medicine_id;
+
+    const ok = await showConfirmModal({
+      title: 'Delete Packaging Variant',
+      message: `Are you sure you want to delete the packaging variant "${label}" for ${medName}?\n\nThis will remove the pricing and packaging configuration from inventory.`,
+      type: 'warning',
+      confirmText: 'Yes, Delete Variant',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`${apiUrl}/inventory/packaging-variants/${variant.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to delete packaging variant');
+      }
+
+      setVariants((prev) => prev.filter((v) => v.id !== variant.id));
+      showToast('success', `Packaging variant "${label}" deleted successfully`);
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to delete packaging variant');
     }
   };
 
@@ -1371,7 +1508,31 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                 </label>
                 <select
                   value={permHqId}
-                  onChange={(e) => setPermHqId(e.target.value)}
+                  onChange={(e) => {
+                    const newHq = e.target.value;
+                    setPermHqId(newHq);
+                    if (newHq === 'ALL') {
+                      setSelectedMrIds([]);
+                    } else {
+                      const selectedHqObj = hqs.find((h) => h.id === newHq);
+                      const selId = newHq.toLowerCase();
+                      const selName = selectedHqObj?.name?.toLowerCase();
+                      const selCode = selectedHqObj?.code?.toLowerCase();
+                      const matching = allMrs.filter((m) => {
+                        const mrHqId = (m.hq_id || '').toLowerCase();
+                        const mrHqName = ((m as any).hq_name || '').toLowerCase();
+                        const mrTerritory = ((m as any).assigned_territory || '').toLowerCase();
+                        return (
+                          mrHqId === selId ||
+                          (selName && mrHqName === selName) ||
+                          (selName && mrHqId === selName) ||
+                          (selCode && mrHqId === selCode) ||
+                          (selName && mrTerritory.includes(selName))
+                        );
+                      });
+                      setSelectedMrIds(matching.map((m) => m.id));
+                    }
+                  }}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }}
                 >
                   <option value="ALL">All Headquarters</option>
@@ -1406,15 +1567,15 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569' }}>
-                  4. SELECT MEDICAL REPRESENTATIVE(S) ({selectedMrIds.length} SELECTED)
+                  4. SELECT MEDICAL REPRESENTATIVE(S){selectedHqName ? ` FOR ${selectedHqName.toUpperCase()}` : ''} ({selectedMrIds.length} SELECTED)
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     type="button"
-                    onClick={() => setSelectedMrIds(allMrs.map((m) => m.id))}
+                    onClick={() => setSelectedMrIds(filteredMrs.map((m) => m.id))}
                     style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--color-brand)', cursor: 'pointer', fontWeight: 700 }}
                   >
-                    Select All
+                    Select All {selectedHqName ? `(${selectedHqName})` : ''}
                   </button>
                   <button
                     type="button"
@@ -1439,11 +1600,16 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                   background: '#F8FAFC',
                 }}
               >
-                {allMrs.length === 0 ? (
-                  <span style={{ fontSize: 12, color: '#94A3B8', padding: 4 }}>No active MRs registered in system.</span>
+                {filteredMrs.length === 0 ? (
+                  <span style={{ fontSize: 12, color: '#94A3B8', padding: 4 }}>
+                    {permHqId !== 'ALL'
+                      ? `No active MRs found assigned to ${selectedHqName || 'this HQ'}.`
+                      : 'No active MRs registered in system.'}
+                  </span>
                 ) : (
-                  allMrs.map((mr) => {
+                  filteredMrs.map((mr) => {
                     const isChecked = selectedMrIds.includes(mr.id);
+                    const mrHq = hqs.find((h) => h.id === mr.hq_id)?.name || (mr as any).hq_name || mr.hq_id;
                     return (
                       <button
                         key={mr.id}
@@ -1467,6 +1633,11 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                       >
                         {isChecked ? <Check size={12} /> : null}
                         <span>{mr.name}</span>
+                        {mrHq ? (
+                          <span style={{ fontSize: 9.5, background: '#E2E8F0', color: '#475569', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                            {mrHq}
+                          </span>
+                        ) : null}
                         {mr.phone && <span style={{ fontSize: 10, color: '#94A3B8' }}>({mr.phone})</span>}
                       </button>
                     );
@@ -1852,12 +2023,13 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                     <th style={{ padding: '10px 14px', color: '#2563EB', fontWeight: 700, textAlign: 'right' }}>PTR Rate (₹)</th>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700, textAlign: 'right' }}>MRP (₹)</th>
                     <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700 }}>Status</th>
+                    <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 700, textAlign: 'center', width: 150 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVariants.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: '30px 14px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic' }}>
+                      <td colSpan={8} style={{ padding: '30px 14px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic' }}>
                         {variants.length === 0 ? 'No packaging variants configured yet.' : 'No packaging variants match your search/filter.'}
                       </td>
                     </tr>
@@ -1941,6 +2113,54 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                             >
                               {isActive ? 'ACTIVE' : 'INACTIVE'}
                             </span>
+                          </td>
+                          <td style={{ padding: '11px 14px', textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditVariant(v)}
+                                title="Edit Packaging Variant"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '5px 9px',
+                                  borderRadius: 5,
+                                  border: '1px solid #CBD5E1',
+                                  background: '#FFFFFF',
+                                  color: '#2563EB',
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  gap: 4,
+                                }}
+                              >
+                                <Edit3 size={13} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteVariant(v)}
+                                title="Delete Packaging Variant"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '5px 9px',
+                                  borderRadius: 5,
+                                  border: '1px solid #FECACA',
+                                  background: '#FEF2F2',
+                                  color: '#DC2626',
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  gap: 4,
+                                }}
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -2091,6 +2311,191 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                       style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Save Packaging Variant
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal to Edit Variant */}
+          {isEditVariantModalOpen && editingVariant && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: 16,
+              }}
+            >
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 10,
+                  maxWidth: 500,
+                  width: '100%',
+                  padding: 24,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Edit3 size={18} color="var(--color-brand)" />
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
+                      Edit Packaging Variant
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsEditVariantModalOpen(false);
+                      setEditingVariant(null);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      MEDICINE
+                    </label>
+                    <div
+                      style={{
+                        padding: '9px 12px',
+                        background: '#F1F5F9',
+                        borderRadius: 6,
+                        border: '1px solid var(--color-border)',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: 'var(--color-primary)',
+                      }}
+                    >
+                      {effectiveMedicines.find((m) => m.id === editingVariant.medicine_id)?.name || editingVariant.medicine_id}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      VARIANT DISPLAY NAME / LABEL
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 200 ML Bottle or 10*1*10 Strip Box"
+                      value={editVarLabel}
+                      onChange={(e) => setEditVarLabel(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                        PACKAGING SIZE (NUMBER) *
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 60 or 200"
+                        value={editVarSize}
+                        onChange={(e) => setEditVarSize(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                        UNIT (ml, gm, strip, vial) *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ml"
+                        value={editVarUnit}
+                        onChange={(e) => setEditVarUnit(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#047857', display: 'block', marginBottom: 4 }}>
+                        PTS RATE (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 75.00"
+                        value={editVarPts}
+                        onChange={(e) => setEditVarPts(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1.5px solid #10B981', fontSize: 13, fontWeight: 700, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#2563EB', display: 'block', marginBottom: 4 }}>
+                        PTR RATE (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 85.00"
+                        value={editVarPtr}
+                        onChange={(e) => setEditVarPtr(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1.5px solid #3B82F6', fontSize: 13, fontWeight: 700, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                        MRP (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 110.00"
+                        value={editVarMrp}
+                        onChange={(e) => setEditVarMrp(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      STATUS
+                    </label>
+                    <select
+                      value={editVarStatus}
+                      onChange={(e) => setEditVarStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }}
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditVariantModalOpen(false);
+                        setEditingVariant(null);
+                      }}
+                      style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--color-border)', background: '#FFFFFF', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUpdateVariant}
+                      style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Update Packaging Variant
                     </button>
                   </div>
                 </div>

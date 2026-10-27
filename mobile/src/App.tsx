@@ -54,6 +54,7 @@ import { NotificationService } from './services/notificationService';
 import { HeadsUpNotificationBanner } from './components/HeadsUpNotificationBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import * as Notifications from 'expo-notifications';
+import { registerBackgroundSyncAsync } from './services/backgroundNotificationTask';
 
 const SESSION_KEY = '@ahtri_mobile_session';
 const CLEAN_SYNC_TAG = '@ahtri_mr_clean_sync_v20261026_03';
@@ -410,12 +411,15 @@ export default function App() {
       }
     };
 
+    registerBackgroundSyncAsync().catch(() => {});
+
     const initialTimer = setTimeout(syncTasksAndNotifications, 2000);
     const interval = setInterval(syncTasksAndNotifications, 15000);
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         NotificationService.registerForRemotePushNotifications(currentUserId).catch(() => {});
+        registerBackgroundSyncAsync().catch(() => {});
         syncTasksAndNotifications();
       }
     });

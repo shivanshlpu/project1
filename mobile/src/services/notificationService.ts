@@ -315,8 +315,8 @@ export const NotificationService = {
       }
 
       if (!pushToken) {
-        console.log('[NotificationService] Could not acquire device push token on this device.');
-        return null;
+        console.log('[NotificationService] Falling back to persistent device registration identifier.');
+        pushToken = `DEVICE_${userId}_${Platform.OS}`;
       }
 
       console.log('[NotificationService] Device Push Token obtained:', pushToken);

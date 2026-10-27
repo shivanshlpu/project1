@@ -81,41 +81,45 @@ export class NotificationsService {
         ? 'ahtri_approvals'
         : 'ahtri_tasks');
 
-    // 3. Dispatch to remote mobile device via Expo Push Gateway (delivers to Android Notification Bar)
+    // 3. Dispatch to remote mobile device via Expo Push Gateway if valid Expo push token
     const token = this.db.fcmTokens.get(userId);
     if (!token) {
       console.log(`[Push] No push token registered yet for user ${userId}; notification stored in database.`);
       return notif;
     }
 
-    try {
-      const payload = {
-        to: token,
-        sound: 'default',
-        title,
-        body,
-        channelId,
-        priority: 'high',
-        _displayInForeground: true,
-        data: {
-          ...(data || {}),
+    if (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')) {
+      try {
+        const payload = {
+          to: token,
+          sound: 'default',
+          title,
+          body,
           channelId,
-          notificationId: notif.id,
-        },
-      };
+          priority: 'high',
+          _displayInForeground: true,
+          data: {
+            ...(data || {}),
+            channelId,
+            notificationId: notif.id,
+          },
+        };
 
-      const res = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      const result = await res.json();
-      console.log(`[Push] Dispatched push notification to ${userId} [channel: ${channelId}]:`, result);
-    } catch (err: any) {
-      console.warn(`[Push] Error dispatching push notification to ${userId}:`, err?.message);
+        const res = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        console.log(`[Push] Dispatched push notification to ${userId} [channel: ${channelId}]:`, result);
+      } catch (err: any) {
+        console.warn(`[Push] Error dispatching push notification to ${userId}:`, err?.message);
+      }
+    } else {
+      console.log(`[Push] Device token for user ${userId} registered (${token.substring(0, 15)}...); notification persisted in DB for mobile sync.`);
     }
 
     return notif;

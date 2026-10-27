@@ -1541,6 +1541,27 @@ export class InventoryService {
       const mr = this.db.users.find((u) => u.id === mrId);
       if (!mr) continue;
 
+      // When a specific HQ is requested, enforce that only MRs belonging to this HQ receive permission
+      if (dto.hq_id && dto.hq_id !== 'ALL') {
+        const targetHq = this.db.findHeadquarter(dto.hq_id);
+        const targetHqId = (targetHq?.id || dto.hq_id).toLowerCase();
+        const targetHqName = (targetHq?.name || '').toLowerCase();
+        const mrHqId = (mr.hq_id || '').toLowerCase();
+        const mrHqName = (mr.hq_name || '').toLowerCase();
+        const mrTerritory = (mr.assigned_territory || '').toLowerCase();
+
+        const matchesHq =
+          mrHqId === targetHqId ||
+          (targetHqName && mrHqName === targetHqName) ||
+          (targetHqName && mrHqId === targetHqName) ||
+          (targetHqName && mrTerritory.includes(targetHqName));
+
+        if (!matchesHq) {
+          // Skip MR if they do not belong to the target HQ to avoid notifying unassigned reps
+          continue;
+        }
+      }
+
       // Check if MR already has an active AVAILABLE permission for this month
       const existing = this.db.monthlyStockagePermissions.find(
         (p) => p.mr_id === mrId && p.month_str === monthStr && p.status === 'AVAILABLE',
