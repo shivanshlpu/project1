@@ -761,7 +761,12 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
         </Text>
 
         {/* View Mode Switcher */}
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 16 }}
+          style={{ marginTop: 12 }}
+        >
           <TouchableOpacity
             style={[styles.modeTab, viewMode === 'stockist' && styles.modeTabActive]}
             onPress={() => setViewMode('stockist')}
@@ -788,7 +793,7 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
               📋 Monthly Stockage
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
 
       {viewMode === 'stockage' ? (
@@ -818,29 +823,48 @@ export const StocklistScreen: React.FC<StocklistScreenProps> = ({
               marginBottom: 12,
             }}
           >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '800',
-                color:
-                  activePermission?.status === 'AVAILABLE'
-                    ? '#065F46'
-                    : activePermission?.status === 'RESERVED'
-                    ? '#92400E'
-                    : activePermission?.status === 'CONSUMED'
-                    ? '#1E40AF'
-                    : '#475569',
-              }}
-            >
-              {activePermission?.status === 'AVAILABLE'
-                ? `✅ ACTIVE PERMISSION: ${activePermission.month_year}`
-                : activePermission?.status === 'RESERVED'
-                ? `⏳ SUBMISSION UNDER REVIEW (${activePermission.month_year})`
-                : activePermission?.status === 'CONSUMED'
-                ? `🎉 STOCKAGE CONSUMED & APPLIED (${activePermission.month_year})`
-                : '🔒 NO ACTIVE UPLOAD PERMISSION'}
-            </Text>
-            <Text style={{ fontSize: 11.5, color: '#475569', marginTop: 4, lineHeight: 17 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: '800',
+                  color:
+                    activePermission?.status === 'AVAILABLE'
+                      ? '#065F46'
+                      : activePermission?.status === 'RESERVED'
+                      ? '#92400E'
+                      : activePermission?.status === 'CONSUMED'
+                      ? '#1E40AF'
+                      : '#475569',
+                }}
+              >
+                {activePermission?.status === 'AVAILABLE'
+                  ? `✅ ACTIVE PERMISSION: ${activePermission.month_year}`
+                  : activePermission?.status === 'RESERVED'
+                  ? `⏳ SUBMISSION UNDER REVIEW (${activePermission.month_year})`
+                  : activePermission?.status === 'CONSUMED'
+                  ? `🎉 STOCKAGE CONSUMED & APPLIED (${activePermission.month_year})`
+                  : '🔒 NO ACTIVE UPLOAD PERMISSION'}
+              </Text>
+              <TouchableOpacity
+                onPress={fetchStockageData}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FFFFFF',
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#CBD5E1',
+                  marginLeft: 8,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#1A3C6E' }}>🔄 Refresh</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 11.5, color: '#475569', marginTop: 6, lineHeight: 17 }}>
               {activePermission?.status === 'AVAILABLE'
                 ? `You have 1 active upload permission granted by ${activePermission.granted_by_admin_name || 'Admin'} for ${activePermission.month_year}. Add medicine rows below and submit.`
                 : activePermission?.status === 'RESERVED'

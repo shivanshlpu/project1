@@ -3088,6 +3088,17 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     }
   }
 
+  public async deleteStockagePermissionFromSupabase(permId: string) {
+    if (!this.supabase || !this.supabase.isConnected) return;
+    try {
+      const client = this.supabase.getClient();
+      if (!client) return;
+      await client.from('monthly_stockage_permissions').delete().eq('id', permId);
+    } catch (err: any) {
+      console.warn(`[SupabaseSync] Failed to delete monthly stockage permission ${permId}:`, err?.message);
+    }
+  }
+
   public async syncStockageRequestToSupabase(req: StockageSubmissionRequest) {
     if (!this.supabase || !this.supabase.isConnected) return;
     try {

@@ -284,6 +284,12 @@ export class InventoryController {
     return this.inventoryService.revokeStockagePermission(id, user, dto.reason);
   }
 
+  @Delete('stockage/permissions/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async deleteStockagePermission(@Param('id') id: string) {
+    return this.inventoryService.deleteStockagePermission(id);
+  }
+
   @Get('stockage/active-permission')
   async getMrActiveStockagePermission(
     @CurrentUser() user: any,

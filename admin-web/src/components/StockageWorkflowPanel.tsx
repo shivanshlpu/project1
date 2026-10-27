@@ -74,11 +74,17 @@ interface MonthlyPermission {
   id: string;
   mr_id: string;
   mr_name: string;
-  month_year: string;
+  month_year?: string;
+  month_str?: string;
+  year?: number;
+  month?: number;
   stocker_id?: string;
+  stocker_name?: string;
   hq_id?: string;
+  hq_name?: string;
   status: 'AVAILABLE' | 'RESERVED' | 'CONSUMED' | 'REVOKED' | 'EXPIRED';
-  granted_by_admin_name: string;
+  granted_by_admin_name?: string;
+  granted_by_name?: string;
   notes?: string;
   created_at: string;
   revoked_at?: string;
@@ -477,6 +483,36 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
       await fetchPermissions();
     } catch (err: any) {
       showToast('error', err.message || 'Revocation failed');
+    }
+  };
+
+  const handleDeletePermission = async (permId: string, mrName: string) => {
+    const ok = await showConfirmModal({
+      title: 'Delete Permission Record',
+      message: `Permanently delete this stockage permission record for ${mrName}?\n\nThis will completely remove the permission and any associated pending reservation from the system.`,
+      type: 'warning',
+      confirmText: 'Yes, Delete',
+      cancelText: 'Cancel',
+    });
+    if (!ok) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/inventory/stockage/permissions/${permId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to delete permission');
+      }
+
+      showToast('success', `Permission for ${mrName} deleted successfully`);
+      await fetchPermissions();
+    } catch (err: any) {
+      showToast('error', err.message || 'Deletion failed');
     }
   };
 
@@ -1772,12 +1808,13 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                             👤 {perm.mr_name}
                           </td>
                           <td style={{ padding: '11px 14px', fontWeight: 700, color: '#0F172A' }}>
-                            {perm.month_year}
+                            {perm.month_str || perm.month_year || (perm.year && perm.month ? `${perm.year}-${String(perm.month).padStart(2, '0')}` : '—')}
                           </td>
                           <td style={{ padding: '11px 14px', color: '#475569', fontSize: 12 }}>
-                            {perm.hq_id || perm.stocker_id ? (
+                            {perm.hq_id || perm.stocker_id || perm.hq_name || perm.stocker_name ? (
                               <span>
-                                {perm.hq_id ? `HQ: ${perm.hq_id}` : ''} {perm.stocker_id ? `Stocker: ${perm.stocker_id}` : ''}
+                                {perm.hq_name || perm.hq_id ? `HQ: ${perm.hq_name || perm.hq_id}` : ''}
+                                {perm.stocker_name || perm.stocker_id ? ` • Stocker: ${perm.stocker_name || perm.stocker_id}` : ''}
                               </span>
                             ) : (
                               <span style={{ color: '#94A3B8' }}>All Assigned Scope</span>
@@ -1818,34 +1855,58 @@ export const StockageWorkflowPanel: React.FC<StockageWorkflowPanelProps> = ({
                             </span>
                           </td>
                           <td style={{ padding: '11px 14px', color: '#64748B', fontSize: 12 }}>
-                            {perm.granted_by_admin_name || 'Admin'}
+                            {perm.granted_by_admin_name || perm.granted_by_name || 'Admin'}
                             <div style={{ fontSize: 10.5, color: '#94A3B8' }}>
-                              {new Date(perm.created_at).toLocaleDateString()}
+                              {perm.created_at ? new Date(perm.created_at).toLocaleDateString() : '—'}
                             </div>
                           </td>
                           <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                            {isAvailable ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                              {isAvailable && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRevokePermission(perm.id, perm.mr_name)}
+                                  style={{
+                                    background: '#FEF2F2',
+                                    color: '#DC2626',
+                                    border: '1px solid #FECACA',
+                                    padding: '4px 8px',
+                                    borderRadius: 4,
+                                    fontSize: 11.5,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Revoke
+                                </button>
+                              )}
+                              {!isAvailable && (
+                                <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginRight: 2 }}>
+                                  {perm.status === 'CONSUMED' ? 'Applied' : perm.status === 'RESERVED' ? 'Under Review' : 'Revoked'}
+                                </span>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => handleRevokePermission(perm.id, perm.mr_name)}
+                                onClick={() => handleDeletePermission(perm.id, perm.mr_name)}
+                                title="Delete Permission"
                                 style={{
-                                  background: '#FEF2F2',
-                                  color: '#DC2626',
-                                  border: '1px solid #FECACA',
-                                  padding: '4px 10px',
+                                  background: '#FFF1F2',
+                                  color: '#E11D48',
+                                  border: '1px solid #FDA4AF',
+                                  padding: '4px 8px',
                                   borderRadius: 4,
                                   fontSize: 11.5,
                                   fontWeight: 700,
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
                                 }}
                               >
-                                Revoke
+                                <Trash2 size={12} />
+                                <span>Delete</span>
                               </button>
-                            ) : (
-                              <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>
-                                {perm.status === 'CONSUMED' ? 'Applied' : 'Locked'}
-                              </span>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       );

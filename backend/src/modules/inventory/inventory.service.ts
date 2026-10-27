@@ -1639,7 +1639,12 @@ export class InventoryService {
       list = list.filter((p) => p.status === query.status);
     }
 
-    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return list
+      .map((p) => ({
+        ...p,
+        month_year: p.month_str || (p.year && p.month ? `${p.year}-${String(p.month).padStart(2, '0')}` : ''),
+      }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   async revokeStockagePermission(
@@ -1667,18 +1672,60 @@ export class InventoryService {
     return perm;
   }
 
+  async deleteStockagePermission(permId: string): Promise<{ success: boolean; message: string }> {
+    const idx = this.db.monthlyStockagePermissions.findIndex((p) => p.id === permId);
+    if (idx === -1) throw new NotFoundException('Permission not found');
+    const perm = this.db.monthlyStockagePermissions[idx];
+    this.db.monthlyStockagePermissions.splice(idx, 1);
+
+    // If there is any associated request that was in PENDING for this deleted permission, remove it
+    const reqIdx = this.db.stockageSubmissionRequests.findIndex(
+      (r) => r.permission_id === permId && r.status === 'PENDING',
+    );
+    if (reqIdx !== -1) {
+      this.db.stockageSubmissionRequests.splice(reqIdx, 1);
+    }
+
+    this.db.persistToDisk();
+
+    this.db.deleteStockagePermissionFromSupabase(permId).catch(() => null);
+
+    return { success: true, message: `Upload permission for ${perm.mr_name} deleted successfully` };
+  }
+
   async getMrActiveStockagePermission(
     mrId: string,
     monthStr?: string,
   ): Promise<{ has_permission: boolean; permission: MonthlyStockagePermission | null }> {
     const targetMonth = monthStr || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const perm = this.db.monthlyStockagePermissions.find(
-      (p) => p.mr_id === mrId && p.month_str === targetMonth && (p.status === 'AVAILABLE' || p.status === 'RESERVED'),
+
+    // 1. Look for AVAILABLE permission FIRST (always prioritize ready-to-upload permission)
+    let perm = this.db.monthlyStockagePermissions.find(
+      (p) => p.mr_id === mrId && p.month_str === targetMonth && p.status === 'AVAILABLE',
     );
+
+    // 2. If no AVAILABLE permission, check if there is an active submission pending review
+    if (!perm) {
+      const activePendingRequest = this.db.stockageSubmissionRequests.find(
+        (r) =>
+          r.mr_id === mrId &&
+          r.month === targetMonth &&
+          r.status === 'PENDING',
+      );
+      if (activePendingRequest) {
+        perm = this.db.monthlyStockagePermissions.find(
+          (p) => p.id === activePendingRequest.permission_id && p.status === 'RESERVED',
+        );
+      }
+    }
+
+    if (perm && !perm.month_str && (perm.year && perm.month)) {
+      perm.month_str = `${perm.year}-${String(perm.month).padStart(2, '0')}`;
+    }
 
     return {
       has_permission: !!perm && perm.status === 'AVAILABLE',
-      permission: perm || null,
+      permission: perm ? { ...perm, month_year: perm.month_str } as any : null,
     };
   }
 
@@ -1906,8 +1953,10 @@ export class InventoryService {
       request.updated_at = new Date().toISOString();
 
       // Rule: Official Stockage is completely untouched (+0 units)
-      // Rule: Permission remains linked and not silently reusable
+      // When a request is rejected, reset permission status from RESERVED back to AVAILABLE
+      // so the representative is not trapped in UNDER REVIEW and can submit their corrected stockage
       if (perm) {
+        perm.status = 'AVAILABLE';
         perm.updated_at = new Date().toISOString();
         this.db.syncStockagePermissionToSupabase(perm).catch(() => null);
       }

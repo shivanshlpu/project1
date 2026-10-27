@@ -25,21 +25,22 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.49',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '50', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.50',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '51', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.49/ahtri-ffa-mobile.apk',
-  forceUpdate: process.env.FORCE_APP_UPDATE === 'true',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.50/ahtri-ffa-mobile.apk',
+  forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Packaging Variants Management: Added full Edit and Delete support for Medicine Packaging Variants in Stockage Workflow',
-    'HQ Notification Isolation: Enforced strict territory boundaries so monthly Stockage upload permissions are only delivered to MRs belonging to the assigned Headquarter',
-    'Background Notification Engine: Integrated native Android WorkManager task synchronization to reliably receive task and stockage notifications even when the app is closed or in background',
+    'Stockage Permission Management: Added full Delete action for admin to permanently remove permissions and clear stuck submissions',
+    'Permission Prioritization Fix: Guaranteed MRs always receive newly granted AVAILABLE permissions even if older submissions were reviewed or rejected',
+    'Mobile UI Enhancement: Fixed horizontal scrolling tab switcher for Stockage Depot, Catalog, and Monthly Stockage so tabs are easily clickable on all screen sizes',
+    'Status Refresh: Added instant manual Refresh button to update permission and sync status on demand',
   ],
 };
 
