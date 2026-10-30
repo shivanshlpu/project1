@@ -1116,6 +1116,13 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
 
               for (const ru of remoteUsers) {
                 const idx = this.users.findIndex((u) => u.id === ru.id);
+                const hqIdentifier = ru.hq_id || ru.hq_code || ru.hq_name || ru.area_id || ru.zone_id || ru.region_id;
+                const matchedHq = hqIdentifier ? this.findHeadquarter(hqIdentifier) : undefined;
+                const resolvedHqId = matchedHq?.id || ru.hq_id || (ru.area_id?.startsWith('HQ-') ? ru.area_id : undefined);
+                const resolvedHqCode = matchedHq?.code || ru.hq_code || ru.zone_id;
+                const resolvedHqName = matchedHq?.name || ru.hq_name || ru.region_id;
+                const resolvedTerritory = ru.territory || (resolvedHqName ? `${resolvedHqName} HQ Territory` : undefined);
+
                 if (idx >= 0) {
                   this.users[idx] = {
                     ...this.users[idx],
@@ -1129,18 +1136,28 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     device_id: ru.device_id ?? this.users[idx].device_id,
                     device_model: ru.device_model ?? this.users[idx].device_model,
                     device_bound_at: ru.device_bound_at ?? this.users[idx].device_bound_at,
-                    zone_id: ru.zone_id || this.users[idx].zone_id,
-                    region_id: ru.region_id || this.users[idx].region_id,
-                    area_id: ru.area_id || this.users[idx].area_id,
+                    zone_id: resolvedHqCode || ru.zone_id || this.users[idx].zone_id,
+                    region_id: resolvedHqName || ru.region_id || this.users[idx].region_id,
+                    area_id: resolvedHqId || ru.area_id || this.users[idx].area_id,
                     manager_id: ru.manager_id !== undefined ? ru.manager_id : this.users[idx].manager_id,
-                    hq_id: ru.hq_id || this.users[idx].hq_id,
-                    hq_code: ru.hq_code || this.users[idx].hq_code,
-                    hq_name: ru.hq_name || this.users[idx].hq_name,
-                    territory: ru.territory || this.users[idx].territory,
-                    assigned_territory: ru.assigned_territory || this.users[idx].assigned_territory,
+                    hq_id: resolvedHqId || this.users[idx].hq_id,
+                    hq_code: resolvedHqCode || this.users[idx].hq_code,
+                    hq_name: resolvedHqName || this.users[idx].hq_name,
+                    territory: resolvedTerritory || this.users[idx].territory,
+                    assigned_territory: ru.assigned_territory || this.users[idx].assigned_territory || resolvedTerritory,
                   };
                 } else {
-                  this.users.push(ru as any);
+                  this.users.push({
+                    ...ru,
+                    zone_id: resolvedHqCode || ru.zone_id,
+                    region_id: resolvedHqName || ru.region_id,
+                    area_id: resolvedHqId || ru.area_id,
+                    hq_id: resolvedHqId,
+                    hq_code: resolvedHqCode,
+                    hq_name: resolvedHqName,
+                    territory: resolvedTerritory,
+                    assigned_territory: ru.assigned_territory || resolvedTerritory,
+                  } as any);
                 }
               }
 

@@ -21,6 +21,9 @@ export interface TaskItem {
   location_name?: string;
   products?: string[];
   hq_id?: string;
+  area_id?: string;
+  zone_id?: string;
+  region_id?: string;
   hq_name?: string;
   geofence_radius_m: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -90,6 +93,9 @@ export interface MRMemberItem {
   hq_name?: string;
   hq_code?: string;
   hq_id?: string;
+  area_id?: string;
+  zone_id?: string;
+  region_id?: string;
   territory?: string;
   assigned_territory?: string;
   route_batches?: string[];

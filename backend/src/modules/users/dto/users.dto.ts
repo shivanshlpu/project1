@@ -109,6 +109,14 @@ export class UpdateUserDto {
 
   @IsString()
   @IsOptional()
+  zone_id?: string;
+
+  @IsString()
+  @IsOptional()
+  region_id?: string;
+
+  @IsString()
+  @IsOptional()
   territory?: string;
 
   @IsString()

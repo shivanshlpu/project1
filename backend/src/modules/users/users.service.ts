@@ -29,15 +29,25 @@ export class UsersService {
       .filter((u) => (filter.status ? u.status === filter.status : true))
       .map(({ password_hash, ...userWithoutPassword }) => {
         const u = { ...userWithoutPassword } as any;
-        if (u.hq_id || u.hq_name || u.hq_code) {
-          const hq = this.db.findHeadquarter(u.hq_id || u.hq_name || u.hq_code);
+        const hqIdentifier = u.hq_id || u.hq_code || u.hq_name || u.area_id || u.zone_id || u.region_id;
+        if (hqIdentifier) {
+          const hq = this.db.findHeadquarter(hqIdentifier);
           if (hq) {
             u.hq_id = hq.id;
             u.hq_code = hq.code;
             u.hq_name = hq.name;
           }
         }
-        u.assigned_territory = u.assigned_territory || u.territory || '';
+        if (!u.hq_id && u.area_id && u.area_id.startsWith('HQ-')) {
+          u.hq_id = u.area_id;
+        }
+        if (!u.hq_code && u.zone_id) {
+          u.hq_code = u.zone_id;
+        }
+        if (!u.hq_name && u.region_id) {
+          u.hq_name = u.region_id;
+        }
+        u.assigned_territory = u.assigned_territory || u.territory || (u.hq_name ? `${u.hq_name} HQ Territory` : '');
         u.assigned_route_batches = u.assigned_route_batches || u.route_batches || [];
         return u;
       });
@@ -50,15 +60,25 @@ export class UsersService {
     }
     const { password_hash, ...userWithoutPassword } = user;
     const u = { ...userWithoutPassword } as any;
-    if (u.hq_id || u.hq_name || u.hq_code) {
-      const hq = this.db.findHeadquarter(u.hq_id || u.hq_name || u.hq_code);
+    const hqIdentifier = u.hq_id || u.hq_code || u.hq_name || u.area_id || u.zone_id || u.region_id;
+    if (hqIdentifier) {
+      const hq = this.db.findHeadquarter(hqIdentifier);
       if (hq) {
         u.hq_id = hq.id;
         u.hq_code = hq.code;
         u.hq_name = hq.name;
       }
     }
-    u.assigned_territory = u.assigned_territory || u.territory || '';
+    if (!u.hq_id && u.area_id && u.area_id.startsWith('HQ-')) {
+      u.hq_id = u.area_id;
+    }
+    if (!u.hq_code && u.zone_id) {
+      u.hq_code = u.zone_id;
+    }
+    if (!u.hq_name && u.region_id) {
+      u.hq_name = u.region_id;
+    }
+    u.assigned_territory = u.assigned_territory || u.territory || (u.hq_name ? `${u.hq_name} HQ Territory` : '');
     u.assigned_route_batches = u.assigned_route_batches || u.route_batches || [];
     return u;
   }
@@ -97,11 +117,18 @@ export class UsersService {
       created_at: new Date().toISOString(),
     };
 
-    const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || '');
+    const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || dto.area_id || dto.zone_id || dto.region_id || '');
     if (foundHq) {
       newUser.hq_id = foundHq.id;
       newUser.hq_code = foundHq.code;
       newUser.hq_name = foundHq.name;
+      newUser.area_id = foundHq.id;
+      newUser.zone_id = foundHq.code;
+      newUser.region_id = foundHq.name;
+    } else {
+      newUser.area_id = newUser.hq_id || dto.area_id;
+      newUser.zone_id = newUser.hq_code || dto.zone_id;
+      newUser.region_id = newUser.hq_name || dto.region_id;
     }
     if (!newUser.territory && newUser.hq_name) {
       newUser.territory = `${newUser.hq_name} HQ Territory`;
@@ -122,10 +149,14 @@ export class UsersService {
             password_hash: newUser.password_hash,
             role: newUser.role,
             status: newUser.status,
+            area_id: newUser.area_id || newUser.hq_id || null,
+            zone_id: newUser.zone_id || newUser.hq_code || null,
+            region_id: newUser.region_id || newUser.hq_name || null,
             biometric_enabled: newUser.biometric_enabled,
             created_at: newUser.created_at,
             updated_at: newUser.created_at,
           }, { onConflict: 'id' });
+          this.db.persistToDisk();
         } catch (sbErr: any) {
           console.warn('[UsersService] Failed to insert user into Supabase:', sbErr?.message);
         }
@@ -146,16 +177,26 @@ export class UsersService {
     if (dto.status) user.status = dto.status;
     if (dto.role) user.role = dto.role;
     if (dto.area_id) user.area_id = dto.area_id;
-    if (dto.hq_id || dto.hq_name || dto.hq_code) {
-      const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || '');
+    if (dto.hq_id || dto.hq_name || dto.hq_code || dto.area_id || dto.zone_id || dto.region_id) {
+      const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || dto.area_id || dto.zone_id || dto.region_id || '');
       if (foundHq) {
         user.hq_id = foundHq.id;
         user.hq_code = foundHq.code;
         user.hq_name = foundHq.name;
+        user.area_id = foundHq.id;
+        user.zone_id = foundHq.code;
+        user.region_id = foundHq.name;
       } else {
         if (dto.hq_id) user.hq_id = dto.hq_id;
         if (dto.hq_code) user.hq_code = dto.hq_code;
         if (dto.hq_name) user.hq_name = dto.hq_name;
+        if (dto.area_id) user.area_id = dto.area_id;
+        if (dto.zone_id) user.zone_id = dto.zone_id;
+        if (dto.region_id) user.region_id = dto.region_id;
+      }
+      if (user.hq_name && (!user.territory || user.territory.includes('HQ Territory'))) {
+        user.territory = `${user.hq_name} HQ Territory`;
+        user.assigned_territory = user.territory;
       }
     }
     if (dto.territory) user.territory = dto.territory;
@@ -201,8 +242,12 @@ export class UsersService {
             email: user.email,
             role: user.role,
             status: user.status === 'INACTIVE' ? 'SUSPENDED' : (user.status || 'ACTIVE'),
+            area_id: user.area_id || user.hq_id || null,
+            zone_id: user.zone_id || user.hq_code || null,
+            region_id: user.region_id || user.hq_name || null,
             updated_at: new Date().toISOString(),
           };
+          this.db.persistToDisk();
           if (user.password_hash) updatePayload.password_hash = user.password_hash;
           if (user.biometric_enabled !== undefined) updatePayload.biometric_enabled = user.biometric_enabled;
 

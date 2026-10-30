@@ -551,13 +551,27 @@ export class AuthService {
   }
 
   private generateAuthPayload(user: any) {
-    if (user.hq_id || user.hq_name || user.hq_code) {
-      const hq = this.db.findHeadquarter(user.hq_id || user.hq_name || user.hq_code);
+    const hqIdentifier = user.hq_id || user.hq_name || user.hq_code || user.area_id || user.zone_id || user.region_id;
+    if (hqIdentifier) {
+      const hq = this.db.findHeadquarter(hqIdentifier);
       if (hq) {
         user.hq_id = hq.id;
         user.hq_code = hq.code;
         user.hq_name = hq.name;
       }
+    }
+    if (!user.hq_id && user.area_id && user.area_id.startsWith('HQ-')) {
+      user.hq_id = user.area_id;
+    }
+    if (!user.hq_code && user.zone_id) {
+      user.hq_code = user.zone_id;
+    }
+    if (!user.hq_name && user.region_id) {
+      user.hq_name = user.region_id;
+    }
+    if (!user.territory && user.hq_name) {
+      user.territory = `${user.hq_name} HQ Territory`;
+      user.assigned_territory = user.territory;
     }
 
     const payload = {

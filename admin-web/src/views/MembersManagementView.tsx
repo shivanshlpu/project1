@@ -53,6 +53,56 @@ interface MembersManagementViewProps {
   onNavigateToLocation?: (locId: string) => void;
 }
 
+export const resolveMemberHq = (m: any, hqList?: Array<{ id: string; name: string; code: string }>) => {
+  const list = hqList || [
+    { id: 'HQ-SHD-001', name: 'Shahdol', code: 'SHD' },
+    { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT' },
+    { id: 'HQ-AMB-001', name: 'Ambikapur', code: 'AMB' },
+    { id: 'HQ-BSP-001', name: 'Bilaspur', code: 'BSP' },
+  ];
+
+  const code = (m?.hq_code || m?.zone_id || '').toString().trim().toUpperCase();
+  const id = (m?.hq_id || (m?.area_id && m.area_id.startsWith('HQ-') ? m.area_id : '') || '').toString().trim().toUpperCase();
+  const name = (m?.hq_name || m?.region_id || '').toString().trim();
+
+  let matched = list.find((h) =>
+    (code && h.code.toUpperCase() === code) ||
+    (id && (h.id.toUpperCase() === id || h.id.replace('HQ-', '').replace('-001', '').toUpperCase() === code)) ||
+    (name && h.name.toLowerCase() === name.toLowerCase())
+  );
+
+  if (matched) {
+    return {
+      hqCode: matched.code,
+      hqName: matched.name,
+      hqId: matched.id,
+      territory: m?.assigned_territory || m?.territory || `${matched.name} HQ Territory`,
+    };
+  }
+
+  // Name heuristics for recognized accounts
+  if (m?.name?.includes('Kotma') || m?.name?.includes('Amar')) {
+    return { hqCode: 'KOT', hqName: 'Kotma', hqId: 'HQ-KOT-001', territory: 'Kotma HQ Territory' };
+  }
+  if (m?.name?.includes('Ambikapur') || m?.name?.includes('Ashish')) {
+    return { hqCode: 'AMB', hqName: 'Ambikapur', hqId: 'HQ-AMB-001', territory: 'Ambikapur HQ Territory' };
+  }
+  if (m?.name?.includes('Bilaspur') || m?.name?.includes('Harsh')) {
+    return { hqCode: 'BSP', hqName: 'Bilaspur', hqId: 'HQ-BSP-001', territory: 'Bilaspur HQ Territory' };
+  }
+
+  const fallbackCode = code || 'SHD';
+  const fallbackName = name || (fallbackCode === 'BSP' ? 'Bilaspur' : fallbackCode === 'KOT' ? 'Kotma' : fallbackCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
+  const fallbackId = id || `HQ-${fallbackCode}-001`;
+
+  return {
+    hqCode: fallbackCode,
+    hqName: fallbackName,
+    hqId: fallbackId,
+    territory: m?.assigned_territory || m?.territory || `${fallbackName} HQ Territory`,
+  };
+};
+
 const cleanAndSanitizeMembers = (rawList: any[]): MRMemberItem[] => {
   if (!Array.isArray(rawList)) return [];
   return rawList
@@ -60,7 +110,8 @@ const cleanAndSanitizeMembers = (rawList: any[]): MRMemberItem[] => {
       (m: any) => m && m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
     )
     .map((m: any) => {
-      const hqCode = m.hq_code || (m.name?.includes('Kotma') || m.name?.includes('Amar') ? 'KOT' : m.name?.includes('Ashish') || m.name?.includes('Ambikapur') ? 'AMB' : 'SHD');
+      const resolved = resolveMemberHq(m);
+      const hqCode = resolved.hqCode;
       const synthetic1 = `RB-${hqCode}-01`;
       const synthetic2 = `RB-${hqCode}-02`;
       const syntheticPrefix = `RB-${hqCode}-`;
@@ -72,6 +123,14 @@ const cleanAndSanitizeMembers = (rawList: any[]): MRMemberItem[] => {
         : [];
       return {
         ...m,
+        hq_code: resolved.hqCode,
+        hq_name: resolved.hqName,
+        hq_id: resolved.hqId,
+        area_id: resolved.hqId,
+        zone_id: resolved.hqCode,
+        region_id: resolved.hqName,
+        assigned_territory: m.assigned_territory || m.territory || resolved.territory,
+        territory: m.territory || m.assigned_territory || resolved.territory,
         assigned_route_batches: cleanAssigned,
         route_batches: cleanRoute,
       };
@@ -272,21 +331,19 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setEditName(member.name);
     setEditPhone(member.phone);
     setEditEmail(member.email);
-    const resolvedHqCode = member.hq_code || (member.name.includes('Kotma') || member.name.includes('Amar') ? 'KOT' : member.name.includes('Ashish') || member.name.includes('Ambikapur') ? 'AMB' : 'SHD');
-    const resolvedHqName = member.hq_name || (resolvedHqCode === 'KOT' ? 'Kotma' : resolvedHqCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
-    const resolvedHqId = member.hq_id || (resolvedHqCode === 'KOT' ? 'HQ-KOT-001' : resolvedHqCode === 'AMB' ? 'HQ-AMB-001' : 'HQ-SHD-001');
-    setEditHqName(resolvedHqName);
-    setEditHqCode(resolvedHqCode);
-    setEditHqId(resolvedHqId);
-    setEditTerritory(member.assigned_territory || member.territory || `${resolvedHqName} HQ Territory`);
+    const resolved = resolveMemberHq(member, activeHqs);
+    setEditHqName(resolved.hqName);
+    setEditHqCode(resolved.hqCode);
+    setEditHqId(resolved.hqId);
+    setEditTerritory(member.assigned_territory || member.territory || resolved.territory);
     const rawBatches = (member.assigned_route_batches && member.assigned_route_batches.length > 0)
       ? member.assigned_route_batches
       : (member.route_batches && member.route_batches.length > 0)
       ? member.route_batches
       : [];
-    const syntheticPrefix = `RB-${resolvedHqCode}-`;
+    const syntheticPrefix = `RB-${resolved.hqCode}-`;
     const batches = Array.isArray(rawBatches)
-      ? rawBatches.filter((b) => b && b !== `RB-${resolvedHqCode}-01` && b !== `RB-${resolvedHqCode}-02` && !b.startsWith(syntheticPrefix))
+      ? rawBatches.filter((b) => b && b !== `RB-${resolved.hqCode}-01` && b !== `RB-${resolved.hqCode}-02` && !b.startsWith(syntheticPrefix))
       : [];
     setEditRouteBatches(batches.join(', '));
     setEditStatus(member.status);
@@ -354,6 +411,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
               hq_name: editHqName.trim(),
               hq_code: editHqCode.trim().toUpperCase(),
               hq_id: editHqId.trim(),
+              area_id: editHqId.trim(),
+              zone_id: editHqCode.trim().toUpperCase(),
+              region_id: editHqName.trim(),
               assigned_territory: editTerritory.trim(),
               territory: editTerritory.trim(),
               assigned_route_batches: batchesArray,
@@ -401,6 +461,9 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         hq_name: editHqName.trim(),
         hq_code: editHqCode.trim().toUpperCase(),
         hq_id: editHqId.trim(),
+        area_id: editHqId.trim(),
+        zone_id: editHqCode.trim().toUpperCase(),
+        region_id: editHqName.trim(),
         assigned_territory: editTerritory.trim(),
         territory: editTerritory.trim(),
         assigned_route_batches: batchesArray,
@@ -674,10 +737,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   
   const handleCopyCredentials = (member: MRMemberItem) => {
-    const hqCode = member.hq_code || (member.name.includes('Kotma') || member.name.includes('Amar') ? 'KOT' : member.name.includes('Ashish') || member.name.includes('Ambikapur') ? 'AMB' : 'SHD');
-    const hqName = member.hq_name || (hqCode === 'KOT' ? 'Kotma' : hqCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
-    const hqId = member.hq_id || (hqCode === 'KOT' ? 'HQ-KOT-001' : hqCode === 'AMB' ? 'HQ-AMB-001' : 'HQ-SHD-001');
-    const territory = member.assigned_territory || member.territory || `${hqName} HQ Territory`;
+    const resolved = resolveMemberHq(member, activeHqs);
+    const hqCode = resolved.hqCode;
+    const hqName = resolved.hqName;
+    const hqId = resolved.hqId;
+    const territory = member.assigned_territory || member.territory || resolved.territory;
 
     const text = `AHTRI Medical Representative Login Credentials:
 Representative: ${member.name}
@@ -1627,10 +1691,11 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
               </thead>
               <tbody>
                 {members.map((m) => {
-                  const hqCode = m.hq_code || (m.name.includes('Kotma') || m.name.includes('Amar') ? 'KOT' : m.name.includes('Ashish') || m.name.includes('Ambikapur') ? 'AMB' : 'SHD');
-                  const hqName = m.hq_name || (hqCode === 'KOT' ? 'Kotma' : hqCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
-                  const hqId = m.hq_id || (hqCode === 'KOT' ? 'HQ-KOT-001' : hqCode === 'AMB' ? 'HQ-AMB-001' : 'HQ-SHD-001');
-                  const territory = m.assigned_territory || m.territory || `${hqName} HQ Territory`;
+                  const resolved = resolveMemberHq(m, activeHqs);
+                  const hqCode = resolved.hqCode;
+                  const hqName = resolved.hqName;
+                  const hqId = resolved.hqId;
+                  const territory = m.assigned_territory || m.territory || resolved.territory;
                   const rawBatches = (m.assigned_route_batches && m.assigned_route_batches.length > 0)
                     ? m.assigned_route_batches
                     : (m.route_batches && m.route_batches.length > 0)
@@ -2213,6 +2278,9 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                       hq_name: hqName,
                       hq_code: hqCode,
                       hq_id: hqId,
+                      area_id: hqId,
+                      zone_id: hqCode,
+                      region_id: hqName,
                       assigned_territory: territory,
                       territory,
                       assigned_route_batches: routeBatchesArray,
@@ -2366,6 +2434,43 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   required
                   style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
                 />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#0F172A' }}>
+                  Assign Headquarters (HQ) *
+                </label>
+                <select
+                  value={editHqId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    setEditHqId(selectedId);
+                    const matched = activeHqs.find((h) => h.id === selectedId || h.code === selectedId);
+                    if (matched) {
+                      setEditHqName(matched.name);
+                      setEditHqCode(matched.code);
+                      setEditTerritory(`${matched.name} HQ Territory`);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1.5px solid #1A3C6E',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    background: '#F0FDF4',
+                    color: '#0F172A',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {activeHqs.map((hq) => (
+                    <option key={hq.id} value={hq.id}>
+                      {hq.name} ({hq.code}) — {hq.id}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
