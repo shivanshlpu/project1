@@ -66,7 +66,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
           }),
         });
       } catch (primaryErr) {
-        
         if (apiUrl !== 'https://ahtri-backend.onrender.com') {
           try {
             response = await fetch('https://ahtri-backend.onrender.com/auth/login', {
@@ -83,7 +82,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ lang, onLoginSuccess }) =>
             throw new Error('Unable to connect to backend server. Please verify your connection or server status.');
           }
         } else {
-          throw new Error('Unable to connect to backend server. The free cloud server may be waking up from inactivity (typically takes 20-40s). Please try again in a few moments.');
+          // Verify if backend is awake via lightweight GET health probe
+          let isAwake = false;
+          try {
+            const probe = await fetch('https://ahtri-backend.onrender.com/health', { method: 'GET' });
+            if (probe.ok) isAwake = true;
+          } catch {}
+
+          if (isAwake) {
+            throw new Error('Backend is online. Communication was momentarily blocked or interrupted. Please try clicking Sign In again.');
+          } else {
+            throw new Error('Unable to connect to backend server. The free cloud server may be waking up from inactivity (typically takes 20-40s). Please try again in a few moments.');
+          }
         }
       }
 

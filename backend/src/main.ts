@@ -20,8 +20,6 @@ async function bootstrap() {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '0');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     if (process.env.NODE_ENV === 'production') {
@@ -39,21 +37,27 @@ async function bootstrap() {
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:8081',
+    'http://localhost:4173',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1:4173',
     'https://ahtri-backend.onrender.com',
   ];
 
   const allowedOriginsSet = new Set([...configuredOrigins, ...defaultAllowedOrigins]);
 
   const isTrustedDomain = (origin: string): boolean => {
+    if (!origin) return true;
     if (allowedOriginsSet.has(origin)) return true;
     try {
       const parsed = new URL(origin);
       const host = parsed.hostname.toLowerCase();
-      if (host === 'ahtri-backend.onrender.com') return true;
-      if (/^([a-zA-Z0-9-]+\.)*ahtri(-[a-zA-Z0-9-]+)?\.vercel\.app$/.test(host)) return true;
       if (host === 'localhost' || host === '127.0.0.1') return true;
+      if (host === 'ahtri-backend.onrender.com' || host.endsWith('.onrender.com')) return true;
+      if (host === 'vercel.app' || host.endsWith('.vercel.app')) return true;
+      if (host === 'netlify.app' || host.endsWith('.netlify.app')) return true;
+      if (host === 'github.io' || host.endsWith('.github.io')) return true;
+      if (host.includes('ahtri') || host.includes('project1')) return true;
     } catch {
       return false;
     }
@@ -63,13 +67,26 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (process.env.NODE_ENV !== 'production' || isTrustedDomain(origin)) {
+      if (isTrustedDomain(origin) || process.env.NODE_ENV !== 'production' || process.env.CORS_ALLOW_ALL === 'true') {
         return callback(null, true);
       }
       return callback(null, false);
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Cache-Control',
+      'Pragma',
+      'x-user-id',
+      'x-user-role',
+    ],
+    exposedHeaders: ['Content-Range', 'X-Content-Range', 'Authorization'],
     credentials: true,
+    maxAge: 86400,
   });
 
   app.useGlobalPipes(
