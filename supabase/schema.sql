@@ -341,10 +341,10 @@ CREATE INDEX IF NOT EXISTS idx_doctors_specialty ON public.doctors(specialty);
 -- ==============================================================================
 INSERT INTO public.users (id, name, email, phone, password_hash, role, status, biometric_enabled, created_at)
 VALUES 
-  ('usr-admin-01', 'Shivansh', 'shivanshti10@gmail.com', '9009149694', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
-  ('usr-mr-01', 'Amar Dwivedi', 'amarkotma478@gmail.com', '9399604625', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
-  ('usr-mr-02', 'Aman Rathore', 'amanrathour4453@gmail.com', '6261654453', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
-  ('usr-mr-03', 'Ashish Soni', 'ashish103020@gmail.com', '9343052283', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW())
+  ('usr-admin-01', 'Shivansh', 'admin@ahtri.com', '9876543210', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'SUPER_ADMIN', 'ACTIVE', FALSE, NOW()),
+  ('usr-mr-01', 'Amar Dwivedi', 'amar.dwivedi@ahtri.com', '9876543212', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
+  ('usr-mr-02', 'Aman Rathore', 'aman.rathore@ahtri.com', '9876543213', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW()),
+  ('usr-mr-03', 'Ashish Soni', 'ashish.soni@ahtri.com', '9876543214', '$2a$10$nxHXckHXdo.upM5CaeF4AerTQYiKRA7Y.M0WjHQ8cKpJX16PnPTYG', 'MR', 'ACTIVE', TRUE, NOW())
 ON CONFLICT (email) DO UPDATE 
 SET name = EXCLUDED.name, role = EXCLUDED.role, status = EXCLUDED.status;
 

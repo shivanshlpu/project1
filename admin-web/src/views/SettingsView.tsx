@@ -85,9 +85,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const storedUser = getStoredUser();
 
   
-  const [name, setName] = useState(() => storedUser?.name || managerName || 'Shivansh');
-  const [email, setEmail] = useState(() => storedUser?.email || localStorage.getItem('ahtri_user_email') || 'shivanshti10@gmail.com');
-  const [phone, setPhone] = useState(() => storedUser?.phone || localStorage.getItem('ahtri_user_phone') || '9009149694');
+  const [name, setName] = useState(() => storedUser?.name || managerName || 'Administrator');
+  const [email, setEmail] = useState(() => storedUser?.email || localStorage.getItem('ahtri_user_email') || 'admin@ahtri.com');
+  const [phone, setPhone] = useState(() => storedUser?.phone || localStorage.getItem('ahtri_user_phone') || '9876543210');
   const [designation, setDesignation] = useState(() => localStorage.getItem('ahtri_user_designation') || (storedUser?.role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Administrator'));
   const [companyName, setCompanyName] = useState(() => localStorage.getItem('ahtri_company_name') || 'AHTRI BIOTECH');
   const [profileNotice, setProfileNotice] = useState<string | null>(null);

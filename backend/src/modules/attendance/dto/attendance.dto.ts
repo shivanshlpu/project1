@@ -34,6 +34,10 @@ export class CheckInDto {
   @IsOptional()
   photo_key?: string;
 
+  @IsString()
+  @IsOptional()
+  punch_out_photo_key?: string;
+
   @IsEnum(['CAMERA', 'GALLERY'])
   @IsOptional()
   photo_source?: 'CAMERA' | 'GALLERY';
@@ -67,6 +71,10 @@ export class CheckOutDto {
   @IsString()
   @IsOptional()
   photo_key?: string;
+
+  @IsString()
+  @IsOptional()
+  punch_out_photo_key?: string;
 
   @IsEnum(['CAMERA', 'GALLERY'])
   @IsOptional()

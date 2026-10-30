@@ -1,19 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.50",
-  "latestVersionCode": 51,
+  "latestVersion": "1.0.51",
+  "latestVersionCode": 52,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.50/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.51/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
-  "releaseDate": "2026-10-27",
-  "publishedAt": "2026-10-27T16:15:00.000Z",
+  "releaseDate": "2026-10-31",
+  "publishedAt": "2026-10-31T02:26:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Stockage Permission Management: Added full Delete action for admin to permanently remove permissions and clear stuck submissions",
-    "Permission Prioritization Fix: Guaranteed MRs always receive newly granted AVAILABLE permissions even if older submissions were reviewed or rejected",
-    "Mobile UI Enhancement: Fixed horizontal scrolling tab switcher for Stockage Depot, Catalog, and Monthly Stockage so tabs are easily clickable on all screen sizes",
-    "Status Refresh: Added instant manual Refresh button to update permission and sync status on demand"
+    "MR Itinerary & Route Batch Creation: Added capability for MRs to propose new route batches directly from mobile for admin approval",
+    "Tour Plan HQ Lock: Fixed MR Tour Plan headquarters to the assigned user account to prevent unintended HQ reassignment",
+    "Unassigned Area Direct Visits: Enabled MRs to plan visits directly to areas without mandatory batch assignment",
+    "Unassigned Account Fix: Resolved issue where newly created accounts without assigned batches displayed synthetic placeholder batches",
+    "Admin Map Clarity: Ensured the route batch creation map opens with a clear blank slate"
   ]
 }

@@ -90,7 +90,15 @@ export class CreateRouteBatchDto {
   standard_reimbursement_rate?: number;
 
   @IsOptional()
-  status?: 'ACTIVE' | 'INACTIVE';
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @IsOptional()
   location_ids?: string[];

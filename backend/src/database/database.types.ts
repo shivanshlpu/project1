@@ -472,7 +472,10 @@ export interface RouteBatch {
   areas: string[]; 
   distance_km: number;
   standard_reimbursement_rate?: number;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
+  notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
   location_ids?: string[];
   locations?: Array<{
     id: string;

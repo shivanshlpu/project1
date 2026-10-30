@@ -40,6 +40,8 @@ export interface RouteBatchSuggestion {
   mr_name?: string;
   territory_name?: string;
   is_exact_match?: boolean;
+  status?: string;
+  notes?: string;
   location_ids?: string[];
   locations?: Array<{
     id: string;
@@ -305,6 +307,15 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
   const [mrLocations, setMrLocations] = useState<any[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
+  // New Route Batch (Itinerary) Proposal Modal State
+  const [isProposeBatchModalOpen, setIsProposeBatchModalOpen] = useState<boolean>(false);
+  const [newBatchCode, setNewBatchCode] = useState<string>('');
+  const [newBatchName, setNewBatchName] = useState<string>('');
+  const [newBatchStops, setNewBatchStops] = useState<string>('');
+  const [newBatchDistance, setNewBatchDistance] = useState<string>('');
+  const [newBatchNotes, setNewBatchNotes] = useState<string>('');
+  const [isSubmittingBatchProposal, setIsSubmittingBatchProposal] = useState<boolean>(false);
+
   // Route Change Request Modal State
   const [mrChangeRequests, setMrChangeRequests] = useState<any[]>([]);
   const [isRouteChangeModalOpen, setIsRouteChangeModalOpen] = useState<boolean>(false);
@@ -542,7 +553,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       if (res.ok) {
         const data = await res.json();
         setAvailableBatches(data.batches || []);
-        setSelectedBatch(data.suggested_batch || (data.batches && data.batches[0]) || null);
+        // Allow MR to freely choose area without forcing a batch assignment
+        setSelectedBatch((current) => (current && (data.batches || []).some((b: any) => b.id === current.id) ? current : null));
         setBatchSuggestionNotice(data.message || '');
         setIsLoadingBatches(false);
         return;
@@ -552,7 +564,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     
     const localMatches = matchBatchesLocally(destination, hqId, currentUserId);
     setAvailableBatches(localMatches);
-    setSelectedBatch(localMatches[0] || null);
+    // Keep batch deselected by default on area select so MR can visit area without a batch
+    setSelectedBatch((current) => (current && localMatches.some((b: any) => b.id === current.id) ? current : null));
     setBatchSuggestionNotice(
       localMatches.length > 0
         ? `Found ${localMatches.length} matching batch(es) for '${destination}'`
@@ -589,6 +602,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             locations: b.locations || [],
             reimbursement_rate: b.standard_reimbursement_rate ?? b.reimbursement_rate ?? 2.25,
             reimbursement_amount: (b.distance_km || 0) * 2 * (b.standard_reimbursement_rate ?? b.reimbursement_rate ?? 2.25),
+            status: b.status,
+            notes: b.notes,
           }));
           setAllHqBatches(mapped);
           return;
@@ -1548,31 +1563,31 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* HQ Selector Dropdown */}
+            {/* Fixed Assigned Headquarters (HQ) - Read Only */}
             <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
-            <TouchableOpacity
-              style={styles.dropdownBox}
-              activeOpacity={0.7}
-              onPress={() =>
-                setPickerModal({
-                  visible: true,
-                  title: 'Select Headquarters (HQ)',
-                  options: hqs.map((hq) => ({
-                    label: hq.name,
-                    value: hq.id,
-                    sublabel: hq.state ? `(${hq.state})` : undefined,
-                  })),
-                  selectedValue: selectedHqId,
-                  onSelect: (val) => handleHqChange(val),
-                })
-              }
+            <View
+              style={[
+                styles.dropdownBox,
+                {
+                  backgroundColor: '#F1F5F9',
+                  borderColor: '#CBD5E1',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                },
+              ]}
             >
-              <Text style={styles.dropdownText} numberOfLines={1}>
-                {hqs.find((h) => h.id === selectedHqId)?.name || 'Select HQ'}
-                {hqs.find((h) => h.id === selectedHqId)?.state ? ` (${hqs.find((h) => h.id === selectedHqId)?.state})` : ''}
-              </Text>
-              <Text style={styles.dropdownChevron}>▼</Text>
-            </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 13 }}>🔒</Text>
+                <Text style={[styles.dropdownText, { color: '#0F172A', fontWeight: '800' }]} numberOfLines={1}>
+                  {hqs.find((h) => h.id === selectedHqId)?.name || activeHqName}
+                  {hqs.find((h) => h.id === selectedHqId)?.state ? ` (${hqs.find((h) => h.id === selectedHqId)?.state})` : ''}
+                </Text>
+              </View>
+              <View style={{ backgroundColor: '#E2E8F0', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#475569' }}>ASSIGNED HQ</Text>
+              </View>
+            </View>
 
             {/* Planned Destination / Area Input & Picker */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
@@ -1619,12 +1634,76 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 {isLoadingBatches && <ActivityIndicator size="small" color="#1A3C6E" />}
               </View>
 
+              {/* Quick Action: Propose New Route Batch */}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 8 }}>
+                <TouchableOpacity
+                  style={[styles.browseAllBatchesBtn, { flex: 1, backgroundColor: '#0F8B5A' }]}
+                  onPress={() => {
+                    const nextCode = `${(hqs.find((h) => h.id === selectedHqId)?.name || 'HQ').substring(0, 3).toUpperCase()}-B${String(allHqBatches.length + 1).padStart(2, '0')}`;
+                    setNewBatchCode(nextCode);
+                    setNewBatchName(selectedArea ? `${activeHqName} - ${selectedArea}` : '');
+                    setNewBatchStops(selectedArea ? `${activeHqName}, ${selectedArea}` : activeHqName);
+                    setNewBatchDistance('40');
+                    setNewBatchNotes('');
+                    setIsProposeBatchModalOpen(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.browseAllBatchesBtnText, { color: '#FFFFFF' }]}>
+                    ➕ Propose New Route Batch
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.browseAllBatchesBtn, { flex: 1, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+                  onPress={() => setIsAllBatchesModalOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.browseAllBatchesBtnText, { color: '#1D4ED8' }]}>
+                    📋 All Batches ({allHqBatches.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Option: Direct Area Visit (Without Assigning to a Batch) */}
+              <TouchableOpacity
+                style={[
+                  styles.batchOptionCard,
+                  !selectedBatch && styles.batchOptionCardSelected,
+                  {
+                    borderColor: !selectedBatch ? '#0F8B5A' : '#E2E8F0',
+                    backgroundColor: !selectedBatch ? '#F0FDF4' : '#FFFFFF',
+                    marginBottom: 8,
+                  },
+                ]}
+                onPress={() => setSelectedBatch(null)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <View style={[styles.radioCircle, !selectedBatch && styles.radioCircleSelected]}>
+                      {!selectedBatch && <View style={styles.radioInner} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: '800', fontSize: 12.5, color: !selectedBatch ? '#15803D' : '#0F172A' }}>
+                        🔘 No Batch (Direct Area Visit Only)
+                      </Text>
+                      <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 1 }}>
+                        Visit '{selectedArea}' directly without assigning a circuit batch
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.distPill, { backgroundColor: !selectedBatch ? '#DCFCE7' : '#F1F5F9' }]}>
+                    <Text style={[styles.distPillText, { color: !selectedBatch ? '#15803D' : '#64748B' }]}>Direct Area</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
               {availableBatches.length > 0 ? (
-                <View style={{ marginTop: 4 }}>
+                <View style={{ marginTop: 2 }}>
                   <Text style={styles.routeBatchSub}>
                     {availableBatches.length === 1
-                      ? `✓ 1 suggested route batch matches destination '${selectedArea}':`
-                      : `✓ ${availableBatches.length} route batches match destination '${selectedArea}'. Select one:`}
+                      ? `Optional Circuit Match for '${selectedArea}' (tap to select or tap again to deselect):`
+                      : `Optional Circuit Matches for '${selectedArea}' (tap to select or tap again to deselect):`}
                   </Text>
 
                   {availableBatches.map((batch) => {
@@ -1634,8 +1713,9 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         key={batch.id}
                         style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
                         onPress={() => {
-                          setSelectedBatch(batch);
-                          if (!selectedArea.trim()) {
+                          // Allow toggling/deselecting batch
+                          setSelectedBatch(isSelected ? null : batch);
+                          if (!selectedArea.trim() && !isSelected) {
                             const termStop =
                               batch.route_stops && batch.route_stops.length > 0
                                 ? batch.route_stops[batch.route_stops.length - 1]
@@ -2503,36 +2583,31 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                   placeholder="DD-MM-YYYY"
                 />
 
-                {/* Edit HQ Dropdown */}
+                {/* Fixed Assigned Headquarters (HQ) */}
                 <Text style={styles.fieldLabel}>Headquarters (HQ):</Text>
-                <TouchableOpacity
-                  style={styles.dropdownBox}
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    setPickerModal({
-                      visible: true,
-                      title: 'Edit Headquarters (HQ)',
-                      options: hqs.map((hq) => ({
-                        label: hq.name,
-                        value: hq.id,
-                        sublabel: hq.state ? `(${hq.state})` : undefined,
-                      })),
-                      selectedValue: editHqId,
-                      onSelect: (newHq) => {
-                        setEditHqId(newHq);
-                        const areasForHq = getStoredAreasForHq(newHq);
-                        setEditArea(areasForHq[0] || 'Main Area');
-                        fetchEditAllBatches(newHq);
-                      },
-                    })
-                  }
+                <View
+                  style={[
+                    styles.dropdownBox,
+                    {
+                      backgroundColor: '#F1F5F9',
+                      borderColor: '#CBD5E1',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    },
+                  ]}
                 >
-                  <Text style={styles.dropdownText} numberOfLines={1}>
-                    {hqs.find((h) => h.id === editHqId)?.name || 'Select HQ'}
-                    {hqs.find((h) => h.id === editHqId)?.state ? ` (${hqs.find((h) => h.id === editHqId)?.state})` : ''}
-                  </Text>
-                  <Text style={styles.dropdownChevron}>▼</Text>
-                </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 13 }}>🔒</Text>
+                    <Text style={[styles.dropdownText, { color: '#0F172A', fontWeight: '800' }]} numberOfLines={1}>
+                      {hqs.find((h) => h.id === editHqId)?.name || activeHqName}
+                      {hqs.find((h) => h.id === editHqId)?.state ? ` (${hqs.find((h) => h.id === editHqId)?.state})` : ''}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: '#E2E8F0', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#475569' }}>ASSIGNED HQ</Text>
+                  </View>
+                </View>
 
                 {/* Edit Destination / Area */}
                 <Text style={styles.fieldLabel}>Planned Destination / Area:</Text>
@@ -2781,6 +2856,162 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
         </TouchableOpacity>
       </Modal>
 
+      
+      {/* Modal: Propose New Route Batch (Itinerary) for Admin Review */}
+      {isProposeBatchModalOpen && (
+        <Modal
+          visible={isProposeBatchModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsProposeBatchModalOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.calendarModalBox, { maxWidth: 390, maxHeight: '90%' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ fontSize: 14.5, fontWeight: '800', color: '#0F172A' }}>
+                    ➕ Propose New Route Batch
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                    Submits itinerary to Admin for review & approval
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setIsProposeBatchModalOpen(false)}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#64748B' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                {/* Fixed Assigned HQ */}
+                <Text style={styles.fieldLabel}>Assigned HQ (Fixed):</Text>
+                <View style={[styles.dropdownBox, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', marginBottom: 10 }]}>
+                  <Text style={[styles.dropdownText, { color: '#0F172A', fontWeight: '700' }]}>
+                    🔒 {activeHqName}
+                  </Text>
+                </View>
+
+                {/* Batch Code */}
+                <Text style={styles.fieldLabel}>Route Batch Code (e.g. KOT-B10):</Text>
+                <TextInput
+                  style={[styles.textInput, { marginBottom: 10 }]}
+                  value={newBatchCode}
+                  onChangeText={setNewBatchCode}
+                  placeholder="e.g. KOT-B10"
+                  autoCapitalize="characters"
+                />
+
+                {/* Batch Name */}
+                <Text style={styles.fieldLabel}>Batch / Circuit Name:</Text>
+                <TextInput
+                  style={[styles.textInput, { marginBottom: 10 }]}
+                  value={newBatchName}
+                  onChangeText={setNewBatchName}
+                  placeholder="e.g. Kotma - Marwahi - Gaurela"
+                />
+
+                {/* Route Stops */}
+                <Text style={styles.fieldLabel}>Route Stops / Towns (Comma Separated):</Text>
+                <TextInput
+                  style={[styles.textInput, { marginBottom: 10 }]}
+                  value={newBatchStops}
+                  onChangeText={setNewBatchStops}
+                  placeholder="e.g. Kotma, Marwahi, Gaurela"
+                />
+
+                {/* Distance in Km */}
+                <Text style={styles.fieldLabel}>One-Way Distance in Km (Driving):</Text>
+                <TextInput
+                  style={[styles.textInput, { marginBottom: 10 }]}
+                  value={newBatchDistance}
+                  onChangeText={setNewBatchDistance}
+                  placeholder="e.g. 65"
+                  keyboardType="numeric"
+                />
+
+                {/* Reason / Notes */}
+                <Text style={styles.fieldLabel}>Justification / Notes for Admin:</Text>
+                <TextInput
+                  style={[styles.textInput, { minHeight: 50, textAlignVertical: 'top', marginBottom: 14 }]}
+                  value={newBatchNotes}
+                  onChangeText={setNewBatchNotes}
+                  placeholder="e.g. Added new interior clinics on highway stretch"
+                  multiline
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.punchDirectBtn,
+                    { backgroundColor: isSubmittingBatchProposal ? '#94A3B8' : '#0F8B5A' },
+                  ]}
+                  disabled={isSubmittingBatchProposal}
+                  onPress={async () => {
+                    if (!newBatchCode.trim()) {
+                      Alert.alert('Required', 'Please enter a route batch code (e.g. KOT-B10).');
+                      return;
+                    }
+                    if (!newBatchName.trim()) {
+                      Alert.alert('Required', 'Please enter an itinerary route name.');
+                      return;
+                    }
+                    const distNum = parseFloat(newBatchDistance);
+                    if (isNaN(distNum) || distNum <= 0) {
+                      Alert.alert('Invalid Distance', 'Please enter a valid one-way distance in km.');
+                      return;
+                    }
+
+                    setIsSubmittingBatchProposal(true);
+                    try {
+                      const baseUrl = await ApiConfig.getBaseUrl();
+                      const headers = await ApiConfig.getAuthHeaders();
+                      const stopsArray = newBatchStops
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+
+                      const res = await fetch(`${baseUrl}/territories/route-batches`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                          batch_code: newBatchCode.trim().toUpperCase(),
+                          name: newBatchName.trim(),
+                          hq_id: selectedHqId,
+                          route_stops: stopsArray.length > 0 ? stopsArray : [newBatchName.trim()],
+                          distance_km: distNum,
+                          notes: newBatchNotes.trim(),
+                          status: 'PENDING_APPROVAL',
+                          mr_id: currentUserId,
+                        }),
+                      });
+
+                      if (res.ok) {
+                        Alert.alert(
+                          'Route Batch Submitted',
+                          `Itinerary batch [${newBatchCode.trim().toUpperCase()}] has been submitted to Admin for review. Once approved, it will become active and listed in your Monthly TP.`,
+                        );
+                        setIsProposeBatchModalOpen(false);
+                        fetchAllHqBatches(selectedHqId);
+                      } else {
+                        const err = await res.json().catch(() => ({}));
+                        Alert.alert('Submission Failed', err.message || 'Could not submit route batch.');
+                      }
+                    } catch (e: any) {
+                      Alert.alert('Network Error', e?.message || 'Failed to connect to server.');
+                    } finally {
+                      setIsSubmittingBatchProposal(false);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.punchDirectBtnText}>
+                    {isSubmittingBatchProposal ? 'Submitting to Admin...' : '✓ Submit Batch to Admin for Review'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* Browse All Assigned Batches Modal */}
       {isAllBatchesModalOpen && (
         <Modal
@@ -2806,17 +3037,31 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                     No route batches assigned for {activeHqName}.
                   </Text>
                 ) : (
-                  allHqBatches.map((b) => (
+                  allHqBatches.map((b) => {
+                    const isPending = b.status === 'PENDING_APPROVAL';
+                    const isRejected = b.status === 'REJECTED';
+                    const isSelected = selectedBatch?.id === b.id;
+                    return (
                     <TouchableOpacity
                       key={b.id}
                       style={[
                         styles.batchOptionCard,
-                        selectedBatch?.id === b.id && styles.batchOptionCardSelected,
+                        isSelected && styles.batchOptionCardSelected,
+                        isPending && { backgroundColor: '#FEFCE8', borderColor: '#FACC15' },
+                        isRejected && { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' },
                         { marginBottom: 8 },
                       ]}
                       onPress={() => {
-                        setSelectedBatch(b);
-                        if (!selectedArea.trim()) {
+                        if (isPending) {
+                          Alert.alert('Pending Review', 'This proposed route batch is currently under Admin review. It will become available once approved.');
+                          return;
+                        }
+                        if (isRejected) {
+                          Alert.alert('Declined', 'This proposed route batch was declined by Admin.');
+                          return;
+                        }
+                        setSelectedBatch(isSelected ? null : b);
+                        if (!selectedArea.trim() && !isSelected) {
                           const termStop =
                             b.route_stops && b.route_stops.length > 0
                               ? b.route_stops[b.route_stops.length - 1]
@@ -2827,7 +3072,19 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                       }}
                     >
                       <View style={styles.batchCardTop}>
-                        <Text style={styles.batchCodeText}>{b.batch_code}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                          <Text style={styles.batchCodeText}>{b.batch_code}</Text>
+                          {isPending && (
+                            <View style={{ backgroundColor: '#FEF08A', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 }}>
+                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#854D0E' }}>⏳ PENDING ADMIN REVIEW</Text>
+                            </View>
+                          )}
+                          {isRejected && (
+                            <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 }}>
+                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#991B1B' }}>✕ DECLINED</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.distPillText}>{b.distance_km} km</Text>
                       </View>
                       <Text style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
@@ -2837,7 +3094,8 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         🔄 Two-Way Round Trip: {b.distance_km * 2} km
                       </Text>
                     </TouchableOpacity>
-                  ))
+                  );
+                })
                 )}
               </ScrollView>
             </View>

@@ -92,7 +92,10 @@ export const OrdersManagementView: React.FC<OrdersManagementViewProps> = ({ lang
 
   useEffect(() => {
     fetchOrdersAndMetadata();
-    const interval = setInterval(fetchOrdersAndMetadata, 10000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchOrdersAndMetadata();
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 

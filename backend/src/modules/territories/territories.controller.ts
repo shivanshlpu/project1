@@ -115,9 +115,25 @@ export class TerritoriesController {
   }
 
   @Post('route-batches')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MR')
+  async createRouteBatch(@CurrentUser() user: any, @Body() dto: CreateRouteBatchDto) {
+    return this.territoriesService.createRouteBatch(dto, user);
+  }
+
+  @Post('route-batches/:id/approve')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
-  async createRouteBatch(@Body() dto: CreateRouteBatchDto) {
-    return this.territoriesService.createRouteBatch(dto);
+  async approveRouteBatch(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.territoriesService.approveRouteBatch(id, user);
+  }
+
+  @Post('route-batches/:id/reject')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async rejectRouteBatch(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body?: { reason?: string },
+  ) {
+    return this.territoriesService.rejectRouteBatch(id, user, body?.reason);
   }
 
   @Post('route-batches/:id/assign-location')

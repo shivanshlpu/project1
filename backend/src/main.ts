@@ -14,18 +14,23 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   
+  // Security Headers (OWASP Hardening)
   app.use((_req: any, res: any, next: any) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '0');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     if (process.env.NODE_ENV === 'production') {
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
     next();
   });
 
-  
+  // Strict & Hardened CORS Configuration
   const configuredOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
     : [];
@@ -39,19 +44,26 @@ async function bootstrap() {
     'https://ahtri-backend.onrender.com',
   ];
 
-  const allowedOrigins = [...configuredOrigins, ...defaultAllowedOrigins];
+  const allowedOriginsSet = new Set([...configuredOrigins, ...defaultAllowedOrigins]);
+
+  const isTrustedDomain = (origin: string): boolean => {
+    if (allowedOriginsSet.has(origin)) return true;
+    try {
+      const parsed = new URL(origin);
+      const host = parsed.hostname.toLowerCase();
+      if (host === 'ahtri-backend.onrender.com') return true;
+      if (/^([a-zA-Z0-9-]+\.)*ahtri(-[a-zA-Z0-9-]+)?\.vercel\.app$/.test(host)) return true;
+      if (host === 'localhost' || host === '127.0.0.1') return true;
+    } catch {
+      return false;
+    }
+    return false;
+  };
 
   app.enableCors({
     origin: (origin, callback) => {
-      
       if (!origin) return callback(null, true);
-      if (
-        process.env.NODE_ENV !== 'production' ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.onrender.com') ||
-        origin.endsWith('.vercel.app') ||
-        origin.includes('vercel.app')
-      ) {
+      if (process.env.NODE_ENV !== 'production' || isTrustedDomain(origin)) {
         return callback(null, true);
       }
       return callback(null, false);

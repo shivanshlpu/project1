@@ -330,7 +330,7 @@ export default function App() {
       .catch(() => {});
 
     const syncTasksAndNotifications = async () => {
-      if (isSyncingTasksRef.current || !isMounted) return;
+      if (isSyncingTasksRef.current || !isMounted || AppState.currentState !== 'active') return;
       isSyncingTasksRef.current = true;
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -414,7 +414,7 @@ export default function App() {
     registerBackgroundSyncAsync().catch(() => {});
 
     const initialTimer = setTimeout(syncTasksAndNotifications, 2000);
-    const interval = setInterval(syncTasksAndNotifications, 15000);
+    const interval = setInterval(syncTasksAndNotifications, 30000);
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {

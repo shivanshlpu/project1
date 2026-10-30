@@ -68,7 +68,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: string;
       email: string;
       phone: string;
-      password: string;
       role: string;
       hq_name: string;
       hq_code: string;
@@ -85,7 +84,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Amar Dwivedi',
       email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'AmarDwivediKOT',
       role: 'MR',
       hq_name: 'Kotma',
       hq_code: 'KOT',
@@ -100,7 +98,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Amar Dwivedi',
       email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'AmarDwivediKOT',
       role: 'MR',
       hq_name: 'Kotma',
       hq_code: 'KOT',
@@ -115,7 +112,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Amar Dwivedi',
       email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'AmarDwivediKOT',
       role: 'MR',
       hq_name: 'Kotma',
       hq_code: 'KOT',
@@ -132,7 +128,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Aman Rathore',
       email: 'aman.rathore@ahtri.com',
       phone: '9876543213',
-      password: 'AmanRathoreSHD',
       role: 'MR',
       hq_name: 'Shahdol',
       hq_code: 'SHD',
@@ -147,7 +142,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Aman Rathore',
       email: 'aman.rathore@ahtri.com',
       phone: '9876543213',
-      password: 'AmanRathoreSHD',
       role: 'MR',
       hq_name: 'Shahdol',
       hq_code: 'SHD',
@@ -162,7 +156,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Aman Rathore',
       email: 'aman.rathore@ahtri.com',
       phone: '9876543213',
-      password: 'AmanRathoreSHD',
       role: 'MR',
       hq_name: 'Shahdol',
       hq_code: 'SHD',
@@ -179,7 +172,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Ashish Soni',
       email: 'ashish.soni@ahtri.com',
       phone: '9876543214',
-      password: 'AshishSoniAMB',
       role: 'MR',
       hq_name: 'Ambikapur',
       hq_code: 'AMB',
@@ -192,7 +184,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Ashish Soni',
       email: 'ashish.soni@ahtri.com',
       phone: '9876543214',
-      password: 'AshishSoniAMB',
       role: 'MR',
       hq_name: 'Ambikapur',
       hq_code: 'AMB',
@@ -205,7 +196,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Amar Dwivedi',
       email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'AmarDwivediKOT',
       role: 'MR',
       hq_name: 'Kotma',
       hq_code: 'KOT',
@@ -220,7 +210,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Amar Dwivedi',
       email: 'amar.dwivedi@ahtri.com',
       phone: '9876543212',
-      password: 'AmarDwivediKOT',
       role: 'MR',
       hq_name: 'Kotma',
       hq_code: 'KOT',
@@ -235,7 +224,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Aman Rathore',
       email: 'aman.rathore@ahtri.com',
       phone: '9876543213',
-      password: 'AmanRathoreSHD',
       role: 'MR',
       hq_name: 'Shahdol',
       hq_code: 'SHD',
@@ -250,7 +238,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Aman Rathore',
       email: 'aman.rathore@ahtri.com',
       phone: '9876543213',
-      password: 'AmanRathoreSHD',
       role: 'MR',
       hq_name: 'Shahdol',
       hq_code: 'SHD',
@@ -265,7 +252,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Ashish Soni',
       email: 'ashish.soni@ahtri.com',
       phone: '9876543214',
-      password: 'AshishSoniAMB',
       role: 'MR',
       hq_name: 'Ambikapur',
       hq_code: 'AMB',
@@ -278,7 +264,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       name: 'Ashish Soni',
       email: 'ashish.soni@ahtri.com',
       phone: '9876543214',
-      password: 'AshishSoniAMB',
       role: 'MR',
       hq_name: 'Ambikapur',
       hq_code: 'AMB',
@@ -288,96 +273,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       bound_device_id: 'dev-hw-pixel7-5a2e1d',
       bound_device_model: 'Google Pixel 7 (GVU6C)',
     },
-    'amarkotma478@gmail.com': {
-      id: 'usr-mr-01',
-      name: 'Amar Dwivedi',
-      email: 'amarkotma478@gmail.com',
-      phone: '9399604625',
-      password: 'AmarDwivediKOT',
-      role: 'MR',
-      hq_name: 'Kotma',
-      hq_code: 'KOT',
-      hq_id: 'HQ-KOT-001',
-      territory: 'Kotma HQ Territory',
-      assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
-      bound_device_id: 'dev-hw-s22-9f8a2c',
-      bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
-    },
-    '9399604625': {
-      id: 'usr-mr-01',
-      name: 'Amar Dwivedi',
-      email: 'amarkotma478@gmail.com',
-      phone: '9399604625',
-      password: 'AmarDwivediKOT',
-      role: 'MR',
-      hq_name: 'Kotma',
-      hq_code: 'KOT',
-      hq_id: 'HQ-KOT-001',
-      territory: 'Kotma HQ Territory',
-      assigned_route_batches: ['KOT-B01', 'KOT-B02', 'KOT-B03', 'KOT-B04', 'KOT-B05', 'KOT-B06', 'KOT-B07', 'KOT-B08', 'KOT-B09'],
-      bound_device_id: 'dev-hw-s22-9f8a2c',
-      bound_device_model: 'Samsung Galaxy S22 (SM-S901B)',
-    },
-    'amanrathour4453@gmail.com': {
-      id: 'usr-mr-02',
-      name: 'Aman Rathore',
-      email: 'amanrathour4453@gmail.com',
-      phone: '6261654453',
-      password: 'AmanRathoreSHD',
-      role: 'MR',
-      hq_name: 'Shahdol',
-      hq_code: 'SHD',
-      hq_id: 'HQ-SHD-001',
-      territory: 'Shahdol HQ Territory',
-      assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
-      bound_device_id: 'dev-hw-oneplus-71b4e0',
-      bound_device_model: 'OnePlus 11 5G (CPH2449)',
-    },
-    '6261654453': {
-      id: 'usr-mr-02',
-      name: 'Aman Rathore',
-      email: 'amanrathour4453@gmail.com',
-      phone: '6261654453',
-      password: 'AmanRathoreSHD',
-      role: 'MR',
-      hq_name: 'Shahdol',
-      hq_code: 'SHD',
-      hq_id: 'HQ-SHD-001',
-      territory: 'Shahdol HQ Territory',
-      assigned_route_batches: ['SHD-B01', 'SHD-B02', 'SHD-B03', 'SHD-B04', 'SHD-B05'],
-      bound_device_id: 'dev-hw-oneplus-71b4e0',
-      bound_device_model: 'OnePlus 11 5G (CPH2449)',
-    },
-    'ashish103020@gmail.com': {
-      id: 'usr-mr-03',
-      name: 'Ashish Soni',
-      email: 'ashish103020@gmail.com',
-      phone: '9343052283',
-      password: 'AshishSoniAMB',
-      role: 'MR',
-      hq_name: 'Ambikapur',
-      hq_code: 'AMB',
-      hq_id: 'HQ-AMB-001',
-      territory: 'Ambikapur HQ Territory',
-      assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
-      bound_device_id: 'dev-hw-pixel7-5a2e1d',
-      bound_device_model: 'Google Pixel 7 (GVU6C)',
-    },
-    '9343052283': {
-      id: 'usr-mr-03',
-      name: 'Ashish Soni',
-      email: 'ashish103020@gmail.com',
-      phone: '9343052283',
-      password: 'AshishSoniAMB',
-      role: 'MR',
-      hq_name: 'Ambikapur',
-      hq_code: 'AMB',
-      hq_id: 'HQ-AMB-001',
-      territory: 'Ambikapur HQ Territory',
-      assigned_route_batches: ['AMB-B01', 'AMB-B02', 'AMB-B03', 'AMB-B04', 'AMB-B05'],
-      bound_device_id: 'dev-hw-pixel7-5a2e1d',
-      bound_device_model: 'Google Pixel 7 (GVU6C)',
-    },
+    
   };
 
   const handleToggleDeviceSimulation = () => {
@@ -400,20 +296,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const interval = setInterval(async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
-        const res = await fetch(`${baseUrl}/auth/device-authorizations`);
+        const res = await fetch(`${baseUrl}/auth/device-otp/status/${deviceAuthRequestId}`);
         if (res.ok) {
           const data = await res.json();
-          const approved = (data.history || []).find(
-            (h: any) => h.id === deviceAuthRequestId && h.status === 'APPROVED'
-          );
+          const approved = data && (data.approved || data.status === 'APPROVED');
           if (approved) {
-            
             await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
             handleLogin(true);
           }
         }
       } catch {}
-    }, 2500);
+    }, 4000);
     return () => clearInterval(interval);
   }, [step, deviceAuthRequestId]);
 
@@ -428,7 +321,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     
     
     const knownMr = registeredMRs[cleanId] || (cleanPhone ? Object.values(registeredMRs).find((u: any) => u.phone === cleanPhone) : undefined);
-    const serverIdentifier = cleanPhone || knownMr?.phone || knownMr?.email || rawId;
+    const serverIdentifier = cleanPhone || rawId.trim();
 
     const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
     const mustEnforceOtp = requiresReauthOtp === 'true' && !forceBypassReauthCheck;
@@ -481,7 +374,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         if (data.access_token) {
           await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
           
-          onLoginSuccess({
+          const sessionPayload = {
             id: data.user?.id || 'usr-mr-02',
             name: data.user?.name || 'Aman Rathore',
             email: data.user?.email || cleanId,
@@ -495,7 +388,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             hq_id: data.user?.hq_id,
             assigned_territory: data.user?.assigned_territory || data.user?.territory,
             assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
-          });
+          };
+          await AsyncStorage.setItem('@ahtri_cached_user_session', JSON.stringify(sessionPayload)).catch(() => {});
+          onLoginSuccess(sessionPayload);
           setIsSubmitting(false);
           return;
         }
@@ -505,42 +400,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
     } catch {
-      
-      const user = registeredMRs[cleanId];
-      if (!user || user.password !== password) {
-        Alert.alert('Login Failed', 'Invalid credentials. Please contact your manager/owner.');
-        setIsSubmitting(false);
-        return;
+      const cachedSession = await AsyncStorage.getItem('@ahtri_cached_user_session').catch(() => null);
+      if (cachedSession) {
+        try {
+          const parsed = JSON.parse(cachedSession);
+          if (parsed && (parsed.email?.toLowerCase() === cleanId || parsed.phone === cleanId || parsed.id === cleanId)) {
+            onLoginSuccess(parsed);
+            setIsSubmitting(false);
+            return;
+          }
+        } catch {}
       }
-
-      
-      const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
-      if ((requiresReauthOtp === 'true' && !forceBypassReauthCheck) || (user.bound_device_id && user.bound_device_id !== currentDeviceId)) {
-        
-        setDeviceAuthRequestId(`req-sim-${Date.now()}`);
-        setStep('otp_verify');
-        setIsSubmitting(false);
-        return;
-      }
-
-      await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
-      
-      user.bound_device_id = currentDeviceId;
-      user.bound_device_model = currentDeviceModel;
-      onLoginSuccess({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        device_id: currentDeviceId,
-        device_model: currentDeviceModel,
-        hq_name: user.hq_name,
-        hq_code: user.hq_code,
-        hq_id: user.hq_id,
-        assigned_territory: user.territory,
-        assigned_route_batches: user.assigned_route_batches,
-      });
+      Alert.alert(
+        'Connection Failed',
+        'Unable to reach server. Please check your internet connection or login online once to enable offline mode.',
+      );
+      setIsSubmitting(false);
+      return;
     } finally {
       setIsSubmitting(false);
     }

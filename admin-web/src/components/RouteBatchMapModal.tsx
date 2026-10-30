@@ -330,17 +330,6 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
         parsed.push(wp);
         prevWp = wp;
       });
-    } else {
-      // Default initial start stop: Shahdol
-      parsed = [
-        {
-          id: `wp-init-${Date.now()}`,
-          name: 'Shahdol',
-          lat: 23.2883,
-          lng: 81.3522,
-          address: 'Shahdol Central HQ',
-        },
-      ];
     }
 
     setWaypoints(parsed);

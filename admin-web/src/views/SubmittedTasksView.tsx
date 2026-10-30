@@ -73,7 +73,10 @@ export const SubmittedTasksView: React.FC = () => {
 
   useEffect(() => {
     fetchSubmittedTasks();
-    const interval = setInterval(fetchSubmittedTasks, 10000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchSubmittedTasks();
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 

@@ -142,6 +142,9 @@ export class TerritoriesService {
         const matchesMrId = Boolean(userId && rb.mr_id === userId);
         const matchesMrName = Boolean(userName && rb.mr_name && rb.mr_name.toLowerCase().includes(userName));
 
+        const isOwner = userId && rb.mr_id === userId;
+        if (rb.status === 'PENDING_APPROVAL' && !isOwner) return false;
+        if (rb.status === 'REJECTED' && !isOwner) return false;
         return matchesHqId || matchesHqCode || matchesHqName || matchesMrId || matchesMrName;
       });
 
@@ -505,7 +508,7 @@ export class TerritoriesService {
     };
   }
 
-  async createRouteBatch(dto: CreateRouteBatchDto): Promise<RouteBatch> {
+  async createRouteBatch(dto: CreateRouteBatchDto, user?: any): Promise<RouteBatch> {
     const existing = this.db.routeBatches.find(
       (b) => b.batch_code.toUpperCase() === dto.batch_code.trim().toUpperCase(),
     );
@@ -548,7 +551,8 @@ export class TerritoriesService {
       areas: stops,
       distance_km: dto.distance_km || 0,
       standard_reimbursement_rate: dto.standard_reimbursement_rate ?? defaultRate,
-      status: dto.status || 'ACTIVE',
+      status: user?.role === 'MR' ? 'PENDING_APPROVAL' : (dto.status || 'ACTIVE'),
+      notes: dto.notes || dto.description || '',
       location_ids: dto.location_ids || [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -576,6 +580,20 @@ export class TerritoriesService {
           mr.route_batches = mr.assigned_route_batches;
         }
       }
+    }
+
+    if (user?.role === 'MR' || newBatch.status === 'PENDING_APPROVAL') {
+      try {
+        const superAdmin = this.db.users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
+        this.db.notifications.push({
+          id: `notif-${uuidv4().substring(0, 8)}`,
+          user_id: superAdmin?.id || 'usr-admin-01',
+          type: 'ROUTE_BATCH_REQUEST',
+          title: 'New Route Batch Proposed',
+          body: `MR ${user?.name || newBatch.mr_name || 'Representative'} submitted a new itinerary batch [${newBatch.batch_code}] ${newBatch.name} (${newBatch.distance_km} km) for approval.`,
+          created_at: new Date().toISOString(),
+        });
+      } catch {}
     }
 
     this.db.persistToDisk();
@@ -728,5 +746,68 @@ export class TerritoriesService {
     await this.db.syncAllRouteBatchesToSupabase(this.db.routeBatches);
     return { success: true, rate: numRate, updatedCount: count };
   }
-}
 
+  async approveRouteBatch(id: string, approverUser: any): Promise<RouteBatch> {
+    const batch = this.db.routeBatches.find((b) => b.id === id || b.batch_code === id);
+    if (!batch) throw new NotFoundException('Route Batch not found');
+
+    batch.status = 'ACTIVE';
+    batch.reviewed_by = approverUser?.name || approverUser?.id || 'Admin';
+    batch.reviewed_at = new Date().toISOString();
+    batch.updated_at = new Date().toISOString();
+
+    if (batch.mr_id) {
+      const mr = this.db.users.find((u) => u.id === batch.mr_id);
+      if (mr) {
+        if (!mr.assigned_route_batches) mr.assigned_route_batches = [];
+        if (!mr.assigned_route_batches.includes(batch.batch_code)) {
+          mr.assigned_route_batches.push(batch.batch_code);
+          mr.route_batches = mr.assigned_route_batches;
+        }
+      }
+      try {
+        this.db.notifications.push({
+          id: `notif-${uuidv4().substring(0, 8)}`,
+          user_id: batch.mr_id,
+          type: 'ROUTE_BATCH_APPROVED',
+          title: 'Route Batch Approved',
+          body: `Your proposed itinerary batch [${batch.batch_code}] ${batch.name} (${batch.distance_km} km) has been approved by ${approverUser?.name || 'Admin'} and is now active.`,
+          created_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
+
+    this.db.persistToDisk();
+    this.db.syncRouteBatchToSupabase(batch).catch(() => null);
+    return batch;
+  }
+
+  async rejectRouteBatch(id: string, approverUser: any, reason?: string): Promise<RouteBatch> {
+    const batch = this.db.routeBatches.find((b) => b.id === id || b.batch_code === id);
+    if (!batch) throw new NotFoundException('Route Batch not found');
+
+    batch.status = 'REJECTED';
+    batch.reviewed_by = approverUser?.name || approverUser?.id || 'Admin';
+    batch.reviewed_at = new Date().toISOString();
+    batch.updated_at = new Date().toISOString();
+    if (reason) batch.notes = (batch.notes ? batch.notes + ' | ' : '') + `Rejected: ${reason}`;
+
+    if (batch.mr_id) {
+      try {
+        this.db.notifications.push({
+          id: `notif-${uuidv4().substring(0, 8)}`,
+          user_id: batch.mr_id,
+          type: 'ROUTE_BATCH_REJECTED',
+          title: 'Route Batch Declined',
+          body: `Your proposed itinerary batch [${batch.batch_code}] ${batch.name} was declined. Reason: ${reason || 'Does not conform to company circuit guidelines.'}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
+
+    this.db.persistToDisk();
+    this.db.syncRouteBatchToSupabase(batch).catch(() => null);
+    return batch;
+  }
+
+}

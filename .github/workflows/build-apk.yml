@@ -62,11 +62,17 @@ jobs:
 
       - name: Prebuild Native Android Project
         run: npx expo prebuild --platform android --clean --no-install
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'ahtri123' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'ahtri123' }}
 
       - name: Verify Permanent Release Keystore & Gradle Signing
         working-directory: mobile
         run: |
-          if [ ! -f "android/app/release.keystore" ] && [ -f "credentials/ahtri-release.keystore" ]; then
+          if [ -n "${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}" ]; then
+            mkdir -p android/app
+            echo "${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          elif [ ! -f "android/app/release.keystore" ] && [ -f "credentials/ahtri-release.keystore" ]; then
             cp credentials/ahtri-release.keystore android/app/release.keystore
           fi
           echo "Release keystore verified for automated build."
@@ -76,6 +82,9 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'ahtri123' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'ahtri123' }}
 
       - name: Prepare APK Output
         run: |

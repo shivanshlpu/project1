@@ -23,6 +23,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.module';
 import { InventoryService } from '../inventory/inventory.service';
 import { OrdersService } from '../orders/orders.service';
+import { validateAndSanitizePhoto } from '../../common/file-upload.util';
 
 function getLocalDateString(d: Date = new Date()): string {
   const year = d.getFullYear();
@@ -324,13 +325,14 @@ export class TasksService {
     this.db.locationVerifications.push(verificationRecord);
 
     // Record photo verification if supplied (§3)
-    if (dto.photo_key) {
+    const cleanStartPhotoKey = validateAndSanitizePhoto(dto.photo_key, 'photo_key');
+    if (cleanStartPhotoKey) {
       const photoRecord: VerificationPhoto = {
         id: `vp-${uuidv4().substring(0, 8)}`,
         user_id: userId,
         task_id: task.id,
         hq_id: dto.hq_id || task.hq_id,
-        photo_key: dto.photo_key,
+        photo_key: cleanStartPhotoKey,
         photo_source: dto.photo_source || 'CAMERA',
         latitude: dto.latitude,
         longitude: dto.longitude,
@@ -339,7 +341,7 @@ export class TasksService {
         created_at: new Date().toISOString(),
       };
       this.db.verificationPhotos.push(photoRecord);
-      task.verification_photo_key = dto.photo_key;
+      task.verification_photo_key = cleanStartPhotoKey;
       task.verification_photo_source = dto.photo_source || 'CAMERA';
     }
 
@@ -383,6 +385,13 @@ export class TasksService {
       throw new BadRequestException('This task has already been completed.');
     }
 
+    // Authorization & IDOR protection: only assigned MR or Manager/Admin can skip order
+    const callingUser = this.db.users.find((u) => u.id === userId);
+    const isManagerOrAdmin = callingUser && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(callingUser.role);
+    if (task.assigned_mr_id !== userId && !isManagerOrAdmin) {
+      throw new ForbiddenException('Access denied: You can only update tasks assigned to your account.');
+    }
+
     // Check anti-mock and developer mode (§4)
     if (dto.is_mocked) {
       throw new BadRequestException('Mock / fake GPS location detected on device.');
@@ -392,14 +401,16 @@ export class TasksService {
     }
 
     // Save verification photo if provided (§3)
-    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
-    if (photoData || dto.photo_key) {
+    const sanitizedVisitPhoto = validateAndSanitizePhoto(dto.visit_photo, 'visit_photo');
+    const sanitizedPhotoKey = validateAndSanitizePhoto(dto.photo_key, 'photo_key');
+    const photoData = sanitizedVisitPhoto || (sanitizedPhotoKey && (sanitizedPhotoKey.startsWith('data:') || sanitizedPhotoKey.startsWith('http')) ? sanitizedPhotoKey : undefined);
+    if (photoData || sanitizedPhotoKey) {
       const photoRecord: VerificationPhoto = {
         id: `vp-${uuidv4().substring(0, 8)}`,
         user_id: userId,
         task_id: task.id,
         hq_id: dto.hq_id || task.hq_id,
-        photo_key: dto.photo_key || 'visit_proof',
+        photo_key: sanitizedPhotoKey || 'visit_proof',
         photo_source: dto.photo_source || 'CAMERA',
         latitude: dto.latitude,
         longitude: dto.longitude,
@@ -408,7 +419,7 @@ export class TasksService {
         created_at: new Date().toISOString(),
       };
       this.db.verificationPhotos.push(photoRecord);
-      task.verification_photo_key = dto.photo_key;
+      task.verification_photo_key = sanitizedPhotoKey;
       task.verification_photo_source = dto.photo_source || 'CAMERA';
       if (photoData) {
         task.visit_photo = photoData;
@@ -464,13 +475,26 @@ export class TasksService {
       throw new BadRequestException('Order has already been submitted and task is completed. Duplicate submission prevented.');
     }
 
+    // Authorization & IDOR protection: only assigned MR or Manager/Admin can submit order
+    const callingUser = this.db.users.find((u) => u.id === userId);
+    const isManagerOrAdmin = callingUser && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(callingUser.role);
+    if (task.assigned_mr_id !== userId && !isManagerOrAdmin) {
+      throw new ForbiddenException('Access denied: You can only submit orders for tasks assigned to your account.');
+    }
+
     if (dto.outcome) {
       task.outcome = dto.outcome;
     }
-    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
+    const cleanVisitPhoto = validateAndSanitizePhoto(dto.visit_photo, 'visit_photo');
+    const cleanPhotoKey = validateAndSanitizePhoto(dto.photo_key, 'photo_key');
+    const photoData = cleanVisitPhoto || (cleanPhotoKey && (cleanPhotoKey.startsWith('data:') || cleanPhotoKey.startsWith('http')) ? cleanPhotoKey : undefined);
     if (photoData) {
       task.visit_photo = photoData;
       task.visit_photo_captured_at = new Date().toISOString();
+    }
+    if (cleanPhotoKey) {
+      task.verification_photo_key = cleanPhotoKey;
+      task.verification_photo_source = dto.photo_source || 'CAMERA';
     }
     if (dto.hq_id) task.hq_id = dto.hq_id;
     if (dto.stocker_id) task.stocker_id = dto.stocker_id;
@@ -593,14 +617,16 @@ export class TasksService {
     this.db.locationVerifications.push(verificationRecord);
 
     // Save verification photo if provided (§3)
-    const photoData = dto.visit_photo || (dto.photo_key && (dto.photo_key.startsWith('data:') || dto.photo_key.startsWith('http')) ? dto.photo_key : undefined);
-    if (photoData || dto.photo_key) {
+    const cleanCompVisitPhoto = validateAndSanitizePhoto(dto.visit_photo, 'visit_photo');
+    const cleanCompPhotoKey = validateAndSanitizePhoto(dto.photo_key, 'photo_key');
+    const photoData = cleanCompVisitPhoto || (cleanCompPhotoKey && (cleanCompPhotoKey.startsWith('data:') || cleanCompPhotoKey.startsWith('http')) ? cleanCompPhotoKey : undefined);
+    if (photoData || cleanCompPhotoKey) {
       const photoRecord: VerificationPhoto = {
         id: `vp-${uuidv4().substring(0, 8)}`,
         user_id: userId,
         task_id: task.id,
         hq_id: dto.hq_id || task.hq_id,
-        photo_key: dto.photo_key || 'visit_proof',
+        photo_key: cleanCompPhotoKey || 'visit_proof',
         photo_source: dto.photo_source || 'CAMERA',
         latitude: lat,
         longitude: lng,
@@ -609,7 +635,7 @@ export class TasksService {
         created_at: new Date().toISOString(),
       };
       this.db.verificationPhotos.push(photoRecord);
-      task.verification_photo_key = dto.photo_key;
+      task.verification_photo_key = cleanCompPhotoKey;
       task.verification_photo_source = dto.photo_source || 'CAMERA';
       if (photoData) {
         task.visit_photo = photoData;

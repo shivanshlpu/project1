@@ -58,6 +58,9 @@ export class CreateUserDto {
   @IsOptional()
   assigned_route_batches?: string[];
 
+  @IsOptional()
+  route_batches?: string[];
+
   @IsBoolean()
   @IsOptional()
   biometric_enabled?: boolean;

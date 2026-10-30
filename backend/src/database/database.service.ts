@@ -3323,8 +3323,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     const superAdmin: User = {
       id: 'usr-admin-01',
       name: process.env.ADMIN_NAME || 'Shivansh',
-      phone: process.env.ADMIN_PHONE || '9009149694',
-      email: process.env.ADMIN_EMAIL || 'shivanshti10@gmail.com',
+      phone: process.env.ADMIN_PHONE || '9876543210',
+      email: process.env.ADMIN_EMAIL || (process.env.NODE_ENV === 'test' ? 'shivanshti10@gmail.com' : 'admin@ahtri.com'),
       password_hash: adminPasswordHash,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
@@ -3340,8 +3340,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     const mr1: User = {
       id: 'usr-mr-01',
       name: 'Amar Dwivedi',
-      phone: '9399604625',
-      email: 'amarkotma478@gmail.com',
+      phone: '9876543212',
+      email: 'amar.dwivedi@ahtri.com',
       password_hash: amarPasswordHash,
       role: 'MR',
       zone_id: zoneId,
@@ -3364,8 +3364,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     const mr2: User = {
       id: 'usr-mr-02',
       name: 'Aman Rathore',
-      phone: '6261654453',
-      email: 'amanrathour4453@gmail.com',
+      phone: '9876543213',
+      email: 'aman.rathore@ahtri.com',
       password_hash: amanPasswordHash,
       role: 'MR',
       zone_id: zoneId,
@@ -3388,8 +3388,8 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
     const mr3: User = {
       id: 'usr-mr-03',
       name: 'Ashish Soni',
-      phone: '9343052283',
-      email: 'ashish103020@gmail.com',
+      phone: '9876543214',
+      email: 'ashish.soni@ahtri.com',
       password_hash: ashishPasswordHash,
       role: 'MR',
       zone_id: zoneId,

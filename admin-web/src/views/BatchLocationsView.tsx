@@ -57,6 +57,8 @@ interface RouteBatchItem {
   locations?: BatchLocation[];
   locations_count?: number;
   standard_reimbursement_rate?: number;
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
+  notes?: string;
   created_at?: string;
 }
 
@@ -78,12 +80,22 @@ export const BatchLocationsView: React.FC = () => {
   const [isCreateBatchModalOpen, setIsCreateBatchModalOpen] = useState<boolean>(false);
   const [newBatchCode, setNewBatchCode] = useState<string>('');
   const [newBatchName, setNewBatchName] = useState<string>('');
-  const [newBatchDistance, setNewBatchDistance] = useState<string>('40');
+  const [newBatchDistance, setNewBatchDistance] = useState<string>('');
   const [newBatchRate, setNewBatchRate] = useState<string>('2.25');
-  const [newBatchStops, setNewBatchStops] = useState<string>('Shahdol, Manpur');
+  const [newBatchStops, setNewBatchStops] = useState<string>('');
   const [newBatchHq, setNewBatchHq] = useState<string>('hq-shahdol');
 
-  // Modal for editing batch reimbursement rate
+  const handleOpenCreateBatchModal = () => {
+    setNewBatchCode('');
+    setNewBatchName('');
+    setNewBatchDistance('');
+    setNewBatchRate('2.25');
+    setNewBatchStops('');
+    setNewBatchHq(selectedHqFilter && selectedHqFilter !== 'ALL' ? selectedHqFilter : 'hq-shahdol');
+    setIsCreateBatchModalOpen(true);
+  };
+
+    // Modal for editing batch reimbursement rate
   const [isEditRateModalOpen, setIsEditRateModalOpen] = useState<boolean>(false);
   const [editingRateBatch, setEditingRateBatch] = useState<RouteBatchItem | null>(null);
   const [editRateInput, setEditRateInput] = useState<string>('');
@@ -495,6 +507,75 @@ export const BatchLocationsView: React.FC = () => {
     }
   };
 
+
+  const handleApproveBatch = async (batch: RouteBatchItem) => {
+    try {
+      const res = await resilientFetch(`/territories/route-batches/${batch.id}/approve`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        showCenteredNotice({
+          title: 'Route Batch Approved',
+          message: `Batch [${batch.batch_code}] ${batch.name} is now approved and active for MR itineraries.`,
+          type: 'success',
+        });
+        fetchData();
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showCenteredNotice({
+          title: 'Approval Failed',
+          message: err.message || 'Failed to approve route batch.',
+          type: 'error',
+        });
+      }
+    } catch (e: any) {
+      showCenteredNotice({
+        title: 'Error',
+        message: e.message || 'Connection error while approving route batch.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRejectBatch = async (batch: RouteBatchItem) => {
+    const confirmed = await showConfirmModal({
+      title: 'Decline Proposed Route Batch',
+      message: `Are you sure you want to decline [${batch.batch_code}] ${batch.name}? The proposing MR will be notified.`,
+      confirmText: 'Decline Batch',
+      isDestructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await resilientFetch(`/territories/route-batches/${batch.id}/reject`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        showCenteredNotice({
+          title: 'Batch Declined',
+          message: `Batch [${batch.batch_code}] has been marked as rejected.`,
+          type: 'info',
+        });
+        fetchData();
+        window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showCenteredNotice({
+          title: 'Action Failed',
+          message: err.message || 'Failed to reject batch.',
+          type: 'error',
+        });
+      }
+    } catch (e: any) {
+      showCenteredNotice({
+        title: 'Error',
+        message: e.message || 'Connection error.',
+        type: 'error',
+      });
+    }
+  };
+
   const handleApplyRouteFromMap = async (result: {
     stops: string[];
     distanceKm: number;
@@ -693,7 +774,7 @@ export const BatchLocationsView: React.FC = () => {
             Refresh
           </button>
           <button
-            onClick={() => setIsCreateBatchModalOpen(true)}
+            onClick={handleOpenCreateBatchModal}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1017,6 +1098,55 @@ export const BatchLocationsView: React.FC = () => {
                       Route Map
                     </button>
 
+                    {batch.status === 'PENDING_APPROVAL' && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApproveBatch(batch);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 14px',
+                            backgroundColor: '#16A34A',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontWeight: 800,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                          }}
+                          title="Approve this MR itinerary and make it active"
+                        >
+                          ✓ Approve Route
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRejectBatch(batch);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 12px',
+                            backgroundColor: '#FEE2E2',
+                            color: '#DC2626',
+                            border: '1px solid #FCA5A5',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                          title="Decline this proposed route"
+                        >
+                          ✕ Decline
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1953,13 +2083,13 @@ export const BatchLocationsView: React.FC = () => {
           onClose={() => setIsMapRouteModalOpen(false)}
           initialStops={
             mapRouteTarget === 'CREATE'
-              ? newBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
+              ? (newBatchStops ? newBatchStops.split(',').map((s) => s.trim()).filter(Boolean) : [])
               : editBatchStops.split(',').map((s) => s.trim()).filter(Boolean)
           }
           initialWaypoints={
             mapRouteTarget === 'EDIT' && editingBatch?.route_waypoints
               ? editingBatch.route_waypoints
-              : undefined
+              : []
           }
           initialDistanceKm={
             mapRouteTarget === 'CREATE' ? Number(newBatchDistance) || 0 : Number(editBatchDistance) || 0

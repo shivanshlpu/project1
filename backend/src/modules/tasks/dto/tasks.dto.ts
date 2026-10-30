@@ -176,6 +176,10 @@ export class SubmitOrderDto {
   @IsString()
   @IsOptional()
   visit_photo?: string;
+
+  @IsEnum(['CAMERA', 'GALLERY'])
+  @IsOptional()
+  photo_source?: 'CAMERA' | 'GALLERY';
 }
 
 export class UpdateTaskDto {

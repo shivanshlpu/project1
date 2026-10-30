@@ -76,6 +76,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto);
@@ -96,6 +97,13 @@ export class AuthController {
     @Body() dto: { identifier: string; deviceId?: string; deviceModel?: string },
   ) {
     return this.authService.requestDeviceOtpForEmployee(dto.identifier, dto.deviceId, dto.deviceModel);
+  }
+
+  @Get('device-otp/status/:requestId')
+  @UseGuards(AuthRateLimiterGuard)
+  @HttpCode(HttpStatus.OK)
+  async checkDeviceAuthStatus(@Param('requestId') requestId: string) {
+    return this.authService.checkDeviceAuthStatus(requestId);
   }
 
   @Post('forgot-password')

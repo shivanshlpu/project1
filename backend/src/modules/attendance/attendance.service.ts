@@ -15,6 +15,7 @@ import {
 } from './dto/attendance.dto';
 import { Attendance, AttendanceSettings } from '../../database/database.types';
 import { computeAttendanceDeviations } from './attendance.utils';
+import { validateAndSanitizePhoto } from '../../common/file-upload.util';
 
 @Injectable()
 export class AttendanceService implements OnModuleInit {
@@ -132,20 +133,23 @@ export class AttendanceService implements OnModuleInit {
   async checkIn(userId: string, dto: CheckInDto) {
     this.purgeExpiredPhotos();
 
+    const checkInPhotoClean = validateAndSanitizePhoto(dto.check_in_photo, 'check_in_photo');
+    const photoKeyClean = validateAndSanitizePhoto(dto.photo_key, 'photo_key');
+
     const todayStr = new Date().toISOString().split('T')[0];
     const existing = this.db.attendance.find(
       (a) => a.user_id === userId && a.date === todayStr,
     );
 
     if (existing) {
-      const photoPayload = dto.check_in_photo || (dto.photo_key && dto.photo_key.startsWith('data:') ? dto.photo_key : undefined);
+      const photoPayload = checkInPhotoClean || (photoKeyClean && photoKeyClean.startsWith('data:') ? photoKeyClean : undefined);
       if (photoPayload) {
         existing.check_in_photo = photoPayload;
         existing.photo_captured_at = new Date().toISOString();
         existing.photo_purged = false;
       }
-      if (dto.photo_key) {
-        existing.punch_in_photo_key = dto.photo_key;
+      if (photoKeyClean) {
+        existing.punch_in_photo_key = photoKeyClean;
       }
       if (dto.latitude && dto.longitude) {
         existing.check_in_lat = dto.latitude;
@@ -210,7 +214,7 @@ export class AttendanceService implements OnModuleInit {
       check_in_lat: dto.latitude,
       check_in_lng: dto.longitude,
       check_in_location_name: dto.location_name || `Lat: ${dto.latitude.toFixed(4)}, Lng: ${dto.longitude.toFixed(4)}`,
-      check_in_photo: dto.check_in_photo || (dto.photo_key && dto.photo_key.startsWith('data:') ? dto.photo_key : null),
+      check_in_photo: checkInPhotoClean || (photoKeyClean && photoKeyClean.startsWith('data:') ? photoKeyClean : null),
       photo_captured_at: now.toISOString(),
       photo_purged: false,
       distance_meters: accuracy,
@@ -219,7 +223,7 @@ export class AttendanceService implements OnModuleInit {
       late_minutes: lateMinutes,
       early_minutes: 0,
       working_hours: 0,
-      punch_in_photo_key: dto.photo_key,
+      punch_in_photo_key: photoKeyClean,
       punch_in_photo_source: dto.photo_source || 'CAMERA',
       device_integrity_status: 'VERIFIED',
       hq_id: dto.hq_id || 'hq-shahdol',
@@ -286,8 +290,9 @@ export class AttendanceService implements OnModuleInit {
     record.check_out_lng = dto.longitude;
     record.early_minutes = earlyMinutes;
     record.working_hours = durationHours;
-    if (dto.photo_key) {
-      record.punch_out_photo_key = dto.photo_key;
+    const punchOutPhotoKeyClean = validateAndSanitizePhoto(dto.photo_key || dto.punch_out_photo_key, 'punch_out_photo_key');
+    if (punchOutPhotoKeyClean) {
+      record.punch_out_photo_key = punchOutPhotoKeyClean;
       record.punch_out_photo_source = dto.photo_source || 'CAMERA';
     }
 

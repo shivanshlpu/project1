@@ -53,6 +53,31 @@ interface MembersManagementViewProps {
   onNavigateToLocation?: (locId: string) => void;
 }
 
+const cleanAndSanitizeMembers = (rawList: any[]): MRMemberItem[] => {
+  if (!Array.isArray(rawList)) return [];
+  return rawList
+    .filter(
+      (m: any) => m && m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
+    )
+    .map((m: any) => {
+      const hqCode = m.hq_code || (m.name?.includes('Kotma') || m.name?.includes('Amar') ? 'KOT' : m.name?.includes('Ashish') || m.name?.includes('Ambikapur') ? 'AMB' : 'SHD');
+      const synthetic1 = `RB-${hqCode}-01`;
+      const synthetic2 = `RB-${hqCode}-02`;
+      const syntheticPrefix = `RB-${hqCode}-`;
+      const cleanAssigned = Array.isArray(m.assigned_route_batches)
+        ? m.assigned_route_batches.filter((b: string) => b && b !== synthetic1 && b !== synthetic2 && !b.startsWith(syntheticPrefix))
+        : [];
+      const cleanRoute = Array.isArray(m.route_batches)
+        ? m.route_batches.filter((b: string) => b && b !== synthetic1 && b !== synthetic2 && !b.startsWith(syntheticPrefix))
+        : [];
+      return {
+        ...m,
+        assigned_route_batches: cleanAssigned,
+        route_batches: cleanRoute,
+      };
+    });
+};
+
 export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onNavigateToLocation,
 }) => {
@@ -61,12 +86,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       const cached = localStorage.getItem('ahtri_cached_members');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const clean = parsed.filter(
-            (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
-          );
-          if (clean.length > 0) return clean;
-        }
+        const clean = cleanAndSanitizeMembers(parsed);
+        if (clean.length > 0) return clean;
       }
     } catch {}
     return [];
@@ -160,6 +181,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [regHqName, setRegHqName] = useState('Kotma');
   const [regHqCode, setRegHqCode] = useState('KOT');
   const [regTerritory, setRegTerritory] = useState('Kotma HQ Territory');
+  const [regRouteBatches, setRegRouteBatches] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
 
@@ -167,6 +189,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setRegName('');
     setRegPhone('');
     setRegEmail('');
+    setRegRouteBatches('');
     setRegPassword('');
     const defaultHq = activeHqs.find((h) => h.code === 'KOT') || activeHqs[0] || { id: 'HQ-KOT-001', name: 'Kotma', code: 'KOT' };
     setRegHqId(defaultHq.id);
@@ -256,8 +279,16 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setEditHqCode(resolvedHqCode);
     setEditHqId(resolvedHqId);
     setEditTerritory(member.assigned_territory || member.territory || `${resolvedHqName} HQ Territory`);
-    const batches = member.assigned_route_batches || member.route_batches || [`RB-${resolvedHqCode}-01`, `RB-${resolvedHqCode}-02`];
-    setEditRouteBatches(Array.isArray(batches) ? batches.join(', ') : '');
+    const rawBatches = (member.assigned_route_batches && member.assigned_route_batches.length > 0)
+      ? member.assigned_route_batches
+      : (member.route_batches && member.route_batches.length > 0)
+      ? member.route_batches
+      : [];
+    const syntheticPrefix = `RB-${resolvedHqCode}-`;
+    const batches = Array.isArray(rawBatches)
+      ? rawBatches.filter((b) => b && b !== `RB-${resolvedHqCode}-01` && b !== `RB-${resolvedHqCode}-02` && !b.startsWith(syntheticPrefix))
+      : [];
+    setEditRouteBatches(batches.join(', '));
     setEditStatus(member.status);
     setEditPassword('');
     setIsEditModalOpen(true);
@@ -412,9 +443,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         if (usersRes.ok) {
           const uData = await usersRes.json();
           if (Array.isArray(uData) && uData.length > 0) {
-            const cleanData = uData.filter(
-              (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
-            );
+            const cleanData = cleanAndSanitizeMembers(uData);
             setMembers(cleanData);
             try {
               localStorage.setItem('ahtri_cached_members', JSON.stringify(cleanData));
@@ -441,7 +470,10 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       } catch {}
     };
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchData();
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1546,9 +1578,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     if (usersRes.ok) {
                       const uData = await usersRes.json();
                       if (Array.isArray(uData) && uData.length > 0) {
-                        const cleanData = uData.filter(
-                          (m: any) => m.id !== 'usr-mgr-01' && m.id !== 'usr-admin-owner' && !m.name?.includes('Area Manager')
-                        );
+                        const cleanData = cleanAndSanitizeMembers(uData);
                         setMembers(cleanData);
                         try {
                           localStorage.setItem('ahtri_cached_members', JSON.stringify(cleanData));
@@ -1601,11 +1631,15 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   const hqName = m.hq_name || (hqCode === 'KOT' ? 'Kotma' : hqCode === 'AMB' ? 'Ambikapur' : 'Shahdol');
                   const hqId = m.hq_id || (hqCode === 'KOT' ? 'HQ-KOT-001' : hqCode === 'AMB' ? 'HQ-AMB-001' : 'HQ-SHD-001');
                   const territory = m.assigned_territory || m.territory || `${hqName} HQ Territory`;
-                  const batches = (m.assigned_route_batches && m.assigned_route_batches.length > 0)
+                  const rawBatches = (m.assigned_route_batches && m.assigned_route_batches.length > 0)
                     ? m.assigned_route_batches
                     : (m.route_batches && m.route_batches.length > 0)
                     ? m.route_batches
-                    : [`RB-${hqCode}-01`, `RB-${hqCode}-02`];
+                    : [];
+                  const syntheticPrefix = `RB-${hqCode}-`;
+                  const batches = Array.isArray(rawBatches)
+                    ? rawBatches.filter((b) => b && b !== `RB-${hqCode}-01` && b !== `RB-${hqCode}-02` && !b.startsWith(syntheticPrefix))
+                    : [];
                   const isSuperAdminOrAdmin = m.role === 'SUPER_ADMIN' || m.role === 'ADMIN';
                   const isBound = Boolean(m.device_id || m.device_bound_at);
                   const hasLoggedIn = Boolean(m.device_id || m.device_bound_at || m.last_login_at);
@@ -1659,12 +1693,18 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
 
                       {/* 6. Assigned Route Batches */}
                       <td style={{ padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {batches.map((b) => (
-                            <span key={b} style={{ background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
-                              {b}
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {batches.length > 0 ? (
+                            batches.map((b) => (
+                              <span key={b} style={{ background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                {b}
+                              </span>
+                            ))
+                          ) : (
+                            <span style={{ color: '#94A3B8', fontSize: '11.5px', fontStyle: 'italic' }}>
+                              No Batches Assigned
                             </span>
-                          ))}
+                          )}
                         </div>
                       </td>
 
@@ -2115,6 +2155,18 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                 />
               </div>
               <div>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>
+                  Assigned Route Batches (comma-separated, optional)
+                </label>
+                <input
+                  type="text"
+                  value={regRouteBatches}
+                  onChange={(e) => setRegRouteBatches(e.target.value)}
+                  placeholder="Leave blank if no batches assigned yet (e.g. SHD-B01, SHD-B02)"
+                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                />
+              </div>
+              <div>
                 <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Initial Password (Hashed server-side)</label>
                 <input
                   type="password"
@@ -2148,6 +2200,10 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                       return;
                     }
 
+                    const routeBatchesArray = regRouteBatches
+                      ? regRouteBatches.split(',').map((s) => s.trim()).filter(Boolean)
+                      : [];
+
                     setIsSubmittingRegister(true);
                     const newM: MRMemberItem = {
                       id: `usr-mr-${Date.now().toString().slice(-4)}`,
@@ -2159,8 +2215,8 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                       hq_id: hqId,
                       assigned_territory: territory,
                       territory,
-                      assigned_route_batches: [`RB-${hqCode}-01`, `RB-${hqCode}-02`],
-                      route_batches: [`RB-${hqCode}-01`, `RB-${hqCode}-02`],
+                      assigned_route_batches: routeBatchesArray,
+                      route_batches: routeBatchesArray,
                       role: 'MR',
                       status: 'ACTIVE',
                       created_at: new Date().toISOString().split('T')[0],
@@ -2375,7 +2431,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   type="text"
                   value={editRouteBatches}
                   onChange={(e) => setEditRouteBatches(e.target.value)}
-                  placeholder="e.g. RB-SHD-01, RB-SHD-02"
+                  placeholder="Leave blank if none (e.g. SHD-B01, SHD-B02)"
                   style={{ width: '100%', padding: '7px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
                 />
               </div>

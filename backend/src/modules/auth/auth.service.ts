@@ -25,23 +25,20 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const identifier = dto.identifier.trim().toLowerCase();
+    const adminTarget = process.env.ADMIN_EMAIL || 'usr-admin-01';
     const ALIAS_MAP: Record<string, string> = {
-      'admin@ahtri.com': 'shivanshti10@gmail.com',
-      'admin': 'shivanshti10@gmail.com',
-      'manager@ahtri.com': 'shivanshti10@gmail.com',
-      'manager': 'shivanshti10@gmail.com',
-      'shd': 'aman@ahtri.com',
-      'hq-shd-001': 'aman@ahtri.com',
-      'aman.rathore@ahtri.com': 'aman@ahtri.com',
-      'kot': 'amar@ahtri.com',
-      'hq-kot-001': 'amar@ahtri.com',
-      'amar.dwivedi@ahtri.com': 'amar@ahtri.com',
-      'amb': 'ashish@ahtri.com',
-      'hq-amb-001': 'ashish@ahtri.com',
-      'mr@ahtri.com': 'amarkotma478@gmail.com',
-      'mr': 'amarkotma478@gmail.com',
-      'amar@ahtri.com': 'amarkotma478@gmail.com',
-      '9876543212': 'amarkotma478@gmail.com',
+      'admin@ahtri.com': adminTarget,
+      'admin': adminTarget,
+      'manager@ahtri.com': adminTarget,
+      'manager': adminTarget,
+      'shd': 'usr-mr-02',
+      'hq-shd-001': 'usr-mr-02',
+      'kot': 'usr-mr-01',
+      'hq-kot-001': 'usr-mr-01',
+      'amb': 'usr-mr-03',
+      'hq-amb-001': 'usr-mr-03',
+      'mr@ahtri.com': 'usr-mr-01',
+      'mr': 'usr-mr-01',
       'bsp': 'HQ-BSP-001',
     };
     const targetAlias = ALIAS_MAP[identifier] || identifier;
@@ -522,6 +519,19 @@ export class AuthService {
       device_model: authReq.device_model,
       user_name: user.name,
       message: '6-digit OTP generated on Admin Dashboard.',
+    };
+  }
+
+  async checkDeviceAuthStatus(requestId: string) {
+    const req = this.db.deviceAuthorizations.find((r) => r.id === requestId);
+    if (!req) {
+      return { status: 'NOT_FOUND', approved: false };
+    }
+    return {
+      id: req.id,
+      status: req.status,
+      approved: req.status === 'APPROVED',
+      created_at: req.created_at,
     };
   }
 

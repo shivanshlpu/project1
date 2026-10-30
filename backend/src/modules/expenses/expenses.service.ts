@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import { CreateExpenseDto, DecideExpenseDto } from './dto/expenses.dto';
 import { Expense, Approval } from '../../database/database.types';
+import { validateAndSanitizePhoto } from '../../common/file-upload.util';
 
 @Injectable()
 export class ExpensesService {
@@ -10,12 +11,13 @@ export class ExpensesService {
 
   async createExpense(mrId: string, dto: CreateExpenseDto) {
     const user = this.db.users.find((u) => u.id === mrId);
+    const sanitizedReceiptKey = validateAndSanitizePhoto(dto.receipt_file_key, 'receipt_file_key');
     const expense: Expense = {
       id: `exp-${uuidv4().substring(0, 8)}`,
       mr_id: mrId,
       category: dto.category,
       amount: Math.round(dto.amount * 100) / 100,
-      receipt_file_key: dto.receipt_file_key,
+      receipt_file_key: sanitizedReceiptKey,
       hq_id: user?.hq_id,
       hq_code: user?.hq_code,
       route_batch_id: (dto as any).route_batch_id,

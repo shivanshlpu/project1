@@ -9,6 +9,7 @@ import {
   Body,
   Query,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
@@ -21,6 +22,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
+import { CurrentUser } from '../../common/current-user.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,7 +42,11 @@ export class UsersController {
   }
 
   @Get(':id')
-  async getUserById(@Param('id') id: string) {
+  async getUserById(@Param('id') id: string, @CurrentUser() user: any) {
+    const isPrivileged = user?.role && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user.role);
+    if (!isPrivileged && user?.id !== id) {
+      throw new ForbiddenException('Access denied: You can only view your own user profile.');
+    }
     return this.usersService.getUserById(id);
   }
 

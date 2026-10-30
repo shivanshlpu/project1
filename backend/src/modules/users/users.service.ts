@@ -89,8 +89,8 @@ export class UsersService {
       hq_name: dto.hq_name,
       territory: dto.territory,
       assigned_territory: dto.assigned_territory || dto.territory,
-      assigned_route_batches: dto.assigned_route_batches || [],
-      route_batches: dto.assigned_route_batches || [],
+      assigned_route_batches: dto.assigned_route_batches || dto.route_batches || [],
+      route_batches: dto.assigned_route_batches || dto.route_batches || [],
       manager_id: dto.manager_id,
       status: 'ACTIVE' as const,
       biometric_enabled: !!dto.biometric_enabled,
@@ -160,11 +160,11 @@ export class UsersService {
     }
     if (dto.territory) user.territory = dto.territory;
     if (dto.assigned_territory) user.assigned_territory = dto.assigned_territory;
-    if (dto.assigned_route_batches) {
+    if (dto.assigned_route_batches !== undefined) {
       user.assigned_route_batches = dto.assigned_route_batches;
       user.route_batches = dto.assigned_route_batches;
     }
-    if (dto.route_batches) {
+    if (dto.route_batches !== undefined) {
       user.route_batches = dto.route_batches;
       user.assigned_route_batches = dto.route_batches;
     }

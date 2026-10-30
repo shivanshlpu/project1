@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, OnModuleInit } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../database/database.service';
 import { CreateLocationDto } from './dto/locations.dto';
@@ -144,12 +144,18 @@ export class LocationsService implements OnModuleInit {
     }
   }
 
+  private lastSupabaseSync = 0;
+  private readonly CACHE_TTL_MS = 60 * 1000; // 60s cache TTL to minimize database queries
+
   private seedDefaultLocations() {
     this.locations = [];
   }
 
   async getAllLocations(user?: any, query?: { batch_id?: string; mr_id?: string; category?: string }): Promise<SavedLocation[]> {
-    if (this.db.supabase?.isConnected) {
+    const now = Date.now();
+    const isCacheStale = now - this.lastSupabaseSync > this.CACHE_TTL_MS;
+
+    if (this.db.supabase?.isConnected && (isCacheStale || this.locations.length === 0)) {
       const client = this.db.supabase.getClient();
       if (client) {
         try {
@@ -160,6 +166,7 @@ export class LocationsService implements OnModuleInit {
             const keptLocal = this.locations.filter((l) => !remoteIds.has(l.id));
             this.locations = [...remoteLocations, ...keptLocal];
             this.db.savedLocations = this.locations;
+            this.lastSupabaseSync = now;
           }
         } catch {}
       }
@@ -199,6 +206,7 @@ export class LocationsService implements OnModuleInit {
   }
 
   async createLocation(dto: CreateLocationDto, authenticatedUser?: any): Promise<SavedLocation> {
+    this.lastSupabaseSync = 0;
     const userFromId = dto.mr_id ? this.db.users.find((u) => u.id === dto.mr_id) : null;
     const creatorUser = authenticatedUser || userFromId;
     const creatorRole: 'ADMIN' | 'MR' =
@@ -406,6 +414,7 @@ export class LocationsService implements OnModuleInit {
   }
 
   async updateLocation(id: string, dto: Partial<CreateLocationDto>, user?: any): Promise<SavedLocation> {
+    this.lastSupabaseSync = 0; // Invalidate cache immediately on mutation
     let loc = this.locations.find((l) => l.id === id);
     if (!loc) {
       const matchDoc = this.db.doctors.find((d) => d.id === id);
@@ -435,6 +444,14 @@ export class LocationsService implements OnModuleInit {
         this.locations.unshift(loc);
       } else {
         throw new NotFoundException(`Location ${id} not found`);
+      }
+    }
+
+    // IDOR protection: MR can only update locations they created
+    if (user && user.role === 'MR') {
+      const mrId = user.id || user.sub;
+      if (loc.created_by && loc.created_by !== mrId) {
+        throw new ForbiddenException('Access denied: You can only edit locations created by your account.');
       }
     }
 
@@ -537,6 +554,7 @@ export class LocationsService implements OnModuleInit {
   }
 
   async deleteLocation(id: string): Promise<{ success: boolean; message: string; id: string }> {
+    this.lastSupabaseSync = 0;
     this.db.deletedLocationIds.add(id);
 
     const locIndex = this.locations.findIndex((l) => l.id === id);

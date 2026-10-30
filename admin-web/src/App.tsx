@@ -261,7 +261,7 @@ export const App: React.FC = () => {
     };
 
     fetchPendingApprovals();
-    const interval = setInterval(fetchPendingApprovals, 20000);
+    const interval = setInterval(fetchPendingApprovals, 35000);
     window.addEventListener('ahtri_approvals_updated', fetchPendingApprovals);
     return () => {
       clearInterval(interval);
@@ -344,7 +344,7 @@ export const App: React.FC = () => {
       }
     };
     fetchPendingCount();
-    const timer = setInterval(fetchPendingCount, 30000);
+    const timer = setInterval(fetchPendingCount, 45000);
     return () => clearInterval(timer);
   }, []);
 
@@ -371,7 +371,7 @@ export const App: React.FC = () => {
       }
     };
     fetchRecentLocations();
-    const timer = setInterval(fetchRecentLocations, 25000);
+    const timer = setInterval(fetchRecentLocations, 40000);
     return () => clearInterval(timer);
   }, []);
 
@@ -423,7 +423,7 @@ export const App: React.FC = () => {
       }
     };
     fetchRecentCompletions();
-    const timer = setInterval(fetchRecentCompletions, 25000);
+    const timer = setInterval(fetchRecentCompletions, 40000);
     return () => clearInterval(timer);
   }, [acknowledgedCompletionIds]);
 

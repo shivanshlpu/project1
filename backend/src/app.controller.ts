@@ -25,22 +25,23 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.50',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '51', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.51',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '52', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.50/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.51/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Stockage Permission Management: Added full Delete action for admin to permanently remove permissions and clear stuck submissions',
-    'Permission Prioritization Fix: Guaranteed MRs always receive newly granted AVAILABLE permissions even if older submissions were reviewed or rejected',
-    'Mobile UI Enhancement: Fixed horizontal scrolling tab switcher for Stockage Depot, Catalog, and Monthly Stockage so tabs are easily clickable on all screen sizes',
-    'Status Refresh: Added instant manual Refresh button to update permission and sync status on demand',
+    'MR Itinerary & Route Batch Creation: Added capability for MRs to propose new route batches directly from mobile for admin approval',
+    'Tour Plan HQ Lock: Fixed MR Tour Plan headquarters to the assigned user account to prevent unintended HQ reassignment',
+    'Unassigned Area Direct Visits: Enabled MRs to plan visits directly to areas without mandatory batch assignment',
+    'Unassigned Account Fix: Resolved issue where newly created accounts without assigned batches displayed synthetic placeholder batches',
+    'Admin Map Clarity: Ensured the route batch creation map opens with a clear blank slate',
   ],
 };
 

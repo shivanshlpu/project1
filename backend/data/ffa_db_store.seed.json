@@ -3331,8 +3331,8 @@
     {
       "id": "usr-admin-01",
       "name": "Shivansh",
-      "phone": "9009149694",
-      "email": "shivanshti10@gmail.com",
+      "phone": "9876543210",
+      "email": "admin@ahtri.com",
       "role": "SUPER_ADMIN",
       "password_hash": "$2a$10$ad77d2tiqIxgiTOctE9ff.ZOm5VZT/w7.NELR5F73NTCebNfVsRXu",
       "status": "ACTIVE",
@@ -3349,8 +3349,8 @@
     {
       "id": "usr-mr-01",
       "name": "Amar Dwivedi",
-      "phone": "9399604625",
-      "email": "amarkotma478@gmail.com",
+      "phone": "9876543212",
+      "email": "amar.dwivedi@ahtri.com",
       "role": "MR",
       "password_hash": "$2a$10$2sCmri/zudO0tMNkvIea5e83qMBkell1gcK5wsLvTjO3FTGPe1EZa",
       "status": "ACTIVE",
@@ -3397,8 +3397,8 @@
     {
       "id": "usr-mr-02",
       "name": "Aman Rathore",
-      "phone": "6261654453",
-      "email": "amanrathour4453@gmail.com",
+      "phone": "9876543213",
+      "email": "aman.rathore@ahtri.com",
       "role": "MR",
       "password_hash": "$2a$10$99mDfzrM1Do8t1SB//OewOPNRDu9aOJw4/6z0w9ZEGHsM.5IH7h9C",
       "status": "ACTIVE",
@@ -3437,8 +3437,8 @@
     {
       "id": "usr-mr-03",
       "name": "Ashish Soni",
-      "phone": "9343052283",
-      "email": "ashish103020@gmail.com",
+      "phone": "9876543214",
+      "email": "ashish.soni@ahtri.com",
       "role": "MR",
       "password_hash": "$2a$10$ENjkR6ohgd15d0KAsXR/2.cuVEJJaGJX2pLP8tVcjnRyHziQ1d2om",
       "status": "ACTIVE",
@@ -3478,26 +3478,26 @@
   "userCredentials": [
     {
       "id": "usr-admin-01",
-      "email": "shivanshti10@gmail.com",
-      "phone": "9009149694",
+      "email": "admin@ahtri.com",
+      "phone": "9876543210",
       "password_hash": "$2a$10$ad77d2tiqIxgiTOctE9ff.ZOm5VZT/w7.NELR5F73NTCebNfVsRXu"
     },
     {
       "id": "usr-mr-01",
-      "email": "amarkotma478@gmail.com",
-      "phone": "9399604625",
+      "email": "amar.dwivedi@ahtri.com",
+      "phone": "9876543212",
       "password_hash": "$2a$10$2sCmri/zudO0tMNkvIea5e83qMBkell1gcK5wsLvTjO3FTGPe1EZa"
     },
     {
       "id": "usr-mr-02",
-      "email": "amanrathour4453@gmail.com",
-      "phone": "6261654453",
+      "email": "aman.rathore@ahtri.com",
+      "phone": "9876543213",
       "password_hash": "$2a$10$99mDfzrM1Do8t1SB//OewOPNRDu9aOJw4/6z0w9ZEGHsM.5IH7h9C"
     },
     {
       "id": "usr-mr-03",
-      "email": "ashish103020@gmail.com",
-      "phone": "9343052283",
+      "email": "ashish.soni@ahtri.com",
+      "phone": "9876543214",
       "password_hash": "$2a$10$ENjkR6ohgd15d0KAsXR/2.cuVEJJaGJX2pLP8tVcjnRyHziQ1d2om"
     }
   ],
