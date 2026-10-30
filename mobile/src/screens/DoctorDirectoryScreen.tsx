@@ -478,44 +478,15 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.doctorName}>{doc.name}</Text>
-                      {doc.category === 'STOCKAGE' ? (
+                      {doc.category === 'STOCKAGE' && (
                         <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B' }}>
                           <Text style={{ fontSize: 10, fontWeight: '800', color: '#B45309' }}>📦 Storage Depot</Text>
-                        </View>
-                      ) : (
-                        <View
-                          style={[
-                            styles.classBadge,
-                            doc.class === 'A'
-                              ? styles.classBadgeA
-                              : doc.class === 'B'
-                              ? styles.classBadgeB
-                              : styles.classBadgeC,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.classBadgeText,
-                              doc.class === 'A'
-                                ? styles.classTextA
-                                : doc.class === 'B'
-                                ? styles.classTextB
-                                : styles.classTextC,
-                            ]}
-                          >
-                            Class {doc.class}
-                          </Text>
                         </View>
                       )}
                     </View>
                     <Text style={styles.qualificationText}>
                       {doc.qualification} • {doc.specialization}
                     </Text>
-                  </View>
-
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.potentialScore}>{doc.potential_score} Pts</Text>
-                    <Text style={styles.potentialLabel}>Potential</Text>
                   </View>
                 </View>
 

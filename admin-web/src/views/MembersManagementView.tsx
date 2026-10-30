@@ -770,6 +770,50 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
 
   const completedTasks = memberTasks.filter((t) => t.status === 'COMPLETED');
   const inProgressTasks = memberTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ASSIGNED');
+  const suspendedTasks = memberTasks.filter((t) => t.status === 'SUSPENDED');
+  const tasksWithOrders = memberTasks.filter((t) => parseSafeOrders(t.orders).length > 0);
+
+  // MR Performance Point System (Admin-only executive tracking):
+  // +50 points per task completed
+  // +100 points per order secured
+  // -50 points deducted per task suspended
+  const completedTaskPoints = completedTasks.length * 50;
+  const orderSecuredPoints = tasksWithOrders.length * 100;
+  const suspendedTaskPenalty = suspendedTasks.length * 50;
+  const memberTotalPoints = completedTaskPoints + orderSecuredPoints - suspendedTaskPenalty;
+
+  const getTaskPointsImpact = (t: TaskItem) => {
+    let earned = 0;
+    let deducted = 0;
+    const isCompleted = t.status === 'COMPLETED';
+    const isSuspended = t.status === 'SUSPENDED';
+    const hasOrder = parseSafeOrders(t.orders).length > 0;
+
+    if (isCompleted) earned += 50;
+    if (hasOrder) earned += 100;
+    if (isSuspended) deducted += 50;
+
+    return {
+      earned,
+      deducted,
+      net: earned - deducted,
+      isCompleted,
+      isSuspended,
+      hasOrder,
+    };
+  };
+
+  const getMemberPoints = (m: MRMemberItem) => {
+    const mTasks = tasks.filter(
+      (t) =>
+        t.assigned_mr_id === m.id ||
+        (t.assigned_mr_name && m.name && t.assigned_mr_name.toLowerCase().includes(m.name.toLowerCase()))
+    );
+    const comp = mTasks.filter((t) => t.status === 'COMPLETED').length * 50;
+    const ord = mTasks.filter((t) => parseSafeOrders(t.orders).length > 0).length * 100;
+    const susp = mTasks.filter((t) => t.status === 'SUSPENDED').length * 50;
+    return comp + ord - susp;
+  };
 
   const totalOrdersCaptured = memberTasks.reduce(
     (acc, t) => acc + parseSafeOrders(t.orders).length,
@@ -1079,7 +1123,12 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                         >
                           {m.name}
                         </div>
-                        <div style={{ fontSize: '10px', color: '#64748B' }}>{m.phone}</div>
+                        <div style={{ fontSize: '10px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span>{m.phone}</span>
+                          <span style={{ fontWeight: 800, color: '#0F8B5A', background: '#F0FDF4', padding: '1px 5px', borderRadius: '4px', border: '1px solid #DCFCE7' }}>
+                            ⭐ {getMemberPoints(m)} pts
+                          </span>
+                        </div>
                       </div>
                       {isSuperAdminOrAdmin ? (
                         <span title="Administrator Active"><ShieldCheck size={13} color="#2563EB" /></span>
@@ -1146,10 +1195,23 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                 {selectedMember.status}
               </span>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', display: 'flex', gap: '10px' }}>
+            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span>ID: {selectedMember.id}</span>
               <span>📞 {selectedMember.phone}</span>
               <span>✉️ {selectedMember.email}</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: memberTotalPoints >= 0 ? '#166534' : '#DC2626',
+                  background: memberTotalPoints >= 0 ? '#DCFCE7' : '#FEE2E2',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  border: `1px solid ${memberTotalPoints >= 0 ? '#86EFAC' : '#FCA5A5'}`,
+                }}
+              >
+                ⭐ Performance Score: {memberTotalPoints} Pts
+              </span>
             </div>
           </div>
         </div>
@@ -1337,6 +1399,69 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
       {/* TAB 1: VISITS & DETAILING AUDIT */}
       {activeTab === 'performance' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Executive Performance Points Scorecard Banner (Confidential Admin View) */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+              borderRadius: '8px',
+              padding: '16px 20px',
+              color: '#FFFFFF',
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '14px',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#94A3B8', textTransform: 'uppercase' }}>
+                  MR Performance Tracking (Admin-Only Evaluation)
+                </span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    background: '#1E3A8A',
+                    color: '#93C5FD',
+                  }}
+                >
+                  Admin Confidential
+                </span>
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#38BDF8', marginTop: '4px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span>⭐ {memberTotalPoints}</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#94A3B8' }}>Total Points Earned</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.08)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                <div style={{ fontSize: '10.5px', color: '#86EFAC', fontWeight: 700 }}>+50 Pts / Completed Task</div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
+                  {completedTasks.length} tasks = <span style={{ color: '#4ADE80' }}>+{completedTaskPoints} Pts</span>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.08)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                <div style={{ fontSize: '10.5px', color: '#FDE047', fontWeight: 700 }}>+100 Pts / Order Secured</div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
+                  {tasksWithOrders.length} orders = <span style={{ color: '#FACC15' }}>+{orderSecuredPoints} Pts</span>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.08)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                <div style={{ fontSize: '10.5px', color: '#FCA5A5', fontWeight: 700 }}>-50 Pts / Task Suspended</div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
+                  {suspendedTasks.length} suspended = <span style={{ color: '#F87171' }}>-{suspendedTaskPenalty} Pts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Aligned 4-stat Strip */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
             <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
@@ -1377,6 +1502,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                     <th style={{ padding: '10px 14px' }}>Duration</th>
                     <th style={{ padding: '10px 14px' }}>Status</th>
                     <th style={{ padding: '10px 14px' }}>Orders</th>
+                    <th style={{ padding: '10px 14px' }}>Performance Points</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1411,6 +1537,57 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                         {(() => {
                           const oList = parseSafeOrders(t.orders);
                           return oList.length > 0 ? `✓ ${oList.length} items` : '-';
+                        })()}
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        {(() => {
+                          const impact = getTaskPointsImpact(t);
+                          if (impact.isSuspended) {
+                            return (
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  background: '#FEE2E2',
+                                  color: '#B91C1C',
+                                  border: '1px solid #FCA5A5',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                -50 Pts (Suspended)
+                              </span>
+                            );
+                          }
+                          if (impact.isCompleted) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    background: '#DCFCE7',
+                                    color: '#15803D',
+                                    border: '1px solid #86EFAC',
+                                    width: 'fit-content',
+                                  }}
+                                >
+                                  +{impact.net} Pts
+                                </span>
+                                <span style={{ fontSize: '9.5px', color: '#64748B' }}>
+                                  +50 task{impact.hasOrder ? ' • +100 order' : ''}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>
+                              0 Pts (Pending)
+                            </span>
+                          );
                         })()}
                       </td>
                     </tr>
@@ -1686,6 +1863,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   <th style={{ padding: '10px 14px' }}>Assigned Territory</th>
                   <th style={{ padding: '10px 14px' }}>Assigned Route Batches</th>
                   <th style={{ padding: '10px 14px' }}>Account Status</th>
+                  <th style={{ padding: '10px 14px' }}>Performance Points</th>
                   <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -1806,6 +1984,24 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Performance Points */}
+                      <td style={{ padding: '10px 14px' }}>
+                        <span
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 800,
+                            color: '#166534',
+                            background: '#DCFCE7',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: '1px solid #86EFAC',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ⭐ {getMemberPoints(m)} Pts
+                        </span>
                       </td>
 
                       {/* Actions */}

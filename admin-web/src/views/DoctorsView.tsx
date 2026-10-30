@@ -226,8 +226,8 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
           <p style="margin:2px 0;font-size:11px;color:#0F8B5A;font-weight:700;">${doc.clinic}</p>
           <p style="margin:2px 0;font-size:11px;color:#64748B;">${doc.area_name}</p>
           <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="background:${doc.class === 'A' ? '#DCFCE7' : '#DBEAFE'};color:${doc.class === 'A' ? '#166534' : '#1E40AF'};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">
-              Class ${doc.class} (Score: ${doc.potential_score})
+            <span style="background:#F1F5F9;color:#334155;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">
+              Verified Doctor
             </span>
             <span style="font-size:10.5px;color:#64748B;">${doc.visit_count} Calls</span>
           </div>
@@ -514,27 +514,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             />
           </div>
 
-          {/* Classification Filter Chips */}
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', marginRight: '4px' }}>Class:</span>
-            {['ALL', 'A', 'B', 'C'].map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={`btn-enterprise sm ${selectedClass === c ? 'primary' : 'secondary'}`}
-                onClick={() => setSelectedClass(c)}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  borderRadius: '4px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {c === 'ALL' ? 'All' : `Class ${c}`}
-              </button>
-            ))}
-          </div>
+
         </div>
 
         <div style={{ height: '300px', width: '100%', position: 'relative' }}>
@@ -549,8 +529,6 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
             <thead>
               <tr>
                 <th>{t.doctorName}</th>
-                <th>{t.classification}</th>
-                <th>{t.potentialScore}</th>
                 <th>{t.clinicHospitalName}</th>
                 <th>{t.territoryArea}</th>
                 <th>Assigned Representative</th>
@@ -566,37 +544,6 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
                     <div style={{ fontWeight: 600, color: 'var(--color-text-main)' }}>{doc.name}</div>
                     <div style={{ fontSize: '10.5px', color: 'var(--color-text-secondary)' }}>
                       {doc.qualification} • {doc.specialization}
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      className={`status-pill ${
-                        doc.class === 'A' ? 'success' : doc.class === 'B' ? 'warning' : 'neutral'
-                      }`}
-                    >
-                      Class {doc.class}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, width: '24px' }}>{doc.potential_score}</span>
-                      <div
-                        style={{
-                          width: '60px',
-                          height: '5px',
-                          background: '#dfe1e6',
-                          borderRadius: '3px',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${doc.potential_score}%`,
-                            height: '100%',
-                            background: doc.potential_score >= 90 ? '#00875a' : '#0052cc',
-                          }}
-                        ></div>
-                      </div>
                     </div>
                   </td>
                   <td>{doc.clinic}</td>

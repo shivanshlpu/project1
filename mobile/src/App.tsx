@@ -43,6 +43,8 @@ import { AttendanceScreen } from './screens/AttendanceScreen';
 import { TaskHistoryScreen } from './screens/TaskHistoryScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
 import { MonthlyTpScreen } from './screens/MonthlyTpScreen';
+import { ProposeBatchScreen } from './screens/ProposeBatchScreen';
+import { ReimbursementScreen } from './screens/ReimbursementScreen';
 import { StocklistScreen } from './screens/StocklistScreen';
 import { CompetitionScreen } from './screens/CompetitionScreen';
 import { LoginScreen } from './screens/LoginScreen';
@@ -163,7 +165,7 @@ export default function App() {
   }, []);
 
   const [currentTab, setCurrentTab] = useState<MobileTab>('tasks');
-  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'orders' | 'monthly_tp' | 'stocklist' | 'competition'>('menu');
+  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'orders' | 'monthly_tp' | 'stocklist' | 'competition' | 'propose_batch' | 'reimbursements'>('menu');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [pendingDrafts, setPendingDrafts] = useState<number>(0);
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
@@ -833,6 +835,28 @@ export default function App() {
               />
             )}
 
+            {currentTab === 'profile' && moreSubScreen === 'propose_batch' && (
+              <ProposeBatchScreen
+                key={currentUser.id}
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id}
+                currentUserHqName={currentUser.hq_name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
+            {currentTab === 'profile' && moreSubScreen === 'reimbursements' && (
+              <ReimbursementScreen
+                key={currentUser.id}
+                currentUserId={currentUser.id}
+                currentUserName={currentUser.name}
+                currentUserHqId={currentUser.hq_id}
+                currentUserHqName={currentUser.hq_name}
+                onBack={() => setMoreSubScreen('menu')}
+              />
+            )}
+
             {currentTab === 'profile' && moreSubScreen === 'menu' && (
               <ScrollView style={styles.profileContainer}>
                 {/* Enterprise Operations Modules (§5-§7, §14, §30) */}
@@ -897,6 +921,36 @@ export default function App() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.moreNavTitle}>Sales Competitions &amp; Rewards</Text>
                       <Text style={styles.moreNavSubtitle}>Track live sales targets &amp; claim cash rewards</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
+
+                  {/* Propose New Route Batch */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('propose_batch')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#ECFDF5' }]}>
+                      <Text style={{ fontSize: 18 }}>🛣️</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Propose Route Batch</Text>
+                      <Text style={styles.moreNavSubtitle}>Submit new itinerary routes to Admin for review &amp; approval</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                  </TouchableOpacity>
+
+                  {/* Travel Reimbursements */}
+                  <TouchableOpacity
+                    style={styles.moreNavCard}
+                    onPress={() => setMoreSubScreen('reimbursements')}
+                  >
+                    <View style={[styles.moreNavIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                      <Text style={{ fontSize: 18 }}>💰</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moreNavTitle}>Travel Reimbursements</Text>
+                      <Text style={styles.moreNavSubtitle}>Eligible batch payouts &amp; completed task history (100% policy)</Text>
                     </View>
                     <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '700' }}>→</Text>
                   </TouchableOpacity>
