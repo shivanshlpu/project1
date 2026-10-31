@@ -320,10 +320,13 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const tileLayerRef = useRef<L.Layer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
+  const routesLayerRef = useRef<L.LayerGroup | null>(null);
   const polylineLayerRef = useRef<L.Layer | null>(null);
   const accessLinesLayerRef = useRef<L.LayerGroup | null>(null);
   const isDraggingRef = useRef<boolean>(false);
   const keepViewportRef = useRef<boolean>(false);
+  const renderRequestIdRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
   const [calculatedKm, setCalculatedKm] = useState<number>(initialDistanceKm || 0);
@@ -440,6 +443,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
     tileLayerRef.current = createResilientTileLayer(mapMode).addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
+    routesLayerRef.current = L.layerGroup().addTo(map);
     accessLinesLayerRef.current = L.layerGroup().addTo(map);
 
     // Map click to add pinpoint waypoint with high-accuracy reverse geocoding (zoom 18)
@@ -508,21 +512,81 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       map.invalidateSize();
       if (waypoints.length > 0) {
         renderMarkersAndRoute(map, waypoints);
+      } else {
+        clearAllMapLayers(map);
       }
     }, 150);
 
     return () => {
       clearTimeout(timer);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       if (mapInstanceRef.current) {
+        clearAllMapLayers(mapInstanceRef.current);
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
   }, [isOpen]);
 
-  // Automatically sync map whenever waypoints list updates
+  // Helper to completely purge all route lines and polylines from the map
+  const clearMapRouteLayers = (map?: L.Map | null) => {
+    if (routesLayerRef.current) {
+      routesLayerRef.current.clearLayers();
+    }
+    if (polylineLayerRef.current) {
+      try {
+        polylineLayerRef.current.remove();
+      } catch {}
+      polylineLayerRef.current = null;
+    }
+    const targetMap = map || mapInstanceRef.current;
+    if (targetMap) {
+      try {
+        targetMap.eachLayer((layer: any) => {
+          if (layer !== tileLayerRef.current && layer instanceof L.Polyline) {
+            try {
+              targetMap.removeLayer(layer);
+            } catch {}
+          }
+        });
+      } catch {}
+    }
+  };
+
+  // Helper to completely purge all markers, routes, lines, and popups from the map
+  const clearAllMapLayers = (map?: L.Map | null) => {
+    if (markersLayerRef.current) {
+      markersLayerRef.current.clearLayers();
+    }
+    markersMapRef.current.clear();
+    if (accessLinesLayerRef.current) {
+      accessLinesLayerRef.current.clearLayers();
+    }
+    clearMapRouteLayers(map);
+    const targetMap = map || mapInstanceRef.current;
+    if (targetMap) {
+      try {
+        targetMap.closePopup();
+        targetMap.eachLayer((layer: any) => {
+          if (
+            layer !== tileLayerRef.current &&
+            (layer instanceof L.Polyline || layer instanceof L.Marker || layer instanceof L.Polygon)
+          ) {
+            try {
+              targetMap.removeLayer(layer);
+            } catch {}
+          }
+        });
+      } catch {}
+    }
+  };
+
+  // Automatically sync map whenever waypoints list updates (including when all waypoints are removed!)
   useEffect(() => {
-    if (mapInstanceRef.current && waypoints.length > 0) {
+    if (mapInstanceRef.current) {
       renderMarkersAndRoute(mapInstanceRef.current, waypoints);
     }
   }, [waypoints, routeMode, avoidLanes, segmentOverrides]);
@@ -541,17 +605,41 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
   // Render Waypoints & Polyline Route on map (markers are draggable to fine-tune exact locations)
   const renderMarkersAndRoute = async (map: L.Map, currentWaypoints: RouteWaypoint[]) => {
-    if (!map || !markersLayerRef.current) return;
-    markersLayerRef.current.clearLayers();
+    // 1. Advance request ID and cancel any previous in-flight fetch
+    const currentRequestId = ++renderRequestIdRef.current;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    if (!map) return;
+
+    // 2. Clear markers, popups, and route lines
+    if (markersLayerRef.current) markersLayerRef.current.clearLayers();
     markersMapRef.current.clear();
     if (accessLinesLayerRef.current) accessLinesLayerRef.current.clearLayers();
+    clearMapRouteLayers(map);
 
-    if (polylineLayerRef.current) {
-      polylineLayerRef.current.remove();
-      polylineLayerRef.current = null;
+    // 3. If no waypoints exist, wipe everything and reset calculations
+    if (currentWaypoints.length === 0) {
+      clearAllMapLayers(map);
+      setCalculatedKm(0);
+      setBypassedDetours([]);
+      setSegmentSummaries([]);
+      setIsCalculatingRoute(false);
+      return;
     }
 
-    if (currentWaypoints.length === 0) return;
+    // 4. If only 1 waypoint exists, ensure route lines and distance are completely cleared
+    if (currentWaypoints.length === 1) {
+      clearMapRouteLayers(map);
+      setCalculatedKm(0);
+      setBypassedDetours([]);
+      setSegmentSummaries([]);
+      setIsCalculatingRoute(false);
+    }
 
     const bounds: [number, number][] = [];
 
@@ -739,6 +827,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               isDetourBypassed: false,
             });
           }
+          if (currentRequestId !== renderRequestIdRef.current || controller.signal.aborted) return;
+
           if (manualDistanceKm === null) {
             setCalculatedKm(Math.round(totalKm * 10) / 10);
           }
@@ -760,16 +850,24 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
             lineCap: 'round',
             lineJoin: 'round',
           });
-          const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
-          polylineLayerRef.current = polyGroup as any;
+          clearMapRouteLayers(map);
+          if (routesLayerRef.current) {
+            glowPoly.addTo(routesLayerRef.current);
+            routePoly.addTo(routesLayerRef.current);
+          } else {
+            const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
+            polylineLayerRef.current = polyGroup as any;
+          }
         } else {
           // Highway or OSRM mode: query OSRM driving engine
           const coordsParam = currentWaypoints.map((w) => `${w.lng},${w.lat}`).join(';');
           const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&continue_straight=false&steps=true`;
 
-          const res = await fetch(osrmUrl);
+          const res = await fetch(osrmUrl, { signal: controller.signal });
+          if (currentRequestId !== renderRequestIdRef.current || controller.signal.aborted) return;
           if (res.ok) {
             const data = await res.json();
+            if (currentRequestId !== renderRequestIdRef.current || controller.signal.aborted) return;
             if (data.routes && data.routes[0] && data.routes[0].legs) {
               const combinedLinePoints: [number, number][] = [];
               let totalDistanceKm = 0;
@@ -911,8 +1009,14 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                 lineCap: 'round',
                 lineJoin: 'round',
               });
-              const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
-              polylineLayerRef.current = polyGroup as any;
+              clearMapRouteLayers(map);
+              if (routesLayerRef.current) {
+                glowPoly.addTo(routesLayerRef.current);
+                routePoly.addTo(routesLayerRef.current);
+              } else {
+                const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
+                polylineLayerRef.current = polyGroup as any;
+              }
             } else {
               fallbackPolyline(map, currentWaypoints);
             }
@@ -920,15 +1024,22 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
             fallbackPolyline(map, currentWaypoints);
           }
         }
-      } catch {
+      } catch (err: any) {
+        if (err?.name === 'AbortError' || controller.signal.aborted || currentRequestId !== renderRequestIdRef.current) {
+          return;
+        }
         fallbackPolyline(map, currentWaypoints);
       } finally {
-        setIsCalculatingRoute(false);
+        if (currentRequestId === renderRequestIdRef.current) {
+          setIsCalculatingRoute(false);
+        }
       }
     } else {
+      clearMapRouteLayers(map);
       setCalculatedKm(0);
       setBypassedDetours([]);
       setSegmentSummaries([]);
+      setIsCalculatingRoute(false);
     }
 
     // Only fitBounds on initial modal load, NOT during drag or when user clicks to mark a pinpoint location!
@@ -939,6 +1050,11 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   };
 
   const fallbackPolyline = (map: L.Map, pts: RouteWaypoint[]) => {
+    if (pts.length < 2) {
+      clearMapRouteLayers(map);
+      return;
+    }
+    clearMapRouteLayers(map);
     let totalHaversine = 0;
     const latlngs: [number, number][] = [];
     for (let i = 0; i < pts.length; i++) {
@@ -965,8 +1081,13 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       dashArray: '8, 6',
       opacity: 0.9,
     });
-    const group = L.layerGroup([glow, poly]).addTo(map);
-    polylineLayerRef.current = group as any;
+    if (routesLayerRef.current) {
+      glow.addTo(routesLayerRef.current);
+      poly.addTo(routesLayerRef.current);
+    } else {
+      const group = L.layerGroup([glow, poly]).addTo(map);
+      polylineLayerRef.current = group as any;
+    }
   };
 
   const handleAddWaypoint = (newWp: RouteWaypoint, options?: { forceEnd?: boolean; keepView?: boolean }) => {
@@ -987,7 +1108,37 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
   const handleRemoveWaypoint = (id: string) => {
     keepViewportRef.current = true;
-    setWaypoints((prev) => prev.filter((w) => w.id !== id));
+    setWaypoints((prev) => {
+      const remaining = prev.filter((w) => w.id !== id);
+      if (remaining.length === 0) {
+        renderRequestIdRef.current++;
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setCalculatedKm(0);
+        setBypassedDetours([]);
+        setSegmentSummaries([]);
+        setIsCalculatingRoute(false);
+        if (mapInstanceRef.current) {
+          clearAllMapLayers(mapInstanceRef.current);
+        }
+      } else if (remaining.length === 1) {
+        renderRequestIdRef.current++;
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setCalculatedKm(0);
+        setBypassedDetours([]);
+        setSegmentSummaries([]);
+        setIsCalculatingRoute(false);
+        if (mapInstanceRef.current) {
+          clearMapRouteLayers(mapInstanceRef.current);
+        }
+      }
+      return remaining;
+    });
   };
 
   const handleMoveWaypoint = (index: number, direction: 'UP' | 'DOWN') => {
@@ -1102,16 +1253,21 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   })();
 
   const handleClearAll = () => {
+    // 1. Immediately abort any active routing/reverse geocode operations
+    renderRequestIdRef.current++;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    // 2. Wipe state
     setWaypoints([]);
     setCalculatedKm(0);
+    setBypassedDetours([]);
+    setSegmentSummaries([]);
+    setIsCalculatingRoute(false);
+    // 3. Completely purge all markers, polylines, and layers from the map canvas
     if (mapInstanceRef.current) {
-      if (markersLayerRef.current) markersLayerRef.current.clearLayers();
-      if (accessLinesLayerRef.current) accessLinesLayerRef.current.clearLayers();
-      markersMapRef.current.clear();
-      if (polylineLayerRef.current) {
-        polylineLayerRef.current.remove();
-        polylineLayerRef.current = null;
-      }
+      clearAllMapLayers(mapInstanceRef.current);
     }
   };
 
@@ -2354,8 +2510,32 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               </div>
             </div>
 
-            {/* Top Right Controls: Satellite Switch & Fit Entire Route */}
+            {/* Top Right Controls: Satellite Switch, Fit Entire Route & Clear Map */}
             <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: '8px' }}>
+              {waypoints.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: '6px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#DC2626',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  title="Remove all stops and clear route from map"
+                >
+                  <Trash2 size={13} color="#DC2626" />
+                  Clear Map
+                </button>
+              )}
               {waypoints.length > 0 && (
                 <button
                   type="button"
