@@ -712,10 +712,11 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   };
 
   
-  const handleResetDevice = async (id: string, name: string) => {
+  const handleResetDevice = async (id: string, name: string, deviceModel?: string) => {
+    const currentDevice = deviceModel || 'Designated Phone';
     const ok = await showConfirmModal({
       title: 'Reset Device Lock',
-      message: `Are you sure you want to reset device binding for ${name}?\n\nThe current phone lock will be cleared, allowing the MR to pair their new device on their next login.`,
+      message: `Are you sure you want to reset device binding for ${name}?\n\nCurrently locked to: ${currentDevice}.\n\nThis will clear the device lock immediately, allowing the MR to pair a new device on their next login.`,
       type: 'warning',
       confirmText: 'Reset Device Lock',
       cancelText: 'Cancel',
@@ -725,14 +726,20 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     try {
       await resilientFetch(`/auth/device-binding/reset/${id}`, { method: 'POST' });
     } catch {}
-    setMembers(
-      members.map((m) =>
-        m.id === id
-          ? { ...m, device_id: undefined, device_model: undefined, device_bound_at: undefined }
-          : m
-      )
+    try {
+      await resilientFetch(`/users/${id}/reset-device`, { method: 'PATCH' });
+    } catch {}
+
+    const updated = members.map((m) =>
+      m.id === id
+        ? { ...m, device_id: undefined, device_model: undefined, device_bound_at: undefined }
+        : m
     );
-    showToast(`Device binding cleared for ${name}.`);
+    setMembers(updated);
+    try {
+      localStorage.setItem('ahtri_cached_members', JSON.stringify(updated));
+    } catch {}
+    showToast(`✓ Device lock cleared for ${name}. Ready for new phone pairing.`);
   };
 
   
@@ -1212,6 +1219,24 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
               >
                 ⭐ Performance Score: {memberTotalPoints} Pts
               </span>
+              {selectedMember.role === 'MR' && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: (selectedMember.device_id || selectedMember.device_bound_at) ? '#166534' : '#D97706',
+                    background: (selectedMember.device_id || selectedMember.device_bound_at) ? '#DCFCE7' : '#FEF3C7',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    border: `1px solid ${(selectedMember.device_id || selectedMember.device_bound_at) ? '#86EFAC' : '#FDE68A'}`,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  📱 {(selectedMember.device_id || selectedMember.device_bound_at) ? `Locked: ${selectedMember.device_model || selectedMember.device_id}` : 'No Device Locked (Awaiting Pairing)'}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1250,6 +1275,30 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
               {copiedId === selectedMember.id ? <Check size={13} color="#166534" /> : <Copy size={13} />}
               <span>{copiedId === selectedMember.id ? 'Copied' : 'Credentials'}</span>
             </button>
+
+            {selectedMember.role === 'MR' && (
+              <button
+                type="button"
+                onClick={() => handleResetDevice(selectedMember.id, selectedMember.name, selectedMember.device_model || selectedMember.device_id)}
+                title="Reset hardware device lock to permit new phone pairing"
+                style={{
+                  padding: '6px 12px',
+                  background: (selectedMember.device_id || selectedMember.device_bound_at) ? '#FEF2F2' : '#F8FAFC',
+                  border: (selectedMember.device_id || selectedMember.device_bound_at) ? '1px solid #FECACA' : '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  color: (selectedMember.device_id || selectedMember.device_bound_at) ? '#DC2626' : '#64748B',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Smartphone size={13} color={(selectedMember.device_id || selectedMember.device_bound_at) ? '#DC2626' : '#64748B'} />
+                <span>Reset Device Lock</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1971,17 +2020,61 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                               <ShieldCheck size={11} /> Admin Active
                             </span>
                           ) : isBound ? (
-                            <span style={{ fontSize: '10px', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '3px' }} title={m.device_model || m.device_id}>
-                              <ShieldCheck size={11} /> Locked to Phone
-                            </span>
-                          ) : hasLoggedIn ? (
-                            <span style={{ fontSize: '10px', color: '#0F8B5A', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <ShieldCheck size={11} /> Logged In
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: '#166534',
+                                background: '#DCFCE7',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                width: 'fit-content',
+                                border: '1px solid #BBF7D0',
+                              }}>
+                                <ShieldCheck size={11} color="#166534" />
+                                <span>Single Device Locked</span>
+                              </span>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                              }}>
+                                📱 {m.device_model || m.device_id}
+                              </span>
+                              {m.device_bound_at && (
+                                <span style={{ fontSize: '9.5px', color: '#64748B' }}>
+                                  Bound: {new Date(m.device_bound_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
                           ) : (
-                            <span style={{ fontSize: '10px', color: '#D97706', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <ShieldAlert size={11} /> Awaiting Login
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: '#D97706',
+                                background: '#FEF3C7',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                width: 'fit-content',
+                                border: '1px solid #FDE68A',
+                              }}>
+                                <ShieldAlert size={11} color="#D97706" />
+                                <span>No Device Locked</span>
+                              </span>
+                              <span style={{ fontSize: '10px', color: '#64748B' }}>
+                                ⏱️ Awaiting Device Pairing
+                              </span>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -2073,22 +2166,27 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                             <span>Edit</span>
                           </button>
 
-                          {isBound && (
+                          {!isSuperAdminOrAdmin && (
                             <button
                               type="button"
-                              onClick={() => handleResetDevice(m.id, m.name)}
+                              onClick={() => handleResetDevice(m.id, m.name, m.device_model || m.device_id)}
+                              title={isBound ? `Clear lock for ${m.device_model || m.device_id}` : "Clear device lock to allow new phone pairing"}
                               style={{
                                 padding: '5px 8px',
-                                background: '#FEF2F2',
-                                color: '#DC2626',
-                                border: '1px solid #FECACA',
+                                background: isBound ? '#FEF2F2' : '#F8FAFC',
+                                color: isBound ? '#DC2626' : '#64748B',
+                                border: isBound ? '1px solid #FECACA' : '1px solid #CBD5E1',
                                 borderRadius: '4px',
                                 fontSize: '11px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
                               }}
                             >
-                              Reset Lock
+                              <Smartphone size={11} />
+                              <span>Reset Lock</span>
                             </button>
                           )}
                         </div>

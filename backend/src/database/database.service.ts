@@ -861,9 +861,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
           data.userDeviceStates.forEach((state: any) => {
             const user = this.users.find((u) => u.id === state.id);
             if (user) {
-              if (state.device_id) user.device_id = state.device_id;
-              if (state.device_model) user.device_model = state.device_model;
-              if (state.device_bound_at) user.device_bound_at = state.device_bound_at;
+              user.device_id = state.device_id || undefined;
+              user.device_model = state.device_model || undefined;
+              user.device_bound_at = state.device_bound_at || undefined;
               if (state.logged_out !== undefined) user.logged_out = state.logged_out;
               if (state.requires_device_otp_on_login !== undefined) user.requires_device_otp_on_login = state.requires_device_otp_on_login;
             }
@@ -1133,9 +1133,9 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
                     role: ru.role || this.users[idx].role,
                     status: ru.status || this.users[idx].status,
                     biometric_enabled: ru.biometric_enabled ?? this.users[idx].biometric_enabled,
-                    device_id: ru.device_id ?? this.users[idx].device_id,
-                    device_model: ru.device_model ?? this.users[idx].device_model,
-                    device_bound_at: ru.device_bound_at ?? this.users[idx].device_bound_at,
+                    device_id: ru.device_id !== undefined ? (ru.device_id || undefined) : this.users[idx].device_id,
+                    device_model: ru.device_model !== undefined ? (ru.device_model || undefined) : this.users[idx].device_model,
+                    device_bound_at: ru.device_bound_at !== undefined ? (ru.device_bound_at || undefined) : this.users[idx].device_bound_at,
                     zone_id: resolvedHqCode || ru.zone_id || this.users[idx].zone_id,
                     region_id: resolvedHqName || ru.region_id || this.users[idx].region_id,
                     area_id: resolvedHqId || ru.area_id || this.users[idx].area_id,

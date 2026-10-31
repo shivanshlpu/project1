@@ -402,9 +402,32 @@ export class UsersService {
     user.device_id = undefined;
     user.device_model = undefined;
     user.device_bound_at = undefined;
+    user.requires_device_otp_on_login = false;
+    user.logged_out = false;
+
+    // Invalidate any pending or stored device authorizations for this employee
+    this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+      (r) => r.user_id !== user.id,
+    );
+
+    this.db.persistToDisk();
+
+    if (this.db.supabase) {
+      if (!this.db.supabase.isConnected) {
+        await this.db.supabase.initializeClient();
+      }
+      await this.db.supabase.upsertUser({
+        id: user.id,
+        email: user.email,
+        device_id: null,
+        device_model: null,
+        device_bound_at: null,
+      });
+    }
 
     return {
-      message: 'Device binding successfully reset. The user can now pair a new designated phone on their next login.',
+      success: true,
+      message: `Device binding successfully reset for ${user.name}. The user can now pair a new designated phone on their next login.`,
       user_id: id,
       previous_device: previousDevice,
     };

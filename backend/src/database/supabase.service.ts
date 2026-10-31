@@ -104,12 +104,22 @@ export class SupabaseService implements OnModuleInit {
   async upsertUser(user: any) {
     if (!this.client || !this.isConnected) return null;
     try {
+      const onConflict = user.id ? 'id' : 'email';
       const { data, error } = await this.client
         .from('users')
-        .upsert(user, { onConflict: 'email' })
+        .upsert(user, { onConflict })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        const fallbackConflict = onConflict === 'id' ? 'email' : 'id';
+        const { data: fbData, error: fbErr } = await this.client
+          .from('users')
+          .upsert(user, { onConflict: fallbackConflict })
+          .select()
+          .single();
+        if (fbErr) throw fbErr;
+        return fbData;
+      }
       return data;
     } catch (err: any) {
       this.logger.warn(`Supabase upsertUser failed: ${err.message}`);

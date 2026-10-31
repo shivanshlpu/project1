@@ -115,7 +115,7 @@ export class AuthService {
         user.device_id ||
         `dev-hw-${user.id.replace('usr-', '')}-${Date.now().toString(36)}`;
       if (targetDeviceId) {
-        // Auto-pair device on initial login if no device has been registered yet
+        // Auto-pair device on initial login if no device has been registered yet (or after Admin Reset Lock)
         if (!user.device_id) {
           user.device_id = targetDeviceId;
           user.device_model = dto.device_model || 'Android Mobile Device';
@@ -123,96 +123,79 @@ export class AuthService {
           user.requires_device_otp_on_login = false;
           user.logged_out = false;
           this.db.persistToDisk();
-        }
 
-        // Check if Owner already approved a pending authorization on the Admin Dashboard
-        const approvedReq = this.db.deviceAuthorizations.find(
-          (r) =>
-            r.user_id === user.id &&
-            r.device_id === targetDeviceId &&
-            r.status === 'APPROVED' &&
-            new Date(r.expires_at) > new Date(Date.now() - 30 * 60 * 1000),
-        );
-
-        // Security rule: If employee logged out, or requested re-auth OTP, or device is changed:
-        if (
-          user.device_id &&
-          user.device_id !== targetDeviceId &&
-          !approvedReq &&
-          !dto.requires_otp &&
-          !dto.was_logged_out
-        ) {
+          if (this.db.supabase) {
+            if (!this.db.supabase.isConnected) {
+              await this.db.supabase.initializeClient();
+            }
+            await this.db.supabase.upsertUser({
+              id: user.id,
+              email: user.email,
+              device_id: user.device_id,
+              device_model: user.device_model,
+              device_bound_at: user.device_bound_at,
+            });
+          }
+        } else if (user.device_id !== targetDeviceId) {
+          // STRICT SECURITY LOCK:
+          // Account is already bound to another phone. Multi-device access is strictly blocked.
+          // OTP will NOT be generated.
           throw new ForbiddenException(
-            'Device mismatch: Account is bound to another device. Unauthorized device.',
+            `Login Blocked: This account is already bound and locked to another device (${user.device_model || 'Registered Phone'}). Multi-device access is strictly prohibited. Please contact your Administrator to reset your device lock.`,
           );
         }
 
-        const requiresOtp =
-          dto.was_logged_out === true ||
-          dto.requires_otp === true ||
-          user.requires_device_otp_on_login ||
-          user.logged_out ||
-          (user.device_id && user.device_id !== targetDeviceId);
+        // Check if user requires OTP on their own registered device
+        const requiresOtp = user.requires_device_otp_on_login;
 
         if (requiresOtp) {
-          if (approvedReq) {
-            // Owner approved via dashboard 1-Click Approve!
-            user.device_id = targetDeviceId;
-            user.device_model = dto.device_model || approvedReq.device_model;
-            user.device_bound_at = new Date().toISOString();
-            user.requires_device_otp_on_login = false;
-            user.logged_out = false;
-            approvedReq.status = 'CONSUMED' as any;
-            this.db.persistToDisk();
-          } else {
-            // Check if there is an active PENDING request for this user and device
-            let authReq = this.db.deviceAuthorizations.find(
-              (r) =>
-                r.user_id === user.id &&
-                r.device_id === targetDeviceId &&
-                r.status === 'PENDING' &&
-                new Date(r.expires_at) > new Date(),
+          // Check if there is an active PENDING request for this user and device
+          let authReq = this.db.deviceAuthorizations.find(
+            (r) =>
+              r.user_id === user.id &&
+              r.device_id === targetDeviceId &&
+              r.status === 'PENDING' &&
+              new Date(r.expires_at) > new Date(),
+          );
+
+          if (!authReq) {
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+            // Invalidate any older pending requests for this user
+            this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+              (r) => !(r.user_id === user.id && r.status === 'PENDING'),
             );
 
-            if (!authReq) {
-              const otp = Math.floor(100000 + Math.random() * 900000).toString();
-              const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
-              const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
-              // Invalidate any older pending requests for this user
-              this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
-                (r) => !(r.user_id === user.id && r.status === 'PENDING'),
-              );
-
-              authReq = {
-                id: requestId,
-                user_id: user.id,
-                user_name: user.name,
-                user_phone: user.phone,
-                user_email: user.email,
-                device_id: targetDeviceId,
-                device_model: dto.device_model || 'Android Mobile Device',
-                otp,
-                status: 'PENDING',
-                created_at: new Date().toISOString(),
-                expires_at: expiresAt,
-              };
-
-              this.db.deviceAuthorizations.unshift(authReq);
-              this.db.persistToDisk();
-            }
-
-            return {
-              requires_device_otp: true,
-              request_id: authReq.id,
-              device_id: targetDeviceId,
-              device_model: authReq.device_model,
+            authReq = {
+              id: requestId,
+              user_id: user.id,
               user_name: user.name,
-              message:
-                'Security verification required. A 6-digit OTP code has been generated on the Admin Dashboard. Please ask the Administrator for the code to log in.',
-              debug_otp: process.env.NODE_ENV === 'development' ? authReq.otp : undefined,
+              user_phone: user.phone,
+              user_email: user.email,
+              device_id: targetDeviceId,
+              device_model: dto.device_model || user.device_model || 'Android Mobile Device',
+              otp,
+              status: 'PENDING',
+              created_at: new Date().toISOString(),
+              expires_at: expiresAt,
             };
+
+            this.db.deviceAuthorizations.unshift(authReq);
+            this.db.persistToDisk();
           }
+
+          return {
+            requires_device_otp: true,
+            request_id: authReq.id,
+            device_id: targetDeviceId,
+            device_model: authReq.device_model,
+            user_name: user.name,
+            message:
+              'Security verification required. A 6-digit OTP code has been generated on the Admin Dashboard. Please ask the Administrator for the code to log in.',
+            debug_otp: process.env.NODE_ENV === 'development' ? authReq.otp : undefined,
+          };
         }
       }
     }
@@ -220,6 +203,20 @@ export class AuthService {
     user.last_login_at = new Date().toISOString();
     user.logged_out = false;
     this.db.persistToDisk();
+
+    if (this.db.supabase) {
+      if (!this.db.supabase.isConnected) {
+        await this.db.supabase.initializeClient();
+      }
+      await this.db.supabase.upsertUser({
+        id: user.id,
+        email: user.email,
+        device_id: user.device_id,
+        device_model: user.device_model,
+        device_bound_at: user.device_bound_at,
+        last_login_at: user.last_login_at,
+      });
+    }
     return this.generateAuthPayload(user);
   }
 
@@ -273,6 +270,7 @@ export class AuthService {
     if (this.db.supabase?.isConnected) {
       await this.db.supabase.upsertUser({
         id: user.id,
+        email: user.email,
         device_id: user.device_id,
         device_model: user.device_model,
         device_bound_at: user.device_bound_at,
@@ -310,6 +308,7 @@ export class AuthService {
     if (this.db.supabase?.isConnected) {
       await this.db.supabase.upsertUser({
         id: user.id,
+        email: user.email,
         device_id: user.device_id,
         device_model: user.device_model,
         device_bound_at: user.device_bound_at,
@@ -346,16 +345,27 @@ export class AuthService {
       throw new NotFoundException('User not found.');
     }
 
+    const previousDevice = user.device_model || user.device_id || 'Designated Phone';
     user.device_id = undefined;
     user.device_model = undefined;
     user.device_bound_at = undefined;
-    user.requires_device_otp_on_login = true;
-    user.logged_out = true;
+    user.requires_device_otp_on_login = false;
+    user.logged_out = false;
+
+    // Invalidate any pending or old device authorizations for this employee
+    this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
+      (r) => r.user_id !== user.id,
+    );
+
     this.db.persistToDisk();
 
-    if (this.db.supabase?.isConnected) {
+    if (this.db.supabase) {
+      if (!this.db.supabase.isConnected) {
+        await this.db.supabase.initializeClient();
+      }
       await this.db.supabase.upsertUser({
         id: user.id,
+        email: user.email,
         device_id: null,
         device_model: null,
         device_bound_at: null,
@@ -364,7 +374,9 @@ export class AuthService {
 
     return {
       success: true,
-      message: `Device lock for ${user.name} has been reset. They can now pair their new phone on next login.`,
+      message: `Device lock for ${user.name} (${previousDevice}) has been reset. They can now pair their new phone on next login.`,
+      user_id: user.id,
+      previous_device: previousDevice,
     };
   }
 
@@ -378,6 +390,17 @@ export class AuthService {
     );
     if (!user) {
       throw new NotFoundException(`User with phone ${phone} not found.`);
+    }
+
+    if (
+      user.role === 'MR' &&
+      user.device_id &&
+      (dto as any).device_id &&
+      user.device_id !== (dto as any).device_id
+    ) {
+      throw new ForbiddenException(
+        `Login Blocked: This account is already bound and locked to another device (${user.device_model || 'Registered Phone'}). Multi-device access is strictly prohibited. Please contact your Administrator to reset your device lock.`,
+      );
     }
 
     // Generate secure 6-digit OTP using cryptographic randomness
@@ -457,15 +480,15 @@ export class AuthService {
     );
     if (user) {
       user.logged_out = true;
-      user.requires_device_otp_on_login = true;
-      // Invalidate existing hardware binding so re-login strictly requires Owner OTP approval
-      user.device_id = undefined;
-      user.device_bound_at = undefined;
+      user.requires_device_otp_on_login = false;
+      // IMPORTANT: DO NOT clear user.device_id or user.device_bound_at!
+      // The hardware binding remains locked to this authorized device permanently
+      // until an Administrator explicitly resets the device lock.
     }
-    // Also remove old pending or approved device authorizations so a fresh OTP is created on login
+    // Clean up transient pending authorizations
     if (user || deviceId) {
       this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(
-        (r) => !(r.user_id === user?.id || (deviceId && r.device_id === deviceId)),
+        (r) => !(r.user_id === user?.id && r.status === 'PENDING'),
       );
     }
     this.db.persistToDisk();
@@ -483,6 +506,19 @@ export class AuthService {
       throw new NotFoundException('User not found.');
     }
     const targetDeviceId = deviceId || 'dev-unknown';
+
+    // Strict multi-device lock: reject OTP generation if account is already locked to another device
+    if (
+      user.role === 'MR' &&
+      user.device_id &&
+      targetDeviceId !== 'dev-unknown' &&
+      user.device_id !== targetDeviceId
+    ) {
+      throw new ForbiddenException(
+        `Login Blocked: This account is already bound and locked to another device (${user.device_model || 'Registered Phone'}). Multi-device access is strictly prohibited. Please contact your Administrator to reset your device lock.`,
+      );
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const requestId = `req-dev-${uuidv4().slice(0, 8)}`;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -508,7 +544,7 @@ export class AuthService {
 
     this.db.deviceAuthorizations.unshift(authReq);
     user.logged_out = true;
-    user.requires_device_otp_on_login = true;
+    user.requires_device_otp_on_login = false;
     this.db.persistToDisk();
 
     return {

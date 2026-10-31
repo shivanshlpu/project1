@@ -143,4 +143,73 @@ describe('AuthService (Node 1 DoD Verification)', () => {
       }),
     ).rejects.toThrow(ForbiddenException);
   });
+
+  it('should maintain device lock after logout, block second phone, and pair new phone after admin reset', async () => {
+    // 1. Initial login on Device 1
+    const login1 = (await service.login({
+      identifier: 'mr@ahtri.com',
+      password: 'Password@123',
+      device_id: 'device-phone-1',
+      device_model: 'OnePlus 11',
+    })) as any;
+    expect(login1.access_token).toBeDefined();
+
+    // 2. Second device attempts to login -> BLOCKED
+    await expect(
+      service.login({
+        identifier: 'mr@ahtri.com',
+        password: 'Password@123',
+        device_id: 'device-phone-2',
+        device_model: 'Samsung Galaxy S22',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    // 3. User logs out on Device 1
+    await service.logout(login1.refresh_token, 'usr-mr-01');
+
+    // 4. Second device STILL BLOCKED even after Device 1 logged out
+    await expect(
+      service.login({
+        identifier: 'mr@ahtri.com',
+        password: 'Password@123',
+        device_id: 'device-phone-2',
+        device_model: 'Samsung Galaxy S22',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    // 5. Device 1 can still login without issue
+    const loginDevice1Again = (await service.login({
+      identifier: 'mr@ahtri.com',
+      password: 'Password@123',
+      device_id: 'device-phone-1',
+    })) as any;
+    expect(loginDevice1Again.access_token).toBeDefined();
+
+    // 6. Admin resets device lock
+    const resetRes = await service.resetDeviceBinding('usr-mr-01');
+    expect(resetRes.success).toBe(true);
+
+    const mrUser = db.users.find((u) => u.id === 'usr-mr-01');
+    expect(mrUser?.device_id).toBeUndefined();
+
+    // 7. Device 2 can now login and becomes the new locked phone!
+    const loginDevice2 = (await service.login({
+      identifier: 'mr@ahtri.com',
+      password: 'Password@123',
+      device_id: 'device-phone-2',
+      device_model: 'Samsung Galaxy S22',
+    })) as any;
+    expect(loginDevice2.access_token).toBeDefined();
+    expect(mrUser?.device_id).toBe('device-phone-2');
+    expect(mrUser?.device_model).toBe('Samsung Galaxy S22');
+
+    // 8. Device 1 is now blocked because Device 2 is the locked phone
+    await expect(
+      service.login({
+        identifier: 'mr@ahtri.com',
+        password: 'Password@123',
+        device_id: 'device-phone-1',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
 });
