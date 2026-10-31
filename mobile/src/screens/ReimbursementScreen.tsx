@@ -56,8 +56,6 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [filterMode, setFilterMode] = useState<'ALL' | 'ELIGIBLE' | 'LOCKED'>('ALL');
-
   const [records, setRecords] = useState<BatchReimbursementRecord[]>([]);
 
   const standardRate = 2.25;
@@ -198,20 +196,22 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
       });
 
       // C. Evaluate 100% completion rule for each batch record:
-      // STRICT RULE: Reimbursement is unlocked ONLY once all tasks for that batch are COMPLETED
-      const calculatedRecords = Array.from(map.values()).map((rec) => {
-        const total = rec.tasks.length;
-        const completed = rec.tasks.filter((t) => t.status === 'COMPLETED').length;
-        const isAllDone = total > 0 && completed === total;
+      // STRICT REQUIREMENT: Only batches that are 100% completed appear on the Reimbursement Screen
+      const calculatedRecords = Array.from(map.values())
+        .map((rec) => {
+          const total = rec.tasks.length;
+          const completed = rec.tasks.filter((t) => t.status === 'COMPLETED').length;
+          const isAllDone = total > 0 && completed === total;
 
-        return {
-          ...rec,
-          total_tasks: total,
-          completed_tasks: completed,
-          is_100_percent_completed: isAllDone,
-          status: isAllDone ? ('ELIGIBLE' as const) : ('LOCKED' as const),
-        };
-      });
+          return {
+            ...rec,
+            total_tasks: total,
+            completed_tasks: completed,
+            is_100_percent_completed: isAllDone,
+            status: isAllDone ? ('ELIGIBLE' as const) : ('LOCKED' as const),
+          };
+        })
+        .filter((r) => r.is_100_percent_completed && r.total_tasks > 0);
 
       // Sort by date descending
       calculatedRecords.sort((a, b) => b.date.localeCompare(a.date));
@@ -240,21 +240,9 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
       .reduce((sum, r) => sum + r.total_payout, 0);
   }, [records]);
 
-  const totalLockedAmount = useMemo(() => {
-    return records
-      .filter((r) => !r.is_100_percent_completed)
-      .reduce((sum, r) => sum + r.total_payout, 0);
-  }, [records]);
-
   const completedBatchesCount = useMemo(() => {
     return records.filter((r) => r.is_100_percent_completed).length;
   }, [records]);
-
-  const filteredRecords = useMemo(() => {
-    if (filterMode === 'ELIGIBLE') return records.filter((r) => r.is_100_percent_completed);
-    if (filterMode === 'LOCKED') return records.filter((r) => !r.is_100_percent_completed);
-    return records;
-  }, [records, filterMode]);
 
   return (
     <View style={styles.container}>
@@ -279,84 +267,40 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
       >
         {/* KPI Strip */}
         <View style={styles.kpiContainer}>
-          <View style={[styles.kpiCard, styles.kpiEligible]}>
-            <Text style={styles.kpiLabel}>Eligible Reimbursement</Text>
+          <View style={[styles.kpiCard, styles.kpiEligible, { flex: 1.2 }]}>
+            <Text style={styles.kpiLabel}>Verified Reimbursement</Text>
             <Text style={styles.kpiValueGreen}>₹{totalEligibleAmount.toFixed(2)}</Text>
-            <Text style={styles.kpiSub}>100% Batch Tasks Done</Text>
+            <Text style={styles.kpiSub}>100% Completed Circuits</Text>
           </View>
 
-          <View style={[styles.kpiCard, styles.kpiLocked]}>
-            <Text style={styles.kpiLabel}>Locked / Pending</Text>
-            <Text style={styles.kpiValueAmber}>₹{totalLockedAmount.toFixed(2)}</Text>
-            <Text style={styles.kpiSub}>Incomplete Tasks</Text>
-          </View>
-        </View>
-
-        <View style={styles.kpiContainer}>
           <View style={[styles.kpiCard, { flex: 1 }]}>
             <Text style={styles.kpiLabel}>Completed Batches</Text>
-            <Text style={[styles.kpiValueDark]}>{completedBatchesCount} Batches</Text>
-            <Text style={styles.kpiSub}>Fully verified circuits</Text>
-          </View>
-
-          <View style={[styles.kpiCard, { flex: 1 }]}>
-            <Text style={styles.kpiLabel}>Company Rate Policy</Text>
-            <Text style={[styles.kpiValueDark]}>₹{standardRate} / km</Text>
-            <Text style={styles.kpiSub}>Standard reimbursement</Text>
+            <Text style={styles.kpiValueDark}>{completedBatchesCount} Batches</Text>
+            <Text style={styles.kpiSub}>All Tasks Finished</Text>
           </View>
         </View>
 
         {/* Policy Rule Clarification Banner */}
         <View style={styles.policyBanner}>
-          <Text style={styles.policyTitle}>⚖️ Strict Reimbursement Completion Policy</Text>
+          <Text style={styles.policyTitle}>✅ Post-Completion Reimbursement Policy</Text>
           <Text style={styles.policyText}>
-            Reimbursement for any route batch is <Text style={{ fontWeight: '800' }}>only calculated and unlocked once ALL tasks assigned to that batch are 100% completed</Text>. If even one visit remains pending or suspended, the reimbursement is strictly held as locked until full batch completion.
+            Reimbursement payouts appear here <Text style={{ fontWeight: '800' }}>strictly after all visits and tasks assigned to that batch are 100% completed</Text>. Pending or uncompleted routes are not listed.
           </Text>
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[styles.filterBtn, filterMode === 'ALL' && styles.filterBtnActive]}
-            onPress={() => setFilterMode('ALL')}
-          >
-            <Text style={[styles.filterBtnText, filterMode === 'ALL' && styles.filterBtnTextActive]}>
-              All ({records.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterBtn, filterMode === 'ELIGIBLE' && styles.filterBtnActive]}
-            onPress={() => setFilterMode('ELIGIBLE')}
-          >
-            <Text style={[styles.filterBtnText, filterMode === 'ELIGIBLE' && styles.filterBtnTextActive]}>
-              ✅ Eligible ({completedBatchesCount})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterBtn, filterMode === 'LOCKED' && styles.filterBtnActive]}
-            onPress={() => setFilterMode('LOCKED')}
-          >
-            <Text style={[styles.filterBtnText, filterMode === 'LOCKED' && styles.filterBtnTextActive]}>
-              🔒 Locked ({records.length - completedBatchesCount})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Records List */}
+        {/* Completed Batches Reimbursements List */}
         {isLoading ? (
           <ActivityIndicator size="large" color="#1A3C6E" style={{ marginVertical: 30 }} />
-        ) : filteredRecords.length === 0 ? (
+        ) : records.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>No reimbursement records found</Text>
+            <Text style={styles.emptyIcon}>🎉</Text>
+            <Text style={styles.emptyTitle}>No Completed Reimbursements Yet</Text>
             <Text style={styles.emptyText}>
-              Complete your planned route batch tasks to unlock eligible mileage payouts here.
+              Reimbursement amounts will appear here automatically once all tasks assigned to a planned route batch are 100% completed.
             </Text>
           </View>
         ) : (
-          filteredRecords.map((r) => {
+          records.map((r) => {
             const isEligible = r.is_100_percent_completed;
             const pct = r.total_tasks > 0 ? Math.round((r.completed_tasks / r.total_tasks) * 100) : 0;
 
@@ -401,105 +345,61 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
                   </View>
                 </View>
 
-                {/* Travel & Mileage Metrics */}
-                <View style={styles.metricsBox}>
-                  <View style={styles.metricCol}>
-                    <Text style={styles.metricLabel}>Round-Trip Distance</Text>
-                    <Text style={styles.metricVal}>{r.distance_km} km</Text>
+                {/* Beneficiary & Recipient Details ("Who Got It") */}
+                <View style={styles.recipientInfoCard}>
+                  <View style={styles.recipientInfoRow}>
+                    <Text style={styles.recipientInfoLabel}>👤 Beneficiary / Recipient:</Text>
+                    <Text style={styles.recipientInfoValue}>{currentUserName || 'Shivansh Tiwari'}</Text>
                   </View>
-                  <View style={styles.metricCol}>
-                    <Text style={styles.metricLabel}>Standard Rate</Text>
-                    <Text style={styles.metricVal}>₹{r.rate}/km</Text>
+                  <View style={styles.recipientInfoRow}>
+                    <Text style={styles.recipientInfoLabel}>🏛️ Operational HQ:</Text>
+                    <Text style={styles.recipientInfoValue}>{r.hq_name || currentUserHqName || 'Shahdol'}</Text>
                   </View>
-                  <View style={styles.metricCol}>
-                    <Text style={styles.metricLabel}>Potential Payout</Text>
-                    <Text style={styles.metricVal}>₹{r.total_payout.toFixed(2)}</Text>
+                  <View style={styles.recipientInfoRow}>
+                    <Text style={styles.recipientInfoLabel}>🚗 Verified Travel:</Text>
+                    <Text style={styles.recipientInfoValue}>{r.distance_km} km (Round Trip)</Text>
+                  </View>
+                  <View style={styles.recipientInfoRow}>
+                    <Text style={styles.recipientInfoLabel}>✅ Task Verification:</Text>
+                    <Text style={[styles.recipientInfoValue, { color: '#0F8B5A', fontWeight: '800' }]}>
+                      All {r.total_tasks} Tasks 100% Completed
+                    </Text>
                   </View>
                 </View>
 
-                {/* Task Completion Progress Bar */}
-                <View style={styles.progressContainer}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={styles.progressLabel}>
-                      Batch Task Completion: <Text style={{ fontWeight: '800' }}>{r.completed_tasks} of {r.total_tasks} Done ({pct}%)</Text>
-                    </Text>
-                    <Text style={[styles.progressStatusText, isEligible ? { color: '#0F8B5A' } : { color: '#B45309' }]}>
-                      {isEligible ? 'Full Batch Completed' : `${r.total_tasks - r.completed_tasks} Pending`}
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarTrack}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${pct}%`,
-                          backgroundColor: isEligible ? '#0F8B5A' : '#F59E0B',
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-
-                {/* Tasks Breakdown in this Batch */}
+                {/* Tasks Completed in this Batch */}
                 {r.tasks.length > 0 && (
                   <View style={styles.tasksListContainer}>
-                    <Text style={styles.tasksListHeader}>Batch Assigned Tasks:</Text>
-                    {r.tasks.map((t) => {
-                      const isTaskDone = t.status === 'COMPLETED';
-                      const isTaskSuspended = t.status === 'SUSPENDED';
-
-                      return (
-                        <View key={t.id} style={styles.taskItemRow}>
-                          <Text style={{ fontSize: 13, marginRight: 6 }}>
-                            {isTaskDone ? '✅' : isTaskSuspended ? '⚠️' : '⏳'}
+                    <Text style={styles.tasksListHeader}>Completed Visits &amp; Doctor Calls ({r.tasks.length}):</Text>
+                    {r.tasks.map((t) => (
+                      <View key={t.id} style={styles.taskItemRow}>
+                        <Text style={{ fontSize: 13, marginRight: 6 }}>✅</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.taskTitleText} numberOfLines={1}>
+                            {t.title}
                           </Text>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.taskTitleText} numberOfLines={1}>
-                              {t.title}
-                            </Text>
-                            {t.location_name ? (
-                              <Text style={styles.taskLocationText}>{t.location_name}</Text>
-                            ) : null}
-                          </View>
-                          <Text
-                            style={[
-                              styles.taskStatusText,
-                              isTaskDone
-                                ? { color: '#0F8B5A' }
-                                : isTaskSuspended
-                                ? { color: '#DC2626' }
-                                : { color: '#D97706' },
-                            ]}
-                          >
-                            {t.status}
-                          </Text>
+                          {t.location_name ? (
+                            <Text style={styles.taskLocationText}>{t.location_name}</Text>
+                          ) : null}
                         </View>
-                      );
-                    })}
+                        <Text style={[styles.taskStatusText, { color: '#0F8B5A' }]}>
+                          DONE
+                        </Text>
+                      </View>
+                    ))}
                   </View>
                 )}
 
-                {/* Final Reimbursement Calculation Box */}
-                {isEligible ? (
-                  <View style={styles.eligibleBox}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.eligibleBoxTitle}>🎉 Reimbursement Claim Unlocked!</Text>
-                      <Text style={styles.eligibleBoxSub}>
-                        {r.distance_km} km × ₹{r.rate}/km — Ready for payout
-                      </Text>
-                    </View>
-                    <Text style={styles.eligibleBoxAmount}>₹{r.total_payout.toFixed(2)}</Text>
+                {/* Final Unlocked Reimbursement Amount Card */}
+                <View style={styles.eligibleBox}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.eligibleBoxTitle}>🎉 Reimbursement Claim Unlocked</Text>
+                    <Text style={styles.eligibleBoxSub}>
+                      Payable to: {currentUserName || 'Shivansh Tiwari'} • {r.distance_km} km
+                    </Text>
                   </View>
-                ) : (
-                  <View style={styles.lockedBox}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.lockedBoxTitle}>🔒 Reimbursement Amount: ₹0.00</Text>
-                      <Text style={styles.lockedBoxSub}>
-                        Full payout of ₹{r.total_payout.toFixed(2)} will unlock automatically once all tasks in this batch are completed.
-                      </Text>
-                    </View>
-                  </View>
-                )}
+                  <Text style={styles.eligibleBoxAmount}>₹{r.total_payout.toFixed(2)}</Text>
+                </View>
               </View>
             );
           })
@@ -668,6 +568,30 @@ const styles = StyleSheet.create({
   taskTitleText: { fontSize: 11.5, fontWeight: '600', color: '#1E293B' },
   taskLocationText: { fontSize: 10, color: '#64748B' },
   taskStatusText: { fontSize: 10, fontWeight: '800', marginLeft: 6 },
+  recipientInfoCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginVertical: 8,
+    gap: 4,
+  },
+  recipientInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recipientInfoLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  recipientInfoValue: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
   eligibleBox: {
     backgroundColor: '#F0FDF4',
     borderWidth: 1.5,

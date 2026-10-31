@@ -2350,22 +2350,13 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                                   const totalTasks = matchedTasks.length;
                                   const completedTasks = matchedTasks.filter((t: any) => t.status === 'COMPLETED').length;
                                   const isAllDone = totalTasks > 0 && completedTasks === totalTasks;
-                                  const amount = Number(e.reimbursement_amount || ((e.distance_km || 0) * 2.25)).toFixed(2);
 
-                                  if (isAllDone) {
-                                    return (
-                                      <View style={[styles.visitAmountBadge, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC', borderWidth: 1 }]}>
-                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
-                                          💰 Eligible Reimbursement: ₹{amount} (100% Tasks Completed)
-                                        </Text>
-                                      </View>
-                                    );
-                                  }
+                                  if (totalTasks === 0) return null;
 
                                   return (
-                                    <View style={[styles.visitAmountBadge, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A', borderWidth: 1 }]}>
-                                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#B45309' }}>
-                                        🔒 Reimbursement Locked: ₹{amount} ({completedTasks}/{totalTasks} Tasks Done • Needs 100% Completion)
+                                    <View style={[styles.visitAmountBadge, { backgroundColor: isAllDone ? '#DCFCE7' : '#F1F5F9', borderColor: isAllDone ? '#86EFAC' : '#CBD5E1', borderWidth: 1 }]}>
+                                      <Text style={{ fontSize: 11, fontWeight: '700', color: isAllDone ? '#166534' : '#475569' }}>
+                                        {isAllDone ? '✅ 100% Tasks Completed' : `📋 Tasks: ${completedTasks}/${totalTasks} Completed`}
                                       </Text>
                                     </View>
                                   );

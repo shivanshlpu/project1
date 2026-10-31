@@ -175,9 +175,6 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
     }
   };
 
-  const parsedKm = parseFloat(distanceKm);
-  const estPayout = !isNaN(parsedKm) && parsedKm > 0 ? (parsedKm * standardRate).toFixed(2) : null;
-
   return (
     <View style={styles.container}>
       {/* Top Header */}
@@ -256,15 +253,6 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
             placeholder="e.g. 55"
             keyboardType="numeric"
           />
-
-          {/* Real-time Payout Estimation */}
-          {estPayout && (
-            <View style={styles.payoutEstimateBox}>
-              <Text style={styles.payoutEstimateText}>
-                💰 Estimated Reimbursement: <Text style={{ fontWeight: '800', color: '#0F8B5A' }}>₹{estPayout}</Text> ({distanceKm} km × ₹{standardRate}/km)
-              </Text>
-            </View>
-          )}
 
           {/* Notes */}
           <Text style={styles.inputLabel}>Justification / Notes for Admin (Optional)</Text>
@@ -361,10 +349,7 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
                   <Text style={styles.stopsText}>🛣️ Circuit: {stops}</Text>
 
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaBadge}>🚗 {b.distance_km || 0} km</Text>
-                    <Text style={styles.metaBadge}>
-                      💰 ₹{((b.distance_km || 0) * (b.standard_reimbursement_rate || standardRate)).toFixed(2)} Eligible
-                    </Text>
+                    <Text style={styles.metaBadge}>🚗 {b.distance_km || 0} km (Round Trip)</Text>
                     {b.created_at && (
                       <Text style={styles.metaDate}>
                         Submitted: {formatDateDDMMYYYY(b.created_at)}
