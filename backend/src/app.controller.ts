@@ -25,12 +25,12 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.55',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '56', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.56',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '57', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.55/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.56/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
@@ -40,6 +40,7 @@ const defaultAppVersion: AppVersionData = {
     'Strict 100% Task Completion: Reimbursements unlock strictly after MR completes all location tasks assigned to an approved route batch',
     'Monthly Reimbursement Structure: Clean month-by-month grouping with total verified payouts, distance, and completed trips',
     'Interactive Tasks Drill-Down: Tap any circuit to see individual location check-ins, call reports, and 50m geofence verification details',
+    'Dynamic Field Verification: Automatic verification for field discovery visits in newly opened routes',
     'Transparency Status: Dedicated Incomplete Tasks tab showing pending locations required to unlock remaining reimbursements',
   ],
 };

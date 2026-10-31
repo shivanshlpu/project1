@@ -1,19 +1,20 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.55",
-  "latestVersionCode": 56,
+  "latestVersion": "1.0.56",
+  "latestVersionCode": 57,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.55/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.56/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-11-01",
-  "publishedAt": "2026-11-01T00:30:00.000Z",
+  "publishedAt": "2026-11-01T01:35:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
     "Strict 100% Task Completion: Reimbursements unlock strictly after MR completes all location tasks assigned to an approved route batch",
     "Monthly Reimbursement Structure: Clean month-by-month grouping with total verified payouts, distance, and completed trips",
     "Interactive Tasks Drill-Down: Tap any circuit to see individual location check-ins, call reports, and 50m geofence verification details",
+    "Dynamic Field Verification: Automatic verification for field discovery visits in newly opened routes",
     "Transparency Status: Dedicated Incomplete Tasks tab showing pending locations required to unlock remaining reimbursements"
   ]
 }
