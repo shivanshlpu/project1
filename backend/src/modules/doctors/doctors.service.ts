@@ -10,6 +10,47 @@ export class DoctorsService {
   constructor(private readonly db: DatabaseService) {}
 
   async getDoctors(filter: DoctorFilterDto, user?: any) {
+    // Reconcile and auto-heal: ensure all saved locations are represented in this.db.doctors
+    if (this.db.savedLocations && Array.isArray(this.db.savedLocations)) {
+      for (const loc of this.db.savedLocations) {
+        if (!loc || (this.db.deletedLocationIds && this.db.deletedLocationIds.has(loc.id))) continue;
+        const exists = this.db.doctors.some((d) => d.id === loc.id);
+        if (!exists) {
+          const creator = this.db.users.find((u) => u.id === loc.created_by);
+          const creatorRole = loc.created_by_role || (creator?.role === 'MR' ? 'MR' : 'ADMIN');
+          const creatorName = loc.created_by_name || (creator ? creator.name : 'System Admin');
+          const assignedMrId = loc.assigned_mr_id || (creatorRole === 'MR' ? loc.created_by : undefined);
+          const assignedMrName = loc.assigned_mr_name || (creatorRole === 'MR' ? creatorName : undefined);
+
+          this.db.doctors.push({
+            id: loc.id,
+            name: loc.name || loc.clinic,
+            qualification: loc.qualification || 'Registered Practice',
+            specialization: loc.specialization || 'General Practice',
+            class: loc.class || 'A',
+            potential_score: loc.potential_score || 85,
+            phone: loc.phone || '',
+            whatsapp: '',
+            clinic: loc.clinic || loc.name,
+            category: loc.category || 'CLINIC',
+            address: loc.address || '',
+            latitude: Number(loc.latitude),
+            longitude: Number(loc.longitude),
+            area_id: 'area-shd-07',
+            created_by: loc.created_by || 'usr-admin-01',
+            created_by_role: creatorRole,
+            created_by_name: creatorName,
+            assigned_mr_id: assignedMrId,
+            assigned_mr_name: assignedMrName,
+            batch_id: loc.batch_id,
+            batch_code: loc.batch_code,
+            batch_name: loc.batch_name,
+            created_at: loc.created_at || new Date().toISOString(),
+          });
+        }
+      }
+    }
+
     let list = this.db.doctors.filter((d) => !d.deleted_at);
 
     // Strict MR Isolation (§Client Requirement): An MR should ONLY see locations/doctors marked by them or assigned to them

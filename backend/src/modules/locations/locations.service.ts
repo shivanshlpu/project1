@@ -231,15 +231,17 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
-    // Check if the same MR already has this location/clinic
-    const existingByName = this.locations.find(
-      (l) =>
-        l.created_by === creatorId &&
-        (l.clinic?.trim().toLowerCase() === dto.name.trim().toLowerCase() ||
-         l.name?.trim().toLowerCase() === dto.name.trim().toLowerCase())
-    );
-    if (existingByName) {
-      return this.updateLocation(existingByName.id, dto, creatorUser);
+    // Only update existing if exact same clinic name AND virtually identical coordinates (< 20m) by same MR
+    const existingSameLoc = this.locations.find((l) => {
+      if (l.created_by !== creatorId) return false;
+      const sameClinic = l.clinic?.trim().toLowerCase() === dto.name.trim().toLowerCase();
+      if (!sameClinic) return false;
+      const latDiff = Math.abs(l.latitude - dto.latitude);
+      const lngDiff = Math.abs(l.longitude - dto.longitude);
+      return latDiff < 0.0003 && lngDiff < 0.0003;
+    });
+    if (existingSameLoc) {
+      return this.updateLocation(existingSameLoc.id, dto, creatorUser);
     }
 
     // Resolve assigned route batch if selected
@@ -334,14 +336,16 @@ export class LocationsService implements OnModuleInit {
       }
     }
 
-    // Also register in DatabaseService doctors list
-    const existingDoc = this.db.doctors.find(
-      (d) =>
-        d.id === newLocation.id ||
-        (d.created_by === creatorId &&
-          (d.clinic?.trim().toLowerCase() === newLocation.clinic?.trim().toLowerCase() ||
-           d.name?.trim().toLowerCase() === newLocation.name?.trim().toLowerCase())),
-    );
+    // Also register in DatabaseService doctors list (match only by exact ID or exact same clinic & coordinates)
+    const existingDoc = this.db.doctors.find((d) => {
+      if (d.id === newLocation.id) return true;
+      if (d.created_by !== creatorId) return false;
+      const sameClinic = d.clinic?.trim().toLowerCase() === newLocation.clinic?.trim().toLowerCase();
+      if (!sameClinic) return false;
+      const latDiff = Math.abs(d.latitude - newLocation.latitude);
+      const lngDiff = Math.abs(d.longitude - newLocation.longitude);
+      return latDiff < 0.0003 && lngDiff < 0.0003;
+    });
     if (existingDoc) {
       existingDoc.clinic = newLocation.clinic;
       existingDoc.name = newLocation.name;

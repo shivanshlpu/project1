@@ -68,12 +68,59 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
-      const res = await fetch(`${baseUrl}/doctors`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setDoctors(data);
+
+      // Fetch both /doctors and /locations to ensure 100% data visibility
+      const [docsRes, locsRes] = await Promise.all([
+        fetch(`${baseUrl}/doctors`, { headers }).catch(() => null),
+        fetch(`${baseUrl}/locations`, { headers }).catch(() => null),
+      ]);
+
+      const docMap = new Map<string, Doctor>();
+
+      if (docsRes && docsRes.ok) {
+        const docList = await docsRes.json().catch(() => []);
+        if (Array.isArray(docList)) {
+          docList.forEach((d: Doctor) => {
+            if (d && d.id) docMap.set(d.id, d);
+          });
         }
+      }
+
+      if (locsRes && locsRes.ok) {
+        const locList = await locsRes.json().catch(() => []);
+        if (Array.isArray(locList)) {
+          locList.forEach((l: any) => {
+            if (l && l.id && !docMap.has(l.id)) {
+              docMap.set(l.id, {
+                id: l.id,
+                name: l.doctor_name || l.name || l.clinic,
+                qualification: l.qualification || (l.category === 'STOCKAGE' ? 'Storage Facility / Depot' : 'Registered Practice'),
+                specialization: l.specialization || (l.category === 'HOSPITAL' ? 'Hospital Facility' : l.category === 'PHARMACY' ? 'Chemist / Pharmacy' : 'General Practice'),
+                class: l.class || 'A',
+                potential_score: l.potential_score || 85,
+                clinic: l.clinic || l.name,
+                address: l.address || '',
+                area_name: l.area_name || 'Shahdol',
+                phone: l.phone || '+91 98000 00000',
+                latitude: Number(l.latitude),
+                longitude: Number(l.longitude),
+                visit_count: l.visit_count || 0,
+                assigned_mr_id: l.assigned_mr_id || l.created_by,
+                assigned_mr_name: l.assigned_mr_name || l.created_by_name,
+                created_by: l.created_by,
+                created_by_name: l.created_by_name,
+                category: l.category || 'CLINIC',
+                batch_id: l.batch_id,
+                batch_code: l.batch_code,
+                batch_name: l.batch_name,
+              });
+            }
+          });
+        }
+      }
+
+      if (docMap.size > 0) {
+        setDoctors(Array.from(docMap.values()));
       }
     } catch {
       // Keep offline fallback state
@@ -255,7 +302,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
           headers,
           body: JSON.stringify({
             name: data.name,
-            doctor_name: data.doctor_name || 'Medical Specialist',
+            doctor_name: data.doctor_name || '',
             category: data.category,
             address: data.address,
             latitude: data.latitude,
@@ -319,7 +366,7 @@ export const DoctorDirectoryScreen: React.FC<DoctorDirectoryScreenProps> = ({
             batch_name: data.batch_name,
           };
         }
-        setDoctors((prev) => [newDoc, ...prev]);
+        setDoctors((prev) => [newDoc, ...prev.filter((d) => d.id !== newDoc.id)]);
         await loadDoctors();
       } catch {
         // Fallback

@@ -525,3 +525,4 @@ const styles = StyleSheet.create({
   metaDate: { fontSize: 10, color: '#94A3B8' },
   notesText: { fontSize: 10.5, color: '#64748B', fontStyle: 'italic', marginTop: 6 },
 });
+

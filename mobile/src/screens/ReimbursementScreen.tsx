@@ -692,3 +692,4 @@ const styles = StyleSheet.create({
   lockedBoxTitle: { fontSize: 12, fontWeight: '700', color: '#64748B' },
   lockedBoxSub: { fontSize: 10.5, color: '#94A3B8', marginTop: 2, lineHeight: 14 },
 });
+
