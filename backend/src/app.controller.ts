@@ -25,22 +25,22 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.54',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '55', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.55',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '56', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.54/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.55/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Propose Route Batch: Clarified distance input to Single-Way (One-Way) KM to prevent double-mileage confusion',
-    'Saved Locations View: Fixed map viewport sizing and confined scrollbar strictly to location directory list',
-    'Privacy & Price Protection: Restricted MR view of reimbursement formulas and estimates during route creation',
-    'Post-Completion Reimbursements: Reimbursement page strictly lists completed batches displaying exact payout and recipient details',
+    'Strict 100% Task Completion: Reimbursements unlock strictly after MR completes all location tasks assigned to an approved route batch',
+    'Monthly Reimbursement Structure: Clean month-by-month grouping with total verified payouts, distance, and completed trips',
+    'Interactive Tasks Drill-Down: Tap any circuit to see individual location check-ins, call reports, and 50m geofence verification details',
+    'Transparency Status: Dedicated Incomplete Tasks tab showing pending locations required to unlock remaining reimbursements',
   ],
 };
 
