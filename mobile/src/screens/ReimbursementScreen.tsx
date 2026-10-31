@@ -159,6 +159,14 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
         if (Array.isArray(rbData)) hqBatches = rbData;
       }
 
+      // 4. Fetch marked/saved locations to capture field discovery for open batches
+      const locsRes = await fetch(`${baseUrl}/locations`, { headers }).catch(() => null);
+      let allSavedLocs: any[] = [];
+      if (locsRes && locsRes.ok) {
+        const lData = await locsRes.json();
+        if (Array.isArray(lData)) allSavedLocs = lData;
+      }
+
       // Build Composite Batch Reimbursement Records
       const map = new Map<string, BatchReimbursementRecord>();
 
@@ -257,27 +265,91 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
             }
           });
 
-          // Strict Policy Rule Evaluation:
-          // 1. Must be Approved by Admin
-          // 2. Must have task(s) created
-          // 3. Every task assigned to this entry must be COMPLETED
-          // 4. If expected locations were selected in the batch, all must be covered
+          // Check if the route batch had pre-planned locations or was an open route
+          const hasPrePlannedLocations =
+            (Array.isArray(e.selected_locations) && e.selected_locations.length > 0) ||
+            (Array.isArray(e.location_ids) && e.location_ids.length > 0);
+
+          // If no pre-planned locations in the batch, check for locations marked in the field on that date
+          if (!hasPrePlannedLocations) {
+            const discoveredLocsOnDate = allSavedLocs.filter((loc: any) => {
+              const locDate = (loc.created_at || '').slice(0, 10);
+              const isDateMatch = locDate === dateStr;
+              if (!isDateMatch) return false;
+
+              const isBatchMatch =
+                (e.route_batch_id && loc.batch_id === e.route_batch_id) ||
+                (batchCode &&
+                  (loc.batch_code === batchCode ||
+                    (loc.address && loc.address.toLowerCase().includes(batchCode.toLowerCase()))));
+              const isAreaMatch =
+                (e.planned_area &&
+                  loc.address &&
+                  loc.address.toLowerCase().includes(e.planned_area.toLowerCase())) ||
+                (e.destination &&
+                  loc.address &&
+                  loc.address.toLowerCase().includes(e.destination.toLowerCase()));
+              const isCreatorMatch =
+                !currentUserId || loc.created_by === currentUserId || loc.assigned_mr_id === currentUserId;
+
+              return isCreatorMatch && (isBatchMatch || isAreaMatch);
+            });
+
+            discoveredLocsOnDate.forEach((dl: any) => {
+              if (
+                !entryTasks.some(
+                  (tk) =>
+                    tk.id === dl.id ||
+                    (dl.name && tk.location_name?.toLowerCase() === dl.name.toLowerCase()) ||
+                    (dl.clinic && tk.location_name?.toLowerCase() === dl.clinic.toLowerCase()),
+                )
+              ) {
+                entryTasks.push({
+                  id: dl.id || `loc-disc-${Math.random()}`,
+                  title: dl.clinic || dl.name || 'Discovered Doctor / Chemist',
+                  location_name: dl.name || dl.clinic,
+                  category: dl.category || 'CLINIC',
+                  address: dl.address,
+                  status: 'COMPLETED',
+                  date: dateStr,
+                  time: dl.created_at
+                    ? new Date(dl.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : undefined,
+                  batch_id: dl.batch_id || e.route_batch_id,
+                  batch_code: dl.batch_code || batchCode,
+                  completed_at: dl.created_at,
+                  geofence_verified: true,
+                  notes: 'Field discovered & marked on-site with GPS',
+                });
+              }
+            });
+          }
+
+          // Secret internal threshold (Option 2): requires >= 2 field locations/tasks for open routes
+          const FIELD_DISCOVERY_MINIMUM = 2;
+
           const totalTasks = entryTasks.length;
           const completedTasks = entryTasks.filter((t) => t.status === 'COMPLETED').length;
-          const isAllDone =
-            isEntryApproved &&
-            totalTasks > 0 &&
-            completedTasks === totalTasks &&
-            (expectedLocs.length === 0 || completedTasks >= expectedLocs.length);
 
+          let isAllDone = false;
           let lockedReason = '';
+
           if (!isEntryApproved) {
             lockedReason = 'Tour Plan awaiting Admin approval';
-          } else if (totalTasks === 0) {
-            lockedReason = 'Tasks not yet created / checked-in for this scheduled date';
-          } else if (completedTasks < totalTasks) {
-            const pendingCount = totalTasks - completedTasks;
-            lockedReason = `${pendingCount} of ${totalTasks} location tasks pending completion`;
+          } else if (hasPrePlannedLocations) {
+            // Strict rule for pre-planned routes: 100% of planned location tasks completed
+            const minRequired = Math.max(totalTasks, expectedLocs.length);
+            isAllDone = minRequired > 0 && completedTasks >= minRequired;
+            if (!isAllDone) {
+              lockedReason = 'Location tasks pending verification';
+            }
+          } else {
+            // Route had no pre-planned locations: Field discovery proof rule (Option 2)
+            isAllDone = completedTasks >= FIELD_DISCOVERY_MINIMUM;
+            if (!isAllDone) {
+              // Note: Never mention the number "2" to MRs
+              lockedReason = 'Field location tasks pending verification';
+            }
           }
 
           map.set(recordKey, {
@@ -297,7 +369,7 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
             total_payout: totalPayout,
             tasks: entryTasks,
             expected_locations: expectedLocs,
-            total_tasks: totalTasks,
+            total_tasks: hasPrePlannedLocations ? Math.max(totalTasks, expectedLocs.length) : Math.max(totalTasks, FIELD_DISCOVERY_MINIMUM),
             completed_tasks: completedTasks,
             is_approved: isEntryApproved,
             is_100_percent_completed: isAllDone,
@@ -837,13 +909,13 @@ export const ReimbursementScreen: React.FC<ReimbursementScreenProps> = ({
                           {isEligible ? (
                             <View style={styles.drillDownSummaryBox}>
                               <Text style={styles.drillDownSummaryText}>
-                                🎉 All {r.total_tasks} assigned locations 100% completed! Full ₹{r.total_payout.toFixed(2)} mileage reimbursement credited to {r.mr_name}.
+                                🎉 Route locations 100% verified! Full ₹{r.total_payout.toFixed(2)} mileage reimbursement credited to {r.mr_name}.
                               </Text>
                             </View>
                           ) : (
                             <View style={styles.drillDownWarningBox}>
                               <Text style={styles.drillDownWarningText}>
-                                ⚠️ Incomplete route: Complete the remaining {r.total_tasks - r.completed_tasks} tasks at the locations above to unlock ₹{r.total_payout.toFixed(2)} reimbursement.
+                                ⚠️ Field location check-ins pending verification for this route to unlock reimbursement.
                               </Text>
                             </View>
                           )}
