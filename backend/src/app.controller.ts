@@ -25,22 +25,22 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.53',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '54', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.54',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '55', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.53/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.54/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Privacy & Price Protection: Restricted MR view of reimbursement formulas, rates, and estimates during route batch creation',
-    'Monthly TP Clean View: Removed reimbursement amount previews from monthly tour plan visit submission cards',
-    'Post-Completion Reimbursements: Reimbursement page now strictly lists completed batches displaying exact payout and recipient beneficiary details',
-    'Highway-First Routing: Map routing engine now prioritizes state and national highways, bypassing narrow residential alley detours',
+    'Propose Route Batch: Clarified distance input to Single-Way (One-Way) KM to prevent double-mileage confusion',
+    'Saved Locations View: Fixed map viewport sizing and confined scrollbar strictly to location directory list',
+    'Privacy & Price Protection: Restricted MR view of reimbursement formulas and estimates during route creation',
+    'Post-Completion Reimbursements: Reimbursement page strictly lists completed batches displaying exact payout and recipient details',
   ],
 };
 

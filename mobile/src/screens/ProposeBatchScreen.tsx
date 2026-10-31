@@ -120,7 +120,7 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
     }
     const distNum = parseFloat(distanceKm);
     if (isNaN(distNum) || distNum <= 0) {
-      Alert.alert('Invalid Distance', 'Please enter a valid round-trip distance in km.');
+      Alert.alert('Invalid Distance', 'Please enter a valid single-way (one-way) distance in km.');
       return;
     }
 
@@ -201,7 +201,7 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
           <Text style={styles.policyBannerTitle}>ℹ️ Company Route Batch Guidelines</Text>
           <Text style={styles.policyBannerText}>
             • Batches are locked to your assigned HQ: <Text style={{ fontWeight: '800' }}>{currentUserHqName} ({resolvedHqCode})</Text>.{'\n'}
-            • Distance must cover complete round-trip travel from HQ to all planned stops.{'\n'}
+            • Enter the single-way (one-way) distance from HQ. Two-way round trip is calculated automatically by the system.{'\n'}
             • Once approved by Admin, the batch is saved permanently in your HQ database.
           </Text>
         </View>
@@ -245,14 +245,17 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
           />
 
           {/* Distance KM */}
-          <Text style={styles.inputLabel}>Round-Trip Travel Distance (in KM) *</Text>
+          <Text style={styles.inputLabel}>Single-Way Distance (One-Way KM) *</Text>
           <TextInput
             style={styles.inputBox}
             value={distanceKm}
             onChangeText={setDistanceKm}
-            placeholder="e.g. 55"
+            placeholder="e.g. 35 (Enter single-way distance only)"
             keyboardType="numeric"
           />
+          <Text style={{ fontSize: 11, color: '#0369A1', marginTop: -4, marginBottom: 8, fontWeight: '600' }}>
+            ℹ️ Note: Enter single-way KM only. Round-trip (2-way) will be calculated automatically by the system.
+          </Text>
 
           {/* Notes */}
           <Text style={styles.inputLabel}>Justification / Notes for Admin (Optional)</Text>
@@ -349,7 +352,7 @@ export const ProposeBatchScreen: React.FC<ProposeBatchScreenProps> = ({
                   <Text style={styles.stopsText}>🛣️ Circuit: {stops}</Text>
 
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaBadge}>🚗 {b.distance_km || 0} km (Round Trip)</Text>
+                    <Text style={styles.metaBadge}>🚗 {b.distance_km || 0} km (Single Way) • {(b.distance_km || 0) * 2} km (Round Trip)</Text>
                     {b.created_at && (
                       <Text style={styles.metaDate}>
                         Submitted: {formatDateDDMMYYYY(b.created_at)}

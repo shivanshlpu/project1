@@ -39,11 +39,11 @@ export type UpdateProgressCallback = (progress: DownloadProgressPayload) => void
 export const CURRENT_APP_VERSION =
   Constants.expoConfig?.version ||
   (Constants as any).manifest2?.extra?.expoClient?.version ||
-  '1.0.53';
+  '1.0.54';
 
 export const CURRENT_APP_VERSION_CODE =
   Constants.expoConfig?.android?.versionCode ||
-  54;
+  55;
 
 const UPDATE_STORAGE_KEYS = {
   INSTALLED_VERSION: '@ahtri_installed_version',
@@ -306,7 +306,7 @@ export const AppUpdateService = {
       
       const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
       if (!fileInfo.exists || ('size' in fileInfo && fileInfo.size < 1000000)) {
-        throw new Error('Downloaded APK appears corrupted or truncated. Please retry.');
+        throw new Error('APK package is still finalizing on cloud build (takes ~5-7 mins). Please retry shortly.');
       }
 
       
