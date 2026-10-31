@@ -22,6 +22,10 @@ import {
   Sparkles,
   Maximize2,
   AlertTriangle,
+  Edit2,
+  Shield,
+  Milestone,
+  Sliders,
 } from 'lucide-react';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
 
@@ -32,6 +36,7 @@ export interface RouteWaypoint {
   lng: number;
   address?: string;
   isCustom?: boolean;
+  isViaPoint?: boolean;
 }
 
 export interface SearchResultItem {
@@ -234,6 +239,27 @@ export function resolveStopCoordinate(
   };
 }
 
+
+// Calculate perpendicular distance in km from point (pLat, pLon) to line segment (lat1, lon1)-(lat2, lon2)
+function pointToLineDistanceKm(
+  pLat: number,
+  pLon: number,
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const avgLatRad = ((lat1 + lat2) / 2) * (Math.PI / 180);
+  const cosLat = Math.cos(avgLatRad);
+  const x = (pLon - lon1) * cosLat * 111.32;
+  const y = (pLat - lat1) * 110.574;
+  const dx = (lon2 - lon1) * cosLat * 111.32;
+  const dy = (lat2 - lat1) * 110.574;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt(x * x + y * y);
+  return Math.abs(dx * y - dy * x) / Math.sqrt(lenSq);
+}
+
 function calculateHaversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -294,7 +320,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const tileLayerRef = useRef<L.Layer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
-  const polylineLayerRef = useRef<L.Polyline | null>(null);
+  const polylineLayerRef = useRef<L.Layer | null>(null);
   const accessLinesLayerRef = useRef<L.LayerGroup | null>(null);
   const isDraggingRef = useRef<boolean>(false);
   const keepViewportRef = useRef<boolean>(false);
@@ -305,6 +331,29 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const [isApplying, setIsApplying] = useState<boolean>(false);
   const [mapMode, setMapMode] = useState<'street' | 'satellite'>('street');
   const [selectedBelt, setSelectedBelt] = useState<'all' | 'shahdol' | 'kotma' | 'ambikapur' | 'bilaspur'>('all');
+  // Route customization & highway priority state
+  const [routeMode, setRouteMode] = useState<'highway' | 'osrm' | 'direct'>('highway');
+  const [avoidLanes, setAvoidLanes] = useState<boolean>(true);
+  const [segmentOverrides, setSegmentOverrides] = useState<Record<string, 'highway' | 'osrm'>>({});
+  const [manualDistanceKm, setManualDistanceKm] = useState<string | null>(null);
+  const [isEditingDistance, setIsEditingDistance] = useState<boolean>(false);
+  const [manualDistanceInput, setManualDistanceInput] = useState<string>('');
+  const [bypassedDetours, setBypassedDetours] = useState<
+    Array<{ segmentIndex: number; from: string; to: string; savedKm: number; detourKm: number; highwayKm: number }>
+  >([]);
+  const [segmentSummaries, setSegmentSummaries] = useState<
+    Array<{
+      fromId: string;
+      toId: string;
+      fromName: string;
+      toName: string;
+      mode: 'highway' | 'osrm';
+      distanceKm: number;
+      isDetourBypassed: boolean;
+      originalOsrmKm?: number;
+    }>
+  >([]);
+
 
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -476,7 +525,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     if (mapInstanceRef.current && waypoints.length > 0) {
       renderMarkersAndRoute(mapInstanceRef.current, waypoints);
     }
-  }, [waypoints]);
+  }, [waypoints, routeMode, avoidLanes, segmentOverrides]);
 
   // Toggle street vs satellite
   const handleToggleMapMode = () => {
@@ -506,15 +555,16 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
 
     const bounds: [number, number][] = [];
 
-    // 1. Draw distinct numbered badges for each stop
+    // 1. Draw distinct numbered badges for each stop (or highway shield badge for via points)
     currentWaypoints.forEach((wp, idx) => {
       bounds.push([wp.lat, wp.lng]);
       const isStart = idx === 0;
       const isEnd = idx === currentWaypoints.length - 1 && currentWaypoints.length > 1;
+      const isVia = !!wp.isViaPoint;
 
-      const bgColor = isStart ? '#059669' : isEnd ? '#7C3AED' : '#2563EB';
-      const badgeText = `${idx + 1}`;
-      const roleLabel = isStart ? 'Start / HQ' : isEnd ? 'Final Area' : `Stop ${idx + 1}`;
+      const bgColor = isVia ? '#D97706' : isStart ? '#059669' : isEnd ? '#7C3AED' : '#2563EB';
+      const badgeText = isVia ? '🛣️' : `${idx + 1}`;
+      const roleLabel = isVia ? 'Highway Anchor (Via)' : isStart ? 'Start / HQ' : isEnd ? 'Final Area' : `Stop ${idx + 1}`;
 
       const iconHtml = `
         <div style="
@@ -527,7 +577,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
           background: ${bgColor};
           color: #FFFFFF;
           font-weight: 800;
-          font-size: 13px;
+          font-size: ${isVia ? '11px' : '13px'};
           border: 2.5px solid #FFFFFF;
           box-shadow: 0 4px 10px rgba(0,0,0,0.35);
           position: relative;
@@ -569,7 +619,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       });
 
       marker.bindPopup(`
-        <div style="font-family: inherit; font-size: 12px; line-height: 1.4; min-width: 170px;">
+        <div style="font-family: inherit; font-size: 12px; line-height: 1.4; min-width: 175px;">
           <div style="font-size: 10px; font-weight: 800; color: ${bgColor}; text-transform: uppercase;">
             ${roleLabel}
           </div>
@@ -580,8 +630,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
           <div style="font-size: 10px; color: #2563EB; font-weight: 700; margin-top: 4px;">
             📍 ${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}
           </div>
-          <div style="font-size: 10px; color: #94A3B8; margin-top: 3px; font-style: italic;">
-            Tip: Drag pin to fine-tune exact clinic / village location
+          <div style="font-size: 10px; color: #94A3B8; margin-top: 4px; font-style: italic;">
+            Tip: Drag pin to fine-tune exact location on the highway or clinic
           </div>
         </div>
       `);
@@ -644,88 +694,231 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     // 2. Calculate Road Routing & Polyline if 2 or more waypoints exist
     if (currentWaypoints.length >= 2) {
       setIsCalculatingRoute(true);
+      const newBypassedDetours: Array<{
+        segmentIndex: number;
+        from: string;
+        to: string;
+        savedKm: number;
+        detourKm: number;
+        highwayKm: number;
+      }> = [];
+      const newSegmentSummaries: Array<{
+        fromId: string;
+        toId: string;
+        fromName: string;
+        toName: string;
+        mode: 'highway' | 'osrm';
+        distanceKm: number;
+        isDetourBypassed: boolean;
+        originalOsrmKm?: number;
+      }> = [];
+
       try {
-        const coordsParam = currentWaypoints.map((w) => `${w.lng},${w.lat}`).join(';');
-        // continue_straight=false allows vehicles to turn around at stops, eliminating giant U-turn detours!
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&continue_straight=false`;
+        if (routeMode === 'direct') {
+          // Direct Highway Corridor mode: connects all waypoints along direct road corridors
+          let totalKm = 0;
+          const linePoints: [number, number][] = [];
+          for (let i = 0; i < currentWaypoints.length - 1; i++) {
+            const w1 = currentWaypoints[i];
+            const w2 = currentWaypoints[i + 1];
+            const dDirect = calculateHaversineKm(w1.lat, w1.lng, w2.lat, w2.lng);
+            const segKm = Math.max(0.1, Math.round(dDirect * 1.05 * 10) / 10);
+            totalKm += segKm;
+            if (linePoints.length === 0) {
+              linePoints.push([w1.lat, w1.lng], [w2.lat, w2.lng]);
+            } else {
+              linePoints.push([w2.lat, w2.lng]);
+            }
+            newSegmentSummaries.push({
+              fromId: w1.id,
+              toId: w2.id,
+              fromName: w1.name,
+              toName: w2.name,
+              mode: 'highway',
+              distanceKm: segKm,
+              isDetourBypassed: false,
+            });
+          }
+          if (manualDistanceKm === null) {
+            setCalculatedKm(Math.round(totalKm * 10) / 10);
+          }
+          setSegmentSummaries(newSegmentSummaries);
+          setBypassedDetours([]);
 
-        const res = await fetch(osrmUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.routes && data.routes[0]) {
-            const meters = data.routes[0].distance;
-            const km = Math.round((meters / 1000) * 10) / 10;
-            setCalculatedKm(km);
+          // Draw clean highway corridor polyline
+          const glowPoly = L.polyline(linePoints, {
+            color: '#93C5FD',
+            weight: 8,
+            opacity: 0.5,
+            lineCap: 'round',
+            lineJoin: 'round',
+          });
+          const routePoly = L.polyline(linePoints, {
+            color: '#2563EB',
+            weight: 5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round',
+          });
+          const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
+          polylineLayerRef.current = polyGroup as any;
+        } else {
+          // Highway or OSRM mode: query OSRM driving engine
+          const coordsParam = currentWaypoints.map((w) => `${w.lng},${w.lat}`).join(';');
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&continue_straight=false&steps=true`;
 
-            // Coordinates in GeoJSON are [lng, lat], Leaflet polyline requires [lat, lng]
-            const linePoints: [number, number][] = data.routes[0].geometry.coordinates.map(
-              (c: [number, number]) => [c[1], c[0]]
-            );
+          const res = await fetch(osrmUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.routes && data.routes[0] && data.routes[0].legs) {
+              const combinedLinePoints: [number, number][] = [];
+              let totalDistanceKm = 0;
 
-            // Directly connect the route polyline to the exact pinpoint markers so it never terminates 1 km away on the highway!
-            if (linePoints.length > 0) {
-              const firstWp = currentWaypoints[0];
-              const lastWp = currentWaypoints[currentWaypoints.length - 1];
+              for (let i = 0; i < currentWaypoints.length - 1; i++) {
+                const wStart = currentWaypoints[i];
+                const wEnd = currentWaypoints[i + 1];
+                const segKey = `${wStart.id}_${wEnd.id}`;
+                const leg = data.routes[0].legs[i];
+                const dDirect = calculateHaversineKm(wStart.lat, wStart.lng, wEnd.lat, wEnd.lng);
 
-              const dStart = calculateHaversineKm(firstWp.lat, firstWp.lng, linePoints[0][0], linePoints[0][1]);
-              if (dStart > 0.015) {
-                linePoints.unshift([firstWp.lat, firstWp.lng]);
-              }
-
-              const dEnd = calculateHaversineKm(
-                lastWp.lat,
-                lastWp.lng,
-                linePoints[linePoints.length - 1][0],
-                linePoints[linePoints.length - 1][1]
-              );
-              if (dEnd > 0.015) {
-                linePoints.push([lastWp.lat, lastWp.lng]);
-              }
-
-              // Draw direct access connector lines for any intermediate waypoints that were snapped off the road
-              if (data.waypoints && data.waypoints.length > 0 && accessLinesLayerRef.current) {
-                currentWaypoints.forEach((wp, wpIdx) => {
-                  const snapped = data.waypoints[wpIdx];
-                  if (snapped && snapped.location) {
-                    const snapLat = snapped.location[1];
-                    const snapLng = snapped.location[0];
-                    const distFromSnap = calculateHaversineKm(wp.lat, wp.lng, snapLat, snapLng);
-                    if (distFromSnap > 0.035 && distFromSnap < 2.0) {
-                      // Draw neat dashed approach connector from road to pinpoint marker
-                      const accessLine = L.polyline(
-                        [
-                          [snapLat, snapLng],
-                          [wp.lat, wp.lng],
-                        ],
-                        {
-                          color: '#2563EB',
-                          weight: 3,
-                          dashArray: '5, 5',
-                          opacity: 0.85,
-                        }
-                      );
-                      accessLinesLayerRef.current?.addLayer(accessLine);
+                // Extract leg points from steps
+                const osrmLegPoints: [number, number][] = [];
+                if (leg && leg.steps) {
+                  leg.steps.forEach((step: any) => {
+                    if (step.geometry && step.geometry.coordinates) {
+                      step.geometry.coordinates.forEach((c: [number, number]) => {
+                        osrmLegPoints.push([c[1], c[0]]);
+                      });
                     }
+                  });
+                }
+
+                const dOsrmKm = leg ? Math.round((leg.distance / 1000) * 10) / 10 : Math.round(dDirect * 1.25 * 10) / 10;
+                const detourRatio = dDirect > 0 ? dOsrmKm / dDirect : 1;
+
+                // Check lateral detour deviation
+                let maxDeviationKm = 0;
+                if (osrmLegPoints.length > 2) {
+                  for (let pIdx = 1; pIdx < osrmLegPoints.length - 1; pIdx++) {
+                    const dev = pointToLineDistanceKm(
+                      osrmLegPoints[pIdx][0],
+                      osrmLegPoints[pIdx][1],
+                      wStart.lat,
+                      wStart.lng,
+                      wEnd.lat,
+                      wEnd.lng
+                    );
+                    if (dev > maxDeviationKm) maxDeviationKm = dev;
                   }
+                }
+
+                // Detect if OSRM is taking an unnatural detour into residential alleys
+                const isDetour =
+                  (dDirect < 6.0 && (detourRatio > 1.30 || maxDeviationKm > 0.35 * dDirect)) ||
+                  (dDirect >= 6.0 && (detourRatio > 1.45 || maxDeviationKm > 0.45 * dDirect));
+
+                // Determine active mode for this segment
+                let activeMode: 'highway' | 'osrm' = 'highway';
+                if (segmentOverrides[segKey]) {
+                  activeMode = segmentOverrides[segKey];
+                } else if (routeMode === 'osrm') {
+                  activeMode = 'osrm';
+                } else if (routeMode === 'highway') {
+                  if (avoidLanes && isDetour) {
+                    activeMode = 'highway';
+                  } else if (osrmLegPoints.length > 0) {
+                    activeMode = 'osrm';
+                  } else {
+                    activeMode = 'highway';
+                  }
+                }
+
+                let segPoints: [number, number][] = [];
+                let segKm = 0;
+
+                if (activeMode === 'highway') {
+                  // Direct highway corridor
+                  segPoints = [
+                    [wStart.lat, wStart.lng],
+                    [wEnd.lat, wEnd.lng],
+                  ];
+                  segKm = Math.max(0.1, Math.round(dDirect * 1.05 * 10) / 10);
+                  if (isDetour) {
+                    newBypassedDetours.push({
+                      segmentIndex: i,
+                      from: wStart.name,
+                      to: wEnd.name,
+                      savedKm: Math.round((dOsrmKm - segKm) * 10) / 10,
+                      detourKm: dOsrmKm,
+                      highwayKm: segKm,
+                    });
+                  }
+                } else {
+                  // Standard OSRM road
+                  segPoints = osrmLegPoints.length > 0 ? osrmLegPoints : [
+                    [wStart.lat, wStart.lng],
+                    [wEnd.lat, wEnd.lng],
+                  ];
+                  segKm = dOsrmKm;
+                }
+
+                // Add to combined path
+                if (combinedLinePoints.length === 0) {
+                  combinedLinePoints.push(...segPoints);
+                } else {
+                  combinedLinePoints.push(...segPoints.slice(1));
+                }
+                totalDistanceKm += segKm;
+
+                newSegmentSummaries.push({
+                  fromId: wStart.id,
+                  toId: wEnd.id,
+                  fromName: wStart.name,
+                  toName: wEnd.name,
+                  mode: activeMode,
+                  distanceKm: segKm,
+                  isDetourBypassed: isDetour && activeMode === 'highway',
+                  originalOsrmKm: dOsrmKm,
                 });
               }
+
+              // Ensure polyline matches exact pinpoint coordinates at ends
+              if (combinedLinePoints.length > 0) {
+                const firstWp = currentWaypoints[0];
+                const lastWp = currentWaypoints[currentWaypoints.length - 1];
+                combinedLinePoints[0] = [firstWp.lat, firstWp.lng];
+                combinedLinePoints[combinedLinePoints.length - 1] = [lastWp.lat, lastWp.lng];
+              }
+
+              if (manualDistanceKm === null) {
+                setCalculatedKm(Math.round(totalDistanceKm * 10) / 10);
+              }
+              setBypassedDetours(newBypassedDetours);
+              setSegmentSummaries(newSegmentSummaries);
+
+              // Render polyline with glow casing
+              const glowPoly = L.polyline(combinedLinePoints, {
+                color: '#93C5FD',
+                weight: 8,
+                opacity: 0.6,
+                lineCap: 'round',
+                lineJoin: 'round',
+              });
+              const routePoly = L.polyline(combinedLinePoints, {
+                color: '#2563EB',
+                weight: 5,
+                opacity: 0.95,
+                lineCap: 'round',
+                lineJoin: 'round',
+              });
+              const polyGroup = L.layerGroup([glowPoly, routePoly]).addTo(map);
+              polylineLayerRef.current = polyGroup as any;
+            } else {
+              fallbackPolyline(map, currentWaypoints);
             }
-
-            // Draw clean road route polyline
-            const routePoly = L.polyline(linePoints, {
-              color: '#2563EB',
-              weight: 5,
-              opacity: 0.88,
-              lineCap: 'round',
-              lineJoin: 'round',
-            }).addTo(map);
-
-            polylineLayerRef.current = routePoly;
           } else {
             fallbackPolyline(map, currentWaypoints);
           }
-        } else {
-          fallbackPolyline(map, currentWaypoints);
         }
       } catch {
         fallbackPolyline(map, currentWaypoints);
@@ -734,6 +927,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       }
     } else {
       setCalculatedKm(0);
+      setBypassedDetours([]);
+      setSegmentSummaries([]);
     }
 
     // Only fitBounds on initial modal load, NOT during drag or when user clicks to mark a pinpoint location!
@@ -752,17 +947,26 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
         totalHaversine += calculateHaversineKm(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng);
       }
     }
-    // Multiply by 1.25 road curvature factor for realistic state road estimation
-    const estimatedRoadKm = Math.round(totalHaversine * 1.25 * 10) / 10;
-    setCalculatedKm(estimatedRoadKm);
+    // Multiply by 1.15 road curvature factor for realistic state road estimation
+    const estimatedRoadKm = Math.round(totalHaversine * 1.15 * 10) / 10;
+    if (manualDistanceKm === null) {
+      setCalculatedKm(estimatedRoadKm);
+    }
 
+    const glow = L.polyline(latlngs, {
+      color: '#93C5FD',
+      weight: 7,
+      opacity: 0.5,
+      dashArray: '8, 6',
+    });
     const poly = L.polyline(latlngs, {
       color: '#3B82F6',
       weight: 4,
       dashArray: '8, 6',
       opacity: 0.9,
-    }).addTo(map);
-    polylineLayerRef.current = poly;
+    });
+    const group = L.layerGroup([glow, poly]).addTo(map);
+    polylineLayerRef.current = group as any;
   };
 
   const handleAddWaypoint = (newWp: RouteWaypoint, options?: { forceEnd?: boolean; keepView?: boolean }) => {
@@ -810,6 +1014,23 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
         m.openPopup();
       }, 500);
     }
+  };
+
+
+  const handleToggleViaPoint = (id: string) => {
+    keepViewportRef.current = true;
+    setWaypoints((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, isViaPoint: !w.isViaPoint } : w))
+    );
+  };
+
+  const handleToggleSegmentMode = (fromId: string, toId: string) => {
+    const segKey = `${fromId}_${toId}`;
+    setSegmentOverrides((prev) => {
+      const current = prev[segKey] || (routeMode === 'highway' ? 'highway' : 'osrm');
+      const next = current === 'highway' ? 'osrm' : 'highway';
+      return { ...prev, [segKey]: next };
+    });
   };
 
   // 1-Click route sequence optimizer: orders intermediate stops to minimize total distance
@@ -1062,10 +1283,14 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
     if (waypoints.length === 0 || isApplying) return;
     setIsApplying(true);
     try {
-      const stopNames = waypoints.map((w) => w.name);
+      const activeDistance = manualDistanceKm !== null ? parseFloat(manualDistanceKm) || calculatedKm : calculatedKm;
+      // Filter out pure via anchors from stops list if there are regular stops
+      const regularStops = waypoints.filter((w) => !w.isViaPoint);
+      const stopNames = (regularStops.length > 0 ? regularStops : waypoints).map((w) => w.name);
+
       await onApplyRoute({
         stops: stopNames,
-        distanceKm: calculatedKm || (waypoints.length > 1 ? 30 : 15),
+        distanceKm: activeDistance || (waypoints.length > 1 ? 30 : 15),
         suggestedBatchName,
         waypoints,
       });
@@ -1076,6 +1301,8 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       setIsApplying(false);
     }
   };
+
+  const effectiveDistanceKm = manualDistanceKm !== null ? parseFloat(manualDistanceKm) || calculatedKm : calculatedKm;
 
   if (!isOpen) return null;
 
@@ -1527,134 +1754,213 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                   {waypoints.map((wp, idx) => {
                     const isStart = idx === 0;
                     const isEnd = idx === waypoints.length - 1 && waypoints.length > 1;
-                    const badgeBg = isStart ? '#059669' : isEnd ? '#7C3AED' : '#2563EB';
+                    const isVia = !!wp.isViaPoint;
+                    const badgeBg = isVia ? '#D97706' : isStart ? '#059669' : isEnd ? '#7C3AED' : '#2563EB';
+                    const badgeText = isVia ? '🛣️' : `${idx + 1}`;
+                    const roleLabel = isVia ? 'Highway Route Anchor (Via)' : isStart ? 'Origin (Start HQ)' : isEnd ? 'Final Destination' : 'Transit Stop';
+                    const prevSummary = idx > 0 && segmentSummaries[idx - 1] ? segmentSummaries[idx - 1] : null;
 
                     return (
-                      <div
-                        key={wp.id}
-                        style={{
-                          backgroundColor: '#FFFFFF',
-                          border: `1px solid ${isStart ? '#A7F3D0' : isEnd ? '#DDD6FE' : '#E2E8F0'}`,
-                          borderRadius: '6px',
-                          padding: '7px 10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                          <span
+                      <React.Fragment key={wp.id}>
+                        {/* Connecting Road Segment Card */}
+                        {prevSummary && (
+                          <div
                             style={{
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              backgroundColor: badgeBg,
-                              color: '#FFFFFF',
+                              padding: '5px 8px',
+                              margin: '1px 0 3px 22px',
+                              backgroundColor: prevSummary.mode === 'highway' ? '#EFF6FF' : '#F8FAFC',
+                              border: `1px dashed ${prevSummary.mode === 'highway' ? '#93C5FD' : '#CBD5E1'}`,
+                              borderRadius: '6px',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.72rem',
-                              fontWeight: 800,
-                              flexShrink: 0,
+                              justifyContent: 'space-between',
+                              fontSize: '0.71rem',
                             }}
                           >
-                            {idx + 1}
-                          </span>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <span style={{ fontWeight: 800, color: prevSummary.mode === 'highway' ? '#1D4ED8' : '#475569' }}>
+                                {prevSummary.mode === 'highway' ? '🛣️ Highway Corridor' : '🚗 Road Route'}
+                              </span>
+                              <span style={{ color: '#64748B', fontWeight: 600 }}>({prevSummary.distanceKm} km)</span>
+                              {prevSummary.isDetourBypassed && (
+                                <span
+                                  style={{
+                                    fontSize: '0.62rem',
+                                    backgroundColor: '#DCFCE7',
+                                    color: '#15803D',
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    fontWeight: 800,
+                                  }}
+                                  title="Detour through residential lanes was bypassed in favor of the direct highway corridor"
+                                >
+                                  Alley Bypassed
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSegmentMode(prevSummary.fromId, prevSummary.toId)}
                               style={{
-                                fontSize: '0.82rem',
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#2563EB',
                                 fontWeight: 700,
-                                color: '#0F172A',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                                fontSize: '0.68rem',
+                                cursor: 'pointer',
+                                padding: '1px 5px',
+                                textDecoration: 'underline',
+                              }}
+                              title="Toggle between Highway Corridor and Standard Road Route for this specific segment"
+                            >
+                              {prevSummary.mode === 'highway' ? 'Allow Lane Route' : 'Stick to Highway'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Stop Card */}
+                        <div
+                          style={{
+                            backgroundColor: '#FFFFFF',
+                            border: `1px solid ${isVia ? '#FDE68A' : isStart ? '#A7F3D0' : isEnd ? '#DDD6FE' : '#E2E8F0'}`,
+                            borderRadius: '6px',
+                            padding: '7px 10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                            <span
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                backgroundColor: badgeBg,
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: isVia ? '0.68rem' : '0.72rem',
+                                fontWeight: 800,
+                                flexShrink: 0,
                               }}
                             >
-                              {wp.name}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
-                              <span
+                              {badgeText}
+                            </span>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div
                                 style={{
-                                  fontSize: '0.68rem',
-                                  color: isStart ? '#059669' : isEnd ? '#7C3AED' : '#64748B',
-                                  fontWeight: 600,
+                                  fontSize: '0.82rem',
+                                  fontWeight: 700,
+                                  color: '#0F172A',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
                                 }}
                               >
-                                {isStart ? 'Origin (Start HQ)' : isEnd ? 'Final Destination' : 'Transit Stop'}
-                              </span>
-                              <span style={{ fontSize: '0.66rem', color: '#94A3B8', fontFamily: 'monospace' }}>
-                                • {wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}
-                              </span>
+                                {wp.name}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.68rem',
+                                    color: isVia ? '#D97706' : isStart ? '#059669' : isEnd ? '#7C3AED' : '#64748B',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {roleLabel}
+                                </span>
+                                <span style={{ fontSize: '0.66rem', color: '#94A3B8', fontFamily: 'monospace' }}>
+                                  • {wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleLocateWaypoint(wp)}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: 'pointer',
-                              color: '#2563EB',
-                              padding: '3px',
-                              borderRadius: '4px',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            title="Locate & zoom to stop on map"
-                          >
-                            <Crosshair size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={idx === 0}
-                            onClick={() => handleMoveWaypoint(idx, 'UP')}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                              color: idx === 0 ? '#CBD5E1' : '#64748B',
-                              padding: '2px',
-                            }}
-                            title="Move Up"
-                          >
-                            <ChevronUp size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={idx === waypoints.length - 1}
-                            onClick={() => handleMoveWaypoint(idx, 'DOWN')}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: idx === waypoints.length - 1 ? 'not-allowed' : 'pointer',
-                              color: idx === waypoints.length - 1 ? '#CBD5E1' : '#64748B',
-                              padding: '2px',
-                            }}
-                            title="Move Down"
-                          >
-                            <ChevronDown size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveWaypoint(wp.id)}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: 'pointer',
-                              color: '#EF4444',
-                              padding: '2px',
-                            }}
-                            title="Remove Stop"
-                          >
-                            <X size={15} />
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleViaPoint(wp.id)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                color: isVia ? '#D97706' : '#94A3B8',
+                                padding: '3px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              title={isVia ? 'Highway Anchor (Click to convert to official MR visit stop)' : 'Click to convert to Highway Route Anchor (guides route without adding clinic stop)'}
+                            >
+                              <Milestone size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleLocateWaypoint(wp)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                color: '#2563EB',
+                                padding: '3px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              title="Locate & zoom to stop on map"
+                            >
+                              <Crosshair size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveWaypoint(idx, 'UP')}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                                color: idx === 0 ? '#CBD5E1' : '#64748B',
+                                padding: '2px',
+                              }}
+                              title="Move Up"
+                            >
+                              <ChevronUp size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === waypoints.length - 1}
+                              onClick={() => handleMoveWaypoint(idx, 'DOWN')}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: idx === waypoints.length - 1 ? 'not-allowed' : 'pointer',
+                                color: idx === waypoints.length - 1 ? '#CBD5E1' : '#64748B',
+                                padding: '2px',
+                              }}
+                              title="Move Down"
+                            >
+                              <ChevronDown size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWaypoint(wp.id)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                color: '#EF4444',
+                                padding: '2px',
+                              }}
+                              title="Remove Stop"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -1684,13 +1990,121 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div style={{ backgroundColor: '#EFF6FF', borderRadius: '6px', padding: '8px 10px' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>
-                    One-Way Distance
+                <div style={{ backgroundColor: '#EFF6FF', borderRadius: '6px', padding: '8px 10px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>
+                      One-Way Distance
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingDistance(!isEditingDistance);
+                        setManualDistanceInput(String(manualDistanceKm ?? calculatedKm));
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#2563EB',
+                        cursor: 'pointer',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        padding: '0 2px',
+                      }}
+                      title="Manually override route distance"
+                    >
+                      <Edit2 size={11} /> {isEditingDistance ? 'Cancel' : 'Edit'}
+                    </button>
                   </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1D4ED8', marginTop: '2px' }}>
-                    {calculatedKm > 0 ? `${calculatedKm} km` : '0 km'}
-                  </div>
+
+                  {isEditingDistance ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={manualDistanceInput}
+                        onChange={(e) => setManualDistanceInput(e.target.value)}
+                        style={{
+                          width: '75px',
+                          padding: '2px 6px',
+                          fontSize: '0.95rem',
+                          fontWeight: 800,
+                          borderRadius: '4px',
+                          border: '1.5px solid #2563EB',
+                          color: '#1E293B',
+                        }}
+                      />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1E40AF' }}>km</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = parseFloat(manualDistanceInput);
+                          if (!isNaN(val) && val > 0) {
+                            setManualDistanceKm(val.toFixed(1));
+                          }
+                          setIsEditingDistance(false);
+                        }}
+                        style={{
+                          padding: '3px 7px',
+                          backgroundColor: '#2563EB',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Set
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1D4ED8' }}>
+                        {effectiveDistanceKm > 0 ? `${effectiveDistanceKm} km` : '0 km'}
+                      </span>
+                      {manualDistanceKm !== null && (
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            backgroundColor: '#FEF3C7',
+                            color: '#92400E',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            fontWeight: 800,
+                          }}
+                          title="Manual custom distance applied"
+                        >
+                          Custom
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {manualDistanceKm !== null && !isEditingDistance && (
+                    <button
+                      type="button"
+                      onClick={() => setManualDistanceKm(null)}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#D97706',
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: 0,
+                        marginTop: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                      }}
+                    >
+                      <RotateCcw size={10} /> Reset to Auto ({calculatedKm} km)
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ backgroundColor: '#F0FDF4', borderRadius: '6px', padding: '8px 10px' }}>
@@ -1698,7 +2112,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                     Round-Trip (2-Way)
                   </div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803D', marginTop: '2px' }}>
-                    {calculatedKm > 0 ? `${(calculatedKm * 2).toFixed(1)} km` : '0 km'}
+                    {effectiveDistanceKm > 0 ? `${(effectiveDistanceKm * 2).toFixed(1)} km` : '0 km'}
                   </div>
                 </div>
               </div>
@@ -1719,7 +2133,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               >
                 <span>Reimbursement:</span>
                 <span>
-                  ₹{((calculatedKm * 2) * ratePerKm).toFixed(2)} (@ ₹{ratePerKm}/km)
+                  ₹{((effectiveDistanceKm * 2) * ratePerKm).toFixed(2)} (@ ₹{ratePerKm}/km)
                 </span>
               </div>
             </div>
@@ -1764,7 +2178,7 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                 }}
               >
                 <Check size={16} />
-                {isApplying ? 'Applying Route...' : `Apply Route (${calculatedKm} km)`}
+                {isApplying ? 'Applying Route...' : `Apply Route (${effectiveDistanceKm} km)`}
               </button>
             </div>
           </div>
@@ -1773,27 +2187,171 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
 
-            {/* Top Overlay: Click Anywhere / Drag Pin Banner */}
+            {/* Top Overlay: Route Mode Pills & Lane Detour Prevention Controls */}
             <div
               style={{
                 position: 'absolute',
                 top: 12,
                 left: 12,
                 zIndex: 10,
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                padding: '6px 14px',
-                borderRadius: '20px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: '#1E293B',
+                maxWidth: '650px',
               }}
             >
-              <Info size={14} color="#2563EB" />
-              <span>Click map to add stop • Drag any pin to fine-tune exact location</span>
+              {/* Route Mode Pills Toolbar */}
+              <div
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.96)',
+                  padding: '4px 6px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRouteMode('highway');
+                    setAvoidLanes(true);
+                  }}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: routeMode === 'highway' ? '#2563EB' : 'transparent',
+                    color: routeMode === 'highway' ? '#FFFFFF' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Prioritizes national highways, state highways, and major arterial roads. Automatically bypasses narrow residential alleys."
+                >
+                  🛣️ Highway / Main Roads
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRouteMode('osrm')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: routeMode === 'osrm' ? '#2563EB' : 'transparent',
+                    color: routeMode === 'osrm' ? '#FFFFFF' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Routes using standard OSRM driving logic (may detour through residential back alleys if OSM tags prefer them)."
+                >
+                  🚗 Standard Driving
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRouteMode('direct')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: routeMode === 'direct' ? '#2563EB' : 'transparent',
+                    color: routeMode === 'direct' ? '#FFFFFF' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Connects stops directly along the highway corridor line."
+                >
+                  📏 Direct Corridor
+                </button>
+
+                {routeMode === 'highway' && (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.73rem',
+                      fontWeight: 700,
+                      color: '#475569',
+                      padding: '4px 6px',
+                      cursor: 'pointer',
+                      borderLeft: '1px solid #E2E8F0',
+                      marginLeft: '2px',
+                    }}
+                    title="When enabled, prevents routes from taking winding detours down narrow residential back alleys"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={avoidLanes}
+                      onChange={(e) => setAvoidLanes(e.target.checked)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    Avoid Alleys
+                  </label>
+                )}
+              </div>
+
+              {/* Highway Preferred Detour Alert Notification Banner */}
+              {bypassedDetours.length > 0 && routeMode === 'highway' && (
+                <div
+                  style={{
+                    backgroundColor: 'rgba(240, 253, 244, 0.96)',
+                    border: '1.5px solid #86EFAC',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    color: '#166534',
+                  }}
+                >
+                  <Shield size={14} color="#16A34A" style={{ flexShrink: 0 }} />
+                  <span>
+                    🛣️ Highway Priority: Bypassed {bypassedDetours.length} residential lane detour{bypassedDetours.length > 1 ? 's' : ''} (saved ~{bypassedDetours.reduce((acc, d) => acc + d.savedKm, 0).toFixed(1)} km of alley detours)
+                  </span>
+                </div>
+              )}
+
+              {/* Click map tip banner */}
+              <div
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  padding: '5px 12px',
+                  borderRadius: '20px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#334155',
+                  width: 'fit-content',
+                }}
+              >
+                <Info size={13} color="#2563EB" />
+                <span>Click map to add stop • Drag any pin to fine-tune exact location on the highway</span>
+              </div>
             </div>
 
             {/* Top Right Controls: Satellite Switch & Fit Entire Route */}
