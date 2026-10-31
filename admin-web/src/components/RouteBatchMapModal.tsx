@@ -363,6 +363,20 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
+  // Editable Circuit / Route Batch Name
+  const [editableCircuitName, setEditableCircuitName] = useState<string>(() => {
+    if (batchTitle) {
+      return batchTitle.replace(/^\[.*?\]\s*/, '').trim();
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    if (batchTitle) {
+      setEditableCircuitName(batchTitle.replace(/^\[.*?\]\s*/, '').trim());
+    }
+  }, [batchTitle]);
+
   // Parse initialStops whenever modal opens or stops prop changes
   const initialStopsSignature = JSON.stringify(initialStops);
   const initialWaypointsSignature = JSON.stringify(initialWaypoints || []);
@@ -1168,6 +1182,19 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
   };
 
 
+  const handleRenameWaypoint = (id: string, newName: string) => {
+    keepViewportRef.current = true;
+    setWaypoints((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, name: newName } : w))
+    );
+    const marker = markersMapRef.current.get(id);
+    if (marker) {
+      try {
+        marker.setTooltipContent(newName);
+      } catch {}
+    }
+  };
+
   const handleToggleViaPoint = (id: string) => {
     keepViewportRef.current = true;
     setWaypoints((prev) =>
@@ -1442,12 +1469,14 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
       const activeDistance = manualDistanceKm !== null ? parseFloat(manualDistanceKm) || calculatedKm : calculatedKm;
       // Filter out pure via anchors from stops list if there are regular stops
       const regularStops = waypoints.filter((w) => !w.isViaPoint);
-      const stopNames = (regularStops.length > 0 ? regularStops : waypoints).map((w) => w.name);
+      const stopNames = (regularStops.length > 0 ? regularStops : waypoints).map((w) => w.name.trim()).filter(Boolean);
+      const customName = (editableCircuitName || '').trim();
+      const finalSuggestedName = customName || suggestedBatchName;
 
       await onApplyRoute({
         stops: stopNames,
         distanceKm: activeDistance || (waypoints.length > 1 ? 30 : 15),
-        suggestedBatchName,
+        suggestedBatchName: finalSuggestedName,
         waypoints,
       });
       onClose();
@@ -1792,6 +1821,58 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
               )}
             </div>
 
+            {/* Editable Circuit / Route Name */}
+            <div
+              style={{
+                padding: '7px 10px',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Edit2 size={11} color="#2563EB" />
+                  Route / Circuit Name:
+                </span>
+                {editableCircuitName && (
+                  <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 700 }}>
+                    ✓ Custom Name
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={editableCircuitName}
+                onChange={(e) => setEditableCircuitName(e.target.value)}
+                placeholder={suggestedBatchName || 'Enter custom route circuit name...'}
+                title="Edit route circuit name to be saved"
+                style={{
+                  width: '100%',
+                  padding: '4px 8px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '4px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2563EB';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(37,99,235,0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#CBD5E1';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
             {/* Selected Stops Ribbon List */}
             <div style={{ flex: 1, minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2005,20 +2086,38 @@ export const RouteBatchMapModal: React.FC<RouteBatchMapModalProps> = ({
                             >
                               {badgeText}
                             </span>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div
+                            <div style={{ minWidth: 0, flex: 1, marginRight: '4px' }}>
+                              <input
+                                type="text"
+                                value={wp.name}
+                                onChange={(e) => handleRenameWaypoint(wp.id, e.target.value)}
+                                title="Click to rename this stop (changes save automatically to route)"
+                                placeholder="Stop name..."
                                 style={{
+                                  width: '100%',
                                   fontSize: '0.82rem',
                                   fontWeight: 700,
                                   color: '#0F172A',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
+                                  backgroundColor: '#F8FAFC',
+                                  border: '1px solid #CBD5E1',
+                                  borderRadius: '4px',
+                                  padding: '2px 6px',
+                                  outline: 'none',
+                                  boxSizing: 'border-box',
+                                  transition: 'border-color 0.15s, background-color 0.15s, box-shadow 0.15s',
                                 }}
-                              >
-                                {wp.name}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#2563EB';
+                                  e.target.style.backgroundColor = '#FFFFFF';
+                                  e.target.style.boxShadow = '0 0 0 2px rgba(37,99,235,0.15)';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#CBD5E1';
+                                  e.target.style.backgroundColor = '#F8FAFC';
+                                  e.target.style.boxShadow = 'none';
+                                }}
+                              />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                 <span
                                   style={{
                                     fontSize: '0.68rem',

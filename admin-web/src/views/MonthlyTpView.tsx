@@ -347,7 +347,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
 
   const fetchRouteChangeRequests = async (silent?: boolean | any) => {
     const isSilent = silent === true;
-    if (!isSilent) setIsLoadingChangeRequests(true);
+    if (!isSilent && routeChangeRequests.length === 0) setIsLoadingChangeRequests(true);
+    const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       const res = await resilientFetch('/tour-plans/route-change-requests');
       if (res.ok) {
@@ -360,6 +361,11 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
       // offline fallback
     } finally {
       if (!isSilent) setIsLoadingChangeRequests(false);
+      if (currentScroll > 0 && typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        });
+      }
     }
   };
 
@@ -404,8 +410,8 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           type: 'success',
           message: `✓ Route change request marked as ${action}! Active Tour Plan & Tasks updated.`,
         });
-        fetchRouteChangeRequests();
-        fetchMonthlyPlans();
+        fetchRouteChangeRequests(true);
+        fetchMonthlyPlans(true);
         window.dispatchEvent(new Event('ahtri_tasks_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
@@ -479,8 +485,12 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   };
 
   
-  const fetchMonthlyPlans = async () => {
-    setIsLoading(true);
+  const fetchMonthlyPlans = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
+    if (!isSilent && plans.length === 0) {
+      setIsLoading(true);
+    }
+    const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       let query = `?month=${selectedMonth}`;
       if (selectedMr !== 'ALL') query += `&mr_id=${selectedMr}`;
@@ -547,6 +557,11 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
       // Offline fallback
     } finally {
       setIsLoading(false);
+      if (currentScroll > 0 && typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        });
+      }
     }
   };
 
@@ -803,7 +818,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         });
         window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
-        fetchMonthlyPlans();
+        fetchMonthlyPlans(true);
       } else {
         await handleUpdateStatus(item.tp_id, newStatus);
       }
@@ -891,7 +906,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
         });
         window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_approvals_updated'));
-        fetchMonthlyPlans();
+        fetchMonthlyPlans(true);
       } else {
         setActionNotice({
           type: 'error',
@@ -1235,7 +1250,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
               <button
                 type="button"
                 className="btn-enterprise secondary"
-                onClick={fetchMonthlyPlans}
+                onClick={() => fetchMonthlyPlans()}
                 disabled={isLoading}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}
               >
@@ -1605,7 +1620,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
 
           {/* Schedules Table */}
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-            {isLoading ? (
+            {isLoading && plans.length === 0 ? (
               <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748B' }}>
                 <RefreshCw size={28} className="spin" style={{ margin: '0 auto 12px auto', display: 'block', color: '#1A3C6E' }} />
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>Loading monthly tour plans...</div>
@@ -1966,7 +1981,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           </div>
 
           {/* List of Change Requests */}
-          {isLoadingChangeRequests ? (
+          {isLoadingChangeRequests && routeChangeRequests.length === 0 ? (
             <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 60, textAlign: 'center' }}>
               <RefreshCw size={26} className="spin" style={{ margin: '0 auto 12px auto', display: 'block', color: '#1A3C6E' }} />
               <div style={{ fontSize: 13.5, fontWeight: 700, color: '#334155' }}>Loading route change requests...</div>

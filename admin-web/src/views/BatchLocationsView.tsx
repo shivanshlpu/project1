@@ -116,8 +116,12 @@ export const BatchLocationsView: React.FC = () => {
   const [isMapRouteModalOpen, setIsMapRouteModalOpen] = useState<boolean>(false);
   const [mapRouteTarget, setMapRouteTarget] = useState<'CREATE' | 'EDIT'>('CREATE');
 
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchData = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
+    if (!isSilent && batches.length === 0) {
+      setIsLoading(true);
+    }
+    const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       // 1. Fetch batches with locations
       const batchRes = await resilientFetch('/territories/route-batches/with-locations');
@@ -142,6 +146,11 @@ export const BatchLocationsView: React.FC = () => {
       console.error('Failed to load batch locations:', err);
     } finally {
       setIsLoading(false);
+      if (currentScroll > 0 && typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        });
+      }
     }
   };
 
@@ -254,7 +263,7 @@ export const BatchLocationsView: React.FC = () => {
         window.dispatchEvent(new CustomEvent('ahtri_batch_updated', { detail: { batchId, locationId, action: 'REMOVE' } }));
         window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
         window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_UNLINK' } }));
-        await fetchData();
+        await fetchData(true);
       } else {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.message || 'Server error unlinking location');
@@ -519,7 +528,7 @@ export const BatchLocationsView: React.FC = () => {
           message: `Batch [${batch.batch_code}] ${batch.name} is now approved and active for MR itineraries.`,
           type: 'success',
         });
-        fetchData();
+        fetchData(true);
         window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
       } else {
         const err = await res.json().catch(() => ({}));
@@ -557,7 +566,7 @@ export const BatchLocationsView: React.FC = () => {
           message: `Batch [${batch.batch_code}] has been marked as rejected.`,
           type: 'info',
         });
-        fetchData();
+        fetchData(true);
         window.dispatchEvent(new CustomEvent('ahtri_batch_updated'));
       } else {
         const err = await res.json().catch(() => ({}));
@@ -582,7 +591,11 @@ export const BatchLocationsView: React.FC = () => {
     suggestedBatchName: string;
     waypoints?: RouteWaypoint[];
   }) => {
-    const stopsName = result.stops.length >= 2 ? result.stops.join(' - ') : result.suggestedBatchName;
+    let cleanName = (result.suggestedBatchName || '').trim();
+    if (cleanName.startsWith('[') && cleanName.includes(']')) {
+      cleanName = cleanName.replace(/^\[.*?\]\s*/, '').trim();
+    }
+    const stopsName = cleanName || (result.stops.length >= 2 ? result.stops.join(' - ') : 'Custom Circuit');
 
     if (mapRouteTarget === 'CREATE') {
       setNewBatchDistance(String(result.distanceKm));
@@ -605,10 +618,7 @@ export const BatchLocationsView: React.FC = () => {
       // If editing an existing batch, persist directly to backend immediately!
       if (editingBatch) {
         try {
-          const finalName =
-            !editBatchName.trim() || editBatchName.toLowerCase().includes('circuit') || editBatchName.includes(' - ')
-              ? stopsName
-              : editBatchName.trim();
+          const finalName = stopsName || editBatchName.trim();
 
           const payload = {
             batch_code: editingBatch.batch_code,
@@ -653,8 +663,8 @@ export const BatchLocationsView: React.FC = () => {
             window.dispatchEvent(new CustomEvent('ahtri_tp_updated'));
             window.dispatchEvent(new CustomEvent('ahtri_data_updated', { detail: { type: 'BATCH_UPDATED' } }));
 
-            // Re-fetch backend data
-            await fetchData();
+            // Re-fetch backend data silently to keep scroll position
+            await fetchData(true);
           } else {
             const errJson = await res.json().catch(() => ({}));
             throw new Error(errJson.message || 'Server error updating route batch');
@@ -754,7 +764,7 @@ export const BatchLocationsView: React.FC = () => {
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData()}
             disabled={isLoading}
             style={{
               display: 'flex',
@@ -945,7 +955,7 @@ export const BatchLocationsView: React.FC = () => {
       </div>
 
       {/* Batches and Assigned Locations List */}
-      {isLoading ? (
+      {isLoading && batches.length === 0 ? (
         <div style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>
           <RefreshCw size={32} className="spin" style={{ margin: '0 auto 12px auto', color: '#2563EB' }} />
           <p style={{ fontWeight: 600 }}>Loading route batches and assigned location details...</p>
