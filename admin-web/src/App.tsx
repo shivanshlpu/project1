@@ -616,7 +616,7 @@ export const App: React.FC = () => {
         />
 
         {/* Main Workspace Canvas */}
-        <main className="workspace-canvas">
+        <main className={`workspace-canvas ${managerTab === 'locations' ? 'workspace-canvas-mapview' : ''}`}>
           <ErrorBoundary
             fallbackTitle="Unable to Load View"
             onReset={() => setManagerTab('overview')}

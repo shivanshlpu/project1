@@ -136,7 +136,16 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
   const handleSelectLocation = (loc: DoctorItem) => {
     setSelectedLocation(loc);
-    mapInstanceRef.current?.flyTo([loc.latitude, loc.longitude], 16, { duration: 0.8 });
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize();
+      mapInstanceRef.current.flyTo([loc.latitude, loc.longitude], 16, { duration: 0.6 });
+    }
+    const m = markersMapRef.current.get(loc.id);
+    if (m) {
+      setTimeout(() => {
+        m.openPopup();
+      }, 350);
+    }
     if (isLocationUnread(loc)) {
       markLocationAsRead(loc.id);
     }
@@ -224,6 +233,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const lastTargetIdRef = useRef<string | null>(null);
   const initialFitDoneRef = useRef<boolean>(false);
@@ -313,6 +323,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     
     if (markersGroupRef.current) {
       markersGroupRef.current.clearLayers();
+      markersMapRef.current.clear();
 
       filteredLocations.forEach((loc) => {
         const lat = Number(loc.latitude);
@@ -377,6 +388,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           handleSelectLocation(loc);
         });
 
+        markersMapRef.current.set(loc.id, marker);
         markersGroupRef.current?.addLayer(marker);
       });
 
@@ -604,7 +616,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', paddingBottom: '30px' }}>
+    <div className="saved-locations-view-root">
       {/* Top Banner Toolbar */}
       <div
         style={{
@@ -743,6 +755,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '8px',
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -822,7 +835,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         {/* Left Side: Directory List */}
         <div className="saved-locations-list-col">
           {/* Search & Category Filter */}
-          <div style={{ padding: '14px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+          <div style={{ padding: '14px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC', flexShrink: 0 }}>
             <div
               style={{
                 display: 'flex',
@@ -903,7 +916,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
           </div>
 
           {/* List Cards */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+          <div className="saved-locations-cards-scroll">
             {filteredLocations.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 10px', color: '#64748B', fontSize: '13px' }}>
                 No locations match your search.
@@ -1059,7 +1072,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
         {/* Right Side: Leaflet Interactive Map */}
         <div className="saved-locations-map-col">
-          <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '420px' }} />
+          <div ref={mapContainerRef} className="saved-locations-map-canvas" />
 
           {/* Top Floating Controls Bar */}
           <div
