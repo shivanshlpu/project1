@@ -222,6 +222,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [processingTpId, setProcessingTpId] = useState<string | null>(null);
+  const [pendingPlansByMonth, setPendingPlansByMonth] = useState<Record<string, { count: number; mrNames: string[] }>>({});
 
   
   const resolveItemBatchRateAndAmount = (item: MonthlyTpItem) => {
@@ -276,7 +277,40 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     };
     fetchMetadata();
     fetchRouteBatches();
+    fetchPendingSummary();
   }, [apiUrl]);
+
+  const fetchPendingSummary = async () => {
+    try {
+      const res = await resilientFetch('/tour-plans/admin?status=SUBMITTED');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const planMap = new Map<string, { month: string; mr_name: string }>();
+          data.forEach((item: any) => {
+            const planKey = item.tp_id || item.plan_id || item.id;
+            const m = item.month || (item.date ? item.date.slice(0, 7) : '');
+            if (planKey && m && !planMap.has(planKey)) {
+              planMap.set(planKey, { month: m, mr_name: item.mr_name || 'MR' });
+            }
+          });
+          const summary: Record<string, { count: number; mrNames: string[] }> = {};
+          planMap.forEach((val) => {
+            if (!summary[val.month]) {
+              summary[val.month] = { count: 0, mrNames: [] };
+            }
+            summary[val.month].count += 1;
+            if (!summary[val.month].mrNames.includes(val.mr_name)) {
+              summary[val.month].mrNames.push(val.mr_name);
+            }
+          });
+          setPendingPlansByMonth(summary);
+        }
+      }
+    } catch {
+      // offline fallback
+    }
+  };
 
   
   const fetchRouteBatches = async (silent?: boolean | any) => {
@@ -597,6 +631,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
       fetchMonthlyPlansSilent();
       fetchRouteBatches(true);
       fetchRouteChangeRequests(true);
+      fetchPendingSummary();
     };
 
     window.addEventListener('ahtri_notification_received', handleLiveSync);
@@ -657,6 +692,10 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
     const totalReimbursement = filteredPlans.reduce((acc, p) => acc + (resolveItemBatchRateAndAmount(p).effectiveAmount || 0), 0);
     return { totalVisits, pendingCount, approvedCount, distinctMrs, totalDistance, totalReimbursement };
   }, [filteredPlans, routeBatches]);
+
+  const totalCrossMonthPending = useMemo(() => {
+    return Object.values(pendingPlansByMonth).reduce((acc, curr) => acc + curr.count, 0);
+  }, [pendingPlansByMonth]);
 
   const distinctPlans = useMemo(() => {
     const map = new Map<string, {
@@ -1252,7 +1291,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           <Calendar size={15} />
           <span>
             Monthly TP Schedules & Reimbursements
-            {kpiStats.pendingCount > 0 && (
+            {kpiStats.pendingCount > 0 ? (
               <span
                 style={{
                   marginLeft: 6,
@@ -1266,7 +1305,22 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
               >
                 {kpiStats.pendingCount}
               </span>
-            )}
+            ) : totalCrossMonthPending > 0 ? (
+              <span
+                style={{
+                  marginLeft: 6,
+                  background: '#F59E0B',
+                  color: '#FFFFFF',
+                  padding: '2px 7px',
+                  borderRadius: 10,
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+                title={`${totalCrossMonthPending} pending submission(s) across other months`}
+              >
+                {totalCrossMonthPending}
+              </span>
+            ) : null}
           </span>
         </button>
 
@@ -1414,6 +1468,60 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
             </div>
           </div>
 
+          {/* Cross-Month Pending Tour Plans Alert Banner */}
+          {Object.entries(pendingPlansByMonth).map(([m, info]) => {
+            if (selectedMonth === m || selectedMonth === 'ALL' || info.count <= 0) return null;
+            let displayMonth = m;
+            try {
+              const [y, mon] = m.split('-').map(Number);
+              displayMonth = new Date(y, mon - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            } catch {}
+            return (
+              <div
+                key={m}
+                style={{
+                  background: '#FEF3C7',
+                  border: '1.5px solid #F59E0B',
+                  borderRadius: 8,
+                  padding: '12px 18px',
+                  marginBottom: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  boxShadow: '0 1px 3px rgba(245, 158, 11, 0.15)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Clock size={20} color="#B45309" />
+                  <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>
+                    <strong>Action Required:</strong> {info.count} Tour Plan{info.count > 1 ? 's are' : ' is'} awaiting review in <strong>{displayMonth} ({m})</strong> submitted by {info.mrNames.join(', ')}.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonth(m)}
+                  style={{
+                    background: '#D97706',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    padding: '7px 14px',
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    fontSize: 12.5,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Switch to {displayMonth} ({info.count} Pending) →
+                </button>
+              </div>
+            );
+          })}
+
           {/* Filter Bar */}
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '14px 18px', marginBottom: 18 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
@@ -1424,10 +1532,16 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                 >
-                  <option value="ALL">All Months</option>
-                  {monthOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
+                  <option value="ALL">All Months{totalCrossMonthPending > 0 ? ` (${totalCrossMonthPending} Pending)` : ''}</option>
+                  {monthOptions.map((opt) => {
+                    const pInfo = pendingPlansByMonth[opt.value];
+                    const pendingText = pInfo && pInfo.count > 0 ? ` — ⏳ ${pInfo.count} Pending Approval` : '';
+                    return (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}{pendingText}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1503,6 +1617,42 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                 <p style={{ fontSize: 12.5, color: '#64748B', maxWidth: 440, margin: '0 auto' }}>
                   No tour plan matches the selected filters for month {selectedMonth}.
                 </p>
+                {Object.entries(pendingPlansByMonth).some(([m, info]) => m !== selectedMonth && info.count > 0) && (
+                  <div style={{ marginTop: 18 }}>
+                    {Object.entries(pendingPlansByMonth).map(([m, info]) => {
+                      if (m === selectedMonth || info.count <= 0) return null;
+                      let displayMonth = m;
+                      try {
+                        const [y, mon] = m.split('-').map(Number);
+                        displayMonth = new Date(y, mon - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                      } catch {}
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSelectedMonth(m)}
+                          style={{
+                            background: '#0F8B5A',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            padding: '9px 18px',
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            boxShadow: '0 2px 5px rgba(15, 139, 90, 0.25)',
+                          }}
+                        >
+                          <Clock size={16} />
+                          <span>View {displayMonth} Submissions ({info.count} Pending Review) →</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
