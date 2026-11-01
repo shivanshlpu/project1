@@ -149,13 +149,36 @@ export default function App() {
         if (saved) {
           try {
             const user = JSON.parse(saved);
+            if (user?.token) {
+              const baseUrl = await ApiConfig.getBaseUrl();
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 6000);
+              const checkRes = await fetch(`${baseUrl}/auth/me`, {
+                headers: {
+                  Authorization: `Bearer ${user.token}`,
+                  'Content-Type': 'application/json',
+                },
+                signal: controller.signal,
+              }).catch(() => null);
+              clearTimeout(timer);
+
+              if (checkRes && (checkRes.status === 401 || checkRes.status === 403)) {
+                // Server revoked token or user was logged out -> kick back to login screen
+                await AsyncStorage.removeItem(SESSION_KEY);
+                await AsyncStorage.removeItem('@ahtri_cached_user_session');
+                await ApiConfig.clearSession();
+                setCurrentUser(null);
+                setIsLoadingSession(false);
+                return;
+              }
+            }
             setCurrentUser(user);
             if (user?.token) {
               await ApiConfig.setToken(user.token);
             }
             await ApiConfig.setUser(user);
           } catch {
-            // Keep null
+            setCurrentUser(null);
           }
         }
       })
@@ -248,6 +271,10 @@ export default function App() {
         const baseUrl = await ApiConfig.getBaseUrl();
         const headers = await ApiConfig.getAuthHeaders();
         const res = await fetch(`${baseUrl}/leave/my`, { headers });
+        if ((res.status === 401 || res.status === 403) && isMounted) {
+          performLogout();
+          return;
+        }
         if (res.ok && isMounted) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -340,6 +367,10 @@ export default function App() {
 
         // A. Sync tasks assigned to this MR
         const tasksRes = await fetch(`${baseUrl}/tasks?mr_id=${encodeURIComponent(currentUserId)}`, { headers });
+        if ((tasksRes.status === 401 || tasksRes.status === 403) && isMounted) {
+          performLogout();
+          return;
+        }
         if (tasksRes.ok && isMounted) {
           const tasksData = await tasksRes.json();
           if (Array.isArray(tasksData)) {
@@ -628,7 +659,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+          ...(userToLogOut?.token ? { Authorization: 'Bearer ' + userToLogOut.token } : {}),
         },
         body: JSON.stringify({
           userId: userIdToLogout,

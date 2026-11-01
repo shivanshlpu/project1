@@ -450,8 +450,8 @@ export class UsersService {
     user.device_id = undefined;
     user.device_model = undefined;
     user.device_bound_at = undefined;
-    user.requires_device_otp_on_login = false;
-    user.logged_out = false;
+    user.requires_device_otp_on_login = true;
+    user.logged_out = true;
 
     // Invalidate any pending or stored device authorizations for this employee
     this.db.deviceAuthorizations = this.db.deviceAuthorizations.filter(

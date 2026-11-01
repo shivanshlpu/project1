@@ -112,6 +112,20 @@ export class AuthController {
     return this.authService.checkDeviceAuthStatus(requestId);
   }
 
+  @Post('device-otp/claim')
+  @UseGuards(AuthRateLimiterGuard)
+  @HttpCode(HttpStatus.OK)
+  async claimApprovedDeviceAuth(@Body() dto: { requestId: string; deviceId?: string }) {
+    return this.authService.claimApprovedDeviceAuth(dto.requestId, dto.deviceId);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async getProfile(@Req() req: any) {
+    return this.authService.getProfile(req.user.id);
+  }
+
   @Post('forgot-password')
   @UseGuards(AuthRateLimiterGuard)
   @HttpCode(HttpStatus.OK)

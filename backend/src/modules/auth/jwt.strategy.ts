@@ -21,8 +21,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: { sub: string; role: string; email: string }) {
     const user = this.db.users.find((u) => u.id === payload.sub && !u.deleted_at);
-    if (!user || user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('User is deactivated or session is invalid.');
+    if (!user || user.status !== 'ACTIVE' || user.logged_out) {
+      throw new UnauthorizedException('User is deactivated, logged out, or session is invalid.');
     }
     return {
       id: user.id,

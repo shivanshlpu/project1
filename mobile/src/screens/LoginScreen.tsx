@@ -291,8 +291,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   
+  // Poll for owner approval from Dashboard if waiting on OTP screen
   useEffect(() => {
     if (step !== 'otp_verify' || !deviceAuthRequestId) return;
+    let isCancelled = false;
+
     const interval = setInterval(async () => {
       try {
         const baseUrl = await ApiConfig.getBaseUrl();
@@ -300,31 +303,62 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         if (res.ok) {
           const data = await res.json();
           const approved = data && (data.approved || data.status === 'APPROVED');
-          if (approved) {
-            await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
-            handleLogin(true);
+          if (approved && !isCancelled) {
+            const claimRes = await fetch(`${baseUrl}/auth/device-otp/claim`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requestId: deviceAuthRequestId,
+                deviceId: currentDeviceId,
+              }),
+            });
+            if (claimRes.ok && !isCancelled) {
+              const claimData = await claimRes.json();
+              if (claimData.access_token) {
+                await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
+                const sessionPayload = {
+                  id: claimData.user?.id || 'usr-mr-02',
+                  name: claimData.user?.name || identifier,
+                  email: claimData.user?.email || identifier,
+                  phone: claimData.user?.phone || phone,
+                  role: claimData.user?.role || 'MR',
+                  device_id: currentDeviceId,
+                  device_model: currentDeviceModel,
+                  token: claimData.access_token,
+                  hq_name: claimData.user?.hq_name,
+                  hq_code: claimData.user?.hq_code,
+                  hq_id: claimData.user?.hq_id,
+                  assigned_territory: claimData.user?.assigned_territory || claimData.user?.territory,
+                  assigned_route_batches: claimData.user?.assigned_route_batches || claimData.user?.route_batches,
+                };
+                await AsyncStorage.setItem('@ahtri_cached_user_session', JSON.stringify(sessionPayload)).catch(() => {});
+                Alert.alert(
+                  'Owner Approved ✓',
+                  'Your phone has been approved by the Administrator and bound to your account.',
+                );
+                onLoginSuccess(sessionPayload);
+              }
+            }
           }
         }
       } catch {}
     }, 4000);
-    return () => clearInterval(interval);
-  }, [step, deviceAuthRequestId]);
 
-  const handleLogin = async (forceBypassReauthCheck = false) => {
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [step, deviceAuthRequestId, currentDeviceId, currentDeviceModel]);
+
+  const handleLogin = async () => {
     const rawId = identifier.trim();
     const cleanId = rawId.toLowerCase();
     const cleanPhone = phone.trim();
     setIsSubmitting(true);
     setOtpError('');
 
-    
-    
-    
     const knownMr = registeredMRs[cleanId] || (cleanPhone ? Object.values(registeredMRs).find((u: any) => u.phone === cleanPhone) : undefined);
     const serverIdentifier = cleanPhone || rawId.trim();
-
-    const requiresReauthOtp = await AsyncStorage.getItem('@ahtri_requires_reauth_otp').catch(() => null);
-    const mustEnforceOtp = requiresReauthOtp === 'true' && !forceBypassReauthCheck;
 
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
@@ -337,16 +371,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           password: password,
           device_id: currentDeviceId,
           device_model: currentDeviceModel,
-          was_logged_out: mustEnforceOtp,
-          requires_otp: mustEnforceOtp,
         }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        if (data.requires_device_otp || mustEnforceOtp) {
-          
+        if (data.requires_device_otp) {
           let reqId = data.request_id;
           if (!reqId) {
             try {
@@ -400,20 +431,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
     } catch {
-      const cachedSession = await AsyncStorage.getItem('@ahtri_cached_user_session').catch(() => null);
-      if (cachedSession) {
-        try {
-          const parsed = JSON.parse(cachedSession);
-          if (parsed && (parsed.email?.toLowerCase() === cleanId || parsed.phone === cleanId || parsed.id === cleanId)) {
-            onLoginSuccess(parsed);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch {}
-      }
       Alert.alert(
         'Connection Failed',
-        'Unable to reach server. Please check your internet connection or login online once to enable offline mode.',
+        'Unable to reach server. Please check your internet connection.',
       );
       setIsSubmitting(false);
       return;
@@ -450,12 +470,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       if (res.ok && data.access_token) {
         await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
         Alert.alert(
-          'Phone Authorized',
-          'Your phone has been approved by the Owner and verified. You will remain logged in until you log out.',
+          'Phone Authorized ✓',
+          'Your phone has been approved by the Administrator and locked to your account.',
         );
-        onLoginSuccess({
+        const sessionPayload = {
           id: data.user?.id || 'usr-mr-02',
-          name: data.user?.name || 'Aman Rathore',
+          name: data.user?.name || identifier,
           email: data.user?.email || identifier,
           phone: data.user?.phone || phone,
           role: data.user?.role || 'MR',
@@ -467,7 +487,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           hq_id: data.user?.hq_id,
           assigned_territory: data.user?.assigned_territory || data.user?.territory,
           assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
-        });
+        };
+        await AsyncStorage.setItem('@ahtri_cached_user_session', JSON.stringify(sessionPayload)).catch(() => {});
+        onLoginSuccess(sessionPayload);
       } else {
         setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Administrator.');
       }
@@ -483,8 +505,63 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleCheckOwnerApprovedDirectly = async () => {
-    
-    handleLogin(true);
+    if (!deviceAuthRequestId) {
+      Alert.alert('Notice', 'No pending device verification request found. Please log in again.');
+      setStep('credentials');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const baseUrl = await ApiConfig.getBaseUrl();
+      const res = await fetch(`${baseUrl}/auth/device-otp/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: deviceAuthRequestId,
+          deviceId: currentDeviceId,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.access_token) {
+        await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
+        Alert.alert(
+          'Owner Approved ✓',
+          'Your device has been approved by the Administrator and locked to your account.',
+        );
+        const sessionPayload = {
+          id: data.user?.id || 'usr-mr-02',
+          name: data.user?.name || identifier,
+          email: data.user?.email || identifier,
+          phone: data.user?.phone || phone,
+          role: data.user?.role || 'MR',
+          device_id: currentDeviceId,
+          device_model: currentDeviceModel,
+          token: data.access_token,
+          hq_name: data.user?.hq_name,
+          hq_code: data.user?.hq_code,
+          hq_id: data.user?.hq_id,
+          assigned_territory: data.user?.assigned_territory || data.user?.territory,
+          assigned_route_batches: data.user?.assigned_route_batches || data.user?.route_batches,
+        };
+        await AsyncStorage.setItem('@ahtri_cached_user_session', JSON.stringify(sessionPayload)).catch(() => {});
+        onLoginSuccess(sessionPayload);
+      } else {
+        Alert.alert(
+          'Approval Pending',
+          data.message ||
+            'Owner approval has not been granted yet. Please ask the Administrator to approve your device or enter the 6-digit OTP code shown on the Admin Dashboard.',
+        );
+      }
+    } catch {
+      Alert.alert(
+        'Connection Error',
+        'Unable to contact server. Please verify your internet connection and try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   
@@ -645,7 +722,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Login Button */}
         <TouchableOpacity
           style={styles.loginBtn}
-          onPress={() => handleLogin(false)}
+          onPress={() => handleLogin()}
           disabled={isSubmitting}
         >
           {isSubmitting ? (

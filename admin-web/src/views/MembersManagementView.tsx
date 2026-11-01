@@ -34,7 +34,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { MRMemberItem, TaskItem, DoctorItem } from '../types';
-import { getApiBaseUrl, resilientFetch } from '../utils/apiHelper';
+import { getApiBaseUrl, resilientFetch, fetchDeviceAuthorizationsMerged, approveDeviceAuthorizationDual } from '../utils/apiHelper';
 import { getStoredSavedLocations } from '../utils/savedLocationsStore';
 import { showCenteredNotice, showConfirmModal } from '../components/CenteredModalNotice';
 import { parseSafeOrders, calculateOrderRevenue } from '../utils/orderHelper';
@@ -157,6 +157,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const [memberPage, setMemberPage] = useState<number>(1);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pendingAuthMap, setPendingAuthMap] = useState<Record<string, any>>({});
 
   
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
@@ -1082,6 +1083,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   const isSuperAdminOrAdmin = m.role === 'SUPER_ADMIN' || m.role === 'ADMIN';
                   const isBound = Boolean(m.device_id || m.device_bound_at);
                   const hasLoggedIn = Boolean(m.device_id || m.device_bound_at || m.last_login_at);
+                  const pendingAuth = pendingAuthMap[m.id];
                   return (
                     <button
                       key={m.id}
@@ -1139,8 +1141,10 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                       </div>
                       {isSuperAdminOrAdmin ? (
                         <span title="Administrator Active"><ShieldCheck size={13} color="#2563EB" /></span>
-                      ) : (isBound || hasLoggedIn) ? (
+                      ) : isBound ? (
                         <span title={m.device_model ? `Locked to ${m.device_model}` : "Device Bound / Logged In"}><ShieldCheck size={13} color="#0F8B5A" /></span>
+                      ) : pendingAuthMap[m.id] ? (
+                        <span title={`Pending Approval: ${pendingAuthMap[m.id].device_model} (OTP: ${pendingAuthMap[m.id].otp})`}><Clock size={13} color="#EA580C" /></span>
                       ) : (
                         <span title="Awaiting Phone"><ShieldAlert size={13} color="#D97706" /></span>
                       )}
@@ -1935,6 +1939,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                   const isSuperAdminOrAdmin = m.role === 'SUPER_ADMIN' || m.role === 'ADMIN';
                   const isBound = Boolean(m.device_id || m.device_bound_at);
                   const hasLoggedIn = Boolean(m.device_id || m.device_bound_at || m.last_login_at);
+                  const pendingAuth = pendingAuthMap[m.id];
 
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -2052,6 +2057,83 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                                   Bound: {new Date(m.device_bound_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </span>
                               )}
+                            </div>
+                          ) : pendingAuth ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: '#C2410C',
+                                background: '#FFEDD5',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                width: 'fit-content',
+                                border: '1px solid #FDBA74',
+                              }}>
+                                <Clock size={11} color="#C2410C" />
+                                <span>Awaiting Owner Approval</span>
+                              </span>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                              }}>
+                                📱 {pendingAuth.device_model || 'New Mobile Device'}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <span style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 800,
+                                  color: '#1E293B',
+                                  background: '#F1F5F9',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontFamily: 'monospace',
+                                  letterSpacing: '1px',
+                                  border: '1px solid #CBD5E1',
+                                }}>
+                                  OTP: {pendingAuth.otp}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await approveDeviceAuthorizationDual(pendingAuth.id);
+                                      showToast(`✓ Approved ${m.name}'s phone (${pendingAuth.device_model}).`);
+                                      const uRes = await resilientFetch('/users');
+                                      if (uRes.ok) {
+                                        const uData = await uRes.json();
+                                        if (Array.isArray(uData)) setMembers(cleanAndSanitizeMembers(uData));
+                                      }
+                                      const aRes = await fetchDeviceAuthorizationsMerged();
+                                      const pMap: Record<string, any> = {};
+                                      (aRes?.pending || []).forEach((p: any) => { if (p.user_id) pMap[p.user_id] = p; });
+                                      setPendingAuthMap(pMap);
+                                    } catch (err: any) {
+                                      showToast(`Error: ${err.message}`);
+                                    }
+                                  }}
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    color: '#FFFFFF',
+                                    background: '#0F8B5A',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '2px 7px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Approve
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
