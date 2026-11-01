@@ -740,6 +740,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     try {
       localStorage.setItem('ahtri_cached_members', JSON.stringify(updated));
     } catch {}
+    setPendingAuthMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    window.dispatchEvent(new CustomEvent('ahtri_device_approvals_updated'));
     showToast(`✓ Device lock cleared for ${name}. Ready for new phone pairing.`);
   };
 
@@ -1280,26 +1286,26 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
               <span>{copiedId === selectedMember.id ? 'Copied' : 'Credentials'}</span>
             </button>
 
-            {selectedMember.role === 'MR' && (
+            {selectedMember.role === 'MR' && Boolean(selectedMember.device_id || selectedMember.device_bound_at) && (
               <button
                 type="button"
                 onClick={() => handleResetDevice(selectedMember.id, selectedMember.name, selectedMember.device_model || selectedMember.device_id)}
                 title="Reset hardware device lock to permit new phone pairing"
                 style={{
                   padding: '6px 12px',
-                  background: (selectedMember.device_id || selectedMember.device_bound_at) ? '#FEF2F2' : '#F8FAFC',
-                  border: (selectedMember.device_id || selectedMember.device_bound_at) ? '1px solid #FECACA' : '1px solid #CBD5E1',
+                  background: '#FEF2F2',
+                  border: '1px solid #FECACA',
                   borderRadius: '6px',
                   fontSize: '11.5px',
                   fontWeight: 600,
-                  color: (selectedMember.device_id || selectedMember.device_bound_at) ? '#DC2626' : '#64748B',
+                  color: '#DC2626',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
                 }}
               >
-                <Smartphone size={13} color={(selectedMember.device_id || selectedMember.device_bound_at) ? '#DC2626' : '#64748B'} />
+                <Smartphone size={13} color="#DC2626" />
                 <span>Reset Device Lock</span>
               </button>
             )}
@@ -2248,16 +2254,16 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                             <span>Edit</span>
                           </button>
 
-                          {!isSuperAdminOrAdmin && (
+                          {isBound && !isSuperAdminOrAdmin && (
                             <button
                               type="button"
                               onClick={() => handleResetDevice(m.id, m.name, m.device_model || m.device_id)}
-                              title={isBound ? `Clear lock for ${m.device_model || m.device_id}` : "Clear device lock to allow new phone pairing"}
+                              title={`Clear lock for ${m.device_model || m.device_id || 'Designated Phone'}`}
                               style={{
                                 padding: '5px 8px',
-                                background: isBound ? '#FEF2F2' : '#F8FAFC',
-                                color: isBound ? '#DC2626' : '#64748B',
-                                border: isBound ? '1px solid #FECACA' : '1px solid #CBD5E1',
+                                background: '#FEF2F2',
+                                color: '#DC2626',
+                                border: '1px solid #FECACA',
                                 borderRadius: '4px',
                                 fontSize: '11px',
                                 fontWeight: 700,
@@ -2267,7 +2273,7 @@ Note: Authenticate using your initial onboarding password. Device locks to your 
                                 gap: '3px',
                               }}
                             >
-                              <Smartphone size={11} />
+                              <Smartphone size={11} color="#DC2626" />
                               <span>Reset Lock</span>
                             </button>
                           )}

@@ -332,6 +332,7 @@ export const App: React.FC = () => {
   }, [authUser]);
 
   
+  // Live polling for pending MR device authorization requests (OTP approvals)
   useEffect(() => {
     if (!authUser) return;
     const fetchPendingCount = async () => {
@@ -344,9 +345,15 @@ export const App: React.FC = () => {
       }
     };
     fetchPendingCount();
-    const timer = setInterval(fetchPendingCount, 45000);
-    return () => clearInterval(timer);
-  }, []);
+    const timer = setInterval(fetchPendingCount, 8000);
+    window.addEventListener('ahtri_device_approvals_updated', fetchPendingCount);
+    window.addEventListener('focus', fetchPendingCount);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('ahtri_device_approvals_updated', fetchPendingCount);
+      window.removeEventListener('focus', fetchPendingCount);
+    };
+  }, [authUser]);
 
   
   useEffect(() => {

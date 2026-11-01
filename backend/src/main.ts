@@ -52,10 +52,15 @@ async function bootstrap() {
     try {
       const parsed = new URL(origin);
       const host = parsed.hostname.toLowerCase();
-      // Allow localhost in non-production environments only
-      if (process.env.NODE_ENV !== 'production') {
-        if (host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2') return true;
-      }
+      // Allow localhost and local LAN IPs
+      if (host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2') return true;
+      if (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) return true;
+      // Allow authorized production hosting platforms
+      if (host === 'vercel.app' || host.endsWith('.vercel.app')) return true;
+      if (host === 'netlify.app' || host.endsWith('.netlify.app')) return true;
+      if (host === 'onrender.com' || host.endsWith('.onrender.com')) return true;
+      if (host === 'github.io' || host.endsWith('.github.io')) return true;
+      if (host.includes('ahtri') || host.includes('project1')) return true;
     } catch {
       return false;
     }

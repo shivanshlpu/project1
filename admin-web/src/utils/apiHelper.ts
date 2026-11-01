@@ -177,19 +177,33 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
   const pendingMap = new Map<string, any>();
   const historyMap = new Map<string, any>();
 
-  const headers = getAuthHeaders();
-
-  
+  // 1. Resilient fetch via active base URL (with automatic token refresh)
   try {
-    const renderRes = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(6000) });
-    if (renderRes.ok) {
-      const data = await renderRes.json();
+    const res = await resilientFetch('/auth/device-authorizations');
+    if (res.ok) {
+      const data = await res.json();
       (data.pending || []).forEach((item: any) => pendingMap.set(item.id, item));
       (data.history || []).forEach((item: any) => historyMap.set(item.id, item));
     }
   } catch {}
 
-  
+  const headers = getAuthHeaders();
+
+  // 2. Direct Render query fallback
+  try {
+    const renderRes = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(6000) });
+    if (renderRes.ok) {
+      const data = await renderRes.json();
+      (data.pending || []).forEach((item: any) => {
+        if (!pendingMap.has(item.id)) pendingMap.set(item.id, item);
+      });
+      (data.history || []).forEach((item: any) => {
+        if (!historyMap.has(item.id)) historyMap.set(item.id, item);
+      });
+    }
+  } catch {}
+
+  // 3. Local backend query fallback
   try {
     const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(2000) });
     if (localRes.ok) {
@@ -214,8 +228,13 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
 }
 
 export async function approveDeviceAuthorizationDual(id: string): Promise<boolean> {
-  const headers = getAuthHeaders();
   let ok = false;
+  try {
+    const res = await resilientFetch(`/auth/device-authorizations/${id}/approve`, { method: 'POST' });
+    if (res.ok) ok = true;
+  } catch {}
+
+  const headers = getAuthHeaders();
   try {
     const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
@@ -228,8 +247,13 @@ export async function approveDeviceAuthorizationDual(id: string): Promise<boolea
 }
 
 export async function rejectDeviceAuthorizationDual(id: string): Promise<boolean> {
-  const headers = getAuthHeaders();
   let ok = false;
+  try {
+    const res = await resilientFetch(`/auth/device-authorizations/${id}/reject`, { method: 'POST' });
+    if (res.ok) ok = true;
+  } catch {}
+
+  const headers = getAuthHeaders();
   try {
     const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
