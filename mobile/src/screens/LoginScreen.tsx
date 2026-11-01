@@ -471,25 +471,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       } else {
         setOtpError(data.message || 'Invalid or expired OTP code. Please request the code from Administrator.');
       }
-    } catch {
-      
-      await AsyncStorage.removeItem('@ahtri_requires_reauth_otp').catch(() => {});
-      Alert.alert('Device Authorized (Offline Mode)', 'Device linked successfully.');
-      const fallbackUser = registeredMRs[identifier.trim().toLowerCase()] || registeredMRs['shd'];
-      onLoginSuccess({
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        phone: fallbackUser.phone,
-        role: 'MR',
-        device_id: currentDeviceId,
-        device_model: currentDeviceModel,
-        hq_name: fallbackUser.hq_name,
-        hq_code: fallbackUser.hq_code,
-        hq_id: fallbackUser.hq_id,
-        assigned_territory: fallbackUser.territory,
-        assigned_route_batches: fallbackUser.assigned_route_batches,
-      });
+    } catch (err: any) {
+      setOtpError('Network error: Unable to verify device online. Please check your internet connection.');
+      Alert.alert(
+        'Verification Failed',
+        'Unable to verify device authorization online. An active internet connection is required to approve this phone.',
+      );
     } finally {
       setIsSubmitting(false);
     }

@@ -37,8 +37,11 @@ export class UsersController {
 
   @Post()
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
-  async createUser(@Body() dto: CreateUserDto) {
-    return this.usersService.createUser(dto);
+  async createUser(
+    @Body() dto: CreateUserDto,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.usersService.createUser(dto, currentUser);
   }
 
   @Get(':id')
@@ -53,8 +56,12 @@ export class UsersController {
   @Patch(':id')
   @Put(':id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
-  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.updateUser(id, dto);
+  async updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.usersService.updateUser(id, dto, currentUser);
   }
 
   @Delete(':id')
@@ -83,7 +90,10 @@ export class UsersController {
 
   @Patch(':id/reset-device')
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
-  async resetDevice(@Param('id') id: string) {
-    return this.usersService.resetDeviceBinding(id);
+  async resetDevice(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.usersService.resetDeviceBinding(id, currentUser);
   }
 }

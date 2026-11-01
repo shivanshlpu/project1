@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, UseGuards, Request as Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, ForgotPasswordDto } from './dto/login.dto';
 import { RequestOtpDto, VerifyOtpDto } from './dto/otp.dto';
@@ -83,11 +83,17 @@ export class AuthController {
   }
 
   @Post('logout')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(
+    @Req() req: any,
     @Body() dto: Partial<RefreshTokenDto> & { userId?: string; identifier?: string; deviceId?: string },
   ) {
-    return this.authService.logout(dto?.refreshToken, dto?.userId, dto?.identifier, dto?.deviceId);
+    const callerUser = req.user;
+    const isPrivileged = callerUser?.role && ['SUPER_ADMIN', 'ADMIN'].includes(callerUser.role);
+    // Non-privileged users can only log out their own user ID
+    const targetUserId = isPrivileged && dto?.userId ? dto.userId : callerUser?.id;
+    return this.authService.logout(dto?.refreshToken, targetUserId, undefined, dto?.deviceId);
   }
 
   @Post('device-otp/request')

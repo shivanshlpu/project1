@@ -601,11 +601,21 @@ export class AiAssistantService {
       dateRange,
     });
 
+    const escapeHtml = (val: any): string => {
+      if (val === null || val === undefined) return '';
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
     const k = res.kpis;
     const tableRows = res.breakdown
       .map((row) => {
         const cells = Object.values(row)
-          .map((v) => `<td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;font-size:12px;">${v}</td>`)
+          .map((v) => `<td style="padding:8px 12px;border-bottom:1px solid #E2E8F0;font-size:12px;">${escapeHtml(v)}</td>`)
           .join('');
         return `<tr>${cells}</tr>`;
       })
@@ -613,7 +623,7 @@ export class AiAssistantService {
 
     const headers = res.breakdown.length > 0
       ? Object.keys(res.breakdown[0])
-          .map((h) => `<th style="padding:10px 12px;background:#F8FAFC;border-bottom:2px solid #CBD5E1;text-align:left;font-size:11.5px;color:#475569;">${h}</th>`)
+          .map((h) => `<th style="padding:10px 12px;background:#F8FAFC;border-bottom:2px solid #CBD5E1;text-align:left;font-size:11.5px;color:#475569;">${escapeHtml(h)}</th>`)
           .join('')
       : '';
 
@@ -640,7 +650,7 @@ export class AiAssistantService {
     <div>
       <h1 class="title">AHTRI BIOTECH</h1>
       <div class="subtitle">Field Force Automation • Executive Performance & Territory Audit</div>
-      <div style="margin-top:8px;font-size:12px;font-weight:600;color:#0F8B5A;">Report Scope: ${k.dateRangeLabel}</div>
+      <div style="margin-top:8px;font-size:12px;font-weight:600;color:#0F8B5A;">Report Scope: ${escapeHtml(k.dateRangeLabel)}</div>
     </div>
     <div style="text-align:right;font-size:11.5px;color:#64748B;">
       <div>Generated: ${new Date().toLocaleString('en-IN')}</div>

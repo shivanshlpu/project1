@@ -626,7 +626,10 @@ export default function App() {
       const timer = setTimeout(() => controller.abort(), 2500);
       fetch(`${baseUrl}/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+        },
         body: JSON.stringify({
           userId: userIdToLogout,
           identifier: userIdentifier,

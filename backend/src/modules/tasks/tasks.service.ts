@@ -267,6 +267,31 @@ export class TasksService {
     return { ...task, assignments, verifications, photos };
   }
 
+  private validateLocationIntegrity(userId: string, lat: number, lng: number): void {
+    if (typeof lat !== 'number' || typeof lng !== 'number' || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw new BadRequestException('Invalid geographic coordinates provided.');
+    }
+    // Server-side velocity and impossibility validation (SEC-VULN-007)
+    const recentVerifications = this.db.locationVerifications
+      .filter((v) => v.user_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    if (recentVerifications.length > 0) {
+      const last = recentVerifications[0];
+      const timeDeltaHours = (Date.now() - new Date(last.created_at).getTime()) / (1000 * 60 * 60);
+      if (timeDeltaHours < 0.5 && timeDeltaHours > 0) {
+        const distanceKm = distanceMeters(lat, lng, last.latitude, last.longitude) / 1000;
+        const velocityKmh = distanceKm / timeDeltaHours;
+        // Speeds > 200 km/h with distance > 10 km indicate GPS spoofing/teleportation
+        if (velocityKmh > 200 && distanceKm > 10) {
+          throw new BadRequestException(
+            `Suspicious location change detected: ${Math.round(distanceKm)} km traversed in ${Math.round(timeDeltaHours * 60)} minutes. Location verification rejected by integrity guard.`
+          );
+        }
+      }
+    }
+  }
+
   async startTask(id: string, userId: string, dto: VerifyLocationDto) {
     this.checkAndSuspendOverdueTasks();
     const task = this.db.tasks.find((t) => t.id === id && !t.deleted_at);
@@ -278,7 +303,8 @@ export class TasksService {
       );
     }
 
-    // === ANTI-MOCK & DEVICE INTEGRITY VALIDATION (§4) ===
+    // === ANTI-MOCK & DEVICE INTEGRITY VALIDATION (§4 & SEC-VULN-007) ===
+    this.validateLocationIntegrity(userId, dto.latitude, dto.longitude);
     if (dto.is_mocked) {
       throw new BadRequestException(
         'Mock / fake GPS location detected on device. Location verification rejected.',
@@ -392,7 +418,8 @@ export class TasksService {
       throw new ForbiddenException('Access denied: You can only update tasks assigned to your account.');
     }
 
-    // Check anti-mock and developer mode (§4)
+    // Check anti-mock, developer mode, and server-side velocity (§4 & SEC-VULN-007)
+    this.validateLocationIntegrity(userId, dto.latitude, dto.longitude);
     if (dto.is_mocked) {
       throw new BadRequestException('Mock / fake GPS location detected on device.');
     }

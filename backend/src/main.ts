@@ -52,12 +52,10 @@ async function bootstrap() {
     try {
       const parsed = new URL(origin);
       const host = parsed.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1') return true;
-      if (host === 'ahtri-backend.onrender.com' || host.endsWith('.onrender.com')) return true;
-      if (host === 'vercel.app' || host.endsWith('.vercel.app')) return true;
-      if (host === 'netlify.app' || host.endsWith('.netlify.app')) return true;
-      if (host === 'github.io' || host.endsWith('.github.io')) return true;
-      if (host.includes('ahtri') || host.includes('project1')) return true;
+      // Allow localhost in non-production environments only
+      if (process.env.NODE_ENV !== 'production') {
+        if (host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2') return true;
+      }
     } catch {
       return false;
     }

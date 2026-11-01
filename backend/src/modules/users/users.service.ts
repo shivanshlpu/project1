@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -83,7 +84,20 @@ export class UsersService {
     return u;
   }
 
-  async createUser(dto: CreateUserDto) {
+  async createUser(dto: CreateUserDto, currentUser?: any) {
+    // Role Hierarchy & Privilege Escalation Prevention (SEC-VULN-008)
+    if (currentUser && currentUser.role !== 'SUPER_ADMIN') {
+      if (currentUser.role === 'ADMIN') {
+        if (dto.role === 'SUPER_ADMIN' || dto.role === 'ADMIN') {
+          throw new ForbiddenException('Access denied: Admins cannot create ADMIN or SUPER_ADMIN accounts.');
+        }
+      } else {
+        if (dto.role !== 'MR') {
+          throw new ForbiddenException('Access denied: Managers can only create MR accounts.');
+        }
+      }
+    }
+
     const existing = this.db.users.find(
       (u) =>
         (u.email.toLowerCase() === dto.email.toLowerCase() || u.phone === dto.phone) &&
@@ -167,15 +181,42 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  async updateUser(id: string, dto: UpdateUserDto) {
+  async updateUser(id: string, dto: UpdateUserDto, currentUser?: any) {
     const user = this.db.users.find((u) => u.id === id && !u.deleted_at);
     if (!user) throw new NotFoundException('User not found');
+
+    // Role Hierarchy & Privilege Escalation Prevention (SEC-VULN-001)
+    if (dto.role) {
+      if (currentUser && currentUser.role !== 'SUPER_ADMIN') {
+        if (currentUser.role === 'ADMIN') {
+          if (dto.role === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN') {
+            throw new ForbiddenException('Access denied: Admins cannot assign SUPER_ADMIN role or modify SUPER_ADMIN accounts.');
+          }
+        } else {
+          throw new ForbiddenException('Access denied: Only Administrators can modify user roles.');
+        }
+      }
+      user.role = dto.role;
+    }
+
+    // Secure Password Modification Check (SEC-VULN-001)
+    if (dto.password && dto.password.trim()) {
+      if (currentUser && currentUser.id !== id && currentUser.role !== 'SUPER_ADMIN') {
+        if (currentUser.role === 'ADMIN') {
+          if (user.role === 'SUPER_ADMIN') {
+            throw new ForbiddenException('Access denied: Admins cannot reset password for SUPER_ADMIN.');
+          }
+        } else {
+          throw new ForbiddenException('Access denied: You do not have permission to reset passwords for other accounts.');
+        }
+      }
+      user.password_hash = await bcrypt.hash(dto.password.trim(), 10);
+    }
 
     if (dto.name) user.name = dto.name;
     if (dto.phone) user.phone = dto.phone;
     if (dto.email) user.email = dto.email.toLowerCase();
     if (dto.status) user.status = dto.status;
-    if (dto.role) user.role = dto.role;
     if (dto.area_id) user.area_id = dto.area_id;
     if (dto.hq_id || dto.hq_name || dto.hq_code || dto.area_id || dto.zone_id || dto.region_id) {
       const foundHq = this.db.findHeadquarter(dto.hq_id || dto.hq_name || dto.hq_code || dto.area_id || dto.zone_id || dto.region_id || '');
@@ -211,9 +252,7 @@ export class UsersService {
     }
     if (dto.biometric_enabled !== undefined) user.biometric_enabled = dto.biometric_enabled;
 
-    if (dto.password && dto.password.trim()) {
-      user.password_hash = await bcrypt.hash(dto.password.trim(), 10);
-    }
+    // Password hash already updated and validated above
 
     // Keep in-memory admin aliases synchronized if admin profile changed
     if (user.id === 'usr-admin-01' || user.id === 'usr-admin-owner') {
@@ -394,9 +433,18 @@ export class UsersService {
     return { message: 'Territory assigned successfully', user_id: id, area_id: dto.area_id };
   }
 
-  async resetDeviceBinding(id: string) {
+  async resetDeviceBinding(id: string, currentUser?: any) {
     const user = this.db.users.find((u) => u.id === id && !u.deleted_at);
     if (!user) throw new NotFoundException('User not found');
+
+    if (currentUser && currentUser.role !== 'SUPER_ADMIN') {
+      if (user.role === 'SUPER_ADMIN') {
+        throw new ForbiddenException('Access denied: Only SUPER_ADMIN can reset device locks on SUPER_ADMIN accounts.');
+      }
+      if (currentUser.role === 'MANAGER' && user.role === 'ADMIN') {
+        throw new ForbiddenException('Access denied: Managers cannot reset device locks for Admin accounts.');
+      }
+    }
 
     const previousDevice = user.device_model || user.device_id || 'None';
     user.device_id = undefined;
