@@ -25,22 +25,21 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.59',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '60', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.60',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '61', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.59/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.60/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Fixed Medicine Catalog Modal: Full list of 17+ catalog medicines renders with search and live stock counts',
-    'Streamlined Stock Location Selector: Replaced long vertical button lists with a compact dropdown picker',
-    'Unified Location Stock Display: Directly displays available unit count at the selected stock location without redundant separate cards',
-    'Compact Order Card Layout: Prevents long scrolling and clutter during visit completion',
+    'Permanent Proof Photo Persistence: Photos captured during visits are securely saved to local storage so skipping orders and returning later never loses the verification image',
+    'Preserved Task Photo Synchronization: Background task sync ensures photo proof is not stripped during backend refreshes',
+    'Streamlined Stock Location Dropdown: Replaced long vertical lists with a compact location selector showing live stock units',
   ],
 };
 

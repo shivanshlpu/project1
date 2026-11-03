@@ -412,11 +412,16 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           );
 
           
+          const localTasksMap = new Map<string, MobileTaskItem>();
+          allTasks.forEach((at) => localTasksMap.set(at.id, at));
+
           const backendMapped: MobileTaskItem[] = activeBackendTasks.map((t: any) => {
             const locallyComp = localCompMap.get(t.id);
             if (locallyComp) {
               return locallyComp;
             }
+            const localExisting = localTasksMap.get(t.id);
+            const resolvedPhoto = t.visit_photo || t.photo_url || t.verification_photo_key || t.photo_key || localExisting?.visit_photo;
             return {
               id: t.id,
               title: t.title,
@@ -430,16 +435,21 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
               longitude: t.longitude,
               geofence_radius_m: t.geofence_radius_m || 50,
               priority: t.priority || 'MEDIUM',
-              status: t.status,
+              status: (t.status === 'COMPLETED' ? 'COMPLETED' : localExisting?.status === 'ORDER_PENDING' ? 'ORDER_PENDING' : t.status),
               hq_id: currentUserHqId || t.hq_id,
               hq_name: currentUserHqName || t.hq_name,
-              started_at: t.started_at,
-              completed_at: t.completed_at,
-              outcome: t.outcome,
-              orders: t.orders,
+              started_at: t.started_at || localExisting?.started_at,
+              completed_at: t.completed_at || localExisting?.completed_at,
+              outcome: t.outcome || localExisting?.outcome,
+              orders: t.orders || localExisting?.orders,
               suspended_at: t.suspended_at,
               suspended_reason: t.suspended_reason,
-              products: t.products || [],
+              products: t.products || localExisting?.products || [],
+              route_batch_id: t.route_batch_id || localExisting?.route_batch_id,
+              route_batch_name: t.route_batch_name || localExisting?.route_batch_name,
+              tp_entry_id: t.tp_entry_id || localExisting?.tp_entry_id,
+              sequence_order: t.sequence_order !== undefined ? t.sequence_order : localExisting?.sequence_order,
+              visit_photo: resolvedPhoto,
             };
           });
 
@@ -716,6 +726,13 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     });
     if (photo) {
       setVisitPhoto(photo);
+      const photoStr = (photo.base64 && photo.base64.startsWith('data:')) ? photo.base64 : photo.uri;
+      if (completingTask) {
+        if (photoStr) {
+          AsyncStorage.setItem(`@ahtri_task_photo_${completingTask.id}`, photoStr).catch(() => {});
+        }
+        setCompletingTask((prev) => (prev ? { ...prev, visit_photo: photoStr } : prev));
+      }
       Alert.alert('Photo Attached ✓', 'On-site clinic detailing photo captured and compressed.');
     }
   };
@@ -847,7 +864,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   };
 
   
-  const handleOpenCompleteSheet = (task: MobileTaskItem) => {
+  const handleOpenCompleteSheet = async (task: MobileTaskItem) => {
     if (task.status === 'SUSPENDED') {
       Alert.alert(
         'Task Suspended',
@@ -855,7 +872,15 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       );
       return;
     }
-    const existingPhoto = task.visit_photo || (task as any).photo_url || (task as any).verification_photo_key;
+    let existingPhoto = task.visit_photo || (task as any).photo_url || (task as any).verification_photo_key;
+    if (!existingPhoto || existingPhoto.length < 10) {
+      try {
+        const cached = await AsyncStorage.getItem(`@ahtri_task_photo_${task.id}`);
+        if (cached && cached.trim().length > 10) {
+          existingPhoto = cached;
+        }
+      } catch {}
+    }
     if (existingPhoto) {
       setVisitPhoto({
         uri: existingPhoto,
@@ -867,7 +892,10 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       setVisitPhoto(null);
     }
     setVisitOutcome(task.outcome || '');
-    setCompletingTask(task);
+    setCompletingTask({
+      ...task,
+      visit_photo: existingPhoto || task.visit_photo,
+    });
   };
 
   
@@ -880,7 +908,6 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       : new Date(Date.now() - 15 * 60 * 1000);
     const duration = Math.max(60, Math.round((endTime.getTime() - startTime.getTime()) / 1000));
 
-    
     let photoPayload: string | undefined = undefined;
     if (visitPhoto?.base64 && visitPhoto.base64.startsWith('data:image')) {
       photoPayload = visitPhoto.base64;
@@ -903,6 +930,23 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       }
     }
 
+    if (!photoPayload) {
+      photoPayload = completingTask.visit_photo || (completingTask as any).photo_url;
+    }
+    if (!photoPayload) {
+      try {
+        const cached = await AsyncStorage.getItem(`@ahtri_task_photo_${completingTask.id}`);
+        if (cached && cached.trim().length > 10) photoPayload = cached;
+      } catch {}
+    }
+
+    // Persist photo in disk cache permanently for this task
+    if (photoPayload) {
+      try {
+        await AsyncStorage.setItem(`@ahtri_task_photo_${completingTask.id}`, photoPayload);
+      } catch {}
+    }
+
     const pendingTask: MobileTaskItem = {
       ...completingTask,
       status: 'ORDER_PENDING',
@@ -911,11 +955,17 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       visit_photo: photoPayload,
     };
 
-    setAllTasks((prev) =>
-      prev.map((t) => (t.id === completingTask.id ? pendingTask : t)),
-    );
+    setAllTasks((prev) => {
+      const updated = prev.map((t) => (t.id === completingTask.id ? pendingTask : t));
+      try {
+        AsyncStorage.setItem(
+          `@ahtri_all_tasks_cache_${currentUserId}`,
+          JSON.stringify(updated),
+        ).catch(() => {});
+      } catch {}
+      return updated;
+    });
 
-    
     try {
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
@@ -1647,7 +1697,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                     Direct camera capture required for visit verification.
                   </Text>
                   {(() => {
-                    const effectivePhotoUri = visitPhoto?.uri || completingTask.visit_photo || (completingTask as any).photo_url;
+                    const effectivePhotoUri = visitPhoto?.uri || (visitPhoto?.base64?.startsWith('data:') ? visitPhoto.base64 : undefined) || completingTask.visit_photo || (completingTask as any).photo_url;
                     if (effectivePhotoUri) {
                       return (
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0FDF4', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#86EFAC' }}>

@@ -1,19 +1,18 @@
 {
   "appName": "AHTRI FFA",
   "packageName": "com.ahtri.ffa",
-  "latestVersion": "1.0.59",
-  "latestVersionCode": 60,
+  "latestVersion": "1.0.60",
+  "latestVersionCode": 61,
   "minimumVersion": "1.0.0",
-  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.59/ahtri-ffa-mobile.apk",
+  "downloadUrl": "https://github.com/shivanshlpu/project1/releases/download/v1.0.60/ahtri-ffa-mobile.apk",
   "forceUpdate": false,
   "isActive": true,
   "releaseDate": "2026-11-04",
-  "publishedAt": "2026-11-04T00:41:00.000Z",
+  "publishedAt": "2026-11-04T01:07:00.000Z",
   "publishedBy": "System Admin",
   "releaseNotes": [
-    "Fixed Medicine Catalog Modal: Full list of 17+ catalog medicines renders with search and live stock counts",
-    "Streamlined Stock Location Selector: Replaced long vertical button lists with a compact dropdown picker",
-    "Unified Location Stock Display: Directly displays available unit count at the selected stock location without redundant separate cards",
-    "Compact Order Card Layout: Prevents long scrolling and clutter during visit completion"
+    "Permanent Proof Photo Persistence: Photos captured during visits are securely saved to local storage so skipping orders and returning later never loses the verification image",
+    "Preserved Task Photo Synchronization: Background task sync ensures photo proof is not stripped during backend refreshes",
+    "Streamlined Stock Location Dropdown: Replaced long vertical lists with a compact location selector showing live stock units"
   ]
 }
