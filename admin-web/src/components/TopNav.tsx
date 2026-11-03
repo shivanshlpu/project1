@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Smartphone,
+  Layers,
   Search,
   Languages,
   Menu,
@@ -20,6 +21,8 @@ interface TopNavProps {
   pendingApprovalsCount: number;
   pendingDeviceApprovalsCount?: number;
   onOpenDeviceApprovals?: () => void;
+  pendingBatchCount?: number;
+  onOpenBatchLocations?: () => void;
   lang: Language;
   onToggleLang: () => void;
   onSearch?: (query: string) => void;
@@ -36,6 +39,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   pendingApprovalsCount,
   pendingDeviceApprovalsCount = 0,
   onOpenDeviceApprovals,
+  pendingBatchCount = 0,
+  onOpenBatchLocations,
   lang,
   onToggleLang,
   onSearch,
@@ -308,6 +313,47 @@ export const TopNav: React.FC<TopNavProps> = ({
                     {pendingDeviceApprovalsCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {/* Pending Route Batch Approvals Quick Badge */}
+            {pendingBatchCount > 0 && onOpenBatchLocations && (
+              <button
+                type="button"
+                onClick={onOpenBatchLocations}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#FEF2F2',
+                  border: '1.5px solid #EF4444',
+                  color: '#B91C1C',
+                  borderRadius: '20px',
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                title={`${pendingBatchCount} new route batch approval${pendingBatchCount > 1 ? 's' : ''} pending`}
+              >
+                <Layers size={14} color="#DC2626" />
+                <span>Batch Approvals</span>
+                <span
+                  style={{
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    lineHeight: '14px',
+                  }}
+                >
+                  {pendingBatchCount}
+                </span>
               </button>
             )}
 

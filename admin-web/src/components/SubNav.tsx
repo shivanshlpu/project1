@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   BarChart3,
+  Layers,
   MapPin,
   Map,
   Users,
@@ -43,6 +44,7 @@ interface SubNavProps {
   pendingApprovalsCount: number;
   pendingTpCount?: number;
   newLocationsCount?: number;
+  pendingBatchCount?: number;
   lang: Language;
   onAssignNewCall?: () => void;
 }
@@ -53,6 +55,7 @@ export const SubNav: React.FC<SubNavProps> = ({
   pendingApprovalsCount,
   pendingTpCount = 0,
   newLocationsCount = 0,
+  pendingBatchCount = 0,
   lang,
   onAssignNewCall,
 }) => {
@@ -69,6 +72,13 @@ export const SubNav: React.FC<SubNavProps> = ({
       Icon: Map,
       badge: newLocationsCount,
       badgeColor: '#0F8B5A',
+    },
+    {
+      id: 'batch_locations' as ManagerTab,
+      label: lang === 'hi' ? 'रूट बैच' : 'Batch Locations',
+      Icon: Layers,
+      badge: pendingBatchCount > 0 ? pendingBatchCount : undefined,
+      badgeColor: '#DC2626',
     },
     { id: 'members' as ManagerTab, label: t.tabMembers, Icon: Users },
     { id: 'attendance' as ManagerTab, label: t.tabAttendance || 'Attendance & Integrity', Icon: Clock },

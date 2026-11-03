@@ -31,6 +31,7 @@ interface SidebarNavProps {
   pendingApprovalsCount: number;
   pendingTpCount?: number;
   newLocationsCount?: number;
+  pendingBatchCount?: number;
   lang: Language;
   onAssignNewCall?: () => void;
   isCollapsed: boolean;
@@ -58,6 +59,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   pendingApprovalsCount,
   pendingTpCount = 0,
   newLocationsCount = 0,
+  pendingBatchCount = 0,
   lang,
   onAssignNewCall,
   isCollapsed,
@@ -86,6 +88,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           id: 'batch_locations',
           label: lang === 'hi' ? 'रूट बैच लोकेशन्स' : 'Batch Locations',
           Icon: Layers,
+          badge: pendingBatchCount > 0 ? pendingBatchCount : undefined,
+          badgeColor: '#DC2626',
         },
         { id: 'members', label: t.tabMembers, Icon: Users },
       ],

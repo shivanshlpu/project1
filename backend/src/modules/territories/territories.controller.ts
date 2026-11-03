@@ -106,6 +106,12 @@ export class TerritoriesController {
     return this.territoriesService.suggestRouteBatches(user, destination, hqId, mrId);
   }
 
+  @Get('route-batches/pending-count')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  async getPendingRouteBatchesCount() {
+    return this.territoriesService.getPendingBatchesCount();
+  }
+
   @Get('route-batches/:id')
   async getRouteBatchById(
     @Param('id') id: string,

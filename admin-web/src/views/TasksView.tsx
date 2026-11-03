@@ -224,9 +224,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [viewingVisitPhoto, setViewingVisitPhoto] = useState<{ url: string; title: string; mrName: string; location: string } | null>(null);
 
   const getDelayAnalysis = (task: TaskItem) => {
-    if (!task.started_at || !task.time) return { isDelayed: false, delayMinutes: 0, text: 'Scheduled On Time' };
+    if (!task.started_at || !task.time || (task.time || '').toLowerCase().includes('anytime') || (task.time || '').toLowerCase().includes('flexible')) {
+      return { isDelayed: false, delayMinutes: 0, text: 'Flexible (Anytime)' };
+    }
     try {
       const scheduledDateTime = new Date(`${task.date || '2026-09-06'}T${task.time}`);
+      if (isNaN(scheduledDateTime.getTime())) {
+        return { isDelayed: false, delayMinutes: 0, text: 'Flexible (Anytime)' };
+      }
       const actualStart = new Date(task.started_at);
       const diffMinutes = Math.round((actualStart.getTime() - scheduledDateTime.getTime()) / 60000);
       if (diffMinutes > 15) {

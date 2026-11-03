@@ -508,6 +508,13 @@ export class TerritoriesService {
     };
   }
 
+  getPendingBatchesCount(): { count: number } {
+    const count = (this.db.routeBatches || []).filter(
+      (b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL',
+    ).length;
+    return { count };
+  }
+
   async createRouteBatch(dto: CreateRouteBatchDto, user?: any): Promise<RouteBatch> {
     const existing = this.db.routeBatches.find(
       (b) => b.batch_code.toUpperCase() === dto.batch_code.trim().toUpperCase(),

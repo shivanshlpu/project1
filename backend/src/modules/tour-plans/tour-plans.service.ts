@@ -43,6 +43,9 @@ export class TourPlansService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.cleanupDummyRouteStopTasks().catch((err) =>
+      console.warn(`[TourPlansService] Dummy route stop cleanup notice: ${err?.message}`),
+    );
     await this.cleanupOrphanedTourPlanTasks().catch((err) =>
       console.warn(`[TourPlansService] Orphan cleanup notice: ${err?.message}`),
     );
@@ -128,6 +131,50 @@ export class TourPlansService implements OnModuleInit {
   /**
    * Cleans up orphaned or rejected TP tasks from the database and Supabase
    */
+
+  /**
+   * Cleans up dummy transit-town tasks that were automatically generated from route circuit stops
+   * (e.g. Visit: Shahdol, Visit: Gohparu, Visit: Jaisinghnagar, Visit: Jaithari)
+   * while strictly preserving real doctor/chemist visits and completed tasks.
+   */
+  public async cleanupDummyRouteStopTasks(): Promise<number> {
+    const dummyStopNames = new Set([
+      'shahdol', 'gohparu', 'jaisinghnagar', 'jaithari', 'chachai road', 'phc colony', 'railway colony', 'jamui',
+      'budhar', 'dhanpuri', 'opm', 'pali', 'navrozabad', 'jaitpur', 'manpur',
+      'kotma', 'marwahi', 'dhanikundi', 'kelhari', 'janakpur', 'keswahi', 'girva', 'khamhidol',
+      'rajendragram', 'anuppur', 'manendragarh', 'chirmiri', 'baikunthpur', 'gaurela',
+      'ambikapur', 'laknapur', 'udaypur', 'kedma', 'batuli', 'sitapur', 'patthalgawn',
+      'silpili', 'vishrampur', 'surajpur', 'devnagar', 'shreenagar', 'pratapur', 'siluta', 'vadrafnagar',
+      'latori', 'krwan', 'karwan', 'datima', 'batra', 'bhatgawn', 'bhatgaon'
+    ]);
+
+    const tasksToDelete = this.db.tasks.filter((t) => {
+      if (t.status === 'COMPLETED' || t.deleted_at) return false;
+      if (!t.id.startsWith('task-tp-') && t.source !== 'TourPlan') return false;
+      const locLower = (t.location_name || '').toLowerCase().trim();
+      const titleLower = (t.title || '').replace(/^visit:\s*/i, '').toLowerCase().trim();
+      return dummyStopNames.has(locLower) || dummyStopNames.has(titleLower);
+    });
+
+    for (const t of tasksToDelete) {
+      this.db.deletedTaskIds.add(t.id);
+      await this.removeSingleTask(t.id);
+    }
+
+    // Ensure all remaining TP tasks have flexible anytime schedule
+    this.db.tasks.forEach((t) => {
+      if ((t.source === 'TourPlan' || t.id.startsWith('task-tp-')) && t.status !== 'COMPLETED') {
+        t.time = 'Anytime';
+      }
+    });
+
+    if (tasksToDelete.length > 0) {
+      await this.db.persistToDisk();
+      console.log(`[TourPlansService] Cleaned up ${tasksToDelete.length} dummy transit route stop tasks.`);
+    }
+    return tasksToDelete.length;
+  }
+
   public async cleanupOrphanedTourPlanTasks(): Promise<number> {
     const validPlanMap = new Map(this.db.monthlyTourPlans.map((p) => [p.id, p]));
     const orphanedTasks: Task[] = [];
@@ -997,36 +1044,12 @@ export class TourPlansService implements OnModuleInit {
         geofence_radius_m?: number;
       }> = [];
 
+      // Tasks are only created for actual customer/doctor locations selected by the MR.
+      // We do NOT create dummy clinic visit tasks for transit towns or route corridors.
       if (entry.selected_locations && entry.selected_locations.length > 0) {
         rawLocs = entry.selected_locations;
       } else if (entry.location_ids && entry.location_ids.length > 0) {
         rawLocs = this.db.savedLocations.filter((l) => entry.location_ids?.includes(l.id));
-      } else if (entry.route_batch_id) {
-        const batch = this.db.routeBatches.find(
-          (b) => b.id === entry.route_batch_id || b.batch_code === entry.route_batch_id,
-        );
-        if (batch?.location_ids && batch.location_ids.length > 0) {
-          rawLocs = this.db.savedLocations.filter((l) => batch.location_ids?.includes(l.id));
-        } else if (batch?.route_stops && batch.route_stops.length > 0) {
-          rawLocs = batch.route_stops.map((stop, sIdx) => ({
-            id: `stop-${sIdx + 1}`,
-            name: stop,
-            category: 'CLINIC',
-            address: `${stop}, ${entry.planned_area || 'Field Territory'}`,
-          }));
-        }
-      }
-
-      // Fallback if no specific locations: create visit for planned area
-      if (rawLocs.length === 0 && entry.planned_area) {
-        rawLocs = [
-          {
-            id: `loc-${entry.id}-area`,
-            name: `${entry.planned_area} Main Center`,
-            category: 'CLINIC',
-            address: `${entry.planned_area}, Territory`,
-          },
-        ];
       }
 
       rawLocs.forEach((l, idx) => {
@@ -1039,11 +1062,8 @@ export class TourPlansService implements OnModuleInit {
           l.geofence_radius_m,
         );
 
-        const hours = 10 + Math.floor(idx * 1.25);
-        const minutes = (idx * 15) % 60;
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours > 12 ? hours - 12 : hours;
-        const scheduledTime = `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+        // MR field visits are flexible throughout the day (morning/evening OPD), not locked to rigid hours
+        const scheduledTime = 'Anytime';
 
         const isEntryStockage = (entry.work_type || '').toLowerCase().includes('stockage');
         expectedVisits.push({
@@ -1442,7 +1462,7 @@ export class TourPlansService implements OnModuleInit {
       await this.db.persistMonthlyTourPlan(plan);
     }
 
-    // 2. Identify original locations
+    // 2. Identify original locations (only real selected locations, never dummy transit towns)
     let locations = request.original_locations;
     if (!locations || locations.length === 0) {
       if (request.original_batch_id) {
@@ -1451,28 +1471,11 @@ export class TourPlansService implements OnModuleInit {
         );
         if (batch?.location_ids && batch.location_ids.length > 0) {
           locations = this.db.savedLocations.filter((l) => batch.location_ids?.includes(l.id));
-        } else if (batch?.route_stops && batch.route_stops.length > 0) {
-          locations = batch.route_stops.map((stop, sIdx) => ({
-            id: `stop-orig-${sIdx + 1}`,
-            name: stop,
-            category: 'CLINIC',
-            address: `${stop}, ${request.original_area || 'Field Territory'}`,
-          }));
         }
       }
     }
 
     let anyLocations: any[] = locations || [];
-    if (anyLocations.length === 0) {
-      anyLocations = [{
-        id: `loc-orig-${uuidv4().substring(0, 6)}`,
-        name: request.original_area || request.original_batch_name || 'Designated Clinic',
-        category: 'CLINIC',
-        address: `${request.original_area || 'Field Territory'}, Shahdol`,
-        latitude: 23.288309,
-        longitude: 81.352204,
-      }];
-    }
 
     // 3. Find existing tasks for this MR on this date
     const existingDateTasks = this.db.tasks.filter(
@@ -1527,7 +1530,7 @@ export class TourPlansService implements OnModuleInit {
           assigned_mr_name: request.mr_name,
           created_by: adminId || 'SYSTEM_ADMIN',
           date: request.date,
-          time: '10:00 AM',
+          time: 'Anytime',
           latitude: coords.latitude,
           longitude: coords.longitude,
           geofence_radius_m: 50,

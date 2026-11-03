@@ -68,6 +68,7 @@ export const BatchLocationsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedHqFilter, setSelectedHqFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING_APPROVAL'>('ALL');
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
 
   // Modal for assigning a location to batch
@@ -684,6 +685,9 @@ export const BatchLocationsView: React.FC = () => {
 
   // Filter batches
   const filteredBatches = batches.filter((b) => {
+    if (statusFilter === 'PENDING_APPROVAL' && (b.status || '').toUpperCase() !== 'PENDING_APPROVAL') {
+      return false;
+    }
     const matchesHq =
       selectedHqFilter === 'ALL' ||
       (b.hq_id && b.hq_id.toLowerCase().includes(selectedHqFilter.toLowerCase())) ||
@@ -928,7 +932,62 @@ export const BatchLocationsView: React.FC = () => {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Quick Status Filter Tabs */}
+          <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', marginRight: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              style={{
+                border: 'none',
+                background: statusFilter === 'ALL' ? '#FFFFFF' : 'transparent',
+                color: statusFilter === 'ALL' ? '#1E293B' : '#64748B',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                boxShadow: statusFilter === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
+            >
+              All Batches ({batches.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PENDING_APPROVAL')}
+              style={{
+                border: 'none',
+                background: statusFilter === 'PENDING_APPROVAL' ? (batches.filter((b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length > 0 ? '#DC2626' : '#FFFFFF') : 'transparent',
+                color: statusFilter === 'PENDING_APPROVAL' ? (batches.filter((b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length > 0 ? '#FFFFFF' : '#1E293B') : (batches.filter((b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length > 0 ? '#DC2626' : '#64748B'),
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: statusFilter === 'PENDING_APPROVAL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
+            >
+              <span>Pending Approvals</span>
+              {batches.filter((b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length > 0 && (
+                <span
+                  style={{
+                    background: statusFilter === 'PENDING_APPROVAL' ? '#FFFFFF' : '#DC2626',
+                    color: statusFilter === 'PENDING_APPROVAL' ? '#DC2626' : '#FFFFFF',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {batches.filter((b) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length}
+                </span>
+              )}
+            </button>
+          </div>
+
           <Filter size={16} color="#64748B" />
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748B' }}>Headquarter:</span>
           <select

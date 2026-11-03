@@ -200,6 +200,7 @@ export const App: React.FC = () => {
   
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
   const [pendingTpCount, setPendingTpCount] = useState<number>(0);
+  const [pendingBatchCount, setPendingBatchCount] = useState<number>(0);
 
   
   const [recentNewLocations, setRecentNewLocations] = useState<NewLocationItem[]>([]);
@@ -332,6 +333,46 @@ export const App: React.FC = () => {
   }, [authUser]);
 
   
+  // Live polling for pending Route Batches awaiting Admin approval
+  useEffect(() => {
+    if (!authUser) return;
+    const fetchPendingBatches = async () => {
+      if (document.hidden) return;
+      try {
+        const apiUrl = getApiBaseUrl();
+        const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`${apiUrl}/territories/route-batches/pending-count`, { headers }).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json();
+          setPendingBatchCount(Number(data.count ?? 0));
+        } else {
+          const bRes = await fetch(`${apiUrl}/territories/route-batches`, { headers }).catch(() => null);
+          if (bRes && bRes.ok) {
+            const bData = await bRes.json();
+            if (Array.isArray(bData)) {
+              setPendingBatchCount(bData.filter((b: any) => (b.status || '').toUpperCase() === 'PENDING_APPROVAL').length);
+            }
+          }
+        }
+      } catch {
+        setPendingBatchCount(0);
+      }
+    };
+
+    fetchPendingBatches();
+    const interval = setInterval(fetchPendingBatches, 20000);
+    window.addEventListener('ahtri_batch_updated', fetchPendingBatches);
+    window.addEventListener('ahtri_notification_received', fetchPendingBatches);
+    window.addEventListener('focus', fetchPendingBatches);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ahtri_batch_updated', fetchPendingBatches);
+      window.removeEventListener('ahtri_notification_received', fetchPendingBatches);
+      window.removeEventListener('focus', fetchPendingBatches);
+    };
+  }, [authUser]);
+
   // Live polling for pending MR device authorization requests (OTP approvals)
   useEffect(() => {
     if (!authUser) return;
@@ -541,6 +582,8 @@ export const App: React.FC = () => {
         pendingApprovalsCount={pendingApprovalsCount}
         pendingDeviceApprovalsCount={deviceApprovalsCount}
         onOpenDeviceApprovals={() => setIsDeviceApprovalsOpen(true)}
+        pendingBatchCount={pendingBatchCount}
+        onOpenBatchLocations={() => setManagerTab('batch_locations')}
         lang={lang}
         onToggleLang={toggleLanguage}
         managerName={managerName}
@@ -614,6 +657,7 @@ export const App: React.FC = () => {
           pendingApprovalsCount={pendingApprovalsCount}
           pendingTpCount={pendingTpCount}
           newLocationsCount={recentNewLocations.length}
+          pendingBatchCount={pendingBatchCount}
           lang={lang}
           onAssignNewCall={handleAssignNewCall}
           isCollapsed={isSidebarCollapsed}
