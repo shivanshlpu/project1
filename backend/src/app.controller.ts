@@ -25,24 +25,22 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.58',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '59', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.59',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '60', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.58/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.59/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Streamlined Product Selection: Searchable modal with depot stock indicators replaces long scrolling list',
-    'Compact Route Batch Selector: Clean dropdown in Monthly TP eliminates long vertical card lists',
-    'Preserved Visit Verification Photo: Skip Order retains captured clinic photo so re-capture is not needed',
-    'Clean Visit Remarks: Doctor reaction and detailing remarks default to blank',
-    'Shared HQ Location Sync: Marked locations within a batch are visible across MRs sharing the same HQ',
-    'Tour Plan Location Inspector: Tap 👁️ to inspect assigned locations and tasks',
+    'Fixed Medicine Catalog Modal: Full list of 17+ catalog medicines renders with search and live stock counts',
+    'Streamlined Stock Location Selector: Replaced long vertical button lists with a compact dropdown picker',
+    'Unified Location Stock Display: Directly displays available unit count at the selected stock location without redundant separate cards',
+    'Compact Order Card Layout: Prevents long scrolling and clutter during visit completion',
   ],
 };
 

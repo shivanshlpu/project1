@@ -11,6 +11,7 @@ import {
   TextInput,
   Modal,
   Image,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DistanceIndicator } from '../components/DistanceIndicator';
@@ -113,7 +114,10 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   
   const [hqStockMap, setHqStockMap] = useState<Record<string, any>>({});
   const [dynamicMedicines, setDynamicMedicines] = useState<any[]>([]);
-  const [availableDepots, setAvailableDepots] = useState<Array<{ id: string; name: string; sub_area?: string }>>([]);
+  const [availableDepots, setAvailableDepots] = useState<Array<{ id: string; name: string; sub_area?: string }>>([
+    { id: 'stk-shd-01', name: 'Tara Pharmacy', sub_area: 'Shahdol Central' },
+    { id: 'stk-shd-02', name: 'Parth Medical Agency', sub_area: 'Shahdol Main' },
+  ]);
 
   
   const [deviceCoords, setDeviceCoords] = useState<{
@@ -135,6 +139,9 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   const [medPickerOrderId, setMedPickerOrderId] = useState<string | null>(null);
   const [medSearchQuery, setMedSearchQuery] = useState<string>('');
   const [medFilterStock, setMedFilterStock] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
+  const [depotPickerVisible, setDepotPickerVisible] = useState<boolean>(false);
+  const [depotPickerOrderId, setDepotPickerOrderId] = useState<string | null>(null);
+  const [customDepotInput, setCustomDepotInput] = useState<string>('');
   
   const [modalOrders, setModalOrders] = useState<
     Array<{
@@ -294,6 +301,12 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
     setMedSearchQuery('');
     setMedFilterStock('ALL');
     setMedPickerVisible(true);
+  };
+
+  const openStockLocationPicker = (orderId: string) => {
+    setDepotPickerOrderId(orderId);
+    setCustomDepotInput('');
+    setDepotPickerVisible(true);
   };
 
   
@@ -1680,174 +1693,186 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                       const price = parseFloat(ord.unit_price) || 0;
                       const sub = qty * price;
                       return (
-                        <View key={ord.id} style={[styles.orderBox, { marginBottom: 6 }]}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E40AF' }}>Item #{idx + 1}</Text>
+                        <View key={ord.id} style={[styles.orderBox, { marginBottom: 8 }]}>
+                          {/* Card Header: Item #, Price Subtotal, Delete button */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#1E40AF' }}>Item #{idx + 1}</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0F172A' }}>₹{sub.toLocaleString()}</Text>
-                              <TouchableOpacity onPress={() => handleRemoveModalOrder(ord.id)}>
+                              <Text style={{ fontSize: 12, fontWeight: '800', color: '#0F172A' }}>₹{sub.toLocaleString()}</Text>
+                              <TouchableOpacity onPress={() => handleRemoveModalOrder(ord.id)} style={{ paddingVertical: 2, paddingHorizontal: 6, backgroundColor: '#FEE2E2', borderRadius: 4 }}>
                                 <Text style={{ fontSize: 10, color: '#DC2626', fontWeight: '700' }}>Delete</Text>
                               </TouchableOpacity>
                             </View>
                           </View>
 
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                            <Text style={styles.smallLabel}>Product Name</Text>
+                          {/* 1. Medicine / Product Selection */}
+                          <View style={{ marginBottom: 6 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                              <Text style={styles.smallLabel}>Medicine / Product *</Text>
+                              <TouchableOpacity
+                                onPress={() => openMedicinePickerForOrder(ord.id)}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#EFF6FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, borderWidth: 1, borderColor: '#BFDBFE' }}
+                              >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1D4ED8' }}>
+                                  🔍 All Medicines ({dynamicMedicines.length > 0 ? dynamicMedicines.length : COMPANY_MEDICINES_CHIPS.length})
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Product Name Input with tap-to-browse */}
                             <TouchableOpacity
                               onPress={() => openMedicinePickerForOrder(ord.id)}
-                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6, borderWidth: 1, borderColor: '#93C5FD' }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: '#FFFFFF',
+                                borderWidth: 1,
+                                borderColor: '#CBD5E1',
+                                borderRadius: 6,
+                                paddingHorizontal: 10,
+                                paddingVertical: 7,
+                              }}
                             >
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#1D4ED8' }}>
-                                🔍 Browse 50+ Products
+                              <Text style={{ fontSize: 12.5, fontWeight: '700', color: ord.product_name ? '#0F172A' : '#94A3B8', flex: 1 }} numberOfLines={1}>
+                                {ord.product_name || 'Tap to select medicine...'}
                               </Text>
+                              <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '700' }}>Browse ▾</Text>
                             </TouchableOpacity>
-                          </View>
-                          <TextInput
-                            style={styles.smallInput}
-                            value={ord.product_name}
-                            onChangeText={(v) => handleUpdateModalOrder(ord.id, 'product_name', v)}
-                            placeholder="Enter medicine name"
-                          />
 
-                          {/* Live HQ Stock Availability Badge */}
+                            {/* Quick Chips row (horizontal scroll, 1 line only, never wraps) */}
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                              {(dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS).slice(0, 6).map((med, mIdx) => {
+                                const isSelected = ord.product_name === med.name || ord.product_name === med.short;
+                                const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)];
+                                const isOut = stock ? stock.is_out_of_stock : false;
+
+                                return (
+                                  <TouchableOpacity
+                                    key={mIdx}
+                                    onPress={() => handleSelectMedicineForOrder(ord.id, med.name, med.price)}
+                                    style={{
+                                      backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
+                                      paddingHorizontal: 8,
+                                      paddingVertical: 3,
+                                      borderRadius: 12,
+                                      marginRight: 5,
+                                      borderWidth: 1,
+                                      borderColor: isSelected ? '#1E40AF' : '#CBD5E1',
+                                    }}
+                                  >
+                                    <Text style={{ fontSize: 9.5, color: isSelected ? '#FFFFFF' : '#334155', fontWeight: isSelected ? '700' : '600' }}>
+                                      {med.short} (₹{med.price}) {isOut ? '🔴' : '🟢'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          </View>
+
+                          {/* 2. Unified Stock Location / Stockist Selector with Direct Available Units Display */}
                           {(() => {
                             const cleanName = (ord.product_name || '').toLowerCase().trim();
                             const shortName = cleanName.split(' (')[0];
-                            const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                             const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)] || hqStockMap[norm(shortName)];
-                            if (!stock) return null;
                             const effectiveHq = currentUserHqName || activeHqName || 'HQ';
-                            const selDist = (ord.distributor || '').trim().toLowerCase();
-                            const matchedDepot = Array.isArray(stock.internal_depots)
-                              ? stock.internal_depots.find((d: any) => (d.stocker_name || '').toLowerCase().trim() === selDist)
-                              : undefined;
+                            const selDist = (ord.distributor || '').trim();
+                            const selDistLower = selDist.toLowerCase();
+
+                            // Find the stock info for the selected stockist / depot
+                            let selectedDepotStock = null;
+                            let isSelectedDepotOut = true;
+
+                            if (stock && Array.isArray(stock.internal_depots)) {
+                              const matched = stock.internal_depots.find((d) => (d.stocker_name || '').toLowerCase().trim() === selDistLower);
+                              if (matched) {
+                                selectedDepotStock = matched.stock ?? 0;
+                                isSelectedDepotOut = (matched.stock ?? 0) <= 0;
+                              }
+                            }
+
+                            if (selectedDepotStock === null && stock) {
+                              selectedDepotStock = stock.available_stock ?? 0;
+                              isSelectedDepotOut = (stock.available_stock ?? 0) <= 0;
+                            }
 
                             return (
-                              <View style={{ marginTop: 4 }}>
-                                {stock.is_out_of_stock ? (
-                                  <View style={{ backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
-                                    <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '700' }}>
-                                      🔴 OUT OF STOCK at {effectiveHq} (0 available across depots)
-                                    </Text>
-                                  </View>
-                                ) : stock.is_low_stock ? (
-                                  <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
-                                    <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>
-                                      🟠 LOW STOCK at {effectiveHq} ({stock.available_stock} units total in HQ)
-                                    </Text>
-                                  </View>
-                                ) : (
-                                  <View style={{ backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
-                                    <Text style={{ fontSize: 11, color: '#166534', fontWeight: '700' }}>
-                                      🟢 IN STOCK at {effectiveHq} ({stock.available_stock} units total in HQ)
-                                    </Text>
-                                  </View>
-                                )}
+                              <View style={{ marginBottom: 6 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                  <Text style={styles.smallLabel}>Stock Location / Distributor *</Text>
+                                  <Text style={{ fontSize: 10, color: '#64748B' }}>Tap to change location</Text>
+                                </View>
 
-                                {/* Selected Distributor Live Stock Callout */}
-                                {matchedDepot && (
-                                  <View style={{ marginTop: 4, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#1D4ED8' }}>
-                                      📍 {matchedDepot.stocker_name}:
-                                    </Text>
-                                    <Text style={{ fontSize: 10, fontWeight: '800', color: matchedDepot.stock <= 0 ? '#DC2626' : matchedDepot.is_low_stock ? '#D97706' : '#15803D' }}>
-                                      {matchedDepot.stock <= 0 ? 'Out of Stock (0)' : `${matchedDepot.stock} units available`}
+                                {/* Dropdown button to choose stock location */}
+                                <TouchableOpacity
+                                  onPress={() => openStockLocationPicker(ord.id)}
+                                  style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    backgroundColor: '#F8FAFC',
+                                    borderWidth: 1.2,
+                                    borderColor: '#CBD5E1',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 7,
+                                  }}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <Text style={{ fontSize: 13 }}>🏢</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: ord.distributor ? '#0F172A' : '#94A3B8' }} numberOfLines={1}>
+                                      {ord.distributor || 'Select Stock Location (Depot / Stockist)'}
                                     </Text>
                                   </View>
-                                )}
+                                  <Text style={{ fontSize: 10.5, color: '#2563EB', fontWeight: '800' }}>Change ▾</Text>
+                                </TouchableOpacity>
 
-                                {/* Internal Depots Breakdown for This HQ */}
-                                {Array.isArray(stock.internal_depots) && stock.internal_depots.length > 0 && (
-                                  <View style={{ marginTop: 5, backgroundColor: '#F8FAFC', padding: 6, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                    <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#475569', marginBottom: 4 }}>
-                                      📦 Stock in {effectiveHq} Depots:
-                                    </Text>
-                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
-                                      {stock.internal_depots.map((dep: any) => {
-                                        const isDepOut = dep.stock <= 0;
-                                        const isDepLow = dep.is_low_stock;
-                                        const isCurSelected = selDist === (dep.stocker_name || '').toLowerCase().trim();
-                                        return (
-                                          <TouchableOpacity
-                                            key={dep.stocker_id}
-                                            onPress={() => {
-                                              handleUpdateModalOrder(ord.id, 'distributor', dep.stocker_name);
-                                            }}
-                                            style={{
-                                              backgroundColor: isCurSelected ? '#DBEAFE' : isDepOut ? '#FEF2F2' : isDepLow ? '#FFFBEB' : '#F0FDF4',
-                                              borderWidth: 1,
-                                              borderColor: isCurSelected ? '#2563EB' : isDepOut ? '#FCA5A5' : isDepLow ? '#FCD34D' : '#86EFAC',
-                                              borderRadius: 6,
-                                              paddingHorizontal: 7,
-                                              paddingVertical: 3,
-                                              flexDirection: 'row',
-                                              alignItems: 'center',
-                                              gap: 4,
-                                            }}
-                                          >
-                                            <Text style={{ fontSize: 10, fontWeight: isCurSelected ? '800' : '600', color: isDepOut ? '#991B1B' : isDepLow ? '#92400E' : '#166534' }}>
-                                              {dep.stocker_name}: {dep.stock} {dep.stock === 1 ? 'unit' : 'units'} {isDepOut ? '(Out)' : ''}
-                                            </Text>
-                                            {isCurSelected && (
-                                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#1D4ED8' }}>✓</Text>
-                                            )}
-                                          </TouchableOpacity>
-                                        );
-                                      })}
+                                {/* Clear, Simple Live Stock Status for this chosen location */}
+                                {selDist ? (
+                                  <View
+                                    style={{
+                                      marginTop: 4,
+                                      paddingHorizontal: 9,
+                                      paddingVertical: 5,
+                                      borderRadius: 6,
+                                      backgroundColor: isSelectedDepotOut ? '#FEF2F2' : '#F0FDF4',
+                                      borderWidth: 1,
+                                      borderColor: isSelectedDepotOut ? '#FCA5A5' : '#86EFAC',
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                    }}
+                                  >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 }}>
+                                      <Text style={{ fontSize: 11 }}>{isSelectedDepotOut ? '🔴' : '🟢'}</Text>
+                                      <Text
+                                        style={{
+                                          fontSize: 11,
+                                          fontWeight: '800',
+                                          color: isSelectedDepotOut ? '#991B1B' : '#166534',
+                                        }}
+                                        numberOfLines={1}
+                                      >
+                                        {isSelectedDepotOut
+                                          ? `Out of Stock: 0 units at ${selDist}`
+                                          : `In Stock: ${selectedDepotStock} units available at ${selDist}`}
+                                      </Text>
                                     </View>
+                                    {stock && (
+                                      <Text style={{ fontSize: 9.5, color: '#64748B', fontWeight: '600', marginLeft: 4 }}>
+                                        ({stock.available_stock || 0} in {effectiveHq})
+                                      </Text>
+                                    )}
                                   </View>
-                                )}
+                                ) : null}
                               </View>
                             );
                           })()}
 
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6, marginBottom: 2 }}>
-                            {(dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS).slice(0, 5).map((med, mIdx) => {
-                              const isSelected = ord.product_name === med.name || ord.product_name === med.short;
-                              const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                              const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)] || (med.short && hqStockMap[norm(med.short)]);
-                              const isOut = stock?.is_out_of_stock;
-                              const isLow = stock?.is_low_stock;
-
-                              return (
-                                <TouchableOpacity
-                                  key={mIdx}
-                                  onPress={() => handleSelectMedicineForOrder(ord.id, med.name, med.price)}
-                                  style={{
-                                    backgroundColor: isSelected ? '#1E40AF' : isOut ? '#FEF2F2' : isLow ? '#FFFBEB' : '#F1F5F9',
-                                    paddingHorizontal: 8,
-                                    paddingVertical: 3.5,
-                                    borderRadius: 12,
-                                    marginRight: 6,
-                                    borderWidth: 1,
-                                    borderColor: isSelected ? '#1E40AF' : isOut ? '#FCA5A5' : isLow ? '#FCD34D' : '#CBD5E1',
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 10, color: isSelected ? '#FFFFFF' : isOut ? '#DC2626' : isLow ? '#D97706' : '#1E293B', fontWeight: isSelected ? '700' : '600' }}>
-                                    {med.short} (₹{med.price}) {stock ? (isOut ? '• 🔴 Out' : isLow ? `• 🟠 ${stock.available_stock} left` : `• 🟢 ${stock.available_stock}`) : ''}
-                                  </Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                            <TouchableOpacity
-                              onPress={() => openMedicinePickerForOrder(ord.id)}
-                              style={{
-                                backgroundColor: '#EEF2FF',
-                                paddingHorizontal: 9,
-                                paddingVertical: 3.5,
-                                borderRadius: 12,
-                                marginRight: 6,
-                                borderWidth: 1,
-                                borderColor: '#A5B4FC',
-                              }}
-                            >
-                              <Text style={{ fontSize: 10, color: '#4338CA', fontWeight: '800' }}>
-                                + More Products ({(dynamicMedicines.length > 0 ? dynamicMedicines.length : COMPANY_MEDICINES_CHIPS.length)}) »
-                              </Text>
-                            </TouchableOpacity>
-                          </ScrollView>
-
-                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                          {/* 3. Quantity & Unit Price */}
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.smallLabel}>Quantity</Text>
                               <TextInput
@@ -1866,41 +1891,6 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                                 keyboardType="numeric"
                               />
                             </View>
-                          </View>
-
-                          <View style={{ marginTop: 6 }}>
-                            <Text style={styles.smallLabel}>Stockist / Distributor</Text>
-                            <TextInput
-                              style={styles.smallInput}
-                              value={ord.distributor}
-                              onChangeText={(v) => handleUpdateModalOrder(ord.id, 'distributor', v)}
-                              placeholder="Select or enter stockist"
-                            />
-                            {availableDepots.length > 0 && (
-                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                                {availableDepots.map((stk) => {
-                                  const isSelected = (ord.distributor || '').toLowerCase().trim() === (stk.name || '').toLowerCase().trim();
-                                  return (
-                                    <TouchableOpacity
-                                      key={stk.id}
-                                      onPress={() => handleUpdateModalOrder(ord.id, 'distributor', stk.name)}
-                                      style={{
-                                        backgroundColor: isSelected ? '#1E40AF' : '#F1F5F9',
-                                        borderWidth: 1,
-                                        borderColor: isSelected ? '#1E40AF' : '#CBD5E1',
-                                        borderRadius: 6,
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 3,
-                                      }}
-                                    >
-                                      <Text style={{ fontSize: 9.5, fontWeight: '700', color: isSelected ? '#FFFFFF' : '#334155' }}>
-                                        {isSelected ? '✓ ' : ''}{stk.name}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                              </View>
-                            )}
                           </View>
                         </View>
                       );
@@ -1979,13 +1969,13 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
         onRequestClose={() => setMedPickerVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '85%', paddingBottom: 16 }]}>
+          <View style={[styles.modalContent, { height: Math.min(Dimensions.get('window').height * 0.82, 620), maxHeight: '85%', width: '92%', maxWidth: 440, paddingBottom: 16, display: 'flex' }]}>
             {/* Modal Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
               <View>
                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A3C6E' }}>💊 Select Medicine / Product</Text>
                 <Text style={{ fontSize: 11, color: '#64748B' }}>
-                  Tap any item to select. Search across all catalog products &amp; check live HQ stock.
+                  Tap any item to select. Search across all catalog products & check live HQ stock.
                 </Text>
               </View>
               <TouchableOpacity
@@ -2015,41 +2005,65 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
             </View>
 
             {/* Stock Filter Pills */}
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-              {(['ALL', 'IN_STOCK', 'OUT_OF_STOCK'] as const).map((filterKey) => {
-                const isCur = medFilterStock === filterKey;
-                const label = filterKey === 'ALL' ? 'All Products' : filterKey === 'IN_STOCK' ? '🟢 In Stock Only' : '🔴 Out of Stock';
-                return (
-                  <TouchableOpacity
-                    key={filterKey}
-                    onPress={() => setMedFilterStock(filterKey)}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 14,
-                      backgroundColor: isCur ? '#1E40AF' : '#F1F5F9',
-                      borderWidth: 1,
-                      borderColor: isCur ? '#1E40AF' : '#CBD5E1',
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: isCur ? '#FFFFFF' : '#475569' }}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {(() => {
+              const fullList = dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS;
+              const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              let inStockCount = 0;
+              let outCount = 0;
+              fullList.forEach((m) => {
+                const stock = hqStockMap[m.name.toLowerCase().trim()] || (m.short && hqStockMap[m.short.toLowerCase().trim()]) || hqStockMap[norm(m.name)];
+                const isOut = stock ? stock.is_out_of_stock : (m.available_stock !== undefined ? m.available_stock <= 0 : false);
+                if (isOut) outCount++;
+                else inStockCount++;
+              });
+
+              return (
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+                  {(['ALL', 'IN_STOCK', 'OUT_OF_STOCK'] as const).map((filterKey) => {
+                    const isCur = medFilterStock === filterKey;
+                    const label = filterKey === 'ALL'
+                      ? `All (${fullList.length})`
+                      : filterKey === 'IN_STOCK'
+                      ? `🟢 In Stock (${inStockCount})`
+                      : `🔴 Out of Stock (${outCount})`;
+                    return (
+                      <TouchableOpacity
+                        key={filterKey}
+                        onPress={() => setMedFilterStock(filterKey)}
+                        style={{
+                          paddingHorizontal: 9,
+                          paddingVertical: 4.5,
+                          borderRadius: 14,
+                          backgroundColor: isCur ? '#1E40AF' : '#F1F5F9',
+                          borderWidth: 1,
+                          borderColor: isCur ? '#1E40AF' : '#CBD5E1',
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: isCur ? '#FFFFFF' : '#475569' }}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })()}
 
             {/* List of Filtered Medicines */}
-            <ScrollView showsVerticalScrollIndicator style={{ flex: 1 }}>
+            <ScrollView
+              showsVerticalScrollIndicator
+              style={{ flex: 1, width: '100%' }}
+              contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {(() => {
                 const list = dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS;
                 const q = medSearchQuery.toLowerCase().trim();
                 const filtered = list.filter((m) => {
                   const nameMatch = !q || m.name.toLowerCase().includes(q) || (m.short && m.short.toLowerCase().includes(q));
-                  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const stock = hqStockMap[m.name.toLowerCase().trim()] || (m.short && hqStockMap[m.short.toLowerCase().trim()]) || hqStockMap[norm(m.name)] || (medFilterStock !== 'ALL' && m.short && hqStockMap[norm(m.short)]);
-                  const isOut = stock?.is_out_of_stock;
+                  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const stock = hqStockMap[m.name.toLowerCase().trim()] || (m.short && hqStockMap[m.short.toLowerCase().trim()]) || hqStockMap[norm(m.name)];
+                  const isOut = stock ? stock.is_out_of_stock : (m.available_stock !== undefined ? m.available_stock <= 0 : false);
                   if (medFilterStock === 'IN_STOCK' && isOut) return false;
                   if (medFilterStock === 'OUT_OF_STOCK' && !isOut) return false;
                   return nameMatch;
@@ -2081,10 +2095,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                 }
 
                 return filtered.map((med, mIdx) => {
-                  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)] || (med.short && hqStockMap[norm(med.short)]);
-                  const isOut = stock?.is_out_of_stock;
-                  const isLow = stock?.is_low_stock;
+                  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)];
+                  const isOut = stock ? stock.is_out_of_stock : (med.available_stock !== undefined ? med.available_stock <= 0 : false);
+                  const isLow = stock ? stock.is_low_stock : false;
+                  const stockQty = stock ? stock.available_stock : (med.available_stock ?? 0);
 
                   return (
                     <TouchableOpacity
@@ -2132,7 +2147,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                               color: isOut ? '#991B1B' : isLow ? '#92400E' : '#166534',
                             }}
                           >
-                            {isOut ? '🔴 Out of Stock' : isLow ? `🟠 Low: ${stock?.available_stock}` : `🟢 In Stock (${stock?.available_stock || 'Avail'})`}
+                            {isOut ? '🔴 Out of Stock' : isLow ? `🟠 Low: ${stockQty}` : `🟢 In Stock (${stockQty})`}
                           </Text>
                         </View>
                         <Text style={{ fontSize: 10, color: '#2563EB', fontWeight: '700', marginTop: 4 }}>
@@ -2144,6 +2159,168 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                 });
               })()}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Dedicated Searchable Stock Location (Depot/Stockist) Picker Modal */}
+      <Modal
+        visible={depotPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDepotPickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: Math.min(Dimensions.get('window').height * 0.75, 520), maxHeight: '80%', width: '92%', maxWidth: 440, paddingBottom: 16, display: 'flex' }]}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A3C6E' }}>🏢 Select Stock Location</Text>
+                <Text style={{ fontSize: 11, color: '#64748B' }}>
+                  Choose depot / stockist in {currentUserHqName || activeHqName || 'Headquarters'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setDepotPickerVisible(false)}
+                style={{ padding: 6, borderRadius: 20, backgroundColor: '#F1F5F9' }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* List of Depots with Live Available Stock */}
+            <ScrollView
+              showsVerticalScrollIndicator
+              style={{ flex: 1, width: '100%' }}
+              contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
+            >
+              {(() => {
+                const currentOrder = modalOrders.find((o) => o.id === depotPickerOrderId);
+                const cleanName = (currentOrder?.product_name || '').toLowerCase().trim();
+                const shortName = cleanName.split(' (')[0];
+                const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const stock = hqStockMap[cleanName] || hqStockMap[shortName] || hqStockMap[norm(cleanName)];
+
+                const depotList = [];
+                const seen = new Set();
+
+                if (stock && Array.isArray(stock.internal_depots)) {
+                  stock.internal_depots.forEach((d) => {
+                    const normName = (d.stocker_name || '').toLowerCase().trim();
+                    if (!seen.has(normName) && normName) {
+                      seen.add(normName);
+                      depotList.push({
+                        id: d.stocker_id || normName,
+                        name: d.stocker_name,
+                        sub_area: d.sub_area,
+                        stock: d.stock,
+                        is_out: (d.stock ?? 0) <= 0,
+                      });
+                    }
+                  });
+                }
+
+                availableDepots.forEach((d) => {
+                  const normName = (d.name || '').toLowerCase().trim();
+                  if (!seen.has(normName) && normName) {
+                    seen.add(normName);
+                    depotList.push({
+                      id: d.id,
+                      name: d.name,
+                      sub_area: d.sub_area,
+                      stock: 0,
+                      is_out: true,
+                    });
+                  }
+                });
+
+                if (depotList.length === 0) {
+                  depotList.push(
+                    { id: 'stk-1', name: 'Tara Pharmacy', sub_area: 'Shahdol Central', is_out: true, stock: 0 },
+                    { id: 'stk-2', name: 'Parth Medical Agency', sub_area: 'Shahdol Main', is_out: true, stock: 0 }
+                  );
+                }
+
+                return depotList.map((dep, dIdx) => {
+                  const isCur = (currentOrder?.distributor || '').toLowerCase().trim() === dep.name.toLowerCase().trim();
+                  const isDepOut = (dep.stock ?? 0) <= 0;
+
+                  return (
+                    <TouchableOpacity
+                      key={dep.id || dIdx}
+                      onPress={() => {
+                        if (depotPickerOrderId) {
+                          handleUpdateModalOrder(depotPickerOrderId, 'distributor', dep.name);
+                        }
+                        setDepotPickerVisible(false);
+                      }}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        borderRadius: 8,
+                        backgroundColor: isCur ? '#EFF6FF' : '#FFFFFF',
+                        borderWidth: 1.5,
+                        borderColor: isCur ? '#2563EB' : '#E2E8F0',
+                        marginBottom: 8,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={{ fontSize: 13.5, fontWeight: isCur ? '800' : '700', color: isCur ? '#1D4ED8' : '#0F172A' }}>
+                          {isCur ? '✓ ' : ''}{dep.name}
+                        </Text>
+                        {dep.sub_area ? (
+                          <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                            📍 {dep.sub_area}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 3.5,
+                        borderRadius: 6,
+                        backgroundColor: isDepOut ? '#FEF2F2' : '#F0FDF4',
+                        borderWidth: 1,
+                        borderColor: isDepOut ? '#FCA5A5' : '#86EFAC',
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: isDepOut ? '#DC2626' : '#166534' }}>
+                          {isDepOut ? '🔴 Out of Stock (0)' : `🟢 ${dep.stock} units`}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </ScrollView>
+
+            {/* Custom Stockist Input */}
+            <View style={{ borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 4 }}>
+                Or enter another distributor / stockist:
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TextInput
+                  style={[styles.smallInput, { flex: 1 }]}
+                  value={customDepotInput}
+                  onChangeText={setCustomDepotInput}
+                  placeholder="Custom stockist name..."
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    if (depotPickerOrderId && customDepotInput.trim()) {
+                      handleUpdateModalOrder(depotPickerOrderId, 'distributor', customDepotInput.trim());
+                      setCustomDepotInput('');
+                      setDepotPickerVisible(false);
+                    }
+                  }}
+                  style={{ backgroundColor: '#1E40AF', paddingHorizontal: 12, justifyContent: 'center', borderRadius: 6 }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>Set</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
