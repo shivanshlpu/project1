@@ -383,6 +383,39 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     targetMode: 'CREATE',
   });
 
+  const [viewLocTasksModal, setViewLocTasksModal] = useState<{
+    visible: boolean;
+    date: string;
+    destination: string;
+    route: string;
+    locations: any[];
+    isApproved: boolean;
+    entry: any;
+  }>({
+    visible: false,
+    date: '',
+    destination: '',
+    route: '',
+    locations: [],
+    isApproved: false,
+    entry: null,
+  });
+
+  const openViewLocationTasksModal = (entry: any, plan: any, locsList: any[]) => {
+    setViewLocTasksModal({
+      visible: true,
+      date: entry.date,
+      destination: entry.destination || entry.planned_area || entry.route_batch_name || 'Field Territory',
+      route: entry.route || (entry.route_batch_code ? `Circuit [${entry.route_batch_code}]` : 'Direct Travel'),
+      locations: locsList && locsList.length > 0 ? locsList : (entry.selected_locations || []),
+      isApproved: Boolean(
+        ['APPROVED', 'Approved'].includes(plan?.status) ||
+        ['APPROVED', 'Approved'].includes(entry.reimbursement_status)
+      ),
+      entry,
+    });
+  };
+
   const openLocationsPicker = (locations: any[], title?: string, mode: 'CREATE' | 'EDIT_RC' = 'CREATE') => {
     setLocPickerModal({
       visible: true,
@@ -2079,12 +2112,28 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                     <Text style={styles.entryDoctor}>Dr: {item.planned_kol_drs}</Text>
                     <Text style={styles.entryActivity}>Task: {item.planned_activity}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleRemoveWorkingItem(item.id)}
-                  >
-                    <Text style={styles.deleteBtnText}>✕</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        backgroundColor: '#EFF6FF',
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: '#BFDBFE',
+                        marginRight: 6,
+                      }}
+                      onPress={() => openViewLocationTasksModal(item, null, item.selected_locations || [])}
+                    >
+                      <Text style={{ fontSize: 13 }}>👁️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => handleRemoveWorkingItem(item.id)}
+                    >
+                      <Text style={styles.deleteBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))
             )}
@@ -2270,10 +2319,31 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                             </View>
                           </View>
 
-                          {/* Planned Destination */}
-                          <Text style={styles.visitDestTitle}>
-                            📍 Destination: <Text style={{ color: '#0369A1' }}>{destinationName}</Text>
-                          </Text>
+                          {/* Planned Destination & Eye View Button */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                            <Text style={[styles.visitDestTitle, { marginTop: 0, flex: 1, marginRight: 8 }]}>
+                              📍 Destination: <Text style={{ color: '#0369A1' }}>{destinationName}</Text>
+                            </Text>
+                            <TouchableOpacity
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                                backgroundColor: '#EFF6FF',
+                                borderWidth: 1,
+                                borderColor: '#BFDBFE',
+                                paddingHorizontal: 8,
+                                paddingVertical: 3.5,
+                                borderRadius: 6,
+                              }}
+                              onPress={() => openViewLocationTasksModal(e, plan, locsList)}
+                            >
+                              <Text style={{ fontSize: 13 }}>👁️</Text>
+                              <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#1D4ED8' }}>
+                                View Tasks ({locsList.length})
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                           <Text style={styles.visitHqSub}>
                             🏛️ HQ: {e.hq_name || activeHqName}
                           </Text>
@@ -2983,6 +3053,175 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
             >
               <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
                 ✓ Done ({(locPickerModal.targetMode === 'EDIT_RC' ? rcSelectedLocIds : selectedLocationIds).length} Selected)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Eye Icon Modal: Assigned Locations & Tasks Status */}
+      <Modal
+        visible={viewLocTasksModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewLocTasksModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setViewLocTasksModal((prev) => ({ ...prev, visible: false }))}
+        >
+          <View style={[styles.pickerContainer, { maxHeight: '82%' }]}>
+            <View style={styles.pickerHeader}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.pickerTitle}>👁️ Assigned Locations &amp; Tasks</Text>
+                <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                  📅 {formatDateDDMMYYYY(viewLocTasksModal.date)} • 📍 {viewLocTasksModal.destination}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setViewLocTasksModal((prev) => ({ ...prev, visible: false }))}
+                style={styles.pickerCloseBtn}
+              >
+                <Text style={styles.pickerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Circuit / Route pill */}
+            <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 6, marginBottom: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                🛣️ Route: {viewLocTasksModal.route}
+              </Text>
+              <Text style={{ fontSize: 10.5, color: viewLocTasksModal.isApproved ? '#15803D' : '#B45309', fontWeight: '700', marginTop: 2 }}>
+                Status: {viewLocTasksModal.isApproved ? '● Plan Approved' : '⏳ Submitted (Pending Approval)'}
+              </Text>
+            </View>
+
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator>
+              {(() => {
+                const dateClean = (viewLocTasksModal.date || '').slice(0, 10);
+                const entryId = viewLocTasksModal.entry?.id;
+
+                // Find tasks matching this date / entry
+                const matchedTasks = userTasks.filter((t: any) => {
+                  const matchId = entryId && (t.tp_entry_id === entryId || t.tp_entry_id === viewLocTasksModal.entry?.entry_id);
+                  const td = (t.date || t.created_at || '').slice(0, 10);
+                  const matchDate = td === dateClean;
+                  return matchId || (matchDate && t.source === 'TourPlan');
+                });
+
+                if (viewLocTasksModal.locations.length === 0 && matchedTasks.length === 0) {
+                  return (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                        📍 Direct Area travel to {viewLocTasksModal.destination}. No individual clinics pre-assigned.
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View style={{ gap: 8 }}>
+                    {viewLocTasksModal.locations.map((loc: any, idx: number) => {
+                      const locName = loc.name || loc.clinic;
+                      const task = matchedTasks.find((t: any) =>
+                        t.location_id === loc.id ||
+                        (t.location_name && locName && t.location_name.toLowerCase().trim() === locName.toLowerCase().trim())
+                      );
+
+                      return (
+                        <View
+                          key={loc.id || idx}
+                          style={{
+                            backgroundColor: task ? '#F0FDF4' : '#F8FAFC',
+                            borderWidth: 1,
+                            borderColor: task ? '#86EFAC' : '#E2E8F0',
+                            borderRadius: 8,
+                            padding: 10,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#0F172A' }}>
+                                🏥 {locName}
+                              </Text>
+                              <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                                {loc.category || 'CLINIC'} • {loc.address || 'Field Location'}
+                              </Text>
+                            </View>
+                            {task ? (
+                              <View style={{ backgroundColor: task.status === 'COMPLETED' ? '#DCFCE7' : '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: task.status === 'COMPLETED' ? '#15803D' : '#1D4ED8' }}>
+                                  ● {task.status}
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>
+                                  ⏳ Plan Pending
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {task ? (
+                            <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#BBF7D0' }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
+                                ✓ Task Taken &amp; Active in Agenda
+                              </Text>
+                              <Text style={{ fontSize: 10, color: '#15803D', marginTop: 1 }}>
+                                Task: "{task.title}" • Time: {task.time || 'Anytime'} • 50m Geofence Active
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={{ fontSize: 10, color: '#92400E', marginTop: 4 }}>
+                              Task will be automatically added to your agenda once this Tour Plan is approved by Admin.
+                            </Text>
+                          )}
+                        </View>
+                      );
+                    })}
+
+                    {/* Any matched tasks not in the locations list */}
+                    {matchedTasks
+                      .filter((t: any) => !viewLocTasksModal.locations.some((l: any) => l.id === t.location_id || (t.location_name && (l.name || l.clinic) && t.location_name.toLowerCase().trim() === (l.name || l.clinic).toLowerCase().trim())))
+                      .map((t: any) => (
+                        <View
+                          key={t.id}
+                          style={{
+                            backgroundColor: '#F0FDF4',
+                            borderWidth: 1,
+                            borderColor: '#86EFAC',
+                            borderRadius: 8,
+                            padding: 10,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#0F172A' }}>
+                              📍 {t.location_name || t.title}
+                            </Text>
+                            <View style={{ backgroundColor: t.status === 'COMPLETED' ? '#DCFCE7' : '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                              <Text style={{ fontSize: 10, fontWeight: '800', color: t.status === 'COMPLETED' ? '#15803D' : '#1D4ED8' }}>
+                                ● {t.status}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={{ fontSize: 10.5, color: '#166534', fontWeight: '700', marginTop: 4 }}>
+                            ✓ Active Task: "{t.title}" • Time: {t.time || 'Anytime'}
+                          </Text>
+                        </View>
+                      ))}
+                  </View>
+                );
+              })()}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setViewLocTasksModal((prev) => ({ ...prev, visible: false }))}
+              style={{ backgroundColor: '#1E40AF', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
+                ✕ Close
               </Text>
             </TouchableOpacity>
           </View>

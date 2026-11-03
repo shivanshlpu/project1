@@ -168,6 +168,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [hqs, setHqs] = useState<Array<{ id: string; name: string; code?: string }>>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
 
   
   const [routeBatches, setRouteBatches] = useState<RouteBatchItem[]>([]);
@@ -257,9 +258,10 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const [usersRes, hqsRes] = await Promise.all([
+        const [usersRes, hqsRes, tasksRes] = await Promise.all([
           resilientFetch('/users'),
           resilientFetch('/inventory/hqs'),
+          resilientFetch('/tasks'),
         ]);
         if (usersRes.ok) {
           const uData = await usersRes.json();
@@ -271,6 +273,12 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
           const hData = await hqsRes.json();
           if (Array.isArray(hData)) {
             setHqs(hData);
+          }
+        }
+        if (tasksRes.ok) {
+          const tData = await tasksRes.json();
+          if (Array.isArray(tData)) {
+            setAllTasks(tData);
           }
         }
       } catch {}
@@ -1826,7 +1834,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                                 type="button"
                                 onClick={() => setSelectedEntryForDetails(item)}
                                 style={{ background: '#F8FAFC', border: '1px solid #CBD5E1', padding: '4px 6px', borderRadius: 4, cursor: 'pointer', color: '#1E293B' }}
-                                title="View calculation breakdown"
+                                title="View assigned locations & task details"
                               >
                                 <Eye size={13} />
                               </button>
@@ -2290,6 +2298,140 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                 </div>
               )}
             </div>
+
+            {/* Assigned Locations & Active Tasks Indicator */}
+            {(() => {
+              const entry = selectedEntryForDetails;
+              const dateClean = (entry.date || '').slice(0, 10);
+              const matchedBatch = routeBatches.find(
+                (b) =>
+                  (entry.route_batch_id && (b.id === entry.route_batch_id || b.batch_code === entry.route_batch_id)) ||
+                  (entry.route_batch_code && b.batch_code?.toLowerCase() === entry.route_batch_code?.toLowerCase())
+              );
+
+              // Gather assigned locations
+              let locs: any[] = [];
+              if (Array.isArray(entry.selected_locations) && entry.selected_locations.length > 0) {
+                locs = entry.selected_locations;
+              } else if ((matchedBatch as any)?.locations && (matchedBatch as any).locations.length > 0) {
+                locs = (matchedBatch as any).locations;
+              }
+
+              // Find tasks generated for this TP entry
+              const entryTasks = allTasks.filter((t) => {
+                const matchId = t.tp_entry_id && (t.tp_entry_id === entry.id || t.tp_entry_id === entry.entry_id || t.tp_entry_id === (entry as any).tour_plan_item_id);
+                const matchDate = (t.date || '').slice(0, 10) === dateClean;
+                const matchMr = t.assigned_mr_id === entry.mr_id;
+                return matchId || (matchDate && matchMr && t.source === 'TourPlan');
+              });
+
+              return (
+                <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #E2E8F0', paddingBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
+                        🏥 Assigned Locations &amp; Task Assignment Status
+                      </span>
+                    </div>
+                    <span style={{ background: entryTasks.length > 0 ? '#DCFCE7' : '#F1F5F9', color: entryTasks.length > 0 ? '#15803D' : '#475569', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 800 }}>
+                      {entryTasks.length > 0 ? `✓ ${entryTasks.length} Task(s) Active` : `${locs.length} Location(s) Assigned`}
+                    </span>
+                  </div>
+
+                  {locs.length === 0 && entryTasks.length === 0 ? (
+                    <div style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: 6, fontSize: 12, color: '#64748B' }}>
+                      📍 Direct Area coverage to <strong>{entry.destination || entry.planned_area}</strong>. No individual clinic locations were pre-selected.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {locs.map((loc: any, lIdx: number) => {
+                        const locName = loc.name || loc.clinic;
+                        const matchedTask = entryTasks.find((t) =>
+                          t.location_id === loc.id ||
+                          (t.location_name && locName && t.location_name.toLowerCase().trim() === locName.toLowerCase().trim())
+                        );
+
+                        return (
+                          <div
+                            key={loc.id || lIdx}
+                            style={{
+                              background: matchedTask ? '#F0FDF4' : '#F8FAFC',
+                              border: `1px solid ${matchedTask ? '#86EFAC' : '#E2E8F0'}`,
+                              borderRadius: 6,
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0F172A' }}>
+                                  🏥 {locName}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                  {loc.category || 'CLINIC'} • {loc.address || 'Field Location'}
+                                </div>
+                              </div>
+                              {matchedTask ? (
+                                <span style={{ background: matchedTask.status === 'COMPLETED' ? '#15803D' : matchedTask.status === 'IN_PROGRESS' ? '#D97706' : '#2563EB', color: '#FFFFFF', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 800 }}>
+                                  ● {matchedTask.status}
+                                </span>
+                              ) : (
+                                <span style={{ background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, border: '1px solid #FCD34D' }}>
+                                  ⏳ Plan Pending
+                                </span>
+                              )}
+                            </div>
+
+                            {matchedTask ? (
+                              <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700 }}>
+                                  ✓ Task Assigned to {matchedTask.assigned_mr_name || entry.mr_name} (50m Geofence Active)
+                                </div>
+                                <div style={{ fontSize: 10.5, color: '#15803D' }}>
+                                  Time: {matchedTask.time || 'Anytime'} • Task ID: {matchedTask.id.slice(0, 10)}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: 4, fontSize: 10.5, color: '#92400E' }}>
+                                Task will be generated and assigned to {entry.mr_name}'s agenda upon Tour Plan approval.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Any tasks created that were not explicitly in locs list */}
+                      {entryTasks
+                        .filter((t) => !locs.some((l) => l.id === t.location_id || (t.location_name && (l.name || l.clinic) && t.location_name.toLowerCase().trim() === (l.name || l.clinic).toLowerCase().trim())))
+                        .map((t) => (
+                          <div
+                            key={t.id}
+                            style={{
+                              background: '#F0FDF4',
+                              border: '1px solid #86EFAC',
+                              borderRadius: 6,
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0F172A' }}>
+                                  📍 {t.location_name || t.title}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#166534', marginTop: 2, fontWeight: 600 }}>
+                                  ✓ Task: "{t.title}" • Assigned to {t.assigned_mr_name || entry.mr_name}
+                                </div>
+                              </div>
+                              <span style={{ background: t.status === 'COMPLETED' ? '#15803D' : '#2563EB', color: '#FFFFFF', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 800 }}>
+                                ● {t.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Calculation Formula Breakdown Card (Two-Way Round Trip) */}
             <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 8, padding: 16, marginBottom: 18 }}>
