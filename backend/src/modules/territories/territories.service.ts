@@ -202,16 +202,41 @@ export class TerritoriesService {
     const rawAll = [...(this.db.savedLocations || []), ...docLocations];
     let allLocations = rawAll.filter((loc, idx, arr) => arr.findIndex((x) => x.id === loc.id) === idx);
 
-    // If MR, strictly isolate to their marked / assigned locations
+    // MR & Shared HQ Scope: MR sees their own locations AND any location belonging to a route batch or MR in their HQ
     if (user?.role === 'MR') {
       const currentMrId = user.id || user.sub;
       const userName = (user.name || '').toLowerCase().trim();
+      const dbUser = this.db.users.find((u) => u.id === currentMrId) || user;
+      const foundHq = (dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        ? this.db.findHeadquarter(dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        : null;
+      const userHq = (foundHq?.id || foundHq?.hq_id || dbUser.hq_id || '').toLowerCase().trim();
+      const userHqCode = (foundHq?.code || foundHq?.hq_code || '').toLowerCase().trim();
+
+      const allBatchLocationIds = new Set(batches.flatMap((b) => b.location_ids || []));
+      const batchIds = new Set(batches.map((b) => b.id));
+      const batchCodes = new Set(batches.map((b) => (b.batch_code || '').toLowerCase()));
+
       allLocations = allLocations.filter((l: any) => {
         const isCreatedByMe = l.created_by === currentMrId;
         const isAssignedToMe = l.assigned_mr_id === currentMrId;
         const matchesName = userName && l.assigned_mr_name?.toLowerCase().includes(userName);
         const matchesCreatedName = userName && l.created_by_name?.toLowerCase().includes(userName);
-        return isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName;
+        if (isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName) return true;
+
+        // Shared HQ: If location is linked to any route batch in this MR's HQ
+        if (allBatchLocationIds.has(l.id)) return true;
+        if (l.batch_id && batchIds.has(l.batch_id)) return true;
+        if (l.batch_code && batchCodes.has(l.batch_code.toLowerCase())) return true;
+
+        // Shared HQ: If location creator belongs to the same HQ
+        const creator = this.db.users.find((u) => u.id === l.created_by);
+        if (creator && userHq) {
+          const creatorHq = (creator.hq_id || creator.area_id || '').toLowerCase().trim();
+          if (creatorHq === userHq || (userHqCode && creatorHq === userHqCode)) return true;
+        }
+
+        return false;
       });
     }
 

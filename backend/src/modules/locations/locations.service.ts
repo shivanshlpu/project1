@@ -174,14 +174,54 @@ export class LocationsService implements OnModuleInit {
 
     let result = [...this.locations];
 
-    // MR Isolation: If the request is from a Field MR, only display locations they personally marked (§Client Requirement)
+    // MR & Shared HQ Scope: Allow MRs in the same HQ to see and coordinate on locations and batch stops
     if (user && user.role === 'MR') {
       const mrId = user.id || user.sub;
-      result = result.filter(
-        (l) =>
-          l.created_by === mrId ||
-          (user.name && l.created_by_name?.toLowerCase().includes(user.name.toLowerCase())),
-      );
+      const dbUser = this.db.users.find((u) => u.id === mrId) || user;
+      const foundHq = (dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        ? this.db.findHeadquarter(dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        : null;
+      const userHq = (foundHq?.id || foundHq?.hq_id || dbUser.hq_id || '').toLowerCase().trim();
+      const userHqCode = (foundHq?.code || foundHq?.hq_code || '').toLowerCase().trim();
+
+      const hqBatchIds = new Set<string>();
+      const hqBatchCodes = new Set<string>();
+      const hqBatchLocIds = new Set<string>();
+      (this.db.routeBatches || []).forEach((rb) => {
+        const rbHqId = (rb.hq_id || '').toLowerCase().trim();
+        const rbHqCode = (rb.hq_code || '').toLowerCase().trim();
+        const matchesHq = Boolean(
+          (userHq && (rbHqId === userHq || rbHqId.includes(userHq) || userHq.includes(rbHqId))) ||
+          (userHqCode && (rbHqCode === userHqCode || rbHqCode.includes(userHqCode))) ||
+          (rb.mr_id === mrId)
+        );
+        if (matchesHq) {
+          hqBatchIds.add(rb.id);
+          if (rb.batch_code) hqBatchCodes.add(rb.batch_code.toLowerCase());
+          (rb.location_ids || []).forEach((lid) => hqBatchLocIds.add(lid));
+        }
+      });
+
+      result = result.filter((l) => {
+        const isCreatedByMe = l.created_by === mrId;
+        const matchesCreatedName = Boolean(user.name && l.created_by_name?.toLowerCase().includes(user.name.toLowerCase()));
+        const isAssignedToMe = l.assigned_mr_id === mrId;
+        const matchesAssignedName = Boolean(user.name && l.assigned_mr_name?.toLowerCase().includes(user.name.toLowerCase()));
+        if (isCreatedByMe || matchesCreatedName || isAssignedToMe || matchesAssignedName) return true;
+
+        // Shared HQ coordination:
+        if (hqBatchLocIds.has(l.id)) return true;
+        if (l.batch_id && hqBatchIds.has(l.batch_id)) return true;
+        if (l.batch_code && hqBatchCodes.has(l.batch_code.toLowerCase())) return true;
+
+        const creator = this.db.users.find((u) => u.id === l.created_by);
+        if (creator && userHq) {
+          const creatorHq = (creator.hq_id || creator.area_id || '').toLowerCase().trim();
+          if (creatorHq === userHq || (userHqCode && creatorHq === userHqCode)) return true;
+        }
+
+        return false;
+      });
     } else if (query?.mr_id && query.mr_id !== 'ALL') {
       result = result.filter((l) => l.created_by === query.mr_id);
     }

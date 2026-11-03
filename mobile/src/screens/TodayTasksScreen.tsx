@@ -130,9 +130,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   
   const [completingTask, setCompletingTask] = useState<MobileTaskItem | null>(null);
   const [visitPhoto, setVisitPhoto] = useState<PhotoResult | null>(null);
-  const [visitOutcome, setVisitOutcome] = useState(
-    'Reviewed AHTRI-S scheme. Doctor agreed to prescribe for 20 patients.',
-  );
+  const [visitOutcome, setVisitOutcome] = useState('');
+  const [medPickerVisible, setMedPickerVisible] = useState<boolean>(false);
+  const [medPickerOrderId, setMedPickerOrderId] = useState<string | null>(null);
+  const [medSearchQuery, setMedSearchQuery] = useState<string>('');
+  const [medFilterStock, setMedFilterStock] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
   
   const [modalOrders, setModalOrders] = useState<
     Array<{
@@ -261,12 +263,37 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
   };
 
   
-  const handleSelectMedicineForOrder = (id: string, name: string, price: number) => {
+  const handleSelectMedicineForOrder = (id: string, name: string, price: number, preferredDistributor?: string) => {
     setModalOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, product_name: name, unit_price: String(price) } : o
-      )
+      prev.map((o) => {
+        if (o.id !== id) return o;
+        let dist = o.distributor || preferredDistributor || '';
+        if (!dist && availableDepots.length > 0) {
+          const cleanName = (name || '').toLowerCase().trim();
+          const shortName = cleanName.split(' (')[0];
+          const stock = hqStockMap[cleanName] || hqStockMap[shortName];
+          if (stock && Array.isArray(stock.internal_depots)) {
+            const inStockDep = stock.internal_depots.find((d: any) => d.stock > 0);
+            if (inStockDep) dist = inStockDep.stocker_name;
+          }
+          if (!dist) dist = availableDepots[0].name;
+        }
+        return {
+          ...o,
+          product_name: name,
+          unit_price: String(price),
+          distributor: dist,
+          quantity: (!o.quantity || parseInt(o.quantity) <= 0) ? '1' : o.quantity,
+        };
+      })
     );
+  };
+
+  const openMedicinePickerForOrder = (orderId: string) => {
+    setMedPickerOrderId(orderId);
+    setMedSearchQuery('');
+    setMedFilterStock('ALL');
+    setMedPickerVisible(true);
   };
 
   
@@ -750,6 +777,8 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       );
 
       
+      setVisitPhoto(null);
+      setVisitOutcome('');
       setCompletingTask(inProgressTask);
 
       
@@ -813,6 +842,18 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       );
       return;
     }
+    const existingPhoto = task.visit_photo || (task as any).photo_url || (task as any).verification_photo_key;
+    if (existingPhoto) {
+      setVisitPhoto({
+        uri: existingPhoto,
+        base64: existingPhoto.startsWith('data:') ? existingPhoto : undefined,
+        width: 800,
+        height: 600,
+      });
+    } else {
+      setVisitPhoto(null);
+    }
+    setVisitOutcome(task.outcome || '');
     setCompletingTask(task);
   };
 
@@ -924,6 +965,10 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
       photoPayload = `data:image/jpeg;base64,${raw}`;
     } else if (visitPhoto?.uri && visitPhoto.uri.startsWith('data:image')) {
       photoPayload = visitPhoto.uri;
+    } else if (completingTask.visit_photo) {
+      photoPayload = completingTask.visit_photo;
+    } else if ((completingTask as any).photo_url) {
+      photoPayload = (completingTask as any).photo_url;
     } else {
       const targetUri = visitPhoto?.uri || (visitPhoto?.base64 && visitPhoto.base64.startsWith('file:') ? visitPhoto.base64 : null);
       if (targetUri) {
@@ -936,6 +981,11 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           console.warn('FileSystem direct read error in handleSubmitCompletion:', fsErr);
         }
       }
+    }
+    if (!photoPayload && completingTask.visit_photo) {
+      photoPayload = completingTask.visit_photo;
+    } else if (!photoPayload && (completingTask as any).photo_url) {
+      photoPayload = (completingTask as any).photo_url;
     }
 
     const completedTask: MobileTaskItem = {
@@ -1583,27 +1633,33 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                   <Text style={{ fontSize: 10.5, color: '#64748B', marginBottom: 8 }}>
                     Direct camera capture required for visit verification.
                   </Text>
-                  {visitPhoto ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0FDF4', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#86EFAC' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Image source={{ uri: visitPhoto.uri }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#166534' }} />
-                        <View>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ Live Camera Photo Attached</Text>
-                          <Text style={{ fontSize: 9.5, color: '#15803D' }}>GPS &amp; Timestamp encoded</Text>
+                  {(() => {
+                    const effectivePhotoUri = visitPhoto?.uri || completingTask.visit_photo || (completingTask as any).photo_url;
+                    if (effectivePhotoUri) {
+                      return (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0FDF4', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#86EFAC' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
+                            <Image source={{ uri: effectivePhotoUri }} style={{ width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#166534' }} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>✓ Visit Verification Photo On File</Text>
+                              <Text style={{ fontSize: 9.5, color: '#15803D' }}>Photo verified during on-site visit</Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity onPress={handleCaptureVisitPhoto} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, borderWidth: 1, borderColor: '#CBD5E1' }}>
+                            <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#334155' }}>Retake</Text>
+                          </TouchableOpacity>
                         </View>
-                      </View>
-                      <TouchableOpacity onPress={handleCaptureVisitPhoto} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, borderWidth: 1, borderColor: '#CBD5E1' }}>
-                        <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#334155' }}>Retake</Text>
+                      );
+                    }
+                    return (
+                      <TouchableOpacity
+                        onPress={handleCaptureVisitPhoto}
+                        style={{ backgroundColor: '#1A3C6E', paddingVertical: 9, borderRadius: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                      >
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>📷 Capture Visit Verification Photo</Text>
                       </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={handleCaptureVisitPhoto}
-                      style={{ backgroundColor: '#1A3C6E', paddingVertical: 9, borderRadius: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
-                    >
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>📷 Capture Visit Verification Photo</Text>
-                    </TouchableOpacity>
-                  )}
+                    );
+                  })()}
                 </View>
 
                 {/* Immediate Order Form */}
@@ -1635,7 +1691,17 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                             </View>
                           </View>
 
-                          <Text style={styles.smallLabel}>Product Name</Text>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                            <Text style={styles.smallLabel}>Product Name</Text>
+                            <TouchableOpacity
+                              onPress={() => openMedicinePickerForOrder(ord.id)}
+                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6, borderWidth: 1, borderColor: '#93C5FD' }}
+                            >
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#1D4ED8' }}>
+                                🔍 Browse 50+ Products
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                           <TextInput
                             style={styles.smallInput}
                             value={ord.product_name}
@@ -1736,7 +1802,7 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                           })()}
 
                           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6, marginBottom: 2 }}>
-                            {(dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS).map((med, mIdx) => {
+                            {(dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS).slice(0, 5).map((med, mIdx) => {
                               const isSelected = ord.product_name === med.name || ord.product_name === med.short;
                               const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                               const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)] || (med.short && hqStockMap[norm(med.short)]);
@@ -1763,6 +1829,22 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
                                 </TouchableOpacity>
                               );
                             })}
+                            <TouchableOpacity
+                              onPress={() => openMedicinePickerForOrder(ord.id)}
+                              style={{
+                                backgroundColor: '#EEF2FF',
+                                paddingHorizontal: 9,
+                                paddingVertical: 3.5,
+                                borderRadius: 12,
+                                marginRight: 6,
+                                borderWidth: 1,
+                                borderColor: '#A5B4FC',
+                              }}
+                            >
+                              <Text style={{ fontSize: 10, color: '#4338CA', fontWeight: '800' }}>
+                                + More Products ({(dynamicMedicines.length > 0 ? dynamicMedicines.length : COMPANY_MEDICINES_CHIPS.length)}) »
+                              </Text>
+                            </TouchableOpacity>
                           </ScrollView>
 
                           <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
@@ -1888,6 +1970,183 @@ export const TodayTasksScreen: React.FC<TodayTasksScreenProps> = ({
           </View>
         </Modal>
       )}
+
+      {/* Searchable Medicine & Products Picker Modal */}
+      <Modal
+        visible={medPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMedPickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%', paddingBottom: 16 }]}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A3C6E' }}>💊 Select Medicine / Product</Text>
+                <Text style={{ fontSize: 11, color: '#64748B' }}>
+                  Tap any item to select. Search across all catalog products &amp; check live HQ stock.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setMedPickerVisible(false)}
+                style={{ padding: 6, borderRadius: 20, backgroundColor: '#F1F5F9' }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10, borderWidth: 1, borderColor: '#CBD5E1' }}>
+              <Text style={{ fontSize: 14, marginRight: 6 }}>🔍</Text>
+              <TextInput
+                style={{ flex: 1, fontSize: 13, color: '#0F172A', paddingVertical: 2 }}
+                value={medSearchQuery}
+                onChangeText={setMedSearchQuery}
+                placeholder="Search by medicine name, packing, or formula..."
+                placeholderTextColor="#94A3B8"
+                autoFocus
+              />
+              {medSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setMedSearchQuery('')} style={{ padding: 4 }}>
+                  <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '700' }}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Stock Filter Pills */}
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+              {(['ALL', 'IN_STOCK', 'OUT_OF_STOCK'] as const).map((filterKey) => {
+                const isCur = medFilterStock === filterKey;
+                const label = filterKey === 'ALL' ? 'All Products' : filterKey === 'IN_STOCK' ? '🟢 In Stock Only' : '🔴 Out of Stock';
+                return (
+                  <TouchableOpacity
+                    key={filterKey}
+                    onPress={() => setMedFilterStock(filterKey)}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 14,
+                      backgroundColor: isCur ? '#1E40AF' : '#F1F5F9',
+                      borderWidth: 1,
+                      borderColor: isCur ? '#1E40AF' : '#CBD5E1',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: isCur ? '#FFFFFF' : '#475569' }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* List of Filtered Medicines */}
+            <ScrollView showsVerticalScrollIndicator style={{ flex: 1 }}>
+              {(() => {
+                const list = dynamicMedicines.length > 0 ? dynamicMedicines : COMPANY_MEDICINES_CHIPS;
+                const q = medSearchQuery.toLowerCase().trim();
+                const filtered = list.filter((m) => {
+                  const nameMatch = !q || m.name.toLowerCase().includes(q) || (m.short && m.short.toLowerCase().includes(q));
+                  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const stock = hqStockMap[m.name.toLowerCase().trim()] || (m.short && hqStockMap[m.short.toLowerCase().trim()]) || hqStockMap[norm(m.name)] || (medFilterStock !== 'ALL' && m.short && hqStockMap[norm(m.short)]);
+                  const isOut = stock?.is_out_of_stock;
+                  if (medFilterStock === 'IN_STOCK' && isOut) return false;
+                  if (medFilterStock === 'OUT_OF_STOCK' && !isOut) return false;
+                  return nameMatch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <View style={{ padding: 24, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>
+                        No medicines match "{medSearchQuery}"
+                      </Text>
+                      {medSearchQuery.trim().length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (medPickerOrderId && medSearchQuery.trim()) {
+                              handleSelectMedicineForOrder(medPickerOrderId, medSearchQuery.trim(), 0);
+                              setMedPickerVisible(false);
+                            }
+                          }}
+                          style={{ marginTop: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 }}
+                        >
+                          <Text style={{ fontSize: 11.5, color: '#1D4ED8', fontWeight: '700' }}>
+                            Use custom name: "{medSearchQuery}"
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                }
+
+                return filtered.map((med, mIdx) => {
+                  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const stock = hqStockMap[med.name.toLowerCase().trim()] || (med.short && hqStockMap[med.short.toLowerCase().trim()]) || hqStockMap[norm(med.name)] || (med.short && hqStockMap[norm(med.short)]);
+                  const isOut = stock?.is_out_of_stock;
+                  const isLow = stock?.is_low_stock;
+
+                  return (
+                    <TouchableOpacity
+                      key={mIdx}
+                      onPress={() => {
+                        if (medPickerOrderId) {
+                          handleSelectMedicineForOrder(medPickerOrderId, med.name, med.price);
+                        }
+                        setMedPickerVisible(false);
+                      }}
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 8,
+                        marginBottom: 6,
+                        borderWidth: 1,
+                        borderColor: isOut ? '#FCA5A5' : isLow ? '#FCD34D' : '#E2E8F0',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                          {med.name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                          Unit Price: <Text style={{ fontWeight: '700', color: '#0F172A' }}>₹{med.price}</Text>
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 12,
+                            backgroundColor: isOut ? '#FEE2E2' : isLow ? '#FEF3C7' : '#DCFCE7',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: '700',
+                              color: isOut ? '#991B1B' : isLow ? '#92400E' : '#166534',
+                            }}
+                          >
+                            {isOut ? '🔴 Out of Stock' : isLow ? `🟠 Low: ${stock?.available_stock}` : `🟢 In Stock (${stock?.available_stock || 'Avail'})`}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#2563EB', fontWeight: '700', marginTop: 4 }}>
+                          Select →
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };

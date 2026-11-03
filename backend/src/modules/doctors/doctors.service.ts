@@ -53,15 +53,52 @@ export class DoctorsService {
 
     let list = this.db.doctors.filter((d) => !d.deleted_at);
 
-    // Strict MR Isolation (§Client Requirement): An MR should ONLY see locations/doctors marked by them or assigned to them
+    // MR & Shared HQ Scope: MR sees their marked doctors AND doctors/clinics saved in their shared HQ
     if (user && user.role === 'MR') {
       const mrId = user.id || user.sub;
+      const dbUser = this.db.users.find((u) => u.id === mrId) || user;
+      const foundHq = (dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        ? this.db.findHeadquarter(dbUser.hq_id || dbUser.hq_code || dbUser.hq || dbUser.area_id)
+        : null;
+      const userHq = (foundHq?.id || foundHq?.hq_id || dbUser.hq_id || '').toLowerCase().trim();
+      const userHqCode = (foundHq?.code || foundHq?.hq_code || '').toLowerCase().trim();
+
+      const hqBatchIds = new Set<string>();
+      const hqBatchCodes = new Set<string>();
+      const hqBatchLocIds = new Set<string>();
+      (this.db.routeBatches || []).forEach((rb) => {
+        const rbHqId = (rb.hq_id || '').toLowerCase().trim();
+        const rbHqCode = (rb.hq_code || '').toLowerCase().trim();
+        const matchesHq = Boolean(
+          (userHq && (rbHqId === userHq || rbHqId.includes(userHq) || userHq.includes(rbHqId))) ||
+          (userHqCode && (rbHqCode === userHqCode || rbHqCode.includes(userHqCode))) ||
+          (rb.mr_id === mrId)
+        );
+        if (matchesHq) {
+          hqBatchIds.add(rb.id);
+          if (rb.batch_code) hqBatchCodes.add(rb.batch_code.toLowerCase());
+          (rb.location_ids || []).forEach((lid) => hqBatchLocIds.add(lid));
+        }
+      });
+
       list = list.filter((d) => {
         const isCreatedByMe = d.created_by === mrId;
         const isAssignedToMe = d.assigned_mr_id === mrId;
         const matchesName = user.name && d.assigned_mr_name?.toLowerCase().includes(user.name.toLowerCase());
         const matchesCreatedName = user.name && d.created_by_name?.toLowerCase().includes(user.name.toLowerCase());
-        return isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName;
+        if (isCreatedByMe || isAssignedToMe || matchesName || matchesCreatedName) return true;
+
+        if (hqBatchLocIds.has(d.id)) return true;
+        if (d.batch_id && hqBatchIds.has(d.batch_id)) return true;
+        if (d.batch_code && hqBatchCodes.has(d.batch_code.toLowerCase())) return true;
+
+        const creator = this.db.users.find((u) => u.id === d.created_by);
+        if (creator && userHq) {
+          const creatorHq = (creator.hq_id || creator.area_id || '').toLowerCase().trim();
+          if (creatorHq === userHq || (userHqCode && creatorHq === userHqCode)) return true;
+        }
+
+        return false;
       });
     } else if (filter.assigned_mr_id) {
       list = list.filter((d) => d.assigned_mr_id === filter.assigned_mr_id || d.created_by === filter.assigned_mr_id);

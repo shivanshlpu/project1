@@ -369,6 +369,70 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
     onSelect: () => {},
   });
 
+  const [locPickerModal, setLocPickerModal] = useState<{
+    visible: boolean;
+    title: string;
+    locations: any[];
+    searchQuery: string;
+    targetMode: 'CREATE' | 'EDIT_RC';
+  }>({
+    visible: false,
+    title: '',
+    locations: [],
+    searchQuery: '',
+    targetMode: 'CREATE',
+  });
+
+  const openLocationsPicker = (locations: any[], title?: string, mode: 'CREATE' | 'EDIT_RC' = 'CREATE') => {
+    setLocPickerModal({
+      visible: true,
+      title: title || (selectedBatch ? `Locations in [${selectedBatch.batch_code}]` : `Marked Locations in ${selectedArea}`),
+      locations,
+      searchQuery: '',
+      targetMode: mode,
+    });
+  };
+
+  const openBatchPicker = () => {
+    const batchList = availableBatches.length > 0 ? availableBatches : allHqBatches;
+    const options = [
+      {
+        label: '🔘 No Batch (Direct Area Travel)',
+        value: 'NONE',
+        sublabel: `Travel directly to '${selectedArea}' without assigning a circuit batch`,
+      },
+      ...batchList.map((b) => ({
+        label: `🛣️ ${b.batch_code} • ${b.distance_km} km ${b.is_exact_match ? '★ Recommended' : ''}`,
+        value: b.id,
+        sublabel: `Route: ${b.route} (🔄 ${(b.distance_km || 0) * 2} km Round-Trip)`,
+      })),
+    ];
+
+    setPickerModal({
+      visible: true,
+      title: `Select Route Circuit for '${selectedArea}'`,
+      options,
+      selectedValue: selectedBatch?.id || 'NONE',
+      onSelect: (val) => {
+        if (val === 'NONE') {
+          setSelectedBatch(null);
+        } else {
+          const found = allHqBatches.find((b) => b.id === val) || availableBatches.find((b) => b.id === val);
+          if (found) {
+            setSelectedBatch(found);
+            if (!selectedArea.trim()) {
+              const termStop =
+                found.route_stops && found.route_stops.length > 0
+                  ? found.route_stops[found.route_stops.length - 1]
+                  : found.name || '';
+              if (termStop) setSelectedArea(termStop);
+            }
+          }
+        }
+      },
+    });
+  };
+
   
   const getMonthKeyFromDate = (dateStr: string): string => {
     try {
@@ -574,7 +638,7 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
       const baseUrl = await ApiConfig.getBaseUrl();
       const headers = await ApiConfig.getAuthHeaders();
       const res = await fetch(
-        `${baseUrl}/territories/route-batches/with-locations?hq_id=${encodeURIComponent(hqId)}&mr_id=${encodeURIComponent(currentUserId)}`,
+        `${baseUrl}/territories/route-batches/with-locations?hq_id=${encodeURIComponent(hqId)}`,
         { headers },
       );
       if (res.ok) {
@@ -1639,156 +1703,84 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 {isLoadingBatches && <ActivityIndicator size="small" color="#1A3C6E" />}
               </View>
 
-              {/* Quick Action: Browse All HQ Route Batches */}
+              {/* Redesigned Compact Route Circuit Selector */}
               <View style={{ marginTop: 4, marginBottom: 8 }}>
-                <TouchableOpacity
-                  style={[styles.browseAllBatchesBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
-                  onPress={() => setIsAllBatchesModalOpen(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.browseAllBatchesBtnText, { color: '#1D4ED8' }]}>
-                    📋 Browse All HQ Route Batches ({allHqBatches.length})
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Option: Direct Area Visit (Without Assigning to a Batch) */}
-              <TouchableOpacity
-                style={[
-                  styles.batchOptionCard,
-                  !selectedBatch && styles.batchOptionCardSelected,
-                  {
-                    borderColor: !selectedBatch ? '#0F8B5A' : '#E2E8F0',
-                    backgroundColor: !selectedBatch ? '#F0FDF4' : '#FFFFFF',
-                    marginBottom: 8,
-                  },
-                ]}
-                onPress={() => setSelectedBatch(null)}
-                activeOpacity={0.7}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <View style={[styles.radioCircle, !selectedBatch && styles.radioCircleSelected]}>
-                      {!selectedBatch && <View style={styles.radioInner} />}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '800', fontSize: 12.5, color: !selectedBatch ? '#15803D' : '#0F172A' }}>
-                        🔘 No Batch (Direct Area Visit Only)
-                      </Text>
-                      <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 1 }}>
-                        Visit '{selectedArea}' directly without assigning a circuit batch
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.distPill, { backgroundColor: !selectedBatch ? '#DCFCE7' : '#F1F5F9' }]}>
-                    <Text style={[styles.distPillText, { color: !selectedBatch ? '#15803D' : '#64748B' }]}>Direct Area</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {availableBatches.length > 0 ? (
-                <View style={{ marginTop: 2 }}>
-                  <Text style={styles.routeBatchSub}>
-                    {availableBatches.length === 1
-                      ? `Optional Circuit Match for '${selectedArea}' (tap to select or tap again to deselect):`
-                      : `Optional Circuit Matches for '${selectedArea}' (tap to select or tap again to deselect):`}
-                  </Text>
-
-                  {availableBatches.map((batch) => {
-                    const isSelected = selectedBatch?.id === batch.id;
-                    return (
+                {selectedBatch ? (
+                  <View style={[styles.batchOptionCard, styles.batchOptionCardSelected, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC', padding: 12 }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <View style={[styles.radioCircle, styles.radioCircleSelected]}>
+                          <View style={styles.radioInner} />
+                        </View>
+                        <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#166534' }}>
+                          🛣️ {selectedBatch.batch_code}
+                        </Text>
+                        <View style={[styles.distPill, { backgroundColor: '#DCFCE7' }]}>
+                          <Text style={[styles.distPillText, { color: '#15803D' }]}>{selectedBatch.distance_km} km</Text>
+                        </View>
+                        {selectedBatch.is_exact_match && (
+                          <View style={styles.exactMatchBadge}>
+                            <Text style={styles.exactMatchBadgeText}>Recommended</Text>
+                          </View>
+                        )}
+                      </View>
                       <TouchableOpacity
-                        key={batch.id}
-                        style={[styles.batchOptionCard, isSelected && styles.batchOptionCardSelected]}
-                        onPress={() => {
-                          // Allow toggling/deselecting batch
-                          setSelectedBatch(isSelected ? null : batch);
-                          if (!selectedArea.trim() && !isSelected) {
-                            const termStop =
-                              batch.route_stops && batch.route_stops.length > 0
-                                ? batch.route_stops[batch.route_stops.length - 1]
-                                : batch.name || '';
-                            if (termStop) setSelectedArea(termStop);
-                          }
-                        }}
-                        activeOpacity={0.7}
+                        onPress={() => setSelectedBatch(null)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' }}
                       >
-                        <View style={styles.batchCardTop}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                            <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                              {isSelected && <View style={styles.radioInner} />}
-                            </View>
-                            <Text style={[styles.batchCodeText, isSelected && styles.batchCodeTextSelected]}>
-                              {batch.batch_code}
-                            </Text>
-                            {batch.is_exact_match && (
-                              <View style={styles.exactMatchBadge}>
-                                <Text style={styles.exactMatchBadgeText}>Recommended</Text>
-                              </View>
-                            )}
-                          </View>
-                          <View style={styles.distPill}>
-                            <Text style={styles.distPillText}>{batch.distance_km} km</Text>
-                          </View>
-                        </View>
-
-                        {/* Complete Route Stops */}
-                        <View style={styles.routeStopsRow}>
-                          <Text style={styles.routeStopsLabel}>Route:</Text>
-                          <Text style={styles.routeStopsValue}>{batch.route}</Text>
-                        </View>
-
-                        {/* Two-Way Round Trip Travel Distance */}
-                        <View style={styles.batchDistRow}>
-                          <View style={styles.distPill}>
-                            <Text style={styles.distPillText}>📏 {batch.distance_km} km (One-Way)</Text>
-                          </View>
-                          <View style={[styles.distPill, { backgroundColor: '#DCFCE7' }]}>
-                            <Text style={[styles.distPillText, { color: '#15803D' }]}>🔄 {batch.distance_km * 2} km (Round-Trip)</Text>
-                          </View>
-                        </View>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#991B1B' }}>✕ Clear Batch</Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View style={styles.noBatchNotice}>
-                  <Text style={styles.noBatchNoticeTitle}>
-                    📍 Direct Area Travel to '{selectedArea}'
-                  </Text>
-                  <Text style={styles.noBatchNoticeText}>
-                    No predefined route batch selected. The system will automatically calculate average distance from {activeHqName} center to {selectedArea} boundary for your round-trip journey.
-                  </Text>
+                    </View>
+
+                    <Text style={{ fontSize: 11, color: '#334155', marginTop: 2 }}>
+                      Route: <Text style={{ fontWeight: '600' }}>{selectedBatch.route}</Text>
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <Text style={{ fontSize: 10.5, color: '#15803D', fontWeight: '700' }}>
+                        🔄 Round-Trip: {selectedBatch.distance_km * 2} km
+                      </Text>
+                      <TouchableOpacity
+                        onPress={openBatchPicker}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1' }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#2563EB' }}>
+                          Change Circuit ({availableBatches.length > 0 ? availableBatches.length : allHqBatches.length}) ▼
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
                   <TouchableOpacity
-                    style={styles.browseAllBatchesBtn}
-                    onPress={() => setIsAllBatchesModalOpen(true)}
+                    style={[styles.dropdownBox, { backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', paddingVertical: 10 }]}
+                    activeOpacity={0.7}
+                    onPress={openBatchPicker}
                   >
-                    <Text style={styles.browseAllBatchesBtnText}>
-                      📋 Browse All {activeHqName} Batches ({allHqBatches.length})
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12.5, fontWeight: '700', color: '#0F172A' }}>
+                        🔘 No Batch (Direct Area Travel)
+                      </Text>
+                      <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                        {availableBatches.length > 0
+                          ? `Tap to choose from ${availableBatches.length} circuit match${availableBatches.length > 1 ? 'es' : ''} for '${selectedArea}'...`
+                          : `Tap to choose a Route Circuit or continue with direct travel...`}
+                      </Text>
+                    </View>
+                    <Text style={styles.dropdownChevron}>▼</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => setIsAllBatchesModalOpen(true)}
+                    style={{ paddingVertical: 2, paddingHorizontal: 4 }}
+                  >
+                    <Text style={{ fontSize: 10.5, color: '#2563EB', fontWeight: '600' }}>
+                      📋 Browse All HQ Batches ({allHqBatches.length}) »
                     </Text>
                   </TouchableOpacity>
                 </View>
-              )}
-
-              {/* Active Selection Summary Banner */}
-              {selectedBatch && (
-                <View style={styles.activeBatchSummary}>
-                  <Text style={styles.activeBatchSummaryTitle}>
-                    ✅ Selected Route: <Text style={{ fontWeight: '800', color: '#0F8B5A' }}>{selectedBatch.batch_code}</Text>
-                  </Text>
-                  <Text style={styles.activeBatchSummaryRoute}>
-                    {selectedBatch.route}
-                  </Text>
-                  <View style={styles.activeBatchSummaryMetrics}>
-                    <Text style={styles.activeBatchMetricText}>
-                      📏 One-Way Distance: <Text style={{ fontWeight: '700' }}>{selectedBatch.distance_km} km</Text>
-                    </Text>
-                    <Text style={[styles.activeBatchMetricText, { color: '#0F8B5A', fontWeight: '800' }]}>
-                      🔄 Round Trip (Two-Way): {selectedBatch.distance_km * 2} km
-                    </Text>
-                  </View>
-                </View>
-              )}
+              </View>
             </View>
 
             {/* Type of Work Dropdown */}
@@ -1867,141 +1859,101 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                 </TouchableOpacity>
               </View>
             ) : (() => {
+              // When a batch is selected, ONLY show locations linked to that batch!
+              // Other marked locations only appear when "No Batch" is selected (§Client Requirement)
               const batchLocations = selectedBatch
                 ? mrLocations.filter((loc) => {
                     const matchesId = loc.batch_id && (loc.batch_id === selectedBatch.id || loc.batch_id === selectedBatch.batch_code);
                     const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (selectedBatch.batch_code || '').toLowerCase();
                     const isInList = selectedBatch.location_ids && selectedBatch.location_ids.includes(loc.id);
-                    return Boolean(matchesId || matchesCode || isInList);
+                    const inBatchLocs = selectedBatch.locations && selectedBatch.locations.some((bl: any) => bl.id === loc.id);
+                    return Boolean(matchesId || matchesCode || isInList || inBatchLocs);
                   })
-                : mrLocations;
-
-              const otherLocations = selectedBatch
-                ? mrLocations.filter((loc) => !batchLocations.some((bl) => bl.id === loc.id))
                 : [];
+
+              const unbatchedLocations = !selectedBatch ? mrLocations : [];
+              const activeLocPool = selectedBatch ? batchLocations : unbatchedLocations;
+              const selectedInPool = activeLocPool.filter((l) => selectedLocationIds.includes(l.id));
 
               return (
                 <View style={{ marginTop: 10, marginBottom: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 0 }]}>
-                      Planned Doctors / Stores for this Date:
+                      {selectedBatch
+                        ? `Planned Locations for [${selectedBatch.batch_code}]:`
+                        : `Other Marked Locations in ${activeHqName}:`}
                     </Text>
                     <Text style={{ fontSize: 10.5, color: '#0F8B5A', fontWeight: '700' }}>
-                      {selectedLocationIds.length} Selected
+                      {selectedInPool.length} Selected
                     </Text>
                   </View>
 
-                  {selectedBatch && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#1A3C6E' }}>
-                        📍 Locations in Route [{selectedBatch.batch_code}]: ({batchLocations.length})
+                  {/* Dropdown Menu Trigger for Locations */}
+                  <TouchableOpacity
+                    style={[styles.dropdownBox, { backgroundColor: '#FFFFFF', borderColor: selectedBatch ? '#1E40AF' : '#64748B', paddingVertical: 10 }]}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      openLocationsPicker(
+                        activeLocPool,
+                        selectedBatch
+                          ? `Select Locations in [${selectedBatch.batch_code}]`
+                          : `Select Marked Locations in ${activeHqName}`
+                      )
+                    }
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12.5, fontWeight: '700', color: selectedBatch ? '#1E40AF' : '#0F172A' }} numberOfLines={1}>
+                        {selectedInPool.length > 0
+                          ? `✓ ${selectedInPool.length} Doctor(s) / Clinic(s) Selected`
+                          : selectedBatch
+                          ? `Tap to choose from ${batchLocations.length} locations in [${selectedBatch.batch_code}]...`
+                          : `Tap to choose from ${unbatchedLocations.length} marked locations...`}
+                      </Text>
+                      <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                        {activeLocPool.length > 0
+                          ? `Tap to open dropdown list (${activeLocPool.length} available)`
+                          : selectedBatch
+                          ? `No marked locations linked to [${selectedBatch.batch_code}] yet`
+                          : 'No marked locations found for your HQ'}
                       </Text>
                     </View>
-                  )}
+                    <Text style={styles.dropdownChevron}>▼</Text>
+                  </TouchableOpacity>
 
-                  {batchLocations.length === 0 ? (
-                    <View style={{ padding: 10, backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8 }}>
-                      <Text style={{ fontSize: 11, color: '#64748B' }}>
-                        {selectedBatch
-                          ? `No marked locations linked to route circuit [${selectedBatch.batch_code}] yet. You can mark doctors via "Doctors & Locations" or pick other marked locations below:`
-                          : mrLocations.length === 0
-                          ? 'No marked locations found for your account yet. You can mark doctors via "Doctors & Locations".'
-                          : 'Select locations for this planned date:'}
-                      </Text>
-                    </View>
-                  ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
-                      {batchLocations.map((loc) => {
-                        const isChecked = selectedLocationIds.includes(loc.id);
-                        return (
+                  {/* Selected Location Pills with Quick Remove */}
+                  {selectedInPool.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, marginBottom: 4 }}>
+                      {selectedInPool.map((loc) => (
+                        <View
+                          key={loc.id}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#EFF6FF',
+                            borderWidth: 1,
+                            borderColor: '#BFDBFE',
+                            borderRadius: 14,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3.5,
+                            gap: 5,
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E40AF' }} numberOfLines={1}>
+                            🏥 {loc.name || loc.clinic}
+                          </Text>
                           <TouchableOpacity
-                            key={loc.id}
                             onPress={() => {
-                              let nextIds: string[];
-                              if (isChecked) {
-                                nextIds = selectedLocationIds.filter((id) => id !== loc.id);
-                              } else {
-                                nextIds = [...selectedLocationIds, loc.id];
-                              }
+                              const nextIds = selectedLocationIds.filter((id) => id !== loc.id);
                               setSelectedLocationIds(nextIds);
-                              const names = mrLocations
-                                .filter((l) => nextIds.includes(l.id))
-                                .map((l) => l.name || l.clinic);
-                              if (names.length > 0) {
-                                setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
-                              }
+                              const names = mrLocations.filter((l) => nextIds.includes(l.id)).map((l) => l.name || l.clinic);
+                              setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
                             }}
-                            style={[
-                              styles.batchOptionCard,
-                              isChecked && styles.batchOptionCardSelected,
-                              { marginRight: 8, paddingHorizontal: 12, paddingVertical: 8, minWidth: 160 },
-                            ]}
+                            style={{ padding: 2 }}
                           >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={{ fontSize: 14 }}>{isChecked ? '☑️' : '⬜'}</Text>
-                              <Text style={[{ fontSize: 12, fontWeight: '700', color: '#0F172A' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
-                                {loc.name || loc.clinic}
-                              </Text>
-                            </View>
-                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }} numberOfLines={1}>
-                              {loc.category || 'CLINIC'} • {loc.address || 'Field'}
-                            </Text>
-                            {loc.batch_code ? (
-                              <Text style={{ fontSize: 9.5, color: '#0F8B5A', fontWeight: '700', marginTop: 2 }}>
-                                🛣️ [{loc.batch_code}]
-                              </Text>
-                            ) : null}
+                            <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#DC2626' }}>✕</Text>
                           </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  )}
-
-                  {selectedBatch && otherLocations.length > 0 && (
-                    <View style={{ marginTop: 4 }}>
-                      <Text style={{ fontSize: 10.5, fontWeight: '600', color: '#64748B', marginBottom: 4 }}>
-                        Other Marked Locations ({otherLocations.length}):
-                      </Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 8 }}>
-                        {otherLocations.map((loc) => {
-                          const isChecked = selectedLocationIds.includes(loc.id);
-                          return (
-                            <TouchableOpacity
-                              key={loc.id}
-                              onPress={() => {
-                                let nextIds: string[];
-                                if (isChecked) {
-                                  nextIds = selectedLocationIds.filter((id) => id !== loc.id);
-                                } else {
-                                  nextIds = [...selectedLocationIds, loc.id];
-                                }
-                                setSelectedLocationIds(nextIds);
-                                const names = mrLocations
-                                  .filter((l) => nextIds.includes(l.id))
-                                  .map((l) => l.name || l.clinic);
-                                if (names.length > 0) {
-                                  setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
-                                }
-                              }}
-                              style={[
-                                styles.batchOptionCard,
-                                isChecked && styles.batchOptionCardSelected,
-                                { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, minWidth: 140, opacity: 0.9 },
-                              ]}
-                            >
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={{ fontSize: 13 }}>{isChecked ? '☑️' : '⬜'}</Text>
-                                <Text style={[{ fontSize: 11, fontWeight: '600', color: '#334155' }, isChecked && { color: '#0F8B5A' }]} numberOfLines={1}>
-                                  {loc.name || loc.clinic}
-                                </Text>
-                              </View>
-                              <Text style={{ fontSize: 9.5, color: '#94A3B8', marginTop: 2 }} numberOfLines={1}>
-                                {loc.category || 'CLINIC'}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
+                        </View>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -2863,6 +2815,179 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Multi-Location Dropdown Picker Modal */}
+      <Modal
+        visible={locPickerModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLocPickerModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setLocPickerModal((prev) => ({ ...prev, visible: false }))}
+        >
+          <View style={[styles.pickerContainer, { maxHeight: '80%' }]}>
+            <View style={styles.pickerHeader}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.pickerTitle}>{locPickerModal.title}</Text>
+                <Text style={{ fontSize: 10.5, color: '#64748B', marginTop: 2 }}>
+                  Check/uncheck doctors &amp; clinics to add to this planned date.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setLocPickerModal((prev) => ({ ...prev, visible: false }))}
+                style={styles.pickerCloseBtn}
+              >
+                <Text style={styles.pickerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Actions Bar */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  const allIds = locPickerModal.locations.map((l) => l.id);
+                  if (locPickerModal.targetMode === 'EDIT_RC') {
+                    setRcSelectedLocIds((prev) => Array.from(new Set([...prev, ...allIds])));
+                  } else {
+                    setSelectedLocationIds((prev) => {
+                      const next = Array.from(new Set([...prev, ...allIds]));
+                      const names = mrLocations.filter((l) => next.includes(l.id)).map((l) => l.name || l.clinic);
+                      setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
+                      return next;
+                    });
+                  }
+                }}
+                style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#EFF6FF', borderRadius: 4, borderWidth: 1, borderColor: '#BFDBFE' }}
+              >
+                <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#1D4ED8' }}>☑️ Select All</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  const curIds = locPickerModal.locations.map((l) => l.id);
+                  if (locPickerModal.targetMode === 'EDIT_RC') {
+                    setRcSelectedLocIds((prev) => prev.filter((id) => !curIds.includes(id)));
+                  } else {
+                    setSelectedLocationIds((prev) => {
+                      const next = prev.filter((id) => !curIds.includes(id));
+                      const names = mrLocations.filter((l) => next.includes(l.id)).map((l) => l.name || l.clinic);
+                      setKolDrsName(names.length > 0 ? names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : '') : '');
+                      return next;
+                    });
+                  }
+                }}
+                style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#FEF2F2', borderRadius: 4, borderWidth: 1, borderColor: '#FCA5A5' }}
+              >
+                <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#DC2626' }}>⬜ Deselect All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input for Locations */}
+            {locPickerModal.locations.length > 5 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 8 }}>
+                <Text style={{ fontSize: 12, marginRight: 4 }}>🔍</Text>
+                <TextInput
+                  style={{ flex: 1, fontSize: 12, color: '#0F172A', paddingVertical: 2 }}
+                  value={locPickerModal.searchQuery}
+                  onChangeText={(q) => setLocPickerModal((prev) => ({ ...prev, searchQuery: q }))}
+                  placeholder="Filter locations by name or clinic..."
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+            )}
+
+            {/* Scrollable Locations List */}
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
+              {(() => {
+                const q = locPickerModal.searchQuery.toLowerCase().trim();
+                const filtered = locPickerModal.locations.filter((l) => {
+                  if (!q) return true;
+                  const n = (l.name || l.clinic || '').toLowerCase();
+                  const a = (l.address || '').toLowerCase();
+                  return n.includes(q) || a.includes(q);
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, color: '#64748B' }}>
+                        {locPickerModal.locations.length === 0
+                          ? 'No locations available in this selection.'
+                          : `No locations match "${locPickerModal.searchQuery}"`}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return filtered.map((loc) => {
+                  const isChecked =
+                    locPickerModal.targetMode === 'EDIT_RC'
+                      ? rcSelectedLocIds.includes(loc.id)
+                      : selectedLocationIds.includes(loc.id);
+
+                  return (
+                    <TouchableOpacity
+                      key={loc.id}
+                      style={[styles.pickerItem, isChecked && styles.pickerItemSelected, { paddingVertical: 8 }]}
+                      onPress={() => {
+                        if (locPickerModal.targetMode === 'EDIT_RC') {
+                          setRcSelectedLocIds((prev) =>
+                            isChecked ? prev.filter((id) => id !== loc.id) : [...prev, loc.id]
+                          );
+                        } else {
+                          let nextIds: string[];
+                          if (isChecked) {
+                            nextIds = selectedLocationIds.filter((id) => id !== loc.id);
+                          } else {
+                            nextIds = [...selectedLocationIds, loc.id];
+                          }
+                          setSelectedLocationIds(nextIds);
+                          const names = mrLocations.filter((l) => nextIds.includes(l.id)).map((l) => l.name || l.clinic);
+                          if (names.length > 0) {
+                            setKolDrsName(names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3} more` : ''));
+                          } else {
+                            setKolDrsName('');
+                          }
+                        }
+                      }}
+                    >
+                      <View style={{ marginRight: 8 }}>
+                        <Text style={{ fontSize: 15 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.pickerItemLabel,
+                            isChecked && styles.pickerItemLabelSelected,
+                            { fontSize: 12.5 },
+                          ]}
+                        >
+                          {loc.name || loc.clinic}
+                        </Text>
+                        <Text style={styles.pickerItemSublabel}>
+                          {loc.category || 'CLINIC'} • {loc.address || 'Field Location'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setLocPickerModal((prev) => ({ ...prev, visible: false }))}
+              style={{ backgroundColor: '#1E40AF', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
+                ✓ Done ({(locPickerModal.targetMode === 'EDIT_RC' ? rcSelectedLocIds : selectedLocationIds).length} Selected)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
       {/* Browse All Assigned Batches Modal */}
       {isAllBatchesModalOpen && (
         <Modal
@@ -3064,13 +3189,13 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                         const matchesId = loc.batch_id && (loc.batch_id === rcRequestedBatch.id || loc.batch_id === rcRequestedBatch.batch_code);
                         const matchesCode = loc.batch_code && loc.batch_code.toLowerCase() === (rcRequestedBatch.batch_code || '').toLowerCase();
                         const isInList = rcRequestedBatch.location_ids && rcRequestedBatch.location_ids.includes(loc.id);
-                        return Boolean(matchesId || matchesCode || isInList);
+                        const inBatchLocs = rcRequestedBatch.locations && rcRequestedBatch.locations.some((bl: any) => bl.id === loc.id);
+                        return Boolean(matchesId || matchesCode || isInList || inBatchLocs);
                       })
                     : [];
 
-                  const otherLocs = rcRequestedBatch
-                    ? mrLocations.filter((loc) => !batchLocs.some((bl) => bl.id === loc.id))
-                    : mrLocations;
+                  // Only show other locations when NO batch is selected
+                  const otherLocs = !rcRequestedBatch ? mrLocations : [];
 
                   return (
                     <View style={{ marginBottom: 10 }}>
