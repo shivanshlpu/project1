@@ -25,23 +25,24 @@ export interface AppVersionData {
 const defaultAppVersion: AppVersionData = {
   appName: 'AHTRI FFA',
   packageName: 'com.ahtri.ffa',
-  latestVersion: process.env.LATEST_APP_VERSION || '1.0.57',
-  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '58', 10),
+  latestVersion: process.env.LATEST_APP_VERSION || '1.0.58',
+  latestVersionCode: parseInt(process.env.LATEST_VERSION_CODE || '59', 10),
   minimumVersion: process.env.MIN_APP_VERSION || '1.0.0',
   downloadUrl:
     process.env.APP_APK_URL ||
-    'https://github.com/shivanshlpu/project1/releases/download/v1.0.57/ahtri-ffa-mobile.apk',
+    'https://github.com/shivanshlpu/project1/releases/download/v1.0.58/ahtri-ffa-mobile.apk',
   forceUpdate: false,
   isActive: true,
   releaseDate: new Date().toISOString().split('T')[0],
   publishedAt: new Date().toISOString(),
   publishedBy: 'System Admin',
   releaseNotes: [
-    'Strict 100% Task Completion: Reimbursements unlock strictly after MR completes all location tasks assigned to an approved route batch',
-    'Monthly Reimbursement Structure: Clean month-by-month grouping with total verified payouts, distance, and completed trips',
-    'Interactive Tasks Drill-Down: Tap any circuit to see individual location check-ins, call reports, and 50m geofence verification details',
-    'Dynamic Field Verification: Automatic verification for field discovery visits in newly opened routes',
-    'Transparency Status: Dedicated Incomplete Tasks tab showing pending locations required to unlock remaining reimbursements',
+    'Streamlined Product Selection: Searchable modal with depot stock indicators replaces long scrolling list',
+    'Compact Route Batch Selector: Clean dropdown in Monthly TP eliminates long vertical card lists',
+    'Preserved Visit Verification Photo: Skip Order retains captured clinic photo so re-capture is not needed',
+    'Clean Visit Remarks: Doctor reaction and detailing remarks default to blank',
+    'Shared HQ Location Sync: Marked locations within a batch are visible across MRs sharing the same HQ',
+    'Tour Plan Location Inspector: Tap 👁️ to inspect assigned locations and tasks',
   ],
 };
 
