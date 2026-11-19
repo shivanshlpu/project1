@@ -17,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DoctorItem } from '../types';
+import { getApiBaseUrl } from '../utils/apiHelper';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
 import { create3DMapPinHtml, PinCategory } from '../utils/mapPinGenerator';
 import {
@@ -99,7 +100,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
     
     onLocationAcknowledge?.(id);
 
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const apiUrl = getApiBaseUrl();
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
     fetch(`${apiUrl}/locations/${id}/acknowledge`, {
       method: 'POST',
@@ -153,7 +154,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
   
   useEffect(() => {
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const apiUrl = getApiBaseUrl();
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
     fetch(`${apiUrl}/territories/route-batches`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -167,7 +168,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
   const fetchLocations = async () => {
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/locations`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -476,7 +477,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
         }
 
         try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -498,7 +499,7 @@ export const SavedLocationsView: React.FC<SavedLocationsViewProps> = ({
 
   
   const handleSaveLocation = async (locData: any) => {
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const apiUrl = getApiBaseUrl();
 
     if (locData.id) {
       

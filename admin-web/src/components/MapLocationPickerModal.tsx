@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { create3DMapPinHtml } from '../utils/mapPinGenerator';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface MapLocationPickerModalProps {
   isOpen: boolean;
@@ -229,7 +230,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     if (routeBatches && routeBatches.length > 0) {
       setAvailableBatches(routeBatches);
     } else {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       fetch(`${apiUrl}/territories/route-batches`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},

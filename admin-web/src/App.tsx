@@ -10,7 +10,7 @@ import { FloatingAiFab } from './components/FloatingAiFab';
 import { Language } from './utils/i18n';
 import { CenteredModalNotice } from './components/CenteredModalNotice';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { getApiBaseUrl, fetchDeviceAuthorizationsMerged } from './utils/apiHelper';
+import { getApiBaseUrl, fetchDeviceAuthorizationsMerged, resilientFetch } from './utils/apiHelper';
 import './styles/app.css';
 
 const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })));
@@ -457,8 +457,7 @@ export const App: React.FC = () => {
     const fetchRecentCompletions = async () => {
       if (document.hidden) return;
       try {
-        const apiUrl = getApiBaseUrl();
-        const res = await fetch(`${apiUrl}/tasks/recent-completions`);
+        const res = await resilientFetch('/tasks/recent-completions');
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -473,7 +472,7 @@ export const App: React.FC = () => {
     fetchRecentCompletions();
     const timer = setInterval(fetchRecentCompletions, 40000);
     return () => clearInterval(timer);
-  }, [acknowledgedCompletionIds]);
+  }, [authUser, acknowledgedCompletionIds]);
 
   const handleAcknowledgeCompletion = (id: string) => {
     setRecentCompletions((prev) => prev.filter((c) => c.id !== id));

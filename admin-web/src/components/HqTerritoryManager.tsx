@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { showConfirmModal } from './CenteredModalNotice';
 import { findKnownCityCoordinates } from '../utils/savedLocationsStore';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 export interface HeadquarterItem {
   id: string;
@@ -43,7 +44,7 @@ export const DEFAULT_MANAGED_HQS: HeadquarterItem[] = [];
 export const DEFAULT_MANAGED_AREAS: SubAreaItem[] = [];
 
 export const HqTerritoryManager: React.FC = () => {
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = getApiBaseUrl();
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');

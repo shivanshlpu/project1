@@ -23,6 +23,7 @@ import { Language, translations } from '../utils/i18n';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
 import { createOptimizedMap, createResilientTileLayer } from '../utils/mapTileEngine';
+import { getApiBaseUrl } from '../utils/apiHelper';
 
 interface DoctorsViewProps {
   lang?: Language;
@@ -47,7 +48,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     setSelectedDoctorForHistory(doc);
     setIsLoadingHistory(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/tasks?status=COMPLETED`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -80,7 +81,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
   
   const fetchDoctors = async () => {
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/doctors`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -98,7 +99,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
 
   const fetchMRs = async () => {
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/users?role=MR`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -251,7 +252,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     );
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       await fetch(`${apiUrl}/doctors/${doctorId}`, {
         method: 'PATCH',
@@ -289,7 +290,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     );
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       await fetch(`${apiUrl}/doctors/${docId}`, {
         method: 'PATCH',
@@ -341,7 +342,7 @@ export const DoctorsView: React.FC<DoctorsViewProps> = ({ lang = 'en' }) => {
     setIsAddDoctorOpen(false);
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       fetch(`${apiUrl}/doctors`, {
         method: 'POST',

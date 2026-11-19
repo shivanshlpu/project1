@@ -263,13 +263,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [policyNotice, setPolicyNotice] = useState<string | null>(null);
 
   
-  const [targetServerUrl, setTargetServerUrl] = useState(() => {
-    return (
-      (import.meta as any).env?.VITE_API_URL ||
-      localStorage.getItem('ahtri_backend_url') ||
-      'https://ahtri-backend.onrender.com'
-    );
-  });
+  const [targetServerUrl, setTargetServerUrl] = useState(() => getApiBaseUrl());
   const [updateData, setUpdateData] = useState({
     appName: 'AHTRI FFA Mobile',
     packageName: 'com.ahtri.ffa',
@@ -740,7 +734,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       fetch(`${apiUrl}/inventory/hqs`, {
         method: 'POST',
         headers: {
@@ -811,7 +805,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     } catch {}
 
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const apiUrl = getApiBaseUrl();
     fetch(`${apiUrl}/inventory/hqs`, {
       method: 'POST',
       headers: {
@@ -898,7 +892,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       fetch(`${apiUrl}/inventory/hqs/${encodeURIComponent(target.cityName.trim())}`, {
         method: 'DELETE',
         headers: {

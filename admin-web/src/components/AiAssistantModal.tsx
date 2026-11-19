@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiBaseUrl } from '../utils/apiHelper';
 import {
   Sparkles,
   X,
@@ -60,7 +61,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
     },
   ]);
 
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = getApiBaseUrl();
 
   
   const handleDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'custom') => {

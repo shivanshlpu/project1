@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
+import { getApiBaseUrl } from '../utils/apiHelper';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { resilientFetch } from '../utils/apiHelper';
 
@@ -440,7 +441,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
       ) {
         let attLogText = '';
         try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const hdrs = token ? { Authorization: `Bearer ${token}` } : {};
           const [uRes, aRes] = await Promise.allSettled([
@@ -621,7 +622,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
       ) {
         let staffText = '';
         try {
-          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+          const apiUrl = getApiBaseUrl();
           const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
           const hdrs = token ? { Authorization: `Bearer ${token}` } : {};
           const [uRes, aRes] = await Promise.allSettled([

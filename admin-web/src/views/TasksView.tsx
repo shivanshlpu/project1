@@ -988,7 +988,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/tasks`, {
         method: 'POST',
         headers: {
@@ -1070,7 +1070,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setUnsuspendingId(taskId);
     try {
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const today = getTodayDateString();
       const res = await fetch(`${apiUrl}/tasks/${taskId}/unsuspend`, {
         method: 'POST',
@@ -1238,7 +1238,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
     setIsUpdatingTask(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const headers = {
         'Content-Type': 'application/json',

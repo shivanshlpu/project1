@@ -3,29 +3,37 @@
 export const RENDER_BACKEND_URL = 'https://ahtri-backend.onrender.com';
 export const LOCAL_BACKEND_URL = 'http://localhost:3000';
 
+export function isLocalhost(): boolean {
+  if (typeof window === 'undefined' || !window.location) return false;
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+}
+
 export function getApiBaseUrl(): string {
-  
+  // 1. Explicit override saved by admin/developer in localStorage
   const saved = localStorage.getItem('ahtri_backend_url');
   if (saved && saved.trim()) {
-    return saved.trim().replace(/\/+$/, '');
+    const cleanSaved = saved.trim().replace(/\/+$/, '');
+    // If running in production (not localhost), refuse localhost/127.0.0.1 overrides that cause connection refused
+    if (!isLocalhost() && (cleanSaved.includes('localhost') || cleanSaved.includes('127.0.0.1'))) {
+      localStorage.removeItem('ahtri_backend_url');
+    } else {
+      return cleanSaved;
+    }
   }
 
-  
-  if (
-    typeof window !== 'undefined' &&
-    window.location &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ) {
+  // 2. Running locally in browser
+  if (isLocalhost()) {
     return LOCAL_BACKEND_URL;
   }
 
-  
+  // 3. Vite environment variable (if non-local)
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl && envUrl.trim() && !envUrl.includes('localhost:3000') && !envUrl.includes('127.0.0.1:3000')) {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  
+  // 4. Default to live Render production backend
   return RENDER_BACKEND_URL;
 }
 
@@ -158,17 +166,19 @@ export async function resilientFetch(
     }
   }
 
-  
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
-    const localRes = await fetch(`${LOCAL_BACKEND_URL}${cleanEndpoint}`, {
-      ...mergedInit,
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    return localRes;
-  } catch {}
+  // 3. Fallback: try LOCAL_BACKEND_URL ONLY when running locally in dev
+  if (isLocalhost()) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const localRes = await fetch(`${LOCAL_BACKEND_URL}${cleanEndpoint}`, {
+        ...mergedInit,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      return localRes;
+    } catch {}
+  }
 
   throw new Error(`Failed to fetch from ${cleanEndpoint}`);
 }
@@ -203,19 +213,21 @@ export async function fetchDeviceAuthorizationsMerged(): Promise<{ pending: any[
     }
   } catch {}
 
-  // 3. Local backend query fallback
-  try {
-    const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(2000) });
-    if (localRes.ok) {
-      const data = await localRes.json();
-      (data.pending || []).forEach((item: any) => {
-        if (!pendingMap.has(item.id)) pendingMap.set(item.id, item);
-      });
-      (data.history || []).forEach((item: any) => {
-        if (!historyMap.has(item.id)) historyMap.set(item.id, item);
-      });
-    }
-  } catch {}
+  // 3. Local backend query fallback - ONLY when running on localhost
+  if (isLocalhost()) {
+    try {
+      const localRes = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations`, { headers, signal: AbortSignal.timeout(2000) });
+      if (localRes.ok) {
+        const data = await localRes.json();
+        (data.pending || []).forEach((item: any) => {
+          if (!pendingMap.has(item.id)) pendingMap.set(item.id, item);
+        });
+        (data.history || []).forEach((item: any) => {
+          if (!historyMap.has(item.id)) historyMap.set(item.id, item);
+        });
+      }
+    } catch {}
+  }
 
   const pending = Array.from(pendingMap.values()).sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -239,10 +251,13 @@ export async function approveDeviceAuthorizationDual(id: string): Promise<boolea
     const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
   } catch {}
-  try {
-    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
-    if (r2.ok) ok = true;
-  } catch {}
+
+  if (isLocalhost()) {
+    try {
+      const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/approve`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
+      if (r2.ok) ok = true;
+    } catch {}
+  }
   return ok;
 }
 
@@ -258,10 +273,13 @@ export async function rejectDeviceAuthorizationDual(id: string): Promise<boolean
     const r1 = await fetch(`${RENDER_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(6000) });
     if (r1.ok) ok = true;
   } catch {}
-  try {
-    const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
-    if (r2.ok) ok = true;
-  } catch {}
+
+  if (isLocalhost()) {
+    try {
+      const r2 = await fetch(`${LOCAL_BACKEND_URL}/auth/device-authorizations/${id}/reject`, { method: 'POST', headers, signal: AbortSignal.timeout(2000) });
+      if (r2.ok) ok = true;
+    } catch {}
+  }
   return ok;
 }
 

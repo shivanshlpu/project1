@@ -1,4 +1,5 @@
 import { DoctorItem } from '../types';
+import { getApiBaseUrl } from './apiHelper';
 
 export interface TerritoryZone {
   id: string;
@@ -448,7 +449,7 @@ export function updateSavedLocation(id: string, updates: Partial<DoctorItem>): D
 
 export async function syncSavedLocationsWithBackend(): Promise<DoctorItem[]> {
   try {
-    const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const apiUrl = getApiBaseUrl();
     const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
     const res = await fetch(`${apiUrl}/locations`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

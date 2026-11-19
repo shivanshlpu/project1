@@ -23,6 +23,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
+import { getApiBaseUrl } from '../utils/apiHelper';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import { parseSafeOrders, calculateOrderRevenue } from '../utils/orderHelper';
 
@@ -140,7 +141,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ lang = 'en' }) => {
   const fetchAllReports = async () => {
     setIsLoading(true);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = localStorage.getItem('ahtri_auth_token') || localStorage.getItem('token');
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 

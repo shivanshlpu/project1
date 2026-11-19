@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiBaseUrl } from '../utils/apiHelper';
 import {
   Navigation,
   CheckCircle2,
@@ -86,7 +87,7 @@ export const SalesmanPortalView: React.FC = () => {
   const fetchSalesmanCalls = async () => {
     if (!salesmanUser?.id) return;
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const token = salesmanUser.token || localStorage.getItem('ahtri_auth_token');
       const res = await fetch(`${apiUrl}/tasks?mr_id=${salesmanUser.id}`, {
         headers: {

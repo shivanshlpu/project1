@@ -1,4 +1,4 @@
-
+import { getApiBaseUrl } from './apiHelper';
 
 export interface InStockProduct {
   id: string;
@@ -14,14 +14,7 @@ export interface InStockProduct {
 export const DEFAULT_IN_STOCK_PRODUCTS: InStockProduct[] = [];
 
 export function getApiUrl(): string {
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:3000';
-  }
-  return (
-    (import.meta as any).env?.VITE_API_URL ||
-    localStorage.getItem('ahtri_backend_url') ||
-    'http://localhost:3000'
-  );
+  return getApiBaseUrl();
 }
 
 const STORAGE_KEY = 'ahtri_in_stock_medicines';
@@ -147,4 +140,3 @@ export async function syncInStockProductsWithBackend(hqId?: string): Promise<InS
 
   return getStoredInStockProducts();
 }
-
