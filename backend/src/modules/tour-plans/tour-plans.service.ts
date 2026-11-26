@@ -481,6 +481,9 @@ export class TourPlansService implements OnModuleInit {
     }
 
     const newItem: MonthlyTpItem = this.enrichTpItem(dto, user, effectiveHqId, effectiveHqName);
+    if (!newItem.reimbursement_status) {
+      newItem.reimbursement_status = 'PENDING';
+    }
 
     if (plan) {
       const existingIdx = plan.entries.findIndex((e) => e.date === dto.date);
@@ -496,6 +499,16 @@ export class TourPlansService implements OnModuleInit {
       } else {
         plan.entries.push(newItem);
         plan.submitted_at = new Date().toISOString();
+      }
+
+      // Ensure parent plan status reflects pending review when a new/updated entry is pending
+      const hasPendingEntries = plan.entries.some(
+        (e) =>
+          (e.reimbursement_status || '').toUpperCase() !== 'APPROVED' &&
+          (e.reimbursement_status || '').toUpperCase() !== 'REJECTED',
+      );
+      if (hasPendingEntries) {
+        plan.status = 'SUBMITTED';
       }
     } else {
       plan = {

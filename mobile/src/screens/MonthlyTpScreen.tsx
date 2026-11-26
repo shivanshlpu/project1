@@ -2235,10 +2235,12 @@ export const MonthlyTpScreen: React.FC<MonthlyTpScreenProps> = ({
                   {/* Punched Visits Cards */}
                   <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 10 }}>
                     {parseSafeTpEntries(plan.entries).map((e: any, i: number) => {
+                      const entryStatus = String(e.reimbursement_status || '').toUpperCase();
                       const isPlanApproved = ['APPROVED', 'Approved'].includes(plan.status);
                       const isVisitApproved =
-                        ['APPROVED', 'Approved'].includes(e.reimbursement_status) || isPlanApproved;
-                      const isVisitRejected = ['REJECTED', 'Rejected'].includes(e.reimbursement_status);
+                        entryStatus === 'APPROVED' ||
+                        (entryStatus !== 'PENDING' && entryStatus !== 'REJECTED' && isPlanApproved);
+                      const isVisitRejected = entryStatus === 'REJECTED';
 
                       const pendingCr = mrChangeRequests.find(
                         (r) =>

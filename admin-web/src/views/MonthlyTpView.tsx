@@ -2221,18 +2221,24 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
             zIndex: 10000,
             padding: 16,
           }}
+          onClick={() => setSelectedEntryForDetails(null)}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: '#FFFFFF',
               borderRadius: 12,
               width: '100%',
-              maxWidth: 540,
-              padding: 24,
+              maxWidth: 620,
+              maxHeight: '88vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
               boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            {/* Fixed Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', flexShrink: 0, background: '#FFFFFF' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Navigation size={20} color="#1A3C6E" />
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
@@ -2240,12 +2246,30 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedEntryForDetails(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                title="Close"
+                style={{
+                  background: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  color: '#334155',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
               >
-                <X size={18} />
+                <X size={16} />
+                <span>Close</span>
               </button>
             </div>
+
+            {/* Scrollable Modal Body */}
+            <div style={{ padding: '18px 24px', overflowY: 'auto', flex: 1 }}>
 
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 14, marginBottom: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
@@ -2343,7 +2367,7 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                       📍 Direct Area coverage to <strong>{entry.destination || entry.planned_area}</strong>. No individual clinic locations were pre-selected.
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 230, overflowY: 'auto', paddingRight: 4 }}>
                       {locs.map((loc: any, lIdx: number) => {
                         const locName = loc.name || loc.clinic;
                         const matchedTask = entryTasks.find((t) =>
@@ -2486,9 +2510,10 @@ export const MonthlyTpView: React.FC<MonthlyTpViewProps> = ({ onNavigateToBatche
                 );
               })()}
             </div>
+            </div>
 
-            {/* Approval Controls */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #E2E8F0' }}>
+            {/* Fixed Approval Controls Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '14px 24px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC', flexShrink: 0 }}>
               <div style={{ fontSize: 12 }}>
                 Status: <strong style={{ color: selectedEntryForDetails.reimbursement_status === 'APPROVED' ? '#166534' : selectedEntryForDetails.reimbursement_status === 'REJECTED' ? '#991B1B' : '#B45309' }}>{selectedEntryForDetails.reimbursement_status || selectedEntryForDetails.status}</strong>
               </div>
